@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@cadenza/ui/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "test", "tsdown.config.ts"]
+}

@@ -10,26 +10,36 @@ import { ButtonDemo } from '../../../components/ButtonDemo'
 ## 用法
 
 ```tsx
-import { Button } from '@cadenza/ui'
+import { Button, LinkButton } from '@cadenza/ui'
 
 <Button variant="outline" size="sm" onPress={() => console.log('pressed')}>
   Save
 </Button>
+
+<LinkButton variant="link" href="/docs">
+  文档
+</LinkButton>
 ```
+
+`Button` 包 React Aria 的 `Button`，`LinkButton` 包 `Link` —— 两者共用同一套
+`buttonVariants`，所以链接按钮不用把 `<a>` 塞进 `<button>` 里。
 
 ## Props
 
 除下列样式属性外，其余 props 透传给 [React Aria `Button`](https://react-spectrum.adobe.com/react-aria/Button.html)（`onPress`、`isDisabled`、`isPending` 等）。
 
-| Prop      | 类型                                                                    | 默认值      |
-| --------- | ----------------------------------------------------------------------- | ----------- |
-| `variant` | `default` \| `secondary` \| `outline` \| `ghost` \| `destructive` \| `link` | `default`   |
-| `size`    | `sm` \| `default` \| `lg` \| `icon`                                     | `default`   |
+| Prop      | 类型                                                                        | 默认值    |
+| --------- | --------------------------------------------------------------------------- | --------- |
+| `variant` | `default` \| `secondary` \| `outline` \| `ghost` \| `destructive` \| `link`  | `default` |
+| `size`    | `xs` \| `sm` \| `default` \| `lg` \| `icon-xs` \| `icon-sm` \| `icon` \| `icon-lg` | `default` |
 
-## 状态
+组件会把选中的 `variant` / `size` 写回 `data-variant` / `data-size`，方便外部按状态选中。
 
-React Aria 把交互状态写成 `data-*` 属性，所以样式直接用 Tailwind 的 `data-[...]` 变体，不需要 render props：
+## 定制
 
-```
-data-[hovered]  data-[pressed]  data-[focus-visible]  data-[disabled]  data-[pending]
+组件源码在 `packages/ui/src/components/button.tsx`，由 `shadcn add` 生成后由本仓库
+维护 —— 直接改就行。重新拉取上游版本：
+
+```bash
+npx shadcn@latest add -c packages/ui button -o
 ```

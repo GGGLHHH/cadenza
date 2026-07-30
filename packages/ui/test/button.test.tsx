@@ -10,7 +10,7 @@ it('later tailwind utilities win', () => {
 
 it('applies variant and size classes', () => {
   const cls = buttonVariants({ variant: 'ghost', size: 'icon' })
-  expect(cls).toContain('size-9')
+  expect(cls).toContain('size-8')
   expect(cls).not.toContain('bg-primary')
 })
 
@@ -20,7 +20,14 @@ it('className overrides the variant class', () => {
   expect(classes).toContain('bg-red-500')
   // twMerge drops the base background but keeps the hover variant — different conflict group.
   expect(classes).not.toContain('bg-primary')
-  expect(classes).toContain('data-[hovered]:bg-primary/90')
+  expect(classes).toContain('hover:bg-primary/80')
+})
+
+it('exposes variant and size as data attributes', () => {
+  render(<Button variant="outline" size="sm">Save</Button>)
+  const button = screen.getByRole('button')
+  expect(button.dataset.variant).toBe('outline')
+  expect(button.dataset.size).toBe('sm')
 })
 
 it('fires onPress and stays silent when disabled', async () => {

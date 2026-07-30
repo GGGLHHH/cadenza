@@ -14,5 +14,5 @@
     "skipDefaultLibCheck": true,
     "skipLibCheck": true
   },
-  "include": ["packages/*/src", "packages/*/test", "*.config.ts"]
+  "include": ["*.config.ts"]
 }
