@@ -11,11 +11,11 @@
   },
   "iconLibrary": "tabler",
   "aliases": {
-    "components": "@cadenza/ui/components",
-    "utils": "@cadenza/ui/lib/utils",
-    "hooks": "@cadenza/ui/hooks",
-    "lib": "@cadenza/ui/lib",
-    "ui": "@cadenza/ui/components"
+    "components": "@gedatou/cadenza-ui/components",
+    "utils": "@gedatou/cadenza-ui/lib/utils",
+    "hooks": "@gedatou/cadenza-ui/hooks",
+    "lib": "@gedatou/cadenza-ui/lib",
+    "ui": "@gedatou/cadenza-ui/components"
   },
   "rtl": false,
   "menuColor": "default",

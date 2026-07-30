@@ -5,10 +5,10 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    // Mirrors packages/ui/tsconfig.json paths — shadcn generates `@cadenza/ui/lib/utils`
+    // Mirrors packages/ui/tsconfig.json paths — shadcn generates `@gedatou/cadenza-ui/lib/utils`
     // imports, which the package's own `exports` field deliberately does not expose.
     alias: {
-      '@cadenza/ui/': `${fileURLToPath(new URL('./packages/ui/src', import.meta.url))}/`,
+      '@gedatou/cadenza-ui/': `${fileURLToPath(new URL('./packages/ui/src', import.meta.url))}/`,
     },
   },
   test: {

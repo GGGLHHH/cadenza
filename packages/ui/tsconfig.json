@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@cadenza/ui/*": ["./src/*"]
+      "@gedatou/cadenza-ui/*": ["./src/*"]
     }
   },
   "include": ["src", "test", "tsdown.config.ts"]

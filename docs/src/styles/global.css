@@ -3,7 +3,7 @@
 @import '@astrojs/starlight-tailwind';
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
-@import '@cadenza/ui/styles.css';
+@import '@gedatou/cadenza-ui/styles.css';
 
 /* The published styles.css scans ./dist (all a consumer has). In here we can read the
    real sources, so edits show up without waiting on a tsdown rebuild. */

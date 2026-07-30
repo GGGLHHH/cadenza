@@ -1,5 +1,5 @@
 {
-  "name": "@cadenza/monorepo",
+  "name": "cadenza",
   "type": "module",
   "version": "0.0.0",
   "private": true,
@@ -12,7 +12,7 @@
     "lint": "eslint",
     "test": "vitest",
     "typecheck": "tsc && pnpm -r run typecheck",
-    "release": "bumpp -r",
+    "release": "bumpp --no-verify",
     "prepare": "git config core.hooksPath .githooks && simple-git-hooks && skills-npm"
   },
   "devDependencies": {

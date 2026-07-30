@@ -1,5 +1,5 @@
 {
-  "name": "@cadenza/docs",
+  "name": "docs",
   "type": "module",
   "version": "0.0.0",
   "private": true,
@@ -13,7 +13,7 @@
     "@astrojs/react": "catalog:docs",
     "@astrojs/starlight": "catalog:docs",
     "@astrojs/starlight-tailwind": "catalog:docs",
-    "@cadenza/ui": "workspace:*",
+    "@gedatou/cadenza-ui": "workspace:*",
     "astro": "catalog:docs",
     "react": "catalog:react",
     "react-dom": "catalog:react"

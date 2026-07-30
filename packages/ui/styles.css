@@ -1,9 +1,9 @@
 /**
- * @cadenza/ui — shadcn aria-nova tokens.
+ * @gedatou/cadenza-ui — shadcn aria-nova tokens.
  *
  * Consumers:
  *   @import "tailwindcss";
- *   @import "@cadenza/ui/styles.css";
+ *   @import "@gedatou/cadenza-ui/styles.css";
  *
  * Deliberately omits what a library has no business dictating: the `tailwindcss`
  * import itself, a font choice, and shadcn's `body { bg-background text-foreground }`.

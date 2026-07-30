@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Button } from '@cadenza/ui'
+import { Button } from '@gedatou/cadenza-ui'
 
 const variants = ['default', 'secondary', 'outline', 'ghost', 'destructive', 'link'] as const
 const sizes = ['xs', 'sm', 'default', 'lg'] as const

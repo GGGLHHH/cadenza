@@ -1,15 +1,56 @@
 name: Release
 
+# Fired by the v* tag that `pnpm release` (bumpp) pushes.
 on:
   push:
     tags:
       - 'v*'
 
+permissions:
+  contents: read
+  id-token: write # for npm provenance / trusted publishing
+
 jobs:
   release:
-    uses: sxzz/workflows/.github/workflows/release.yml@main
-    with:
-      publish: true
-    permissions:
-      contents: write
-      id-token: write
+    name: Publish @gedatou/cadenza-ui to npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # bump.config.ts keeps the root and the package on one version. If they ever
+      # drift, publishing the wrong one is worse than failing here.
+      - name: Verify tag matches package version
+        shell: bash
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          pkg_version="$(node -p "require('./packages/ui/package.json').version")"
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "Tag $tag_version does not match packages/ui version $pkg_version"
+            exit 1
+          fi
+
+      - name: Build
+        run: pnpm --filter "@gedatou/*" run build
+
+      # OIDC trusted publishing: no NPM_TOKEN, npm attaches provenance itself.
+      # Prerequisites: (1) the package already exists on npm — OIDC cannot bootstrap
+      # a brand new name, so the first version must be published manually;
+      # (2) Settings -> Trusted publishing on npmjs.com points at this repo and workflow.
+      - name: Publish to npm (OIDC trusted publishing)
+        run: pnpm --filter "@gedatou/*" publish --access public --no-git-checks
