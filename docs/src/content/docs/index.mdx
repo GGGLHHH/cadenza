@@ -1,0 +1,26 @@
+---
+title: Cadenza
+description: Accessible React components — React Aria behaviour, shadcn styling
+template: splash
+hero:
+  tagline: React Aria 负责行为与无障碍，Tailwind + cva 负责外观。
+  actions:
+    - text: 浏览组件
+      link: /components/button/
+      icon: right-arrow
+---
+
+## 安装
+
+```bash
+pnpm add @cadenza/ui react-aria-components
+```
+
+在你的入口 CSS 里：
+
+```css
+@import "tailwindcss";
+@import "@cadenza/ui/styles.css";
+```
+
+`styles.css` 自带 `@source "./dist"`，Tailwind 会自动扫描到组件用到的类名，无需额外配置。

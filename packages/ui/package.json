@@ -1,0 +1,40 @@
+{
+  "name": "@cadenza/ui",
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Accessible React components — React Aria behaviour, shadcn styling",
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./styles.css": "./styles.css",
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist",
+    "styles.css"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "prepack": "pnpm run build"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19",
+    "tailwindcss": ">=4"
+  },
+  "dependencies": {
+    "class-variance-authority": "catalog:ui",
+    "clsx": "catalog:ui",
+    "react-aria-components": "catalog:ui",
+    "tailwind-merge": "catalog:ui"
+  },
+  "devDependencies": {
+    "react": "catalog:react",
+    "react-dom": "catalog:react",
+    "tailwindcss": "catalog:ui",
+    "tsdown": "catalog:cli"
+  }
+}

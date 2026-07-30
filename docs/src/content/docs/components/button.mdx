@@ -1,0 +1,35 @@
+---
+title: Button
+description: 基于 React Aria Button 的按钮组件
+---
+
+import { ButtonDemo } from '../../../components/ButtonDemo'
+
+<ButtonDemo client:load />
+
+## 用法
+
+```tsx
+import { Button } from '@cadenza/ui'
+
+<Button variant="outline" size="sm" onPress={() => console.log('pressed')}>
+  Save
+</Button>
+```
+
+## Props
+
+除下列样式属性外，其余 props 透传给 [React Aria `Button`](https://react-spectrum.adobe.com/react-aria/Button.html)（`onPress`、`isDisabled`、`isPending` 等）。
+
+| Prop      | 类型                                                                    | 默认值      |
+| --------- | ----------------------------------------------------------------------- | ----------- |
+| `variant` | `default` \| `secondary` \| `outline` \| `ghost` \| `destructive` \| `link` | `default`   |
+| `size`    | `sm` \| `default` \| `lg` \| `icon`                                     | `default`   |
+
+## 状态
+
+React Aria 把交互状态写成 `data-*` 属性，所以样式直接用 Tailwind 的 `data-[...]` 变体，不需要 render props：
+
+```
+data-[hovered]  data-[pressed]  data-[focus-visible]  data-[disabled]  data-[pending]
+```
