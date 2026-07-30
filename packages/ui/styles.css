@@ -6,8 +6,8 @@
  *   @import "@cadenza/ui/styles.css";
  *
  * Deliberately omits what a library has no business dictating: the `tailwindcss`
- * import itself, a font choice, and shadcn's `* { border-border }` / `body` reset.
- * Components set their own border colours, so nothing here depends on that reset.
+ * import itself, a font choice, and shadcn's `body { bg-background text-foreground }`.
+ * Its `*` reset we do keep — see the note on the base layer below.
  */
 
 @import 'shadcn/tailwind.css';
@@ -19,6 +19,16 @@
 /* Matches both dark-mode conventions: a `.dark` class (shadcn, next-themes)
    and `data-theme="dark"` (Starlight, daisyUI). */
 @custom-variant dark (&:is(.dark *, [data-theme='dark'] *));
+
+@layer base {
+  /* Load-bearing, not cosmetic: Tailwind v4's preflight defaults border-color to
+     currentColor, so any registry component using a bare `border` would draw a
+     text-coloured edge. Upstream shadcn fixes it here and its components assume it. */
+  * {
+    border-color: var(--border);
+    outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
+  }
+}
 
 :root {
   --radius: 0.625rem;
