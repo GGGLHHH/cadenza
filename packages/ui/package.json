@@ -47,6 +47,8 @@
     "tw-animate-css": ">=1"
   },
   "dependencies": {
+    "@gedatou/cadenza-utils": "workspace:*",
+    "@tabler/icons-react": "catalog:ui",
     "class-variance-authority": "catalog:ui",
     "clsx": "catalog:ui",
     "react-aria-components": "catalog:ui",
@@ -56,7 +58,6 @@
     "@base-ui/react": "catalog:ui",
     "@react-types/shared": "catalog:ui",
     "@shadcn/react": "catalog:ui",
-    "@tabler/icons-react": "catalog:ui",
     "@types/node": "catalog:types",
     "embla-carousel-react": "catalog:ui",
     "input-otp": "catalog:ui",

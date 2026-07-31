@@ -1,0 +1,43 @@
+{
+  "name": "@gedatou/cadenza-utils",
+  "type": "module",
+  "version": "0.0.0",
+  "description": "React hooks and helpers shared across cadenza packages",
+  "license": "MIT",
+  "homepage": "https://github.com/GGGLHHH/cadenza#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GGGLHHH/cadenza.git",
+    "directory": "packages/utils"
+  },
+  "bugs": "https://github.com/GGGLHHH/cadenza/issues",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.mts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc",
+    "prepack": "pnpm run build"
+  },
+  "peerDependencies": {
+    "react": ">=19"
+  },
+  "dependencies": {
+    "ahooks": "catalog:ui"
+  },
+  "devDependencies": {
+    "react": "catalog:react",
+    "tsdown": "catalog:cli",
+    "typescript": "catalog:cli"
+  }
+}

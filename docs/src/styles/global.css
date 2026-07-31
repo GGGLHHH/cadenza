@@ -8,3 +8,16 @@
 /* The published styles.css scans ./dist (all a consumer has). In here we can read the
    real sources, so edits show up without waiting on a tsdown rebuild. */
 @source '../../../packages/ui/src';
+
+/* Starlight's Tailwind recipe deliberately omits preflight (it fights Starlight's own
+   base), but shadcn components assume its form-control reset — without it a ghost
+   Button renders the UA's grey `buttonface`. Re-apply just that slice, scoped to
+   React Aria-rendered controls so Starlight's own UI is untouched. */
+@layer base {
+  button[data-rac],
+  input[data-rac] {
+    font: inherit;
+    color: inherit;
+    background-color: transparent;
+  }
+}

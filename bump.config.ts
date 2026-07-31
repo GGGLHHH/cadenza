@@ -11,5 +11,6 @@ export default defineConfig({
   files: [
     'package.json',
     'packages/ui/package.json',
+    'packages/utils/package.json',
   ],
 })

@@ -1,0 +1,192 @@
+---
+title: InfiniteSelect
+description: 可搜索、无限滚动的选择器 —— React Aria 行为 + 组合式插槽
+---
+
+import { SingleDemo, MultiDemo, ErrorDemo } from '../../../components/InfiniteSelectDemo'
+
+可搜索、游标分页无限滚动的选择器家族。行为全部由 React Aria 承担：`Autocomplete`
+用虚拟焦点把搜索框和列表接起来（输入框保持 DOM 焦点，方向键在列表里移动），
+`ListBox` 提供选择语义、方向键 / Home / End / typeahead，`ListBoxLoadMoreItem`
+在哨兵接近视口时触发 `onLoadMore`。
+
+下面的 demo 用 Promise 模拟异步接口（300–500ms 随机延时）。
+
+## 单选
+
+打开后滚到底会自动加载下一页；输入会防抖 300ms 后落到 `queryValue`，由数据层重新请求。
+
+<SingleDemo client:load />
+
+```tsx
+import {
+  Button,
+  InfiniteCombobox,
+  useInfiniteComboboxState,
+} from '@gedatou/cadenza-ui'
+
+function PersonPicker() {
+  const state = useInfiniteComboboxState()
+  const list = usePersonList(state.queryValue) // 你的数据适配器,见下文
+  const [picked, setPicked] = useState<Person>()
+
+  return (
+    <InfiniteCombobox<Person>
+      getOption={(p) => ({ id: p.id, label: p.name })}
+      list={list}
+      onChange={setPicked}
+      searchPlaceholder="搜索作曲家…"
+      slots={slots}
+      state={state}
+    >
+      <Button variant="outline">{picked?.name ?? '选择作曲家'}</Button>
+    </InfiniteCombobox>
+  )
+}
+```
+
+触发器是 `children`，必须是 React Aria 意义上可按压的元素（库里的 `Button` 即可）——
+弹层开合、焦点归还、Esc 关闭都由 `DialogTrigger` 接管。传函数可以拿到当前状态做摘要展示。
+
+## 多选 + 暂存提交
+
+`commitOnClose` 下，弹层内的勾选只是草稿，**关闭弹层才提交一次** `onChange` ——
+适合筛选场景（每勾一下就请求一次太吵）。footer 里的清空 / 确定通过 context 拿到
+`clear` / `close`，不需要你穿线。
+
+<MultiDemo client:load />
+
+```tsx
+<InfiniteCombobox<Person>
+  commitOnClose
+  multiple
+  value={ids}
+  onChange={(items, nextIds) => setIds(nextIds)}
+  slots={(
+    <>
+      {slots}
+      <InfiniteSelectFooter>
+        <InfiniteSelectClearButton>清空</InfiniteSelectClearButton>
+        <InfiniteSelectConfirmButton>确定</InfiniteSelectConfirmButton>
+      </InfiniteSelectFooter>
+    </>
+  )}
+  {/* … */}
+>
+  <Button variant="outline">已选 {ids.length} 位</Button>
+</InfiniteCombobox>
+```
+
+多选的 `onChange(items, ids)` 里 **`ids` 是权威全集**：预选 id 落在未加载的页上时，
+它有 id 没对象，`items` 只回显已加载的那些。持久化请存 `ids`。
+
+## 状态插槽
+
+基座**零文案**。空 / 加载 / 错误 / 加载更多都是 context 驱动的插槽组件，按状态自渲染、
+互斥，文案由你注入 —— i18n 只存在于你的业务层：
+
+<ErrorDemo client:load />
+
+```tsx
+const slots = (
+  <>
+    <InfiniteSelectLoading>加载中…</InfiniteSelectLoading>
+    <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
+    <InfiniteSelectError>
+      加载失败
+      <InfiniteSelectRetry>重试</InfiniteSelectRetry>
+    </InfiniteSelectError>
+    <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
+  </>
+)
+```
+
+`InfiniteSelectRetry` 自己接好基座的 `onRetry`（没有则不渲染），你只出文案。
+所有状态共用一个 `role="status"` 容器，状态切换会被读屏播报。
+
+## 数据适配器
+
+组件不做请求。`list` prop 接受任何满足 `InfiniteSelectAdapterProps<T>` 的对象：
+
+```ts
+interface InfiniteSelectAdapterProps<T> {
+  items: T[]
+  isLoading: boolean
+  isFetchingNextPage: boolean
+  hasNextPage: boolean
+  isError: boolean
+  onLoadMore: () => void
+  onRetry: () => void
+}
+```
+
+用 react-query 时它就是 `useInfiniteQuery` 的一层薄壳：
+
+```ts
+function usePersonList(query: string | undefined): InfiniteSelectAdapterProps<Person> {
+  const q = useInfiniteQuery({
+    queryKey: ['people', query],
+    queryFn: ({ pageParam }) => fetchPeople({ cursor: pageParam, query }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor,
+  })
+  return {
+    items: q.data?.pages.flatMap((p) => p.items) ?? [],
+    isLoading: q.isLoading,
+    isFetchingNextPage: q.isFetchingNextPage,
+    hasNextPage: q.hasNextPage,
+    isError: q.isError,
+    onLoadMore: () => void q.fetchNextPage(),
+    onRetry: () => void q.refetch(),
+  }
+}
+```
+
+搜索的分工：`searchValue` 是输入框的即时值，`queryValue` 是防抖 300ms 后的请求值
+（可用 `debounceMs` 调）。把 `state.queryValue` 传给适配器即可；关闭弹层后再次打开会自动清空搜索。
+
+## 自定义行内容
+
+`renderItem` 替换的是行**内容**，不是行本身 —— `ListBoxItem` 外壳保留，
+键盘导航和选中语义不受影响：
+
+```tsx
+<InfiniteCombobox<Person>
+  renderItem={({ item, selected }) => (
+    <>
+      <span className="flex-1 truncate">{item.name}</span>
+      <span className="text-xs text-muted-foreground">{item.role}</span>
+    </>
+  )}
+  {/* … */}
+/>
+```
+
+`label` 不是纯字符串时，请在 `getOption` 里补 `textValue`，typeahead 靠它检索。
+
+## 键盘交互
+
+| 按键 | 行为 |
+| --- | --- |
+| `↓` / `↑` | 在列表中移动（输入框保持焦点） |
+| `Enter` | 选中当前项 |
+| `Esc` | 先清空搜索词，再次按下关闭弹层 |
+| 打字 | 过滤（经防抖交给数据层） |
+
+## Props
+
+`InfiniteCombobox` 除下表外的 props 透传规则见类型定义。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `state` | `InfiniteComboboxState` | — | 来自 `useInfiniteComboboxState()` |
+| `list` | `InfiniteSelectAdapterProps<T>` | — | 数据适配器 |
+| `getOption` | `(item: T) => InfiniteSelectOption` | — | 提取 id / label / textValue / disabled |
+| `multiple` | `boolean` | `false` | 多选模式 |
+| `value` / `defaultValue` | `string` \| `string[]` | — | 受控 / 非受控选择 |
+| `commitOnClose` | `boolean` | `false` | 多选草稿模式，关弹层才提交 |
+| `closeOnSelect` | `boolean` | `true` | 单选选中后自动关闭 |
+| `slots` | `ReactNode` | — | 状态插槽 + footer |
+| `renderItem` | `(params) => ReactNode` | — | 自定义行内容 |
+| `maxListHeight` | `number` | `256` | 列表最大高度 |
+| `debounceMs`（state 上） | `number` | `300` | 搜索 → 请求的防抖 |
