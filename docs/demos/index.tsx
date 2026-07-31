@@ -34,6 +34,12 @@ const registry: Record<string, ComponentType> = {
   'scroll-area/horizontal': lazy(async () => import('./scroll-area/horizontal')),
   'scroll-area/scrollbars': lazy(async () => import('./scroll-area/scrollbars')),
   'scroll-area/scroll-fade': lazy(async () => import('./scroll-area/scroll-fade')),
+  'tabs/basic': lazy(async () => import('./tabs/basic')),
+  'tabs/line': lazy(async () => import('./tabs/line')),
+  'tabs/vertical': lazy(async () => import('./tabs/vertical')),
+  'tabs/controlled': lazy(async () => import('./tabs/controlled')),
+  'tabs/disabled': lazy(async () => import('./tabs/disabled')),
+  'tabs/keyboard-activation': lazy(async () => import('./tabs/keyboard-activation')),
   'utils/controllable-state': lazy(async () => import('./utils/controllable-state')),
 }
 

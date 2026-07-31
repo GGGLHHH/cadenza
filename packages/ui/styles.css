@@ -799,6 +799,24 @@
   }
 }
 
+/* A TabIndicator takes over painting the selection, so the tabs must stop
+   painting their own — otherwise both are visible mid-slide, and again on hover
+   (the indicator leaves, the tab's own background stays behind). Deliberately
+   unlayered: `data-selected:bg-background` lives in Tailwind's utilities layer,
+   which outranks @layer components no matter how specific the selector is. */
+[data-slot="tab-list-container"]:has([data-slot="tab-indicator"])
+  [data-slot="tabs-trigger"] {
+  z-index: 10;
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+[data-slot="tab-list-container"]:has([data-slot="tab-indicator"])
+  [data-slot="tabs-trigger"]::after {
+  opacity: 0;
+}
+
 /* Let Tailwind see the class names we ship. */
 @source "./dist";
 
