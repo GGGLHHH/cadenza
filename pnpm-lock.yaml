@@ -254,6 +254,19 @@ importers:
 
   packages/ui:
     dependencies:
+      class-variance-authority:
+        specifier: catalog:ui
+        version: 0.7.1
+      clsx:
+        specifier: catalog:ui
+        version: 2.1.1
+      react-aria-components:
+        specifier: catalog:ui
+        version: 1.19.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      tailwind-merge:
+        specifier: catalog:ui
+        version: 3.6.0
+    devDependencies:
       '@base-ui/react':
         specifier: catalog:ui
         version: 1.6.0(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -266,12 +279,9 @@ importers:
       '@tabler/icons-react':
         specifier: catalog:ui
         version: 3.46.0(react@19.2.8)
-      class-variance-authority:
-        specifier: catalog:ui
-        version: 0.7.1
-      clsx:
-        specifier: catalog:ui
-        version: 2.1.1
+      '@types/node':
+        specifier: catalog:types
+        version: 26.1.2
       embla-carousel-react:
         specifier: catalog:ui
         version: 8.6.0(react@19.2.8)
@@ -281,9 +291,12 @@ importers:
       next-themes:
         specifier: catalog:ui
         version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      react-aria-components:
-        specifier: catalog:ui
-        version: 1.19.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: catalog:react
+        version: 19.2.8
+      react-dom:
+        specifier: catalog:react
+        version: 19.2.8(react@19.2.8)
       react-resizable-panels:
         specifier: catalog:ui
         version: 4.12.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -293,19 +306,6 @@ importers:
       sonner:
         specifier: catalog:ui
         version: 2.0.7(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      tailwind-merge:
-        specifier: catalog:ui
-        version: 3.6.0
-    devDependencies:
-      '@types/node':
-        specifier: catalog:types
-        version: 26.1.2
-      react:
-        specifier: catalog:react
-        version: 19.2.8
-      react-dom:
-        specifier: catalog:react
-        version: 19.2.8(react@19.2.8)
       tailwindcss:
         specifier: catalog:ui
         version: 4.3.3

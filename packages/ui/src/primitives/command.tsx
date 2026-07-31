@@ -25,11 +25,11 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@gedatou/cadenza-ui/components/dialog"
+} from "@gedatou/cadenza-ui/primitives/dialog"
 import {
   InputGroup,
   InputGroupAddon,
-} from "@gedatou/cadenza-ui/components/input-group"
+} from "@gedatou/cadenza-ui/primitives/input-group"
 import { IconSearch, IconCheck } from "@tabler/icons-react"
 
 function Command({

@@ -11,7 +11,7 @@ import {
 } from "react-aria-components"
 
 import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { Button } from "@gedatou/cadenza-ui/components/button"
+import { Button } from "@gedatou/cadenza-ui/primitives/button"
 
 function AlertDialogTrigger({ ...props }: AlertDialogTriggerPrimitiveProps) {
   return (

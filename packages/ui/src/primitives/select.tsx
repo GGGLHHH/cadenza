@@ -25,7 +25,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-} from "@gedatou/cadenza-ui/components/input-group"
+} from "@gedatou/cadenza-ui/primitives/input-group"
 import { IconSelector, IconSearch, IconCheck } from "@tabler/icons-react"
 
 function Select<T extends object, M extends "single" | "multiple" = "single">({

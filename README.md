@@ -4,14 +4,44 @@ React Aria 负责行为与无障碍，Tailwind + cva 负责外观 —— shadcn 
 
 ## 结构
 
+分两层，只发布一层：
+
 ```
-packages/ui/               @gedatou/cadenza-ui —— 组件源码，tsdown 打包
-  components.json          shadcn 配置：aria-nova 预设，alias 走包名 @gedatou/cadenza-ui/*
-  src/components/          shadcn add 生成，保持与上游逐字节一致（eslint 已排除）
+packages/ui/               @gedatou/cadenza-ui，tsdown 打包
+  components.json          shadcn 配置：aria-nova 预设，alias 走包名
+  src/primitives/          shadcn add 写这里。原材料，不可变，不是公开 API
+  src/hooks/               同上
+  src/components/          我们的组件。唯一被发布的东西
   src/lib/utils.ts         cn()
+  src/index.ts             只导出 ./components/*
   styles.css               aria-nova token，@source 指向 dist
 docs/                      Astro + Starlight 文档站，MDX 里直接跑 React 组件
 ```
+
+`src/primitives` 是 shadcn 的源码，不是我们准备的组件——原样发布等于把 shadcn 换个名字重新打包。
+它们会随被引用而进入 `dist`，但身份是实现细节；没被 `src/components` 引用到的会被
+tree-shaking 直接扔掉。
+
+这条边界不只是洁癖，它决定三个数字：
+
+| | 全量导出 primitives | 只导出 components |
+| --- | --- | --- |
+| `dist/index.mjs` | 177.8 kB | 3.6 kB |
+| `dependencies` | 14 个 | 4 个 |
+| 消费者 CSS（只用 Button） | 199.8 kB | 23.7 kB |
+
+`recharts`、`embla-carousel-react` 这些是 chart / carousel 拖进来的，它们不发布就不必声明为
+依赖——但仍是 `devDependencies`，因为 `tsc` 要 typecheck 全部 primitives。
+
+## 不变量：src/primitives 不可手改
+
+三层防护：
+
+- `pnpm test` 对每个文件做 sha256 快照（`test/vendored-sources.test.ts`），手改立即失败
+- eslint 忽略该目录，避免格式化破坏与上游的逐字节一致
+- 合法更新走 `shadcn add -o` 后 `pnpm test -u` 显式接受新哈希
+
+`src/components` 相反——那是我们的代码，正常 lint、正常测试。
 
 ## 命令
 
@@ -19,30 +49,45 @@ docs/                      Astro + Starlight 文档站，MDX 里直接跑 React 
 | ------------------ | --------------------------------------- |
 | `pnpm dev`         | 并行跑 tsdown --watch 和 docs 站        |
 | `pnpm build`       | 构建所有包（拓扑序：ui → docs）         |
-| `pnpm test`        | vitest（jsdom + Testing Library）       |
+| `pnpm test`        | vitest（jsdom + Testing Library），含 primitives 哈希校验 |
+| `pnpm test -u`     | 接受新哈希，`shadcn add -o` 之后跑      |
 | `pnpm typecheck`   | 根 tsc + docs 的 astro sync && tsc      |
 | `pnpm lint`        | eslint                                  |
 | `pnpm release`     | bumpp 打版本，GitHub Actions 负责发布   |
 
-## 加一个组件
+## 发布一个组件
+
+primitives 已经全装好了。把其中一个变成公开 API 是**两步**：
+
+1. 在 `src/components/` 建一个文件，从 primitive 转出你想暴露的东西
+2. 在 `src/index.ts` 加一行导出
+
+参考 `src/components/button.tsx`。这个文件是接缝：公开 API 的形状在这里决定，所以重命名
+variant、收紧 prop、包一层 provider 都不必碰 vendored 代码、不会破坏哈希校验。它现在已经
+在补 primitive 的缺口——primitive 把 props 类型内联在签名里没导出，谁想包一层都无从 import。
+
+然后到 `docs/src/content/docs/components/` 加一页。
+
+拉取新的 primitive：
 
 ```bash
 npx shadcn@latest add -c packages/ui dialog
 ```
 
 `-c packages/ui` 是必需的。`shadcn init` 源码里对非框架包直接 `process.exit(1)`
-（`packages/ui` 没有 next/vite/astro 这类依赖），而 `--monorepo` 是从零生成新项目的
-开关，套不到已有仓库上 —— 所以 `packages/ui/components.json` 按官方 monorepo 模板的
-形状写死（alias 用包名 `@gedatou/cadenza-ui/*`，不是 `@/*`）。`add` 不做框架检测，直接可用。
+（`packages/ui` 没有 next/vite/astro 这类依赖），而 `--monorepo` 是从零生成新项目的开关，
+套不到已有仓库上 —— 所以 `components.json` 按官方 monorepo 模板的形状写死（alias 用包名
+`@gedatou/cadenza-ui/primitives/*`，不是 `@/*`）。`add` 不做框架检测，直接可用。
 
-生成后在 `src/index.ts` 导出，再到 `docs/src/content/docs/components/` 加一页。
-`src/components/` 下的文件保持与上游逐字节一致（eslint 已排除该目录），这样
-`--dry-run` 报的 identical / modified 才能真实反映上游有没有更新：
+查上游有没有更新：
 
 ```bash
-npx shadcn@latest add -c packages/ui button --dry-run   # 查上游有无更新
-npx shadcn@latest add -c packages/ui button -o          # 拉取覆盖
+npx shadcn@latest add -c packages/ui button --dry-run   # identical / overwrite
+npx shadcn@latest add -c packages/ui button -o          # 拉取覆盖，之后 pnpm test -u
 ```
+
+注意 `--dry-run` 批量跑不可靠：两个 item 写同一文件时会误报（`input-otp` 也带 `input.tsx`，
+名字不排序就会踩到），而且**一个文件真漂移会把整批标成 `overwrite`**。逐个跑才准确。
 
 ## 发布
 

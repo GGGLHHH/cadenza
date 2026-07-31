@@ -1,7 +1,7 @@
 import * as React from "react"
 
 import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { LinkButton } from "@gedatou/cadenza-ui/components/button"
+import { LinkButton } from "@gedatou/cadenza-ui/primitives/button"
 import { IconChevronLeft, IconChevronRight, IconDots } from "@tabler/icons-react"
 
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {

@@ -9,7 +9,7 @@ import {
 } from "@shadcn/react/message-scroller"
 
 import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { Button } from "@gedatou/cadenza-ui/components/button"
+import { Button } from "@gedatou/cadenza-ui/primitives/button"
 import { IconArrowDown } from "@tabler/icons-react"
 
 function MessageScrollerProvider(

@@ -37,9 +37,13 @@ import { Button, LinkButton } from '@gedatou/cadenza-ui'
 
 ## 定制
 
-组件源码在 `packages/ui/src/components/button.tsx`，由 `shadcn add` 生成后由本仓库
-维护 —— 直接改就行。重新拉取上游版本：
+分两层。`packages/ui/src/primitives/button.tsx` 是 shadcn 的源码，**不要手改**——它有哈希
+校验，改了 `pnpm test` 会失败。要调整外观或 API，改
+`packages/ui/src/components/button.tsx`，那是发布边界的接缝。
+
+重新拉取上游版本：
 
 ```bash
 npx shadcn@latest add -c packages/ui button -o
+pnpm test -u   # 接受新哈希
 ```

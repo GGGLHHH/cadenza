@@ -6,10 +6,10 @@ import { fileURLToPath } from 'node:url'
 import { expect, it } from 'vitest'
 
 /**
- * src/components and src/hooks are shadcn's source, not ours. Every byte in there
- * should have been written by `shadcn add` — a hand edit is a bug, and a silent
- * reformat destroys the `--dry-run … identical` signal that tells us whether
- * upstream has moved.
+ * src/primitives and src/hooks are shadcn's source, not ours — raw material we
+ * build on, never the published surface. Every byte in there should have been
+ * written by `shadcn add`; a hand edit is a bug, and a silent reformat destroys
+ * the `--dry-run … identical` signal that tells us whether upstream has moved.
  *
  * When you legitimately re-pull (`shadcn add -o`), accept the new hashes:
  *   pnpm test -u
@@ -19,7 +19,7 @@ import { expect, it } from 'vitest'
  *   npx shadcn@latest add -c packages/ui <name> --dry-run
  */
 const SRC = fileURLToPath(new URL('../src', import.meta.url))
-const VENDORED = ['components', 'hooks']
+const VENDORED = ['primitives', 'hooks']
 
 function hashDir(dir: string): Record<string, string> {
   return Object.fromEntries(

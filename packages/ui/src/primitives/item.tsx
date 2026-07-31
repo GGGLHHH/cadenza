@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { Link as LinkPrimitive, type LinkProps } from "react-aria-components"
 
 import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { Separator } from "@gedatou/cadenza-ui/components/separator"
+import { Separator } from "@gedatou/cadenza-ui/primitives/separator"
 
 function ItemGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (

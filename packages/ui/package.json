@@ -47,25 +47,25 @@
     "tw-animate-css": ">=1"
   },
   "dependencies": {
+    "class-variance-authority": "catalog:ui",
+    "clsx": "catalog:ui",
+    "react-aria-components": "catalog:ui",
+    "tailwind-merge": "catalog:ui"
+  },
+  "devDependencies": {
     "@base-ui/react": "catalog:ui",
     "@react-types/shared": "catalog:ui",
     "@shadcn/react": "catalog:ui",
     "@tabler/icons-react": "catalog:ui",
-    "class-variance-authority": "catalog:ui",
-    "clsx": "catalog:ui",
+    "@types/node": "catalog:types",
     "embla-carousel-react": "catalog:ui",
     "input-otp": "catalog:ui",
     "next-themes": "catalog:ui",
-    "react-aria-components": "catalog:ui",
+    "react": "catalog:react",
+    "react-dom": "catalog:react",
     "react-resizable-panels": "catalog:ui",
     "recharts": "catalog:ui",
     "sonner": "catalog:ui",
-    "tailwind-merge": "catalog:ui"
-  },
-  "devDependencies": {
-    "@types/node": "catalog:types",
-    "react": "catalog:react",
-    "react-dom": "catalog:react",
     "tailwindcss": "catalog:ui",
     "tsdown": "catalog:cli",
     "tw-animate-css": "catalog:ui",

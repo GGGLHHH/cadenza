@@ -9,17 +9,17 @@ import {
 
 import { useIsMobile } from "@gedatou/cadenza-ui/hooks/use-mobile"
 import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { Button } from "@gedatou/cadenza-ui/components/button"
-import { Input } from "@gedatou/cadenza-ui/components/input"
-import { Separator } from "@gedatou/cadenza-ui/components/separator"
+import { Button } from "@gedatou/cadenza-ui/primitives/button"
+import { Input } from "@gedatou/cadenza-ui/primitives/input"
+import { Separator } from "@gedatou/cadenza-ui/primitives/separator"
 import {
   Sheet,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@gedatou/cadenza-ui/components/sheet"
-import { Skeleton } from "@gedatou/cadenza-ui/components/skeleton"
-import { Tooltip, TooltipTrigger } from "@gedatou/cadenza-ui/components/tooltip"
+} from "@gedatou/cadenza-ui/primitives/sheet"
+import { Skeleton } from "@gedatou/cadenza-ui/primitives/skeleton"
+import { Tooltip, TooltipTrigger } from "@gedatou/cadenza-ui/primitives/tooltip"
 import { IconLayoutSidebar } from "@tabler/icons-react"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"

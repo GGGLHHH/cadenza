@@ -2,8 +2,8 @@ import { useMemo } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { Label } from "@gedatou/cadenza-ui/components/label"
-import { Separator } from "@gedatou/cadenza-ui/components/separator"
+import { Label } from "@gedatou/cadenza-ui/primitives/label"
+import { Separator } from "@gedatou/cadenza-ui/primitives/separator"
 
 function FieldSet({ className, ...props }: React.ComponentProps<"fieldset">) {
   return (

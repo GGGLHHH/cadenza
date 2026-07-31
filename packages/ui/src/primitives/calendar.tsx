@@ -18,7 +18,7 @@ import {
 } from "react-aria-components"
 
 import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { Button, buttonVariants } from "@gedatou/cadenza-ui/components/button"
+import { Button, buttonVariants } from "@gedatou/cadenza-ui/primitives/button"
 import {
   Select,
   SelectContent,
@@ -26,7 +26,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@gedatou/cadenza-ui/components/select"
+} from "@gedatou/cadenza-ui/primitives/select"
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react"
 
 const cellVariants = cva(

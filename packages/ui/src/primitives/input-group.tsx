@@ -3,9 +3,9 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { Group, type GroupProps } from "react-aria-components"
 
 import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { Button } from "@gedatou/cadenza-ui/components/button"
-import { Input } from "@gedatou/cadenza-ui/components/input"
-import { Textarea } from "@gedatou/cadenza-ui/components/textarea"
+import { Button } from "@gedatou/cadenza-ui/primitives/button"
+import { Input } from "@gedatou/cadenza-ui/primitives/input"
+import { Textarea } from "@gedatou/cadenza-ui/primitives/textarea"
 
 function InputGroup({ className, ...props }: GroupProps) {
   return (

@@ -11,10 +11,11 @@ export default antfu(
       'docs/dist',
       // Deliberately broken tailwind classes — run it explicitly with --no-ignore.
       'eslint-fixtures',
-      // shadcn-generated, kept byte-identical to upstream so `shadcn add --dry-run`
-      // still reports "identical" and surfaces real upstream changes. The class-order
-      // and line-wrapping fixers below would rewrite these files and destroy that.
-      'packages/*/src/components',
+      // Vendored shadcn source, kept byte-identical to upstream so `shadcn add
+      // --dry-run` still reports "identical" and surfaces real upstream changes. The
+      // class-order and line-wrapping fixers below would rewrite these and destroy
+      // that. src/components is ours and is linted normally.
+      'packages/*/src/primitives',
       'packages/*/src/hooks',
     ],
   },
