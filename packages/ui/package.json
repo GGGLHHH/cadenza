@@ -47,10 +47,19 @@
     "tw-animate-css": ">=1"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:ui",
+    "@react-types/shared": "catalog:ui",
+    "@shadcn/react": "catalog:ui",
     "@tabler/icons-react": "catalog:ui",
     "class-variance-authority": "catalog:ui",
     "clsx": "catalog:ui",
+    "embla-carousel-react": "catalog:ui",
+    "input-otp": "catalog:ui",
+    "next-themes": "catalog:ui",
     "react-aria-components": "catalog:ui",
+    "react-resizable-panels": "catalog:ui",
+    "recharts": "catalog:ui",
+    "sonner": "catalog:ui",
     "tailwind-merge": "catalog:ui"
   },
   "devDependencies": {

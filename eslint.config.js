@@ -15,6 +15,7 @@ export default antfu(
       // still reports "identical" and surfaces real upstream changes. The class-order
       // and line-wrapping fixers below would rewrite these files and destroy that.
       'packages/*/src/components',
+      'packages/*/src/hooks',
     ],
   },
 ).append({
