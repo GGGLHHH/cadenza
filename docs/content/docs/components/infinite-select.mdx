@@ -297,30 +297,161 @@ interface InfiniteSelectItemRenderParams<T> {
 
 ## Props
 
-下表是便利层 `InfiniteCombobox` 的 props（内部拆解后路由到根组件与各 part）。
-组合式用法时，`searchPlaceholder` 对应 `InfiniteSelectSearch` 的
-`placeholder`，`renderItem` / `virtualized` / `rowHeight` / `maxListHeight` /
-`scrollbars` / `loadingMoreIndicator` / `loadMoreScrollOffset` 都在
-`InfiniteSelectList` 上。
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → 类名**。
+
+每个部件的 Props 表后面跟一张**状态**表。左列是挂在 DOM 上的 `data-*`，Tailwind 直接
+当变体写（`data-selected:bg-accent`）；右列是同一个状态在 render props / `renderItem`
+参数里的名字。`data-rac` / `data-collection` / `data-key` 是 React Aria 的内部标记，
+不要依赖。
+
+### InfiniteCombobox
+
+便利层：一个 props 面，内部拆开路由到根组件和各个 part。改用组合式写法时，
+`searchPlaceholder` 去 `InfiniteSelectSearch` 上找 `placeholder`，
+`renderItem` / `virtualized` / `rowHeight` / `maxListHeight` / `scrollbars` /
+`loadingMoreIndicator` / `loadMoreScrollOffset` 都在 `InfiniteSelectList` 上。
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `state` | `InfiniteComboboxState` | — | 来自 `useInfiniteComboboxState()` |
-| `list` | `InfiniteSelectAdapterProps<T>` | — | 数据适配器 |
-| `getOption` | `(item: T) => InfiniteSelectOption` | — | 提取 id / label / textValue / isDisabled |
-| `selectionMode` | `'single' \| 'multiple'` | `'single'` | 选择模式（React Aria 的枚举，与 DataTable 同名） |
-| `value` / `defaultValue` | `string` \| `string[]` | — | 受控 / 非受控选择 |
+| `state` | `InfiniteComboboxState` | — | **必填**，来自 `useInfiniteComboboxState()` |
+| `list` | `InfiniteSelectAdapterProps<T>` | — | **必填**，数据适配器 |
+| `getOption` | `(item: T) => InfiniteSelectOption` | — | **必填**，提取 id / label / textValue / isDisabled |
+| `children` | `ReactNode` \| `(state) => ReactNode` | — | 触发器；函数形式可拿到 `isOpen` / `selectedItems` / `selectedValue` |
+| `selectionMode` | `'single' \| 'multiple'` | `'single'` | 判别式：决定下面三个的类型（React Aria 的枚举，与 DataTable 同名） |
+| `defaultValue` | `string` \| `string[]` | — | 非受控初始选择 |
+| `value` | `string` \| `string[]` | — | 受控选择 |
+| `onChange` | 单选 `(item?: T) => void`；多选 `(items: T[], ids: string[]) => void` | — | 多选时 `ids` 才是权威值，`items` 只含已加载页的对象 |
 | `isDisabled` | `boolean` | `false` | 禁用触发器（弹层不可打开） |
 | `commitOnClose` | `boolean` | `false` | 多选草稿模式，关弹层才提交 |
 | `closeOnSelect` | `boolean` | `true` | 单选选中后自动关闭 |
 | `lockScroll` | `boolean` | `false` | 锁定页面滚动（模态感） |
 | `closeOnScroll` | `boolean` | `false` | 页面滚动时关闭弹层（原生 select 感）；默认弹层随锚点滚动、保持打开 |
-| `slots` | `ReactNode` | — | 状态插槽 + footer |
+| `searchPlaceholder` | `string` | — | 搜索框占位符，同时兼作它的无障碍名 |
+| `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | 替换行内容（`ListBoxItem` 外壳保留），参数见「自定义行内容」 |
 | `loadingMoreIndicator` | `ReactNode` | — | 列表末尾的加载更多指示（滚动流内） |
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
-| `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | 替换行内容（`ListBoxItem` 外壳保留），参数见「自定义行内容」 |
-| `maxListHeight` | `number` | `256` | 列表最大高度 |
-| `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | 滚动条可见性：常显 / hover 与滚动时显示 / 常隐 |
 | `virtualized` | `boolean` | `false` | TanStack Virtual 行虚拟化，大数据集用 |
 | `rowHeight` | `number` | `32` | 虚拟化行的固定高度；自定义 `renderItem` 更高时需同步调整 |
-| `debounceMs`（state 上） | `number` | `300` | 搜索 → 请求的防抖 |
+| `maxListHeight` | `number` | `256` | 列表最大高度 |
+| `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | 滚动条可见性：常显 / hover 与滚动时显示 / 常隐 |
+| `slots` | `ReactNode` | — | 状态插槽 + footer |
+| `aria-label` | `string` | 取 `searchPlaceholder` | 面板的无障碍名 |
+| `selectClassName` | `string` | — | 弹层内根组件的类名 |
+| `contentClassName` | `string` | — | 弹层本身的类名 |
+
+防抖不在这张表上 —— `debounceMs`（默认 `300`）是 `useInfiniteComboboxState()` 的选项。
+
+**状态**（弹层，`data-slot="infinite-combobox-content"`）
+
+| 状态 | 出现时机 | 说明 |
+| --- | --- | --- |
+| `data-placement` | 弹层已定位，值是 `bottom` / `top` / … | 出场动画按方向分岔时挂这个 |
+| `data-trigger` | 固定是 `SubmenuTrigger` | 见源码注释：借这个分支换取「弹层随锚点滚动」，不是真的子菜单 |
+
+触发器是你自己传的 `children`，状态取决于你用什么渲染。用我们的 `Button` 的话，
+它带 `data-hovered` / `data-pressed` / `data-focus-visible` / `data-disabled`。
+
+### InfiniteSelect
+
+根组件：持有数据与选择，通过 context 接线给各个 part。它自己不渲染任何文案和 part。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `items` | `T[]` | — | **必填**，当前已加载（服务端过滤后）的数据 |
+| `getOption` | `(item: T) => InfiniteSelectOption` | — | **必填**，提取 id / label / textValue / isDisabled |
+| `selectionMode` | `'single' \| 'multiple'` | `'single'` | 判别式，同上 |
+| `defaultValue` | `string` \| `string[]` | — | 非受控初始选择 |
+| `value` | `string` \| `string[]` | — | 受控选择 |
+| `onChange` | 同 `InfiniteCombobox` | — | 选择变化回调 |
+| `inputValue` | `string` | — | 受控搜索词（RAC ComboBox 的词汇） |
+| `onInputChange` | `(value: string) => void` | — | 搜索词变化回调 |
+| `isLoading` | `boolean` | `false` | 首屏加载中 |
+| `isFetchingNextPage` | `boolean` | `false` | 正在取下一页 |
+| `hasNextPage` | `boolean` | `false` | 还有下一页 |
+| `isError` | `boolean` | `false` | 加载失败 |
+| `onLoadMore` | `() => void` | — | 触底（或提前一个视口）时调用 |
+| `onRetry` | `() => void` | — | 给 `InfiniteSelectRetry` 用；不传则该插槽不渲染 |
+| `aria-label` | `string` | — | 面板无障碍名，`InfiniteSelectList` 会回退到它 |
+| `children` | `ReactNode` | — | part / 状态插槽 / footer，按调用方书写顺序渲染 |
+| `className` | `string` | — | 根元素类名 |
+
+**状态** —— 根元素上没有状态属性，它只是 RAC `Autocomplete` 的容器。状态都在下面的
+part 上。
+
+### InfiniteSelectSearch
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `placeholder` | `string` | — | 占位符，同时兼作这个搜索框的无障碍名 |
+| `autoFocus` | `boolean` | `false` | 挂载即聚焦。默认关闭（内联面板不该抢页面焦点）；`InfiniteCombobox` 会传 `true`，弹层一开就能打字 |
+| `className` | `string` | — | 类名 |
+
+**状态**
+
+| 状态 | 出现时机 | render prop |
+| --- | --- | --- |
+| `data-empty` | 搜索框没有内容（RAC `SearchField`，清除按钮靠它显隐） | `isEmpty` |
+
+### InfiniteSelectList
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `aria-label` | `string` | 回退到根组件的 | 列表的无障碍名 |
+| `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | 替换行内容，`ListBoxItem` 外壳保留 |
+| `loadingMoreIndicator` | `ReactNode` | — | 滚动流内的加载更多指示 |
+| `loadMoreScrollOffset` | `number` | `1` | 预取距离，单位是视口高度 |
+| `virtualized` | `boolean` | `false` | 行虚拟化 |
+| `rowHeight` | `number` | `32` | 虚拟化行的固定高度 |
+| `maxListHeight` | `number` | `256` | 最大高度 |
+| `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | 滚动条可见性 |
+| `className` | `string` | — | 类名 |
+
+**状态**
+
+| 状态 | 出现时机 | render prop |
+| --- | --- | --- |
+| `data-layout` | 固定是 `stack`（RAC `ListBox` 的布局模式） | `layout` |
+| `data-orientation` | 固定是 `vertical` | `orientation` |
+
+### 选项行
+
+不是一个可写的组件 —— 由 `InfiniteSelectList` 渲染的 RAC `ListBoxItem`，
+`data-slot="infinite-select-item"`。`renderItem` 换掉的是它的**内容**，外壳、
+键盘导航和选择接线都还在，所以下面这些状态照常可用。
+
+**状态**
+
+| 状态 | 出现时机 | renderItem 参数 |
+| --- | --- | --- |
+| `data-selection-mode` | 始终有值：`single` / `multiple` | `selectionMode` |
+| `data-selected` | 该项已选中 | `isSelected` |
+| `data-hovered` | 指针悬停其上；触摸和键盘都不触发 | — |
+| `data-pressed` | 指针按住未松开 | — |
+| `data-focused` | 是当前的活动项（虚拟焦点，真实焦点留在搜索框） | — |
+| `data-focus-visible` | 活动项**且**由键盘导航到达 | — |
+| `data-disabled` | `getOption` 返回了 `isDisabled: true` | — |
+
+`renderItem` 的参数只给 `item` / `option` / `index` / `isSelected` / `selectionMode`
+五个 —— 悬停、按下、焦点这些高频变化的状态刻意不进参数，走 CSS 就够了，进了参数
+反而会让每行在悬停时重渲染。
+
+搜索框保持真实焦点、列表项拿虚拟焦点，是 RAC `Autocomplete` 的设计：这样打字和
+上下键可以同时工作。所以焦点样式要挂在 `data-focused` 上，别挂 `:focus`。
+
+### 状态插槽与 footer
+
+这几个部件都没有自己的 props（除了 `className` 和原生属性透传），文案由 `children`
+决定，是否渲染由 context 里的状态决定 —— 详见[插槽](#插槽)与[动作上下文](#动作上下文)。
+
+| 部件 | 何时渲染 | data-slot |
+| --- | --- | --- |
+| `InfiniteSelectEmpty` | 加载完、无错误、`items` 为空 | `infinite-select-status` |
+| `InfiniteSelectLoading` | `isLoading` | `infinite-select-status` |
+| `InfiniteSelectError` | `isError` | `infinite-select-status` |
+| `InfiniteSelectRetry` | 在 `Error` 内，且根上传了 `onRetry` | `infinite-select-retry` |
+| `InfiniteSelectFooter` | 总是（由调用方决定放不放） | `infinite-select-footer` |
+| `InfiniteSelectClearButton` | 总是 | `infinite-select-clear` |
+| `InfiniteSelectConfirmButton` | 总是 | `infinite-select-confirm` |
+
+三个状态插槽共用一个 `role="status"` 的容器，所以变化会被读屏播报一次，而不是三种
+写法各播一次。

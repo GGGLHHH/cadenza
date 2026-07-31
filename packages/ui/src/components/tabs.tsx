@@ -1,7 +1,8 @@
 'use client'
 
+import type { VariantProps } from 'class-variance-authority'
 import type { ComponentProps, ReactElement } from 'react'
-import type { TabListState } from 'react-aria-components'
+import type { TabListProps as RACTabListProps, TabListState } from 'react-aria-components'
 import { Children, isValidElement, use, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { TabListStateContext, TabsContext } from 'react-aria-components'
 import { cn } from '#lib/utils'
@@ -31,9 +32,22 @@ import {
  * — for tab sets computed from data.
  */
 export type TabsProps = ComponentProps<typeof Tabs>
-export type TabListProps = ComponentProps<typeof TabsList>
+/**
+ * Generic, unlike the vendored `TabsList` it wraps: that one is typed
+ * `ComponentProps<typeof TabList>`, which collapses RAC's item type to
+ * `unknown` and makes the documented dynamic-collection form
+ * (`items` + function children) fail to typecheck. Taking RAC's own generic
+ * props back restores it; the runtime is unchanged.
+ */
+export type TabListProps<T extends object = object>
+  = RACTabListProps<T> & VariantProps<typeof tabsListVariants>
 export type TabProps = ComponentProps<typeof TabsTrigger>
 export type TabPanelProps = ComponentProps<typeof TabsContent>
+
+// The vendored list is a value, so its non-generic typing cannot be widened in
+// place — this restates it as the generic component it already is at runtime.
+// One cast, at the seam, instead of one at every dynamic-collection call site.
+const GenericTabsList = TabsList as <T extends object>(props: TabListProps<T>) => ReactElement
 
 /**
  * The tab-list state — React Aria's state layer, read through RAC's own
@@ -67,12 +81,12 @@ export function useTabsState<T extends object = object>(): TabListState<T> | nul
  * render it as the list's sibling, which is also where it can paint behind the
  * tabs without being clipped by the strip's own background.
  */
-export function TabList({
+export function TabList<T extends object = object>({
   className,
   children,
   variant = 'default',
   ...props
-}: TabListProps): ReactElement {
+}: TabListProps<T>): ReactElement {
   // Function children are RAC's dynamic collection form; nothing to lift there.
   let indicator: ReactElement | null = null
   const tabs = typeof children === 'function'
@@ -92,9 +106,9 @@ export function TabList({
       data-slot="tab-list-container"
       data-variant={variant}
     >
-      <TabsList className={className} variant={variant} {...props}>
+      <GenericTabsList<T> className={className} variant={variant} {...props}>
         {tabs}
-      </TabsList>
+      </GenericTabsList>
       {indicator}
     </div>
   )

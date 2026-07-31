@@ -30,6 +30,22 @@ beforeAll(() => {
 })
 
 describe('tabs', () => {
+  it('builds the tab set from `items`, RAC\'s dynamic collection form', () => {
+    const items = [{ id: 'a', title: 'A' }, { id: 'b', title: 'B' }]
+    render(
+      <Tabs>
+        <TabList aria-label="动态集合" items={items}>
+          {/* `item` is inferred from `items` — the generic seam is what makes that work */}
+          {item => <Tab id={item.id}>{item.title}</Tab>}
+        </TabList>
+        <TabPanel id="a">A 面板</TabPanel>
+        <TabPanel id="b">B 面板</TabPanel>
+      </Tabs>,
+    )
+    expect(screen.getAllByRole('tab').map(tab => tab.textContent)).toEqual(['A', 'B'])
+    expect(screen.getByRole('tabpanel').textContent).toBe('A 面板')
+  })
+
   it('renders the aria tablist and mounts only the selected panel', () => {
     renderDashboard({ defaultSelectedKey: 'overview' })
     expect(screen.getByRole('tablist', { name: '项目仪表盘' })).not.toBeNull()
