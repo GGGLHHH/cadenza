@@ -1,0 +1,149 @@
+---
+import { Code } from '@astrojs/starlight/components'
+
+// shadcn 式 demo 展示卡:上半是活预览(slot,由 MDX 静态导入并 client:load
+// 水合——Astro 无法水合动态解析的组件,所以组件本体必须走 slot),下半是可
+// 展开复制的真实源码,经 ?raw 从同一个 demo 文件解析,与运行版永不失同步。
+interface Props {
+  /** demos/ 下的路径,不带扩展名,如 "data-table/basic" */
+  name: string
+  /** 预览区排布:center 居中(默认),stretch 撑满(表格类宽内容) */
+  align?: 'center' | 'stretch'
+}
+
+const { name, align = 'center' } = Astro.props
+
+const sourceModules = import.meta.glob<string>('../demos/**/*.tsx', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+})
+
+const source = sourceModules[`../demos/${name}.tsx`]
+
+if (source === undefined)
+  throw new Error(`ComponentPreview: demo source not found: ${name}`)
+
+const fullSource = source.trimEnd()
+---
+
+<div class="component-preview not-content">
+  <div class="cp-preview" data-align={align}>
+    <slot />
+  </div>
+  {/* 注意:这里的 <Code> 必须直渲。Expressive Code 的样式/脚本靠 Astro 的
+      head 提升注入,一旦放进 framework island 的 slot,提升被丢弃且按页去重,
+      整页的高亮和复制都会失效——所以滚动条用原生细滚动条而不是 ScrollArea。 */}
+  <div class="cp-code" data-expanded="false">
+    <div class="cp-code-inner">
+      <Code code={fullSource} lang="tsx" />
+    </div>
+    <div class="cp-peek">
+      <button class="cp-view-code" type="button">View Code</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement
+    const button = target.closest('.cp-view-code')
+    if (!button) return
+    button.closest('.cp-code')?.setAttribute('data-expanded', 'true')
+  })
+</script>
+
+<style>
+  .component-preview {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin-block: 1.5rem;
+    border: 1px solid var(--sl-color-hairline, var(--sl-color-gray-5));
+    border-radius: 1rem;
+  }
+
+  .cp-preview {
+    padding: 2.5rem 1.5rem;
+  }
+
+  .cp-preview[data-align='center'] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 14rem;
+  }
+
+  .cp-code {
+    position: relative;
+    border-block-start: 1px solid var(--sl-color-hairline, var(--sl-color-gray-5));
+  }
+
+  .cp-code :global(.expressive-code),
+  .cp-code :global(figure.frame),
+  .cp-code :global(pre) {
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  .cp-code-inner {
+    overflow: hidden;
+  }
+
+  .cp-code[data-expanded='false'] .cp-code-inner {
+    max-height: 8.5rem;
+  }
+
+  /* 展开后双轴滚动都在 EC 的 pre 上——同一个滚动容器,横向滚动条永远贴着
+     可视区底缘(纵向在外层时,横向条会沉到内容最底部才可见);copy 按钮在
+     figure 层,不随滚动移动。原生细滚动条,与库 ScrollArea 观感一致 */
+  .cp-code[data-expanded='true'] :global(pre) {
+    overflow: auto;
+    max-block-size: 26rem;
+  }
+
+  .cp-code :global(pre) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--sl-color-gray-5) transparent;
+  }
+
+  /* 收起时隐藏 Expressive Code 的 copy 按钮,展开才出现 */
+  .cp-code[data-expanded='false'] :global(.copy) {
+    display: none;
+  }
+
+  .cp-peek {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(
+      to top,
+      var(--sl-color-bg) 15%,
+      color-mix(in oklab, var(--sl-color-bg) 60%, transparent),
+      transparent
+    );
+  }
+
+  .cp-code[data-expanded='true'] .cp-peek {
+    display: none;
+  }
+
+  .cp-view-code {
+    padding: 0.375rem 0.875rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    background: var(--sl-color-bg);
+    color: var(--sl-color-white);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  .cp-view-code:hover {
+    background: var(--sl-color-gray-6);
+  }
+</style>

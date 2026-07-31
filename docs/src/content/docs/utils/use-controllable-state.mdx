@@ -3,7 +3,8 @@ title: useControllableState
 description: useState 形状的受控/非受控二态 hook —— @gedatou/cadenza-utils
 ---
 
-import { ControllableDemo } from '../../../components/UtilsDemo'
+import ComponentPreview from '../../../components/ComponentPreview.astro'
+import ControllableDemo from '../../../demos/utils/controllable-state'
 
 `@gedatou/cadenza-utils` 是配套的工具包，目前的核心是 `useControllableState`：
 把 ahooks 的 `useControllableValue` 收敛成 **`useState` 的形状**，让一个组件
@@ -31,23 +32,9 @@ const [state, setState] = useControllableState({ value, defaultValue, onChange, 
 
 同一个 `Stepper` 组件，传 `value` 即受控、只传 `defaultValue` 即非受控：
 
-<ControllableDemo client:load />
-
-```tsx
-function Stepper({ value, defaultValue, onChange }: StepperProps) {
-  const [count, setCount] = useControllableState({ value, defaultValue, onChange, fallback: 0 })
-  return (
-    <>
-      <Button onPress={() => setCount((c) => c - 1)}>−</Button>
-      <span>{count}</span>
-      <Button onPress={() => setCount((c) => c + 1)}>+</Button>
-    </>
-  )
-}
-
-<Stepper defaultValue={1} />                        {/* 非受控 */}
-<Stepper value={volume} onChange={setVolume} />     {/* 受控 */}
-```
+<ComponentPreview name="utils/controllable-state">
+  <ControllableDemo client:load />
+</ComponentPreview>
 
 ## 为什么二次封装 ahooks
 

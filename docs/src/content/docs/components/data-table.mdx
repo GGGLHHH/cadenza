@@ -3,33 +3,37 @@ title: DataTable
 description: React Aria Table 语义的数据表格 —— 列定义驱动 + 组合式插槽 + 分页 / 无限滚动 / 虚拟化
 ---
 
-import { BasicDemo, SortDemo, SingleSelectionDemo, MultiSelectionDemo, ArchiveDemo, HScrollDemo, PinnedDemo, PaginationDemo, InfiniteDemo, EmptySlotDemo, LoadingSlotDemo, ErrorDemo, VirtualizedDemo, DynamicRowHeightDemo } from '../../../components/DataTableDemo'
+import ComponentPreview from '../../../components/ComponentPreview.astro'
+import BasicDemo from '../../../demos/data-table/basic'
+import SortDemo from '../../../demos/data-table/sort'
+import SingleSelectionDemo from '../../../demos/data-table/selection-single'
+import MultiSelectionDemo from '../../../demos/data-table/selection-multiple'
+import ArchiveDemo from '../../../demos/data-table/selection-archive'
+import HScrollDemo from '../../../demos/data-table/hscroll'
+import PinnedDemo from '../../../demos/data-table/pinned'
+import PaginationDemo from '../../../demos/data-table/pagination'
+import InfiniteDemo from '../../../demos/data-table/infinite'
+import EmptySlotDemo from '../../../demos/data-table/slot-empty'
+import LoadingSlotDemo from '../../../demos/data-table/slot-loading'
+import ErrorSlotDemo from '../../../demos/data-table/slot-error'
+import VirtualizedDemo from '../../../demos/data-table/virtualized'
+import DynamicRowHeightDemo from '../../../demos/data-table/dynamic-row-height'
 
 数据表格家族。行为全部由 React Aria 的 `Table` 承担：网格键盘导航（方向键在单元格间移动）、
 行选择、列排序都是 RAC 原生语义。你只提供一个**列定义数组**和数据，不写 JSX 表格结构。
 配套的 `DataPagination` 负责 offset 分页；游标分页走无限滚动；大数据集可用
 `virtualized` 开启 TanStack Virtual 行虚拟化，见下文。
 
-下面的 demo 用 Promise 模拟异步接口（300–500ms 随机延时）。
+每个 demo 下方都附完整源码（View Code 展开、右上角复制）；异步接口用 Promise
+模拟（300–500ms 随机延时），mock 数据源在 `demos/lib` 里。
 
 ## 基础用法
 
 列定义是普通对象：`id` 是列标识，`header` 是表头内容，`cell` 收到行数据和行号、返回单元格内容。
 
-<BasicDemo client:load />
-
-```tsx
-import type { DataTableColumn } from '@gedatou/cadenza-ui'
-import { DataTable } from '@gedatou/cadenza-ui'
-
-const columns: DataTableColumn<Person>[] = [
-  { id: 'name', header: '姓名', cell: (p) => p.name, isRowHeader: true },
-  { id: 'role', header: '角色', cell: (p) => p.role },
-  { id: 'born', header: '生年', cell: (p) => p.born, width: 90 },
-]
-
-<DataTable<Person> aria-label="作曲家" columns={columns} items={people} />
-```
+<ComponentPreview name="data-table/basic" align="stretch">
+  <BasicDemo client:load />
+</ComponentPreview>
 
 两个约定：
 
@@ -42,20 +46,9 @@ const columns: DataTableColumn<Person>[] = [
 （`sortDescriptor` 受控 + `onSortChange`），真正的排序是数据层的事 ——
 本地数据自己 `sort`，服务端数据把 descriptor 转成请求参数：
 
-<SortDemo client:load />
-
-```tsx
-const [sort, setSort] = useState<SortDescriptor>({ column: 'name', direction: 'ascending' })
-const sorted = useMemo(() => sortBy(people, sort), [sort])
-
-<DataTable<Person>
-  columns={columns.map((c) => ({ ...c, allowsSorting: true }))}
-  items={sorted}
-  sortDescriptor={sort}
-  onSortChange={setSort}
-  {/* … */}
-/>
-```
+<ComponentPreview name="data-table/sort" align="stretch">
+  <SortDemo client:load />
+</ComponentPreview>
 
 `SortDescriptor` 类型（`{ column, direction }`）从 `@gedatou/cadenza-ui` 导出，
 业务层不需要直接依赖 react-aria-components。
@@ -75,39 +68,18 @@ const sorted = useMemo(() => sortBy(people, sort), [sort])
 `value` 是单个 id，`onChange` 直接收行对象（取消选中时收 `undefined`）；
 表头不渲染全选框。点击行、点击 checkbox 都可以选中：
 
-<SingleSelectionDemo client:load />
-
-```tsx
-const [picked, setPicked] = useState<Person | undefined>(undefined)
-
-<DataTable<Person>
-  selectionMode="single"
-  selectionColumn
-  value={picked?.id}
-  onChange={setPicked}
-  {/* … */}
-/>
-```
+<ComponentPreview name="data-table/selection-single" align="stretch">
+  <SingleSelectionDemo client:load />
+</ComponentPreview>
 
 ### 多选
 
 `value` 是 id 数组；`onChange(items, ids)` 里 **`ids` 是权威全集**，
 `items` 只回显已加载页的对象——与 InfiniteSelect 的口径一致，持久化请存 `ids`。
 
-<MultiSelectionDemo client:load />
-
-```tsx
-const [ids, setIds] = useState<string[]>([])
-
-<DataTable<Person>
-  selectionMode="multiple"
-  selectionColumn
-  value={ids}
-  onChange={(items, nextIds) => setIds(nextIds)}
-  onRowAction={(person) => open(person)}
-  {/* … */}
-/>
-```
+<ComponentPreview name="data-table/selection-multiple" align="stretch">
+  <MultiSelectionDemo client:load />
+</ComponentPreview>
 
 `onRowAction` 是行激活，回调直接拿到行对象而不是 key。与选择同时开启时，
 React Aria 的路由规则（demo 就是这个组合，可以亲手验证）：
@@ -133,22 +105,9 @@ React Aria 的路由规则（demo 就是这个组合，可以亲手验证）：
 外面即可。下面的 demo 每页 5 条——跨几页勾选，名单一直完整（跨页的名字
 来自组件的对象缓存，不是当前页数据）：
 
-<ArchiveDemo client:load />
-
-```tsx
-const [page, setPage] = useState(1)
-const [ids, setIds] = useState<string[]>([])       // 跨页存档,放在翻页 state 外
-const { items, total } = usePersonPage(page, 5)
-
-<DataTable<Person>
-  selectionMode="multiple"
-  selectionColumn
-  value={ids}
-  onChange={(items, nextIds) => setIds(nextIds)}   // items 含跨页缓存的对象
-  {/* … */}
-/>
-<DataPagination page={page} onPageChange={setPage} limit={5} total={total} />
-```
+<ComponentPreview name="data-table/selection-archive" align="stretch">
+  <ArchiveDemo client:load />
+</ComponentPreview>
 
 ## 横向滚动与固定列
 
@@ -156,39 +115,20 @@ const { items, total } = usePersonPage(page, 5)
 压缩），各列宽度加起来超出容器时自动出现横向滚动——滚动条、左右边缘渐隐
 都不用配置：
 
-<HScrollDemo client:load />
-
-```tsx
-// 7 列都给了数字宽度,合计 990px,超出容器即横向滚动
-const columns: DataTableColumn<Person>[] = [
-  { id: 'name', header: '姓名', cell: (p) => p.name, isRowHeader: true, width: 140 },
-  { id: 'role', header: '角色', cell: (p) => p.role, width: 130 },
-  { id: 'born', header: '生年', cell: (p) => p.born, width: 110 },
-  { id: 'era', header: '时期', cell: (p) => p.era, width: 110 },
-  { id: 'active', header: '活跃年代', cell: (p) => p.active, width: 150 },
-  { id: 'label', header: '唱片公司', cell: (p) => p.label, width: 150 },
-  { id: 'works', header: '作品数', cell: (p) => p.works, width: 110 },
-]
-
-<DataTable<Person> columns={columns} items={people} />
-```
+<ComponentPreview name="data-table/hscroll" align="stretch">
+  <HScrollDemo client:load />
+</ComponentPreview>
 
 不给 `width` 的列是弹性的：总宽不足容器时由它们吸收剩余空间，此时不会出现
 横向滚动。
 
 需要某些列在横向滚动时钉住，在列定义上加 `pinned`。同一侧可以固定多列，
-sticky 偏移按数组顺序累加——下面的 demo 左侧钉了姓名、角色两列：
+sticky 偏移按数组顺序累加——下面的 demo 左侧钉了姓名、角色两列，右侧钉了
+操作列：
 
-<PinnedDemo client:load />
-
-```tsx
-const columns: DataTableColumn<Person>[] = [
-  { id: 'name', header: '姓名', cell: (p) => p.name, isRowHeader: true, width: 140, pinned: 'start' },
-  { id: 'role', header: '角色', cell: (p) => p.role, width: 130, pinned: 'start' },
-  // …中间的列随内容横向滚动…
-  { id: 'actions', header: '操作', cell: (p) => <RowActions person={p} />, width: 90, pinned: 'end' },
-]
-```
+<ComponentPreview name="data-table/pinned" align="stretch">
+  <PinnedDemo client:load />
+</ComponentPreview>
 
 三个约定：
 
@@ -202,41 +142,32 @@ const columns: DataTableColumn<Person>[] = [
 
 基座**零文案**。空 / 加载 / 错误都是 context 驱动的插槽组件，经 `children`
 通道传入、渲染在表头下方的空态区域，按状态自渲染、互斥，文案由你注入 ——
-i18n 只存在于你的业务层：
-
-```tsx
-const slots = (
-  <>
-    <DataTableLoading>加载中…</DataTableLoading>
-    <DataTableEmpty>暂无数据</DataTableEmpty>
-    <DataTableError>
-      加载失败
-      <DataTableRetry>重试</DataTableRetry>
-    </DataTableError>
-  </>
-)
-
-<DataTable {/* … */}>{slots}</DataTable>
-```
+i18n 只存在于你的业务层。
 
 ### DataTableEmpty:空
 
 `items` 为空（且不在加载 / 错误中）时自渲染：
 
-<EmptySlotDemo client:load />
+<ComponentPreview name="data-table/slot-empty" align="stretch">
+  <EmptySlotDemo client:load />
+</ComponentPreview>
 
 ### DataTableLoading:加载中
 
 首屏加载（`isLoading`）期间行让位给它——翻页、换查询条件重新请求时同样：
 
-<LoadingSlotDemo client:load />
+<ComponentPreview name="data-table/slot-loading" align="stretch">
+  <LoadingSlotDemo client:load />
+</ComponentPreview>
 
 ### DataTableError / DataTableRetry:错误与重试
 
 `isError` 时自渲染；`DataTableRetry` 自己接好基座的 `onRetry`（没有则不渲染），
 你只出文案。这个 demo 首次加载必定失败，点重试恢复：
 
-<ErrorDemo client:load />
+<ComponentPreview name="data-table/slot-error" align="stretch">
+  <ErrorSlotDemo client:load />
+</ComponentPreview>
 
 ### DataTableStatus:状态容器
 
@@ -251,26 +182,9 @@ const slots = (
 传 `defaultPage` 即非受控）。它同样零文案：页码指示默认是语言中立的
 `3 / 12`，摘要和「每页」标签由你注入：
 
-<PaginationDemo client:load />
-
-```tsx
-const [page, setPage] = useState(1)
-const [limit, setLimit] = useState(10)
-const { items, total, isLoading } = usePersonPage(page, limit) // 你的数据层
-
-<DataTable<Person> columns={columns} items={items} isLoading={isLoading}>
-  {slots}
-</DataTable>
-<DataPagination
-  page={page}
-  onPageChange={setPage}
-  limit={limit}
-  onLimitChange={(next) => { setLimit(next); setPage(1) }}
-  total={total}
-  rowsPerPageLabel="每页"
-  summary={({ total }) => `共 ${total} 条`}
-/>
-```
+<ComponentPreview name="data-table/pagination" align="stretch">
+  <PaginationDemo client:load />
+</ComponentPreview>
 
 两个内建守卫：`total=0` 视为「数据未加载完」不会去钳位 `page`
 （避免翻页瞬间把 URL 闪回）；`limit` 为 0 / NaN 时页数按 1 兜底。
@@ -279,23 +193,11 @@ const { items, total, isLoading } = usePersonPage(page, limit) // 你的数据�
 
 游标分页不用 `DataPagination`，用列表状态 props：滚动到底部附近自动触发
 `onLoadMore`（React Aria 的哨兵行，提前预取）。这组 props 的形状与
-`InfiniteSelectAdapterProps` 完全一致，适配器对象直接展开：
+`InfiniteSelectAdapterProps` 完全一致，适配器对象直接展开 `{...list}`：
 
-<InfiniteDemo client:load />
-
-```tsx
-const list = usePersonList() // { items, isLoading, isFetchingNextPage, hasNextPage, isError, onLoadMore, onRetry }
-
-<DataTable<Person>
-  columns={columns}
-  maxHeight={320}
-  loadingMoreIndicator="加载更多…"
-  virtualized
-  {...list}
->
-  {slots}
-</DataTable>
-```
+<ComponentPreview name="data-table/infinite" align="stretch">
+  <InfiniteDemo client:load />
+</ComponentPreview>
 
 `maxHeight` 限定行区高度、表头 sticky —— 无限滚动需要一个会滚动的容器，
 所以这里必须传。`loadingMoreIndicator` 渲染在滚动流末尾：预取提前触发，
@@ -322,11 +224,9 @@ demo 同时开了 `virtualized`，这不是巧合：**无限滚动的已加载�
 上下各一条不可交互的填充行撑住完整滚动高度，表格保持原生 `<table>`——
 sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 demo 一次拉满 10000 条：
 
-<VirtualizedDemo client:load />
-
-```tsx
-<DataTable<Person> virtualized rowHeight={40} maxHeight={400} {/* … */} />
-```
+<ComponentPreview name="data-table/virtualized" align="stretch">
+  <VirtualizedDemo client:load />
+</ComponentPreview>
 
 开启前要知道的取舍：
 
@@ -349,19 +249,12 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 非虚拟模式下行高本来就由内容决定，什么都不用做。虚拟化默认用**固定行高**换
 零测量、零跳动；内容不定高（多行文本、标签组）时开 `dynamicRowHeight`：
 `rowHeight` 降级为初始估算，行渲染后按实际高度测量（ResizeObserver）并自动
-校正布局。下面的 demo 一次载入 10000 行，简介列长短不一：
+校正布局。单元格默认不换行，需要换行的列自己加 `className: 'whitespace-normal'`。
+下面的 demo 一次载入 10000 行，简介列长短不一：
 
-<DynamicRowHeightDemo client:load />
-
-```tsx
-const columns: DataTableColumn<Person>[] = [
-  { id: 'name', header: '姓名', cell: (p) => p.name, isRowHeader: true, width: 140 },
-  // 单元格默认 nowrap,需要换行的列自己开
-  { id: 'bio', header: '简介', cell: (p) => p.bio, className: 'whitespace-normal' },
-]
-
-<DataTable<Person> virtualized dynamicRowHeight rowHeight={44} {/* … */} />
-```
+<ComponentPreview name="data-table/dynamic-row-height" align="stretch">
+  <DynamicRowHeightDemo client:load />
+</ComponentPreview>
 
 代价：滚动中实测值替换估算值时滚动条会有轻微校正跳动，且每行多一份测量
 开销——**行高均匀时用固定行高**，把 `dynamicRowHeight` 留给真正不定高的表。
@@ -396,7 +289,7 @@ const columns: DataTableColumn<Person>[] = [
 | `columns` | `DataTableColumn<T>[]` | — | 列定义 |
 | `items` | `T[]` | — | 行数据 |
 | `getRowId` | `(item: T) => string` | 取 `item.id` | 行 key 提取 |
-| `isLoading` / `isError` / `onRetry` | — | — | 状态插槽的驱动，见「状态插槽」 |
+| `isLoading` / `isError` / `onRetry` | — | — | 状态插槽的驱动，见「插槽」 |
 | `hasNextPage` / `isFetchingNextPage` / `onLoadMore` | — | — | 无限滚动，见上文 |
 | `loadingMoreIndicator` | `ReactNode` | — | 列表末尾的加载更多指示（滚动流内） |
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |

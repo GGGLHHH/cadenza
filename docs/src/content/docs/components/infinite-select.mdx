@@ -3,47 +3,31 @@ title: InfiniteSelect
 description: 可搜索、无限滚动的选择器 —— React Aria 行为 + 组合式插槽
 ---
 
-import { SingleDemo, MultiDemo, EmptySlotDemo, LoadingSlotDemo, ErrorDemo, FooterSlotDemo, VirtualizedDemo, RenderItemDemo } from '../../../components/InfiniteSelectDemo'
+import ComponentPreview from '../../../components/ComponentPreview.astro'
+import SingleDemo from '../../../demos/infinite-select/single'
+import MultiDemo from '../../../demos/infinite-select/multiple'
+import EmptySlotDemo from '../../../demos/infinite-select/slot-empty'
+import LoadingSlotDemo from '../../../demos/infinite-select/slot-loading'
+import ErrorSlotDemo from '../../../demos/infinite-select/slot-error'
+import FooterDemo from '../../../demos/infinite-select/footer'
+import VirtualizedDemo from '../../../demos/infinite-select/virtualized'
+import RenderItemDemo from '../../../demos/infinite-select/render-item'
 
 可搜索、游标分页无限滚动的选择器家族。行为全部由 React Aria 承担：`Autocomplete`
 用虚拟焦点把搜索框和列表接起来（输入框保持 DOM 焦点，方向键在列表里移动），
 `ListBox` 提供选择语义、方向键 / Home / End / typeahead。大数据集可用
 `virtualized` 开启 TanStack Virtual 行虚拟化，见下文。
 
-下面的 demo 用 Promise 模拟异步接口（300–500ms 随机延时）。
+每个 demo 下方都附完整源码（View Code 展开、右上角复制）；异步接口用 Promise
+模拟（300–500ms 随机延时），mock 数据源在 `demos/lib` 里。
 
 ## 单选
 
 打开后滚到底会自动加载下一页；输入会防抖 300ms 后落到 `queryValue`，由数据层重新请求。
 
-<SingleDemo client:load />
-
-```tsx
-import {
-  Button,
-  InfiniteCombobox,
-  useInfiniteComboboxState,
-} from '@gedatou/cadenza-ui'
-
-function PersonPicker() {
-  const state = useInfiniteComboboxState()
-  const list = usePersonList(state.queryValue) // 你的数据适配器,见下文
-  const [picked, setPicked] = useState<Person>()
-
-  return (
-    <InfiniteCombobox<Person>
-      getOption={(p) => ({ id: p.id, label: p.name })}
-      list={list}
-      onChange={setPicked}
-      searchPlaceholder="搜索作曲家…"
-      slots={slots}
-      state={state}
-    >
-      <Button variant="outline">{picked?.name ?? '选择作曲家'}</Button>
-    </InfiniteCombobox>
-  )
-}
-```
+<ComponentPreview name="infinite-select/single">
+  <SingleDemo client:load />
+</ComponentPreview>
 
 触发器是 `children`，必须是 React Aria 意义上可按压的元素（库里的 `Button` 即可）——
 弹层开合、焦点归还、Esc 关闭都由 `DialogTrigger` 接管。传函数可以拿到当前状态做摘要展示。
@@ -54,28 +38,9 @@ function PersonPicker() {
 适合筛选场景（每勾一下就请求一次太吵）。footer 里的清空 / 确定通过 context 拿到
 `clear` / `close`，不需要你穿线。
 
-<MultiDemo client:load />
-
-```tsx
-<InfiniteCombobox<Person>
-  commitOnClose
-  multiple
-  value={ids}
-  onChange={(items, nextIds) => setIds(nextIds)}
-  slots={(
-    <>
-      {slots}
-      <InfiniteSelectFooter>
-        <InfiniteSelectClearButton>清空</InfiniteSelectClearButton>
-        <InfiniteSelectConfirmButton>确定</InfiniteSelectConfirmButton>
-      </InfiniteSelectFooter>
-    </>
-  )}
-  {/* … */}
->
-  <Button variant="outline">已选 {ids.length} 位</Button>
-</InfiniteCombobox>
-```
+<ComponentPreview name="infinite-select/multiple">
+  <MultiDemo client:load />
+</ComponentPreview>
 
 多选的 `onChange(items, ids)` 里 **`ids` 是权威全集**：预选 id 落在未加载的页上时，
 它有 id 没对象，`items` 只回显已加载的那些。持久化请存 `ids`。
@@ -87,7 +52,9 @@ TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外�
 （overscan）存在于 DOM**——加载一万行，DOM 里也始终只有几十个节点。
 下面的 demo 一次拉满 10000 条（无翻页）：
 
-<VirtualizedDemo client:load />
+<ComponentPreview name="infinite-select/virtualized">
+  <VirtualizedDemo client:load />
+</ComponentPreview>
 
 ```tsx
 <InfiniteCombobox<Person> virtualized rowHeight={32} … />
@@ -110,37 +77,30 @@ TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外�
 状态插槽是 context 驱动的组件，按状态自渲染、互斥；footer 一族是组合式部件，
 放在 slots 末尾自然落在面板底部：
 
-```tsx
-const slots = (
-  <>
-    <InfiniteSelectLoading>加载中…</InfiniteSelectLoading>
-    <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
-    <InfiniteSelectError>
-      加载失败
-      <InfiniteSelectRetry>重试</InfiniteSelectRetry>
-    </InfiniteSelectError>
-  </>
-)
-```
-
 ### InfiniteSelectEmpty:空
 
 列表为空（且不在加载 / 错误中）时自渲染——搜索无结果也是这个插槽：
 
-<EmptySlotDemo client:load />
+<ComponentPreview name="infinite-select/slot-empty">
+  <EmptySlotDemo client:load />
+</ComponentPreview>
 
 ### InfiniteSelectLoading:加载中
 
 首屏加载（`isLoading`）期间自渲染，此时列表还不存在：
 
-<LoadingSlotDemo client:load />
+<ComponentPreview name="infinite-select/slot-loading">
+  <LoadingSlotDemo client:load />
+</ComponentPreview>
 
 ### InfiniteSelectError / InfiniteSelectRetry:错误与重试
 
 `isError` 时自渲染；`InfiniteSelectRetry` 自己接好基座的 `onRetry`（没有则
 不渲染），你只出文案。这个 demo 首次加载必定失败，点重试恢复：
 
-<ErrorDemo client:load />
+<ComponentPreview name="infinite-select/slot-error">
+  <ErrorSlotDemo client:load />
+</ComponentPreview>
 
 ### Footer 一族:清空 / 分隔 / 确定 / 自定义部件
 
@@ -150,27 +110,9 @@ const slots = (
 `useInfiniteSelectActions()` 同样能拿到 `selectedIds` / `selectedItems` /
 `clear` / `close`——下面 demo 中间的「已选 N」就是一个自定义部件：
 
-<FooterSlotDemo client:load />
-
-```tsx
-function FooterSelectedCount() {
-  const { selectedIds } = useInfiniteSelectActions()
-  return <span>已选 {selectedIds.length}</span>
-}
-
-const slots = (
-  <>
-    {stateSlots}
-    <InfiniteSelectFooter>
-      <InfiniteSelectClearButton>清空</InfiniteSelectClearButton>
-      <InfiniteSelectFooterSeparator />
-      <FooterSelectedCount />
-      <InfiniteSelectFooterSeparator />
-      <InfiniteSelectConfirmButton>确定</InfiniteSelectConfirmButton>
-    </InfiniteSelectFooter>
-  </>
-)
-```
+<ComponentPreview name="infinite-select/footer">
+  <FooterDemo client:load />
+</ComponentPreview>
 
 ### InfiniteSelectStatus:状态容器
 
@@ -278,7 +220,9 @@ interface InfiniteSelectItemRenderParams<T> {
 提供 `renderItem` 后默认行内容整体不再渲染——包括多选的勾选框和单选的对勾，
 需要这些视觉时用 `selected` / `isMultiple` 自行绘制：
 
-<RenderItemDemo client:load />
+<ComponentPreview name="infinite-select/render-item">
+  <RenderItemDemo client:load />
+</ComponentPreview>
 
 ```tsx
 <InfiniteCombobox<Person>

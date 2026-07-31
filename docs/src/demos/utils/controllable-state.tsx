@@ -3,9 +3,7 @@ import { Button } from '@gedatou/cadenza-ui'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { useState } from 'react'
 
-// ── 一个用 useControllableState 写成的组件:它自己不关心受控与否,
-//    传了 value 就受控,只传 defaultValue 就非受控。 ──
-
+// 同一个组件:传了 value 就受控,只传 defaultValue 就非受控。
 interface StepperProps {
   value?: number
   defaultValue?: number
@@ -28,11 +26,11 @@ function Stepper({ value, defaultValue, onChange }: StepperProps): ReactElement 
   )
 }
 
-export function ControllableDemo(): ReactElement {
+export default function ControllableDemo(): ReactElement {
   const [volume, setVolume] = useState(5)
 
   return (
-    <div className="not-content flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center gap-4">
         <span className="text-sm text-muted-foreground inline-44">非受控(defaultValue=1),状态在组件内部:</span>
         <Stepper defaultValue={1} />
