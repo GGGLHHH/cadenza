@@ -1,7 +1,8 @@
 import type { ReactElement } from 'react'
 import type { Person } from '../lib/people'
-import { Button, InfiniteCombobox, useInfiniteComboboxState } from '@gedatou/cadenza-ui'
+import { InfiniteCombobox, useInfiniteComboboxState } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
+import { DemoButton } from '../lib/demo-button'
 import { getOption, TOTAL } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 import { selectSlots } from './slots'
@@ -22,7 +23,7 @@ export default function VirtualizedDemo(): ReactElement {
       state={state}
       virtualized
     >
-      <Button variant="outline">{picked ? picked.name : '虚拟化:一次载入 10000 条'}</Button>
+      <DemoButton>{picked ? picked.name : '虚拟化:一次载入 10000 条'}</DemoButton>
     </InfiniteCombobox>
   )
 }

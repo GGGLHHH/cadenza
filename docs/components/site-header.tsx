@@ -35,7 +35,7 @@ export function SiteHeader(): ReactElement {
             文档
           </Link>
           <Link
-            href="/docs/components/button"
+            href="/docs/components/data-table"
             className="
               transition-colors
               hover:text-foreground

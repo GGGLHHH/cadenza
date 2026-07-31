@@ -1,7 +1,8 @@
 import type { ReactElement } from 'react'
 import type { Person } from '../lib/people'
-import { Button, InfiniteCombobox, useInfiniteComboboxState } from '@gedatou/cadenza-ui'
+import { InfiniteCombobox, useInfiniteComboboxState } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
+import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 import { selectSlots } from './slots'
@@ -36,7 +37,7 @@ export default function RenderItemDemo(): ReactElement {
         </>
       )}
     >
-      <Button variant="outline">{picked ? picked.name : '自定义行内容'}</Button>
+      <DemoButton>{picked ? picked.name : '自定义行内容'}</DemoButton>
     </InfiniteCombobox>
   )
 }

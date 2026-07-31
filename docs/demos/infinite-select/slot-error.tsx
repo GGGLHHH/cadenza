@@ -1,7 +1,6 @@
 import type { ReactElement } from 'react'
 import type { Person } from '../lib/people'
 import {
-  Button,
   InfiniteCombobox,
   InfiniteSelectEmpty,
   InfiniteSelectError,
@@ -9,6 +8,7 @@ import {
   InfiniteSelectRetry,
   useInfiniteComboboxState,
 } from '@gedatou/cadenza-ui'
+import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 
@@ -35,7 +35,7 @@ export default function ErrorSlotDemo(): ReactElement {
         </>
       )}
     >
-      <Button variant="outline">首次加载会失败</Button>
+      <DemoButton>首次加载会失败</DemoButton>
     </InfiniteCombobox>
   )
 }

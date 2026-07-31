@@ -2,7 +2,6 @@ import type { InfiniteSelectAdapterProps } from '@gedatou/cadenza-ui'
 import type { ReactElement } from 'react'
 import type { Person } from '../lib/people'
 import {
-  Button,
   InfiniteCombobox,
   InfiniteSelectEmpty,
   InfiniteSelectError,
@@ -10,6 +9,7 @@ import {
   InfiniteSelectRetry,
   useInfiniteComboboxState,
 } from '@gedatou/cadenza-ui'
+import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
 
 // 静态空适配器:列表为空(且不在加载/错误中)时 InfiniteSelectEmpty 自渲染
@@ -43,7 +43,7 @@ export default function EmptySlotDemo(): ReactElement {
         </>
       )}
     >
-      <Button variant="outline">空数据源</Button>
+      <DemoButton>空数据源</DemoButton>
     </InfiniteCombobox>
   )
 }

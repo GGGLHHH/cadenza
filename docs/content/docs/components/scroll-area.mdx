@@ -1,0 +1,58 @@
+---
+title: ScrollArea
+description: 覆盖式滚动条的滚动容器 —— 滚动条渲染在视口之外，与 scroll-fade 渐隐天然兼容
+---
+
+基于 Base UI 的滚动容器：真正滚动的是**视口**，滚动条渲染成视口的
+**兄弟节点**（覆盖式，不占布局宽度）。这个结构是它存在的理由 ——
+库里的 scroll-fade 渐隐是挂在滚动元素上的 mask，原生滚动条长在滚动元素
+内部会被 mask 一起压暗，兄弟滚动条则始终清晰。
+
+库内的 [DataTable](/docs/components/data-table)、
+[InfiniteSelect](/docs/components/infinite-select) 以及本站 demo
+卡片的代码区，滚动都走同一个 ScrollArea。
+
+## 基础用法
+
+给根元素定尺寸即可，视口自动撑满。默认纵向、滚动条 hover 显示：
+
+<ComponentPreview name="scroll-area/basic" />
+
+## 横向滚动
+
+`orientation="horizontal"` 只渲染横向滚动条（`"both"` 两条都要）；
+内容用 `inline-max` 之类按内容撑开：
+
+<ComponentPreview name="scroll-area/horizontal" />
+
+## 滚动条显隐
+
+`scrollbars` 三档：`always` 常显、`hover`（默认）悬停或滚动进行中显示、
+`hidden` 不渲染。无溢出时 Base UI 会直接卸载滚动条，不用自己判断：
+
+<ComponentPreview name="scroll-area/scrollbars" align="stretch" />
+
+## 滚动渐隐
+
+把 scroll-fade 工具类挂到**视口**上（`viewportClassName`，不要挂根元素）：
+`scroll-fade-y` 纵向、`scroll-fade-x` 横向、`scroll-fade-inset` 双轴并支持
+固定表头 / 固定列偏移。渐隐随滚动位置显隐 —— 滚到头对应边的 fade 自动消失：
+
+<ComponentPreview name="scroll-area/scroll-fade" />
+
+尺寸用 `--scroll-fade-size`（或 `scroll-fade-8` 这类工具类）调，
+详见 `@gedatou/cadenza-ui/styles.css` 里的 scroll-fade 一族。
+
+## Props
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `orientation` | `'vertical'` \| `'horizontal'` \| `'both'` | `'vertical'` | 渲染哪些滚动条 |
+| `scrollbars` | `'always'` \| `'hover'` \| `'hidden'` | `'hover'` | 滚动条显隐策略（导出类型 `ScrollAreaScrollbars`） |
+| `viewportClassName` | `string` | — | 视口类名；scroll-fade 挂这里 |
+| `viewportStyle` | `CSSProperties` | — | 视口内联样式（如 `maxHeight`） |
+| `viewportRef` | `Ref<HTMLDivElement>` | — | 视口引用（滚动位置、虚拟化都要它） |
+| `className` | `string` | — | 根元素类名；尺寸约束定在这里 |
+| 其余 | `ScrollArea.Root.Props` | — | 透传 Base UI Root |
+
+单独导出的 `ScrollBar` 供自定义组合场景使用，一般用不到。

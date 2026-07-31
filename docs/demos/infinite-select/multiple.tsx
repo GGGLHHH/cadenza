@@ -1,7 +1,6 @@
 import type { ReactElement } from 'react'
 import type { Person } from '../lib/people'
 import {
-  Button,
   InfiniteCombobox,
   InfiniteSelectClearButton,
   InfiniteSelectConfirmButton,
@@ -10,6 +9,7 @@ import {
   useInfiniteComboboxState,
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
+import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 import { selectSlots } from './slots'
@@ -42,9 +42,9 @@ export default function MultiDemo(): ReactElement {
         </>
       )}
     >
-      <Button variant="outline">
+      <DemoButton>
         {ids.length > 0 ? `已选 ${ids.length} 位` : '选择多位作曲家'}
-      </Button>
+      </DemoButton>
     </InfiniteCombobox>
   )
 }

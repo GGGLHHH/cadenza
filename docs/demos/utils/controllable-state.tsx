@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
-import { Button } from '@gedatou/cadenza-ui'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { useState } from 'react'
+import { DemoButton } from '../lib/demo-button'
 
 // 同一个组件:传了 value 就受控,只传 defaultValue 就非受控。
 interface StepperProps {
@@ -15,13 +15,13 @@ function Stepper({ value, defaultValue, onChange }: StepperProps): ReactElement 
 
   return (
     <div className="flex items-center gap-2">
-      <Button onPress={() => setCount(current => current - 1)} size="sm" variant="outline">
+      <DemoButton onPress={() => setCount(current => current - 1)} size="sm" variant="outline">
         −
-      </Button>
+      </DemoButton>
       <span className="text-center text-sm tabular-nums inline-8">{count}</span>
-      <Button onPress={() => setCount(current => current + 1)} size="sm" variant="outline">
+      <DemoButton onPress={() => setCount(current => current + 1)} size="sm" variant="outline">
         +
-      </Button>
+      </DemoButton>
     </div>
   )
 }
@@ -42,9 +42,9 @@ export default function ControllableDemo(): ReactElement {
           ),状态在父级:
         </span>
         <Stepper onChange={setVolume} value={volume} />
-        <Button onPress={() => setVolume(0)} size="sm" variant="outline">
+        <DemoButton onPress={() => setVolume(0)} size="sm" variant="outline">
           外部归零
-        </Button>
+        </DemoButton>
       </div>
     </div>
   )

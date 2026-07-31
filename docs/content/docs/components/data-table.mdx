@@ -141,15 +141,13 @@ i18n 只存在于你的业务层。
 
 ## 分页
 
-`DataPagination` 是独立组件，放在表格下方由你组合。`page` 和 `limit`
-各自支持受控 / 非受控（`useControllableState` 语义：传 `page` 即受控，
-传 `defaultPage` 即非受控）。它同样零文案：页码指示默认是语言中立的
-`3 / 12`，摘要和「每页」标签由你注入：
+[DataPagination](/docs/components/data-pagination) 是独立组件，
+放在表格下方由你组合 —— 分页状态在外面，表格只收当页 `items`：
 
 <ComponentPreview name="data-table/pagination" align="stretch" />
 
-两个内建守卫：`total=0` 视为「数据未加载完」不会去钳位 `page`
-（避免翻页瞬间把 URL 闪回）；`limit` 为 0 / NaN 时页数按 1 兜底。
+props、内建守卫（`total=0` 不钳位、`limit` 非法兜底）与自定义文案
+见 [DataPagination 页](/docs/components/data-pagination)。
 
 ## 无限滚动
 
@@ -262,16 +260,4 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | `dynamicRowHeight` | `boolean` | `false` | 虚拟化行按内容实测高度（估算 + 校正），见「动态行高」 |
 | `children` | `ReactNode` | — | 状态插槽通道 |
 
-### DataPagination
-
-| Prop | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `total` | `number` | — | 总条数；`0` 视为未加载完，不触发钳位 |
-| `page` / `defaultPage` / `onPageChange` | `number` | `1` | 页码（受控 / 非受控） |
-| `limit` / `defaultLimit` / `onLimitChange` | `number` | `20` | 每页条数（受控 / 非受控） |
-| `limitOptions` | `number[]` | `[10, 20, 50, 100]` | 每页条数选项 |
-| `showLimitChanger` | `boolean` | `true` | 是否渲染每页条数选择器 |
-| `summary` | `(state) => ReactNode` | — | 左侧摘要，收 `{ page, limit, total, totalPages }` |
-| `rowsPerPageLabel` | `ReactNode` | — | 选择器前的可见标签（不传则不渲染） |
-| `pageIndicator` | `(state) => ReactNode` | `page / totalPages` | 页码指示 |
-| `firstPageLabel` 等 4 个 | `string` | 英文 | 图标按钮的 aria-label，从业务层传译文 |
+`DataPagination` 的 props 见[它自己的页面](/docs/components/data-pagination#props)。

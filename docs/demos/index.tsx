@@ -5,7 +5,9 @@ import { lazy, Suspense } from 'react'
 
 // 客户端 demo registry:lazy 让每个 demo 独立分包,页面只拉用到的
 const registry: Record<string, ComponentType> = {
-  'button/demo': lazy(() => import('./button/demo')),
+  'data-pagination/basic': lazy(() => import('./data-pagination/basic')),
+  'data-pagination/controlled': lazy(() => import('./data-pagination/controlled')),
+  'data-pagination/labels': lazy(() => import('./data-pagination/labels')),
   'data-table/basic': lazy(() => import('./data-table/basic')),
   'data-table/sort': lazy(() => import('./data-table/sort')),
   'data-table/selection-single': lazy(() => import('./data-table/selection-single')),
@@ -28,6 +30,10 @@ const registry: Record<string, ComponentType> = {
   'infinite-select/footer': lazy(() => import('./infinite-select/footer')),
   'infinite-select/virtualized': lazy(() => import('./infinite-select/virtualized')),
   'infinite-select/render-item': lazy(() => import('./infinite-select/render-item')),
+  'scroll-area/basic': lazy(() => import('./scroll-area/basic')),
+  'scroll-area/horizontal': lazy(() => import('./scroll-area/horizontal')),
+  'scroll-area/scrollbars': lazy(() => import('./scroll-area/scrollbars')),
+  'scroll-area/scroll-fade': lazy(() => import('./scroll-area/scroll-fade')),
   'utils/controllable-state': lazy(() => import('./utils/controllable-state')),
 }
 

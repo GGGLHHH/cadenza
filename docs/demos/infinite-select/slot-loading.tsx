@@ -2,7 +2,6 @@ import type { InfiniteSelectAdapterProps } from '@gedatou/cadenza-ui'
 import type { ReactElement } from 'react'
 import type { Person } from '../lib/people'
 import {
-  Button,
   InfiniteCombobox,
   InfiniteSelectEmpty,
   InfiniteSelectError,
@@ -10,6 +9,7 @@ import {
   InfiniteSelectRetry,
   useInfiniteComboboxState,
 } from '@gedatou/cadenza-ui'
+import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
 
 // 静态加载中适配器:首屏加载(isLoading)期间 InfiniteSelectLoading 自渲染
@@ -43,7 +43,7 @@ export default function LoadingSlotDemo(): ReactElement {
         </>
       )}
     >
-      <Button variant="outline">永远在加载</Button>
+      <DemoButton>永远在加载</DemoButton>
     </InfiniteCombobox>
   )
 }
