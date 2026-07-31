@@ -3,16 +3,6 @@ title: InfiniteSelect
 description: 可搜索、无限滚动的选择器 —— React Aria 行为 + 组合式插槽
 ---
 
-import ComponentPreview from '../../../components/ComponentPreview.astro'
-import SingleDemo from '../../../demos/infinite-select/single'
-import MultiDemo from '../../../demos/infinite-select/multiple'
-import EmptySlotDemo from '../../../demos/infinite-select/slot-empty'
-import LoadingSlotDemo from '../../../demos/infinite-select/slot-loading'
-import ErrorSlotDemo from '../../../demos/infinite-select/slot-error'
-import FooterDemo from '../../../demos/infinite-select/footer'
-import VirtualizedDemo from '../../../demos/infinite-select/virtualized'
-import RenderItemDemo from '../../../demos/infinite-select/render-item'
-
 可搜索、游标分页无限滚动的选择器家族。行为全部由 React Aria 承担：`Autocomplete`
 用虚拟焦点把搜索框和列表接起来（输入框保持 DOM 焦点，方向键在列表里移动），
 `ListBox` 提供选择语义、方向键 / Home / End / typeahead。大数据集可用
@@ -25,9 +15,7 @@ import RenderItemDemo from '../../../demos/infinite-select/render-item'
 
 打开后滚到底会自动加载下一页；输入会防抖 300ms 后落到 `queryValue`，由数据层重新请求。
 
-<ComponentPreview name="infinite-select/single">
-  <SingleDemo client:load />
-</ComponentPreview>
+<ComponentPreview name="infinite-select/single" />
 
 触发器是 `children`，必须是 React Aria 意义上可按压的元素（库里的 `Button` 即可）——
 弹层开合、焦点归还、Esc 关闭都由 `DialogTrigger` 接管。传函数可以拿到当前状态做摘要展示。
@@ -38,9 +26,7 @@ import RenderItemDemo from '../../../demos/infinite-select/render-item'
 适合筛选场景（每勾一下就请求一次太吵）。footer 里的清空 / 确定通过 context 拿到
 `clear` / `close`，不需要你穿线。
 
-<ComponentPreview name="infinite-select/multiple">
-  <MultiDemo client:load />
-</ComponentPreview>
+<ComponentPreview name="infinite-select/multiple" />
 
 多选的 `onChange(items, ids)` 里 **`ids` 是权威全集**：预选 id 落在未加载的页上时，
 它有 id 没对象，`items` 只回显已加载的那些。持久化请存 `ids`。
@@ -52,9 +38,7 @@ TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外�
 （overscan）存在于 DOM**——加载一万行，DOM 里也始终只有几十个节点。
 下面的 demo 一次拉满 10000 条（无翻页）：
 
-<ComponentPreview name="infinite-select/virtualized">
-  <VirtualizedDemo client:load />
-</ComponentPreview>
+<ComponentPreview name="infinite-select/virtualized" />
 
 ```tsx
 <InfiniteCombobox<Person> virtualized rowHeight={32} … />
@@ -81,26 +65,20 @@ TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外�
 
 列表为空（且不在加载 / 错误中）时自渲染——搜索无结果也是这个插槽：
 
-<ComponentPreview name="infinite-select/slot-empty">
-  <EmptySlotDemo client:load />
-</ComponentPreview>
+<ComponentPreview name="infinite-select/slot-empty" />
 
 ### InfiniteSelectLoading:加载中
 
 首屏加载（`isLoading`）期间自渲染，此时列表还不存在：
 
-<ComponentPreview name="infinite-select/slot-loading">
-  <LoadingSlotDemo client:load />
-</ComponentPreview>
+<ComponentPreview name="infinite-select/slot-loading" />
 
 ### InfiniteSelectError / InfiniteSelectRetry:错误与重试
 
 `isError` 时自渲染；`InfiniteSelectRetry` 自己接好基座的 `onRetry`（没有则
 不渲染），你只出文案。这个 demo 首次加载必定失败，点重试恢复：
 
-<ComponentPreview name="infinite-select/slot-error">
-  <ErrorSlotDemo client:load />
-</ComponentPreview>
+<ComponentPreview name="infinite-select/slot-error" />
 
 ### Footer 一族:清空 / 分隔 / 确定 / 自定义部件
 
@@ -110,9 +88,7 @@ TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外�
 `useInfiniteSelectActions()` 同样能拿到 `selectedIds` / `selectedItems` /
 `clear` / `close`——下面 demo 中间的「已选 N」就是一个自定义部件：
 
-<ComponentPreview name="infinite-select/footer">
-  <FooterDemo client:load />
-</ComponentPreview>
+<ComponentPreview name="infinite-select/footer" />
 
 ### InfiniteSelectStatus:状态容器
 
@@ -220,9 +196,7 @@ interface InfiniteSelectItemRenderParams<T> {
 提供 `renderItem` 后默认行内容整体不再渲染——包括多选的勾选框和单选的对勾，
 需要这些视觉时用 `selected` / `isMultiple` 自行绘制：
 
-<ComponentPreview name="infinite-select/render-item">
-  <RenderItemDemo client:load />
-</ComponentPreview>
+<ComponentPreview name="infinite-select/render-item" />
 
 ```tsx
 <InfiniteCombobox<Person>

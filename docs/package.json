@@ -4,23 +4,31 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "typecheck": "astro sync && tsc"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "postinstall": "fumadocs-mdx",
+    "typecheck": "tsc"
   },
   "dependencies": {
-    "@astrojs/react": "catalog:docs",
-    "@astrojs/starlight": "catalog:docs",
-    "@astrojs/starlight-tailwind": "catalog:docs",
     "@gedatou/cadenza-ui": "workspace:*",
     "@gedatou/cadenza-utils": "workspace:*",
-    "astro": "catalog:docs",
+    "@orama/tokenizers": "catalog:docs",
+    "@tabler/icons-react": "catalog:ui",
+    "clsx": "catalog:ui",
+    "fumadocs-core": "catalog:docs",
+    "fumadocs-mdx": "catalog:docs",
+    "next": "catalog:docs",
+    "next-themes": "catalog:ui",
     "react": "catalog:react",
-    "react-dom": "catalog:react"
+    "react-dom": "catalog:react",
+    "rehype-pretty-code": "catalog:docs",
+    "shiki": "catalog:docs",
+    "tailwind-merge": "catalog:ui"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "catalog:ui",
+    "@tailwindcss/postcss": "catalog:ui",
+    "@types/mdx": "catalog:docs",
     "@types/react": "catalog:types",
     "@types/react-dom": "catalog:types",
     "tailwindcss": "catalog:ui",

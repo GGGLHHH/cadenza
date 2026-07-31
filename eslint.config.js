@@ -11,8 +11,9 @@ export default antfu(
     // React 19 idioms (forwardRef -> ref prop, Context.Provider -> Context).
     react: true,
     ignores: [
-      'docs/.astro',
-      'docs/dist',
+      'docs/.next',
+      'docs/.source',
+      'docs/next-env.d.ts',
       // Deliberately broken tailwind classes — run it explicitly with --no-ignore.
       'eslint-fixtures',
       // Vendored shadcn source, kept byte-identical to upstream so `shadcn add
@@ -40,7 +41,7 @@ export default antfu(
     'better-tailwindcss': {
       // The published styles.css deliberately omits `@import "tailwindcss"`, so it is
       // not a resolvable entry on its own — point at the docs stylesheet instead.
-      entryPoint: 'docs/src/styles/global.css',
+      entryPoint: 'docs/app/globals.css',
     },
   },
   rules: {
@@ -61,7 +62,8 @@ export default antfu(
     'better-tailwindcss/no-conflicting-classes': 'error',
     'better-tailwindcss/no-deprecated-classes': 'error',
     'better-tailwindcss/no-unknown-classes': ['error', {
-      ignore: ['not-content'], // Starlight opt-out class
+      // docs 的排版豁免类,定义在 docs/app/globals.css 的 components 层
+      ignore: ['typeset', 'typeset-table'],
     }],
   },
 })

@@ -1,0 +1,240 @@
+@import 'tailwindcss';
+@import '@gedatou/cadenza-ui/styles.css';
+
+/* 发布版 styles.css 只扫描 ./dist(消费者视角);仓库内直接读源码,
+   免等 tsdown 重建 */
+@source '../../packages/ui/src';
+
+/* ---- shadcn docs 站的补充 tokens(cadenza styles.css 之外的部分) ---- */
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-code: var(--code);
+  --color-code-foreground: var(--code-foreground);
+  --color-code-highlight: var(--code-highlight);
+  --color-code-number: var(--code-number);
+  --color-selection: var(--selection);
+  --color-selection-foreground: var(--selection-foreground);
+}
+
+:root {
+  --surface: oklch(0.98 0 0);
+  --surface-foreground: var(--foreground);
+  --code: var(--surface);
+  --code-foreground: var(--surface-foreground);
+  --code-highlight: oklch(0.96 0 0);
+  --code-number: oklch(0.56 0 0);
+  --selection: oklch(0.145 0 0);
+  --selection-foreground: oklch(1 0 0);
+}
+
+.dark {
+  --surface: oklch(0.2 0 0);
+  --surface-foreground: oklch(0.708 0 0);
+  --code-highlight: oklch(0.27 0 0);
+  --code-number: oklch(0.72 0 0);
+  --selection: oklch(0.922 0 0);
+  --selection-foreground: oklch(0.205 0 0);
+}
+
+@layer base {
+  html {
+    scroll-padding-top: calc(var(--header-height) + 1.5rem);
+  }
+
+  body {
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    @apply bg-selection text-selection-foreground;
+  }
+}
+
+/* ---- 代码块(rehype-pretty-code / shiki 双主题) ---- */
+
+@layer components {
+  [data-rehype-pretty-code-figure] {
+    position: relative;
+    overflow: hidden;
+    margin-top: calc(var(--spacing) * 6);
+    border-radius: var(--radius-2xl);
+    background-color: var(--color-code);
+    color: var(--color-code-foreground);
+    font-size: var(--text-sm);
+    outline: none;
+  }
+
+  [data-rehype-pretty-code-figure] code,
+  [data-rehype-pretty-code-figure] code span {
+    font-variant-ligatures: none;
+    font-feature-settings:
+      'liga' 0,
+      'calt' 0;
+  }
+
+  [data-rehype-pretty-code-title] {
+    padding-block: calc(var(--spacing) * 2.5);
+    padding-inline: calc(var(--spacing) * 4);
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 30%, transparent);
+    color: var(--color-code-foreground);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+  }
+
+  [data-line-numbers] {
+    display: grid;
+    min-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    white-space: pre;
+    counter-reset: line;
+    box-decoration-break: clone;
+  }
+
+  [data-line-numbers] [data-line]::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    position: sticky;
+    left: 0;
+    width: calc(var(--spacing) * 12);
+    padding-right: calc(var(--spacing) * 5);
+    background-color: var(--color-code);
+    color: var(--color-code-number);
+    font-size: var(--text-sm);
+    text-align: right;
+  }
+
+  [data-line-numbers] [data-highlighted-line][data-line]::before {
+    background-color: var(--color-code-highlight);
+  }
+
+  [data-line] {
+    display: inline-block;
+    width: 100%;
+    min-height: calc(var(--spacing) * 0.875);
+    padding-top: calc(var(--spacing) * 0.25);
+    padding-bottom: calc(var(--spacing) * 0.25);
+  }
+
+  [data-line] span {
+    color: var(--shiki-light);
+
+    @variant dark {
+      color: var(--shiki-dark) !important;
+    }
+  }
+
+  [data-highlighted-line],
+  [data-highlighted-chars] {
+    position: relative;
+    background-color: var(--color-code-highlight);
+  }
+}
+
+/* ---- typeset:MDX 正文排版(demo 卡片等带 data-not-typeset 的区域豁免) ---- */
+
+@layer components {
+  .typeset :where(h1, h2, h3, h4):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    scroll-margin-top: calc(var(--header-height) + 2rem);
+    letter-spacing: var(--tracking-tight);
+    font-weight: var(--font-weight-semibold);
+    text-wrap: balance;
+  }
+
+  .typeset :where(h2):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    margin-top: calc(var(--spacing) * 12);
+    font-size: var(--text-xl);
+  }
+
+  .typeset :where(h2:first-child):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    margin-top: 0;
+  }
+
+  .typeset :where(h3):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    margin-top: calc(var(--spacing) * 10);
+    font-size: var(--text-lg);
+  }
+
+  .typeset :where(h4):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    margin-top: calc(var(--spacing) * 8);
+    font-size: var(--text-base);
+  }
+
+  .typeset :where(p):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    margin-top: calc(var(--spacing) * 4);
+    line-height: 1.75;
+  }
+
+  .typeset :where(h2, h3, h4) + :where(p):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    margin-top: calc(var(--spacing) * 3);
+  }
+
+  .typeset :where(ul, ol):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    margin-top: calc(var(--spacing) * 4);
+    margin-left: calc(var(--spacing) * 6);
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 2);
+  }
+
+  .typeset :where(ul):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    list-style-type: disc;
+  }
+
+  .typeset :where(ol):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    list-style-type: decimal;
+  }
+
+  .typeset :where(li):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    line-height: 1.75;
+  }
+
+  .typeset :where(a):not(:where([data-not-typeset], [data-not-typeset] *, [data-slot])) {
+    font-weight: var(--font-weight-medium);
+    text-decoration-line: underline;
+    text-underline-offset: 4px;
+    text-decoration-color: var(--color-muted-foreground);
+  }
+
+  .typeset :where(blockquote):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    margin-top: calc(var(--spacing) * 4);
+    border-left: 2px solid var(--border);
+    padding-left: calc(var(--spacing) * 4);
+    color: var(--color-muted-foreground);
+    font-style: italic;
+  }
+
+  .typeset :where(hr):not(:where([data-not-typeset], [data-not-typeset] *)) {
+    margin-block: calc(var(--spacing) * 8);
+    border-color: var(--border);
+  }
+
+  .typeset-table {
+    margin-top: calc(var(--spacing) * 4);
+  }
+
+  .typeset-table table {
+    width: 100%;
+    font-size: var(--text-sm);
+  }
+
+  .typeset-table th {
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .typeset-table td {
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+}

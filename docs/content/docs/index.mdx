@@ -1,0 +1,29 @@
+---
+title: 介绍
+description: React Aria 负责行为与无障碍，Tailwind + cva 负责外观。
+---
+
+Cadenza 是基于 React Aria Components 的组件库：行为、键盘交互与无障碍语义全部
+交给 React Aria，外观沿用 shadcn（aria-nova 预设）的 Tailwind + cva 体系。
+
+## 安装
+
+```bash
+pnpm add @gedatou/cadenza-ui react-aria-components
+```
+
+在你的入口 CSS 里：
+
+```css
+@import "tailwindcss";
+@import "@gedatou/cadenza-ui/styles.css";
+```
+
+`styles.css` 自带 `@source "./dist"`，Tailwind 会自动扫描到组件用到的类名，无需额外配置。
+
+## 从哪里开始
+
+- [Button](/docs/components/button) —— 最小的例子，感受 RAC 封装风格
+- [DataTable](/docs/components/data-table) —— 列定义驱动的数据表格：排序、行选择、固定列、分页、无限滚动、虚拟化
+- [InfiniteSelect](/docs/components/infinite-select) —— 无限滚动下拉选择：搜索、多选、跨页存档、组合式插槽
+- [useControllableState](/docs/utils/use-controllable-state) —— 受控/非受控双模的统一实现

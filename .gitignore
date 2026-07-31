@@ -1,4 +1,3 @@
-.astro
 .cache
 .DS_Store
 .githooks
@@ -12,3 +11,7 @@ logs
 node_modules
 skills/npm-*
 temp
+.next
+.source
+next-env.d.ts
+*.tsbuildinfo

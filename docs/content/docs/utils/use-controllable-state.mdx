@@ -3,9 +3,6 @@ title: useControllableState
 description: useState 形状的受控/非受控二态 hook —— @gedatou/cadenza-utils
 ---
 
-import ComponentPreview from '../../../components/ComponentPreview.astro'
-import ControllableDemo from '../../../demos/utils/controllable-state'
-
 `@gedatou/cadenza-utils` 是配套的工具包，目前的核心是 `useControllableState`：
 把 ahooks 的 `useControllableValue` 收敛成 **`useState` 的形状**，让一个组件
 同时支持受控与非受控两种用法——**库里所有组件的受控实现都建立在它上面**。
@@ -32,9 +29,7 @@ const [state, setState] = useControllableState({ value, defaultValue, onChange, 
 
 同一个 `Stepper` 组件，传 `value` 即受控、只传 `defaultValue` 即非受控：
 
-<ComponentPreview name="utils/controllable-state">
-  <ControllableDemo client:load />
-</ComponentPreview>
+<ComponentPreview name="utils/controllable-state" />
 
 ## 为什么二次封装 ahooks
 
