@@ -134,6 +134,17 @@ describe('tabIndicator', () => {
     expect(screen.getByRole('tabpanel').textContent).toBe('概览面板')
   })
 
+  it('stays unplaced while the strip has no layout', () => {
+    // jsdom reports every tab as 0×0 — the same reading a strip gives before
+    // its stylesheet applies, or inside a force-mounted (hidden) panel.
+    // Placing there would spend the one un-animated placement on a bogus
+    // position, leaving the first real measurement to slide in from the corner.
+    renderWithIndicator()
+    const style = document.querySelector<HTMLElement>('[data-slot="tab-indicator"]')?.style
+    expect(style?.opacity).toBe('0')
+    expect(style?.transform).toBe('')
+  })
+
   it('mirrors the list variant onto the container so the indicator can read it', () => {
     render(
       <Tabs>

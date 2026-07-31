@@ -161,7 +161,6 @@ function TabIndicatorInner({
   const ref = useRef<HTMLSpanElement>(null)
   const [hoveredKey, setHoveredKey] = useState<string | null>(null)
   const [box, setBox] = useState<{ x: number, y: number, width: number, height: number } | null>(null)
-  // First placement must not animate — a tab strip should not slide in on load.
   const [hasPlaced, setHasPlaced] = useState(false)
 
   const { selectionManager, selectedKey } = state
@@ -207,6 +206,11 @@ function TabIndicatorInner({
       const tab = list.querySelector<HTMLElement>(`[data-key="${CSS.escape(String(activeKey))}"]`)
       if (!tab)
         return
+      // A hidden strip — inside a force-mounted panel, say — measures 0×0.
+      // Placing there would count as the first placement, leaving the first
+      // real measurement to animate in from the corner.
+      if (tab.offsetWidth === 0 && tab.offsetHeight === 0)
+        return
       // Anchored at the inline start, so RTL counts from the other edge.
       const isRtl = getComputedStyle(list).direction === 'rtl'
       const next = {
@@ -221,7 +225,6 @@ function TabIndicatorInner({
         && prev.width === next.width && prev.height === next.height
         ? prev
         : next)
-      setHasPlaced(true)
     }
 
     measure()
@@ -234,6 +237,19 @@ function TabIndicatorInner({
     return () => observer.disconnect()
     // collection.size re-attaches the observers when tabs are added or removed.
   }, [activeKey, state.collection.size])
+
+  // A tab strip must not slide in on load, so the transition is withheld until
+  // the indicator has been placed once — otherwise the first transform lands
+  // together with the transition and the indicator animates out of the strip's
+  // corner. A later commit is not enough on its own: the browser sees style
+  // changes, not React commits, and back-to-back writes with nothing in
+  // between are one change. The flush is what separates them.
+  useLayoutEffect(() => {
+    if (box === null)
+      return
+    ref.current?.getBoundingClientRect()
+    setHasPlaced(true)
+  }, [box])
 
   const style = useMemo(
     () => box === null
