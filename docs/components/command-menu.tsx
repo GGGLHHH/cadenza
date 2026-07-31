@@ -150,8 +150,10 @@ export function CommandMenu(): ReactElement {
                     event.preventDefault()
                     setActiveIndex(prev => Math.max(prev - 1, 0))
                   }
-                  else if (event.key === 'Enter' && results[activeIndex]) {
-                    go(results[activeIndex].url)
+                  else if (event.key === 'Enter') {
+                    const active = results.at(activeIndex)
+                    if (active !== undefined)
+                      go(active.url)
                   }
                 }}
               />

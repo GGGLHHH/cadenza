@@ -10,6 +10,21 @@ export default antfu(
     // exhaustive-deps are the point; the react-x no-* rules also auto-migrate
     // React 19 idioms (forwardRef -> ref prop, Context.Provider -> Context).
     react: true,
+    // Type-aware rules (projectService resolves each file's nearest tsconfig).
+    // The point is ts/no-deprecated below: author-side @deprecated JSDoc
+    // becomes visible at every call site, ours and consumers' alike.
+    typescript: {
+      tsconfigPath: 'tsconfig.json',
+      overridesTypeAware: {
+        // warn, not error: deprecation is a grace period by definition — the
+        // symbol still works, the strikethrough + report is the migration nudge.
+        'ts/no-deprecated': 'warn',
+        // React 19's ReactNode includes Promise, so this rule's autofix turns
+        // sync render callbacks into async ones — the callback then ALWAYS
+        // returns a Promise and React suspends on every render. Too dangerous.
+        'ts/promise-function-async': 'off',
+      },
+    },
     ignores: [
       'docs/.next',
       'docs/.source',

@@ -137,11 +137,11 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
             <Select
               aria-label={typeof rowsPerPageLabel === 'string' ? rowsPerPageLabel : 'Rows per page'}
               data-slot="data-pagination-limit"
-              onSelectionChange={(key) => {
+              value={limit}
+              onChange={(key) => {
                 if (key !== null)
                   setLimit(Number(key))
               }}
-              selectedKey={limit}
             >
               <SelectTrigger className="inline-20">
                 <SelectValue />

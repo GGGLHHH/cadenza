@@ -14,7 +14,7 @@ beforeAll(() => {
     observe(target: Element): void {
       this.callback(
         [{ target } as ResizeObserverEntry],
-        this as unknown as ResizeObserver,
+        this,
       )
     }
 
@@ -52,9 +52,9 @@ describe('scrollArea scrollbars enum', () => {
     const { container } = render(<ScrollArea>content</ScrollArea>)
     const [bar] = scrollbarsIn(container)
     expect(bar).toBeDefined()
-    expect(bar!.className).toContain('opacity-0')
-    expect(bar!.className).toContain('data-hovering:opacity-100')
-    expect(bar!.className).toContain('data-scrolling:opacity-100')
+    expect(bar.className).toContain('opacity-0')
+    expect(bar.className).toContain('data-hovering:opacity-100')
+    expect(bar.className).toContain('data-scrolling:opacity-100')
   })
 
   it('renders both bars for orientation=both', () => {
@@ -71,6 +71,6 @@ describe('scrollArea scrollbars enum', () => {
     const { container } = render(<ScrollArea scrollbars="always">content</ScrollArea>)
     const [bar] = scrollbarsIn(container)
     expect(bar).toBeDefined()
-    expect(bar!.className).not.toContain('opacity-0')
+    expect(bar.className).not.toContain('opacity-0')
   })
 })

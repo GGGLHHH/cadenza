@@ -103,7 +103,7 @@ export default async function Page(props: {
                 )}
               </div>
             </div>
-            {doc.description && (
+            {doc.description !== undefined && (
               <p className="
                 text-base text-balance text-muted-foreground
                 md:max-inline-[80%]

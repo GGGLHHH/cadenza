@@ -11,7 +11,7 @@ function getNodeText(node: ReactNode): string {
     return String(node)
 
   if (Array.isArray(node))
-    return node.map(child => getNodeText(child)).join('')
+    return node.map((child: ReactNode) => getNodeText(child)).join('')
 
   if (isValidElement<{ children?: ReactNode }>(node))
     return getNodeText(node.props.children)

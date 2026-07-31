@@ -33,7 +33,7 @@ function hashDir(dir: string): Record<string, string> {
 }
 
 it('vendored shadcn sources are unmodified', () => {
-  const files = Object.assign({}, ...VENDORED.map(hashDir))
+  const files = Object.assign({}, ...VENDORED.map(hashDir)) as Record<string, string>
   expect(Object.keys(files).length).toBeGreaterThan(0)
   expect(files).toMatchSnapshot()
 })

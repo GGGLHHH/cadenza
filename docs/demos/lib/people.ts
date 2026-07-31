@@ -48,13 +48,13 @@ export const TOTAL = 10000
 
 export const PEOPLE: Person[] = Array.from({ length: TOTAL }, (_, index) => ({
   id: `p${index + 1}`,
-  name: `${NAMES[index % NAMES.length]!} ${Math.floor(index / NAMES.length) + 1}`,
-  role: ROLES[index % ROLES.length]!,
+  name: `${NAMES[index % NAMES.length]} ${Math.floor(index / NAMES.length) + 1}`,
+  role: ROLES[index % ROLES.length],
   born: 1650 + (index % 300),
   works: (index * 37) % 600,
 }))
 
-export function delay(): Promise<void> {
+export async function delay(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200))
 }
 
@@ -66,9 +66,9 @@ export async function fetchPeople(options: {
 }): Promise<{ items: Person[], nextCursor?: number }> {
   await delay()
   const { cursor = 0, query, pageSize = 20 } = options
-  const filtered = query
-    ? PEOPLE.filter(person => person.name.toLowerCase().includes(query.toLowerCase()))
-    : PEOPLE
+  const filtered = query === undefined || query === ''
+    ? PEOPLE
+    : PEOPLE.filter(person => person.name.toLowerCase().includes(query.toLowerCase()))
   const items = filtered.slice(cursor, cursor + pageSize)
   const next = cursor + pageSize
   return { items, nextCursor: next < filtered.length ? next : undefined }

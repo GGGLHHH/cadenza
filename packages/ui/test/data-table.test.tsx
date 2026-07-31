@@ -43,7 +43,7 @@ beforeAll(() => {
   // TanStack's measureElement falls back to getBoundingClientRect (the RO stub
   // never fires); jsdom's all-zero rect would collapse every measured row.
   Element.prototype.getBoundingClientRect = () =>
-    ({ x: 0, y: 0, top: 0, left: 0, bottom: 40, right: 800, width: 800, height: 40, toJSON: () => ({}) }) as DOMRect
+    ({ x: 0, y: 0, top: 0, left: 0, bottom: 40, right: 800, width: 800, height: 40, toJSON: () => ({}) })
 })
 
 interface Person {
@@ -148,8 +148,8 @@ describe('dataTable interactions', () => {
   it('fires onSortChange when a sortable header is pressed', async () => {
     const onSortChange = vi.fn()
     const sortable: DataTableColumn<Person>[] = [
-      { ...columns[0]!, allowsSorting: true },
-      columns[1]!,
+      { ...columns[0], allowsSorting: true },
+      columns[1],
     ]
     render(
       <DataTable
@@ -185,7 +185,7 @@ describe('dataTable interactions', () => {
     )
     await userEvent.click(screen.getByRole('row', { name: /Bach/ }))
     expect(onSelectionChange).toHaveBeenCalledOnce()
-    const selection = onSelectionChange.mock.calls[0]![0] as Set<string>
+    const selection = onSelectionChange.mock.calls[0][0] as Set<string>
     expect([...selection]).toEqual(['p1'])
   })
 
@@ -201,13 +201,13 @@ describe('dataTable interactions', () => {
     )
     const cells = [...container.querySelectorAll<HTMLElement>('[data-slot=data-table-row] [data-slot=table-cell], [data-slot=data-table-row] th')]
     expect(cells).toHaveLength(4)
-    expect(cells[0]!.style.position).toBe('sticky')
-    expect(cells[0]!.style.insetInlineStart).toBe('0px')
-    expect(cells[1]!.style.insetInlineStart).toBe('100px')
-    expect(cells[2]!.style.position).toBe('')
-    expect(cells[3]!.style.insetInlineEnd).toBe('0px')
+    expect(cells[0].style.position).toBe('sticky')
+    expect(cells[0].style.insetInlineStart).toBe('0px')
+    expect(cells[1].style.insetInlineStart).toBe('100px')
+    expect(cells[2].style.position).toBe('')
+    expect(cells[3].style.insetInlineEnd).toBe('0px')
     // opaque background so scrolled content cannot show through
-    expect(cells[0]!.className).toContain('bg-card')
+    expect(cells[0].className).toContain('bg-card')
   })
 
   it('virtualized: renders only a window of a large set, table stays native', () => {
@@ -245,8 +245,8 @@ describe('dataTable interactions', () => {
     expect(rows.length).toBeGreaterThan(0)
     expect(rows.length).toBeLessThan(60)
     // no fixed height pinned on the row; index attribute feeds measureElement
-    expect(rows[0]!.style.blockSize).toBe('')
-    expect(rows[0]!.getAttribute('data-index')).toBe('0')
+    expect(rows[0].style.blockSize).toBe('')
+    expect(rows[0].getAttribute('data-index')).toBe('0')
   })
 
   it('virtualized + infinite scroll: window stays bounded and the tail indicator renders', () => {
@@ -290,10 +290,10 @@ describe('dataTable interactions', () => {
     // the synthesized column never becomes the row header
     expect(screen.getByRole('rowheader', { name: 'Bach' })).not.toBeNull()
 
-    await userEvent.click(checkboxes[1]!)
-    expect([...onSelectionChange.mock.calls[0]![0] as Set<string>]).toEqual(['p1'])
+    await userEvent.click(checkboxes[1])
+    expect([...onSelectionChange.mock.calls[0][0] as Set<string>]).toEqual(['p1'])
 
-    await userEvent.click(checkboxes[0]!)
+    await userEvent.click(checkboxes[0])
     expect(onSelectionChange.mock.lastCall![0]).toBe('all')
   })
 
@@ -329,7 +329,7 @@ describe('dataTable interactions', () => {
         value={[]}
       />,
     )
-    await userEvent.click(screen.getAllByRole('checkbox')[1]!)
+    await userEvent.click(screen.getAllByRole('checkbox')[1])
     expect(onChange).toHaveBeenCalledWith([people[0]], ['p1'])
   })
 
@@ -346,7 +346,7 @@ describe('dataTable interactions', () => {
         value={['ghost-from-other-page']}
       />,
     )
-    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
+    await userEvent.click(screen.getAllByRole('checkbox')[0])
     const [items, ids] = onChange.mock.lastCall! as [Person[], string[]]
     expect(ids).toEqual(['ghost-from-other-page', 'p1', 'p2', 'p3'])
     // items echo loaded objects only — the ghost has no object to echo
@@ -367,7 +367,7 @@ describe('dataTable interactions', () => {
       />,
     )
     // all loaded rows selected → header checkbox unchecks everything loaded
-    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
+    await userEvent.click(screen.getAllByRole('checkbox')[0])
     const [, ids] = onChange.mock.lastCall! as [Person[], string[]]
     expect(ids).toEqual(['ghost-from-other-page'])
   })
@@ -395,12 +395,12 @@ describe('dataTable interactions', () => {
       )
     }
     const { rerender } = render(<Harness items={pageOne} value={[]} />)
-    await userEvent.click(screen.getAllByRole('checkbox')[1]!)
+    await userEvent.click(screen.getAllByRole('checkbox')[1])
     expect(latest.ids).toEqual(['p1'])
 
     // flip to page 2 with the archive kept, then select a page-2 row
     rerender(<Harness items={pageTwo} value={latest.ids} />)
-    await userEvent.click(screen.getAllByRole('checkbox')[1]!)
+    await userEvent.click(screen.getAllByRole('checkbox')[1])
     expect(latest.ids).toEqual(['p1', 'p4'])
     // page 1's object came from the cache — it is not in the current items
     expect(latest.items).toEqual([pageOne[0], pageTwo[0]])
@@ -418,9 +418,9 @@ describe('dataTable interactions', () => {
         selectionMode="single"
       />,
     )
-    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
+    await userEvent.click(screen.getAllByRole('checkbox')[0])
     expect(onChange).toHaveBeenCalledWith(people[0])
-    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
+    await userEvent.click(screen.getAllByRole('checkbox')[0])
     expect(onChange).toHaveBeenLastCalledWith(undefined)
   })
 

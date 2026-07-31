@@ -299,7 +299,8 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
         if (ids.includes(id))
           selectedItemsCacheRef.current.set(id, item)
       }
-      for (const id of [...selectedItemsCacheRef.current.keys()]) {
+      // Map 迭代器允许边遍历边删,无需先拷贝
+      for (const id of selectedItemsCacheRef.current.keys()) {
         if (!ids.includes(id))
           selectedItemsCacheRef.current.delete(id)
       }
@@ -329,7 +330,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     count: virtualized ? items.length : 0,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => rowHeight,
-    getItemKey: index => getOption(items[index]!).id,
+    getItemKey: index => getOption(items[index]).id,
     gap: 2,
     paddingStart: 4,
     paddingEnd: 4,
@@ -469,7 +470,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
                 onSelectionChange={handleSelectionChange}
               >
                 {virtualized
-                  ? virtualItems.map(virtualItem => renderOption(items[virtualItem.index]!, virtualItem.index, {
+                  ? virtualItems.map(virtualItem => renderOption(items[virtualItem.index], virtualItem.index, {
                       position: 'absolute',
                       top: 0,
                       insetInline: 4,
@@ -533,7 +534,7 @@ export function InfiniteSelectActionsProvider<T>({ value, children }: {
   children: ReactNode
 }): ReactElement {
   return (
-    <InfiniteSelectActionsContext value={value as InfiniteSelectActions}>
+    <InfiniteSelectActionsContext value={value}>
       {children}
     </InfiniteSelectActionsContext>
   )

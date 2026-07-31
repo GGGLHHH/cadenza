@@ -514,15 +514,15 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     count: virtualized ? displayRows.length : 0,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => rowHeight,
-    getItemKey: index => displayRows[index]!.id,
+    getItemKey: index => displayRows[index].id,
     overscan: 12,
     initialRect: { width: 800, height: effectiveMaxHeight ?? 480 },
   })
   const virtualItems = virtualizer.getVirtualItems()
   const windowRows = virtualized
-    ? virtualItems.map(virtualItem => displayRows[virtualItem.index]!)
+    ? virtualItems.map(virtualItem => displayRows[virtualItem.index])
     : displayRows
-  const padStart = virtualized && virtualItems.length > 0 ? virtualItems[0]!.start : 0
+  const padStart = virtualized && virtualItems.length > 0 ? virtualItems[0].start : 0
   const padEnd = virtualized && virtualItems.length > 0
     ? virtualizer.getTotalSize() - virtualItems.at(-1)!.end
     : 0

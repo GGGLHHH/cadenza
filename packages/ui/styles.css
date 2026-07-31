@@ -887,6 +887,11 @@
 }
 
 @theme inline {
+  /* Mirror the :root --radius above so static tooling (tailwindcss-intellisense,
+     better-tailwindcss) can resolve the radius scale — resolvers only read
+     @theme blocks, never :root. The :root value still drives runtime
+     var(--radius), and consumers overriding it downstream still win. */
+  --radius: 0.625rem;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);

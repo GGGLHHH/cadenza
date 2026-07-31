@@ -18,7 +18,7 @@ interface PersonWithBio extends Person {
 
 const people: PersonWithBio[] = PEOPLE.map((person, index) => ({
   ...person,
-  bio: BLURBS[index % BLURBS.length]!,
+  bio: BLURBS[index % BLURBS.length],
 }))
 
 const columns: DataTableColumn<PersonWithBio>[] = [
