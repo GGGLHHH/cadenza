@@ -18,6 +18,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "catalog:cli",
     "@antfu/ni": "catalog:cli",
+    "@eslint-react/eslint-plugin": "catalog:cli",
     "@testing-library/react": "catalog:testing",
     "@testing-library/user-event": "catalog:testing",
     "@types/node": "catalog:types",
@@ -27,6 +28,8 @@
     "bumpp": "catalog:cli",
     "eslint": "catalog:cli",
     "eslint-plugin-better-tailwindcss": "catalog:cli",
+    "eslint-plugin-react-hooks": "catalog:cli",
+    "eslint-plugin-react-refresh": "catalog:cli",
     "jsdom": "catalog:testing",
     "nano-staged": "catalog:cli",
     "publint": "catalog:cli",

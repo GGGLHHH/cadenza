@@ -6,6 +6,10 @@ export default antfu(
   {
     type: 'lib',
     pnpm: true,
+    // @eslint-react + react-hooks + react-refresh. rules-of-hooks and
+    // exhaustive-deps are the point; the react-x no-* rules also auto-migrate
+    // React 19 idioms (forwardRef -> ref prop, Context.Provider -> Context).
+    react: true,
     ignores: [
       'docs/.astro',
       'docs/dist',
@@ -20,6 +24,15 @@ export default antfu(
     ],
   },
 ).append({
+  name: 'cadenza/react-overrides',
+  files: ['**/*.tsx'],
+  rules: {
+    // HMR-only concern, and wrong for a library: seam files export a component
+    // next to its variants and types on purpose. Only docs islands even have
+    // Fast Refresh, and they are one component per file anyway.
+    'react-refresh/only-export-components': 'off',
+  },
+}).append({
   name: 'cadenza/tailwind',
   files: ['**/*.tsx'],
   plugins: { 'better-tailwindcss': betterTailwind },
