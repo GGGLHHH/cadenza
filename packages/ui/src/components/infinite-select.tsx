@@ -4,6 +4,7 @@ import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import type { Key, Selection } from 'react-aria-components'
 import { cn } from '@gedatou/cadenza-ui/lib/utils'
 import { Button } from '@gedatou/cadenza-ui/primitives/button'
+import { ScrollArea } from '@gedatou/cadenza-ui/primitives/scroll-area'
 import { Separator } from '@gedatou/cadenza-ui/primitives/separator'
 import { IconCheck, IconSearch } from '@tabler/icons-react'
 import { createContext, use, useRef } from 'react'
@@ -24,7 +25,7 @@ import {
  * `ListBox` owns selection semantics and typeahead, and `ListBoxLoadMoreItem`
  * fires `onLoadMore` as its sentinel approaches the viewport. The panel itself
  * renders zero copy — state messages come in through the slot children
- * (`InfiniteSelectEmpty` / `Loading` / `Error` / `LoadingMore`), so i18n stays in
+ * (`InfiniteSelectEmpty` / `Loading` / `Error`), so i18n stays in
  * the caller's layer.
  */
 export interface InfiniteSelectOption {
@@ -80,12 +81,20 @@ interface InfiniteSelectCommonProps<T> {
   'renderItem'?: (params: InfiniteSelectItemRenderParams<T>) => ReactNode
 
   'searchPlaceholder'?: string
+  /**
+   * Rendered inside the list, at the end of the scrolled content, while the
+   * next page is fetching. In-flow on purpose: prefetch fires a viewport ahead,
+   * so a user at the top never sees it — only someone at the bottom, exactly
+   * when it is relevant. Position is the base's call, which is why this is a
+   * prop and not a slot child.
+   */
+  'loadingMoreIndicator'?: ReactNode
 
   'maxListHeight'?: number
   'className'?: string
   /**
    * The single slot channel: state slots (`InfiniteSelectEmpty` / `Loading` /
-   * `Error` / `LoadingMore`, context-driven and self-rendering) plus the footer
+   * `Error`, context-driven and self-rendering) plus the footer
    * bar (`InfiniteSelectFooter`, last child lands at the bottom naturally).
    * The base renders no copy of its own.
    */
@@ -157,14 +166,6 @@ export function InfiniteSelectLoading(props: ComponentProps<'div'>): ReactElemen
   return isLoading ? <InfiniteSelectStatus {...props} /> : null
 }
 
-/** Loading-more slot: renders below the list while the next page is fetching. */
-export function InfiniteSelectLoadingMore({ className, ...props }: ComponentProps<'div'>): ReactElement | null {
-  const { isFetchingNextPage } = useInfiniteSelectState()
-  return isFetchingNextPage
-    ? <InfiniteSelectStatus className={cn('py-1.5 text-center text-xs', className)} {...props} />
-    : null
-}
-
 /** Error slot: container for the error copy plus `InfiniteSelectRetry`. */
 export function InfiniteSelectError({ className, ...props }: ComponentProps<'div'>): ReactElement | null {
   const { isError } = useInfiniteSelectState()
@@ -213,6 +214,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     renderItem,
     'aria-label': ariaLabel,
     searchPlaceholder = 'Search',
+    loadingMoreIndicator,
     maxListHeight = 256,
     className,
     children,
@@ -321,94 +323,104 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
           </SearchField>
 
           {hasItems && (
-            <ListBox
-              aria-label={ariaLabel ?? searchPlaceholder}
-              className="flex flex-col gap-0.5 overflow-y-auto p-1 outline-none"
-              data-slot="infinite-select-list"
-              selectionMode={isMultiple ? 'multiple' : 'single'}
+            <ScrollArea
+              className="scroll-fade-y"
               style={{ maxHeight: maxListHeight }}
-              {...(selectedKeys ? { selectedKeys } : { defaultSelectedKeys })}
-              onSelectionChange={handleSelectionChange}
             >
-              {items.map((item) => {
-                const option = getOption(item)
-                return (
-                  <ListBoxItem
-                    key={option.id}
-                    className={cn(
-                      `
-                        flex cursor-default items-center gap-2 rounded-lg px-2
-                        py-1.5 text-sm/5 text-popover-foreground
-                        transition-colors outline-none select-none inline-full
-                      `,
-                      `
-                        data-focused:bg-muted
-                        data-hovered:bg-muted
-                        data-pressed:translate-y-px
-                        data-selected:bg-muted/50
-                        data-selected:data-focused:bg-muted
-                        data-selected:data-hovered:bg-muted
-                      `,
-                      `
-                        data-disabled:cursor-not-allowed
-                        data-disabled:opacity-50
-                      `,
-                    )}
-                    data-slot="infinite-select-item"
-                    id={option.id}
-                    isDisabled={option.disabled}
-                    textValue={option.textValue ?? (typeof option.label === 'string' ? option.label : option.id)}
-                  >
-                    {({ isSelected }) => renderItem
-                      ? renderItem({ item, option, selected: isSelected, isMultiple })
-                      : (
-                          <>
-                            {isMultiple && (
-                              <span
-                                aria-hidden
-                                data-slot="infinite-select-checkbox"
-                                className={cn(
-                                  `
-                                    flex shrink-0 items-center justify-center
-                                    rounded-[4px] border transition-colors
-                                    block-4 inline-4
-                                  `,
-                                  isSelected
-                                    ? `
-                                      border-primary bg-primary
-                                      text-primary-foreground
+              <ListBox
+                aria-label={ariaLabel ?? searchPlaceholder}
+                className="flex flex-col gap-0.5 p-1 outline-none"
+                data-slot="infinite-select-list"
+                selectionMode={isMultiple ? 'multiple' : 'single'}
+                {...(selectedKeys ? { selectedKeys } : { defaultSelectedKeys })}
+                onSelectionChange={handleSelectionChange}
+              >
+                {items.map((item) => {
+                  const option = getOption(item)
+                  return (
+                    <ListBoxItem
+                      key={option.id}
+                      className={cn(
+                        `
+                          flex cursor-default items-center gap-2 rounded-lg px-2
+                          py-1.5 text-sm/5 text-popover-foreground
+                          transition-colors outline-none select-none inline-full
+                        `,
+                        `
+                          data-focused:bg-muted
+                          data-hovered:bg-muted
+                          data-pressed:translate-y-px
+                          data-selected:bg-muted/50
+                          data-selected:data-focused:bg-muted
+                          data-selected:data-hovered:bg-muted
+                        `,
+                        `
+                          data-disabled:cursor-not-allowed
+                          data-disabled:opacity-50
+                        `,
+                      )}
+                      data-slot="infinite-select-item"
+                      id={option.id}
+                      isDisabled={option.disabled}
+                      textValue={option.textValue ?? (typeof option.label === 'string' ? option.label : option.id)}
+                    >
+                      {({ isSelected }) => renderItem
+                        ? renderItem({ item, option, selected: isSelected, isMultiple })
+                        : (
+                            <>
+                              {isMultiple && (
+                                <span
+                                  aria-hidden
+                                  data-slot="infinite-select-checkbox"
+                                  className={cn(
                                     `
-                                    : `
-                                      border-input bg-background
-                                      text-transparent
+                                      flex shrink-0 items-center justify-center
+                                      rounded-[4px] border transition-colors
+                                      block-4 inline-4
                                     `,
-                                )}
-                              >
-                                {isSelected && (
-                                  <IconCheck className="block-3 inline-3" />
-                                )}
-                              </span>
-                            )}
-                            <span className="flex-1 truncate min-inline-0">{option.label}</span>
-                            {!isMultiple && isSelected && (
-                              <IconCheck className="
-                                shrink-0 text-primary block-4 inline-4
-                              "
-                              />
-                            )}
-                          </>
-                        )}
-                  </ListBoxItem>
-                )
-              })}
-              {hasNextPage && (
-                <ListBoxLoadMoreItem
-                  className="block-px"
-                  isLoading={isFetchingNextPage}
-                  onLoadMore={onLoadMore ?? (() => {})}
-                />
-              )}
-            </ListBox>
+                                    isSelected
+                                      ? `
+                                        border-primary bg-primary
+                                        text-primary-foreground
+                                      `
+                                      : `
+                                        border-input bg-background
+                                        text-transparent
+                                      `,
+                                  )}
+                                >
+                                  {isSelected && (
+                                    <IconCheck className="block-3 inline-3" />
+                                  )}
+                                </span>
+                              )}
+                              <span className="flex-1 truncate min-inline-0">{option.label}</span>
+                              {!isMultiple && isSelected && (
+                                <IconCheck className="
+                                  shrink-0 text-primary block-4 inline-4
+                                "
+                                />
+                              )}
+                            </>
+                          )}
+                    </ListBoxItem>
+                  )
+                })}
+                {hasNextPage && (
+                  <ListBoxLoadMoreItem
+                    isLoading={isFetchingNextPage}
+                    onLoadMore={onLoadMore ?? (() => {})}
+                    className={cn(
+                      isFetchingNextPage
+                        ? 'py-1.5 text-center text-xs text-muted-foreground'
+                        : 'block-px',
+                    )}
+                  >
+                    {loadingMoreIndicator}
+                  </ListBoxLoadMoreItem>
+                )}
+              </ListBox>
+            </ScrollArea>
           )}
         </Autocomplete>
 

@@ -96,10 +96,13 @@ const slots = (
       加载失败
       <InfiniteSelectRetry>重试</InfiniteSelectRetry>
     </InfiniteSelectError>
-    <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
   </>
 )
 ```
+
+加载更多的指示不走插槽——它必须渲染在**列表滚动流的末尾**（位置由基座决定），
+用 `loadingMoreIndicator` prop 传：预取提前一个视口触发，停在顶部的用户根本看不到它，
+只有滚到底部、恰好在等下一页的人才会看见。
 
 `InfiniteSelectRetry` 自己接好基座的 `onRetry`（没有则不渲染），你只出文案。
 所有状态共用一个 `role="status"` 容器，状态切换会被读屏播报。
@@ -186,7 +189,10 @@ function usePersonList(query: string | undefined): InfiniteSelectAdapterProps<Pe
 | `value` / `defaultValue` | `string` \| `string[]` | — | 受控 / 非受控选择 |
 | `commitOnClose` | `boolean` | `false` | 多选草稿模式，关弹层才提交 |
 | `closeOnSelect` | `boolean` | `true` | 单选选中后自动关闭 |
+| `lockScroll` | `boolean` | `false` | 锁定页面滚动（模态感） |
+| `closeOnScroll` | `boolean` | `false` | 页面滚动时关闭弹层（原生 select 感）；默认弹层随锚点滚动、保持打开 |
 | `slots` | `ReactNode` | — | 状态插槽 + footer |
+| `loadingMoreIndicator` | `ReactNode` | — | 列表末尾的加载更多指示（滚动流内） |
 | `renderItem` | `(params) => ReactNode` | — | 自定义行内容 |
 | `maxListHeight` | `number` | `256` | 列表最大高度 |
 | `debounceMs`（state 上） | `number` | `300` | 搜索 → 请求的防抖 |

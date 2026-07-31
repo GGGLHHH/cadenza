@@ -10,7 +10,6 @@ import {
   InfiniteSelectFooter,
   InfiniteSelectFooterSeparator,
   InfiniteSelectLoading,
-  InfiniteSelectLoadingMore,
   InfiniteSelectRetry,
   useInfiniteComboboxState,
 } from '@gedatou/cadenza-ui'
@@ -58,9 +57,11 @@ const NAMES = [
   'Vivaldi',
 ]
 
-const PEOPLE: Person[] = NAMES.map((name, index) => ({
+const TOTAL = 10000
+
+const PEOPLE: Person[] = Array.from({ length: TOTAL }, (_, index) => ({
   id: `p${index + 1}`,
-  name,
+  name: `${NAMES[index % NAMES.length]!} ${Math.floor(index / NAMES.length) + 1}`,
   role: ROLES[index % ROLES.length]!,
 }))
 
@@ -167,7 +168,6 @@ const demoSlots: ReactNode = (
       加载失败
       <InfiniteSelectRetry>重试</InfiniteSelectRetry>
     </InfiniteSelectError>
-    <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
   </>
 )
 
@@ -182,6 +182,7 @@ export function SingleDemo(): ReactElement {
         getOption={getOption}
         list={list}
         onChange={setPicked}
+        loadingMoreIndicator="加载更多…"
         searchPlaceholder="搜索作曲家…"
         slots={demoSlots}
         state={state}
@@ -205,6 +206,7 @@ export function MultiDemo(): ReactElement {
         list={list}
         multiple
         onChange={(_items, nextIds) => setIds(nextIds)}
+        loadingMoreIndicator="加载更多…"
         searchPlaceholder="搜索作曲家…"
         state={state}
         value={ids}
@@ -236,6 +238,7 @@ export function ErrorDemo(): ReactElement {
       <InfiniteCombobox<Person>
         getOption={getOption}
         list={list}
+        loadingMoreIndicator="加载更多…"
         searchPlaceholder="搜索作曲家…"
         slots={demoSlots}
         state={state}

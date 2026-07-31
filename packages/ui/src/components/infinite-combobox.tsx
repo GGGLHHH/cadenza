@@ -154,6 +154,8 @@ interface InfiniteComboboxCommonProps<T> {
   /** Multi only: hold toggles as a draft and commit once, when the popover closes. */
   'commitOnClose'?: boolean
   'searchPlaceholder'?: string
+  /** Rendered at the end of the list while the next page fetches. See InfiniteSelect. */
+  'loadingMoreIndicator'?: ReactNode
   /**
    * The slot channel, passed through as `InfiniteSelect` children: state slots
    * plus footer. Footer buttons reach clear/close via `useInfiniteSelectActions`.
@@ -162,6 +164,19 @@ interface InfiniteComboboxCommonProps<T> {
   'maxListHeight'?: number
   /** Single only: close the popover after picking. Defaults to true. */
   'closeOnSelect'?: boolean
+  /**
+   * Lock the page scroll while the popover is open. Off by default — the
+   * popover is non-modal and the page scrolls freely. Turn on for the
+   * RAC/Radix-style modal feel. When on, `closeOnScroll` is moot.
+   */
+  'lockScroll'?: boolean
+  /**
+   * Dismiss the popover when the page scrolls (React Aria's native non-modal
+   * behavior, like a native select). Off by default: the popover stays open and
+   * repositions with its anchor, matching Ant/Base UI. Ignored under
+   * `lockScroll`, where the page cannot scroll at all.
+   */
+  'closeOnScroll'?: boolean
   'selectClassName'?: string
 }
 
@@ -179,9 +194,12 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     maxListHeight,
     renderItem,
     searchPlaceholder,
+    loadingMoreIndicator,
     slots,
     state,
     closeOnSelect = true,
+    lockScroll = false,
+    closeOnScroll = false,
     selectClassName,
   } = props
 
@@ -306,6 +324,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
 
   const shared = {
     'aria-label': props['aria-label'],
+    loadingMoreIndicator,
     ...list,
     getOption,
     maxListHeight,
@@ -320,6 +339,13 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     <PopoverTrigger isOpen={state.open} onOpenChange={handleOpenChange}>
       {trigger}
       <Popover
+        isNonModal={!lockScroll}
+        // RAC hard-wires non-modal popovers to dismiss on outside scroll, with
+        // one exception: submenus (non-modal, no scroll listener, outside click
+        // still dismisses). `trigger` is a public prop, and naming it
+        // SubmenuTrigger opts into that branch — the only non-patch way to get
+        // scroll-follows-anchor. Revisit if RAC ever ships shouldCloseOnScroll.
+        trigger={!lockScroll && !closeOnScroll ? 'SubmenuTrigger' : undefined}
         className={cn(`
           gap-0 overflow-hidden p-0 inline-(--trigger-width) min-inline-72
         `, contentClassName)}
