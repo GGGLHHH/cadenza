@@ -1,12 +1,14 @@
 import type { ReactElement } from 'react'
-import { Tab, TabList, TabPanel, Tabs } from '@gedatou/cadenza-ui'
+import { Tab, TabIndicator, TabList, TabPanel, Tabs } from '@gedatou/cadenza-ui'
 
 // keyboardActivation="manual":方向键只移动焦点,按 Enter/Space 才切换面板;
 // 默认的 "automatic" 焦点走到哪就切到哪,面板内容加载昂贵时(请求、大图表)会被路过时误触发。
+// 指示器跟着焦点走 —— 这正是它「即将选中的那个」语义最有用的场景。
 export default function KeyboardActivationDemo(): ReactElement {
   return (
     <Tabs defaultSelectedKey="overview" keyboardActivation="manual">
       <TabList aria-label="项目仪表盘">
+        <TabIndicator />
         <Tab id="overview">概览</Tab>
         <Tab id="analytics">分析</Tab>
         <Tab id="reports">报告</Tab>
