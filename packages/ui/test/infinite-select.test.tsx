@@ -27,6 +27,8 @@ beforeAll(() => {
     }
   })
   Element.prototype.scrollIntoView = vi.fn()
+  // Base UI's ScrollArea polls viewport.getAnimations(), absent in jsdom.
+  Element.prototype.getAnimations = () => []
   // TanStack Virtual sizes its window from offsetWidth/offsetHeight, which are
   // always 0 in layout-less jsdom — every row would be culled. Pretend to be a
   // viewport.
@@ -178,6 +180,24 @@ describe('infiniteSelect selection', () => {
     // 256px viewport / 34px stride ≈ 8 visible + 12 overscan, far below 1000.
     expect(rendered).toBeGreaterThan(5)
     expect(rendered).toBeLessThan(60)
+  })
+
+  it('virtualized prefetch: fires onLoadMore near the tail, stays quiet far from it', () => {
+    const onLoadMore = vi.fn()
+    const many = Array.from({ length: 1000 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
+    const { unmount } = render(
+      <InfiniteSelect getOption={getOption} hasNextPage items={many} onLoadMore={onLoadMore} virtualized />,
+    )
+    // Window sits at the top; ~30k px of unrendered rows remain below.
+    expect(onLoadMore).not.toHaveBeenCalled()
+    unmount()
+
+    const few = Array.from({ length: 5 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
+    render(
+      <InfiniteSelect getOption={getOption} hasNextPage items={few} onLoadMore={onLoadMore} virtualized />,
+    )
+    // The window covers the whole list: within a viewport of the tail.
+    expect(onLoadMore).toHaveBeenCalled()
   })
 
   it('renderItem receives the loaded-list index in both render paths', () => {

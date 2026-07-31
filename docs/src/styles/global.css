@@ -20,4 +20,12 @@
     color: inherit;
     background-color: transparent;
   }
+
+  /* Same preflight gap: the UA gives list items markers, which leak out of the
+     pagination's <ul>/<li> structure as stray dots. */
+  ul[data-slot='pagination-content'] {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
 }

@@ -1,0 +1,288 @@
+import type { DataTableColumn } from '../src/components/data-table'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import {
+  DataTable,
+  DataTableEmpty,
+  DataTableError,
+  DataTableLoading,
+  DataTableRetry,
+} from '../src/components/data-table'
+
+beforeAll(() => {
+  // jsdom lacks the observers RAC's sentinel/virtualizer machinery expects.
+  vi.stubGlobal('ResizeObserver', class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  })
+  vi.stubGlobal('IntersectionObserver', class {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+    takeRecords(): [] {
+      return []
+    }
+  })
+  Element.prototype.scrollIntoView = vi.fn()
+  // Base UI's ScrollArea polls viewport.getAnimations(), absent in jsdom.
+  Element.prototype.getAnimations = () => []
+  // TanStack Virtual sizes its window from offsetWidth/offsetHeight, which are
+  // always 0 in layout-less jsdom — every row would be culled. Pretend to be a
+  // viewport.
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+    configurable: true,
+    get: () => 400,
+  })
+  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+    configurable: true,
+    get: () => 800,
+  })
+  // TanStack's measureElement falls back to getBoundingClientRect (the RO stub
+  // never fires); jsdom's all-zero rect would collapse every measured row.
+  Element.prototype.getBoundingClientRect = () =>
+    ({ x: 0, y: 0, top: 0, left: 0, bottom: 40, right: 800, width: 800, height: 40, toJSON: () => ({}) }) as DOMRect
+})
+
+interface Person {
+  id: string
+  name: string
+  role: string
+}
+
+const people: Person[] = [
+  { id: 'p1', name: 'Bach', role: 'Composer' },
+  { id: 'p2', name: 'Argerich', role: 'Pianist' },
+  { id: 'p3', name: 'Karajan', role: 'Conductor' },
+]
+
+const columns: DataTableColumn<Person>[] = [
+  { id: 'name', header: 'Name', cell: person => person.name, isRowHeader: true },
+  { id: 'role', header: 'Role', cell: person => person.role },
+]
+
+// State slots: context-driven, self-rendering per table state. The base has
+// zero copy — all text below comes from these children.
+const slots = (
+  <>
+    <DataTableEmpty>No rows</DataTableEmpty>
+    <DataTableLoading>Loading</DataTableLoading>
+    <DataTableError>
+      Failed
+      <DataTableRetry>Retry</DataTableRetry>
+    </DataTableError>
+  </>
+)
+
+describe('dataTable rendering', () => {
+  it('renders header cells and body rows from column defs', () => {
+    render(<DataTable aria-label="People" columns={columns} items={people} />)
+    expect(screen.getByRole('grid', { name: 'People' })).not.toBeNull()
+    expect(screen.getByRole('columnheader', { name: 'Name' })).not.toBeNull()
+    expect(screen.getByText('Argerich')).not.toBeNull()
+    expect(screen.getByText('Conductor')).not.toBeNull()
+    // header row + 3 data rows
+    expect(screen.getAllByRole('row')).toHaveLength(4)
+  })
+
+  it('hands the row index to cell renderers', () => {
+    const indexColumns: DataTableColumn<Person>[] = [
+      { id: 'rank', header: '#', cell: (_person, index) => `#${index}`, isRowHeader: true },
+    ]
+    render(<DataTable aria-label="People" columns={indexColumns} items={people} />)
+    expect(screen.getByText('#0')).not.toBeNull()
+    expect(screen.getByText('#2')).not.toBeNull()
+  })
+})
+
+describe('dataTable state slots', () => {
+  it('shows the empty slot when there are no rows (and nothing else)', () => {
+    render(
+      <DataTable aria-label="People" columns={columns} items={[]}>
+        {slots}
+      </DataTable>,
+    )
+    expect(screen.getByText('No rows')).not.toBeNull()
+    expect(screen.queryByText('Loading')).toBeNull()
+    expect(screen.queryByText('Failed')).toBeNull()
+  })
+
+  it('shows the loading slot and hides rows while first-page loading', () => {
+    render(
+      <DataTable aria-label="People" columns={columns} isLoading items={people}>
+        {slots}
+      </DataTable>,
+    )
+    expect(screen.getByText('Loading')).not.toBeNull()
+    expect(screen.queryByText('Bach')).toBeNull()
+    expect(screen.queryByText('No rows')).toBeNull()
+  })
+
+  it('shows the error slot with a retry button wired to onRetry', async () => {
+    const onRetry = vi.fn()
+    render(
+      <DataTable aria-label="People" columns={columns} isError items={people} onRetry={onRetry}>
+        {slots}
+      </DataTable>,
+    )
+    expect(screen.getByText('Failed')).not.toBeNull()
+    expect(screen.queryByText('Bach')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(onRetry).toHaveBeenCalledOnce()
+  })
+
+  it('retry slot renders nothing when onRetry is absent', () => {
+    render(
+      <DataTable aria-label="People" columns={columns} isError items={[]}>
+        {slots}
+      </DataTable>,
+    )
+    expect(screen.getByText('Failed')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+  })
+})
+
+describe('dataTable interactions', () => {
+  it('fires onSortChange when a sortable header is pressed', async () => {
+    const onSortChange = vi.fn()
+    const sortable: DataTableColumn<Person>[] = [
+      { ...columns[0]!, allowsSorting: true },
+      columns[1]!,
+    ]
+    render(
+      <DataTable
+        aria-label="People"
+        columns={sortable}
+        items={people}
+        onSortChange={onSortChange}
+      />,
+    )
+    await userEvent.click(screen.getByRole('columnheader', { name: 'Name' }))
+    expect(onSortChange).toHaveBeenCalledWith({ column: 'name', direction: 'ascending' })
+  })
+
+  it('hands the row item (not the key) to onRowAction', async () => {
+    const onRowAction = vi.fn()
+    render(
+      <DataTable aria-label="People" columns={columns} items={people} onRowAction={onRowAction} />,
+    )
+    await userEvent.click(screen.getByRole('row', { name: /Argerich/ }))
+    expect(onRowAction).toHaveBeenCalledWith(people[1])
+  })
+
+  it('reports selection changes through onSelectionChange', async () => {
+    const onSelectionChange = vi.fn()
+    render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        items={people}
+        onSelectionChange={onSelectionChange}
+        selectionMode="multiple"
+      />,
+    )
+    await userEvent.click(screen.getByRole('row', { name: /Bach/ }))
+    expect(onSelectionChange).toHaveBeenCalledOnce()
+    const selection = onSelectionChange.mock.calls[0]![0] as Set<string>
+    expect([...selection]).toEqual(['p1'])
+  })
+
+  it('pinned columns: sticky offsets accumulate from each edge', () => {
+    const pinnedColumns: DataTableColumn<Person>[] = [
+      { id: 'a', header: 'A', cell: person => person.name, isRowHeader: true, width: 100, pinned: 'start' },
+      { id: 'b', header: 'B', cell: person => person.role, width: 120, pinned: 'start' },
+      { id: 'c', header: 'C', cell: person => person.id },
+      { id: 'd', header: 'D', cell: person => person.id, width: 90, pinned: 'end' },
+    ]
+    const { container } = render(
+      <DataTable aria-label="People" columns={pinnedColumns} items={people.slice(0, 1)} />,
+    )
+    const cells = [...container.querySelectorAll<HTMLElement>('[data-slot=data-table-row] [data-slot=table-cell], [data-slot=data-table-row] th')]
+    expect(cells).toHaveLength(4)
+    expect(cells[0]!.style.position).toBe('sticky')
+    expect(cells[0]!.style.insetInlineStart).toBe('0px')
+    expect(cells[1]!.style.insetInlineStart).toBe('100px')
+    expect(cells[2]!.style.position).toBe('')
+    expect(cells[3]!.style.insetInlineEnd).toBe('0px')
+    // opaque background so scrolled content cannot show through
+    expect(cells[0]!.className).toContain('bg-card')
+  })
+
+  it('virtualized: renders only a window of a large set, table stays native', () => {
+    const many: Person[] = Array.from({ length: 1000 }, (_, index) => ({
+      id: `p${index}`,
+      name: `Person ${index}`,
+      role: 'Composer',
+    }))
+    const { container } = render(
+      <DataTable aria-label="People" columns={columns} items={many} maxHeight={400} virtualized />,
+    )
+    expect(container.querySelector('table')).not.toBeNull()
+    const rendered = container.querySelectorAll('[data-slot=data-table-row]').length
+    expect(rendered).toBeGreaterThan(0)
+    expect(rendered).toBeLessThan(60)
+  })
+
+  it('dynamicRowHeight: rows keep natural height and carry the measure wiring', () => {
+    const many: Person[] = Array.from({ length: 1000 }, (_, index) => ({
+      id: `p${index}`,
+      name: `Person ${index}`,
+      role: 'Composer',
+    }))
+    const { container } = render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        dynamicRowHeight
+        items={many}
+        maxHeight={400}
+        virtualized
+      />,
+    )
+    const rows = [...container.querySelectorAll<HTMLElement>('[data-slot=data-table-row]')]
+    expect(rows.length).toBeGreaterThan(0)
+    expect(rows.length).toBeLessThan(60)
+    // no fixed height pinned on the row; index attribute feeds measureElement
+    expect(rows[0]!.style.blockSize).toBe('')
+    expect(rows[0]!.getAttribute('data-index')).toBe('0')
+  })
+
+  it('virtualized + infinite scroll: window stays bounded and the tail indicator renders', () => {
+    const many: Person[] = Array.from({ length: 200 }, (_, index) => ({
+      id: `p${index}`,
+      name: `Person ${index}`,
+      role: 'Composer',
+    }))
+    render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        hasNextPage
+        isFetchingNextPage
+        items={many}
+        loadingMoreIndicator="More…"
+        maxHeight={400}
+        onLoadMore={() => {}}
+        virtualized
+      />,
+    )
+    expect(screen.getByText('More…')).not.toBeNull()
+    expect(screen.getAllByRole('row').length).toBeLessThan(60)
+  })
+
+  it('renders the loading-more indicator at the tail while fetching the next page', () => {
+    render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        hasNextPage
+        isFetchingNextPage
+        items={people}
+        loadingMoreIndicator="More…"
+        onLoadMore={() => {}}
+      />,
+    )
+    expect(screen.getByText('More…')).not.toBeNull()
+  })
+})

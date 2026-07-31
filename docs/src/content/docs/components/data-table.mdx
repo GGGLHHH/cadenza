@@ -1,0 +1,330 @@
+---
+title: DataTable
+description: React Aria Table 语义的数据表格 —— 列定义驱动 + 组合式插槽 + 分页 / 无限滚动 / 虚拟化
+---
+
+import { BasicDemo, SortDemo, SelectionDemo, HScrollDemo, PinnedDemo, PaginationDemo, InfiniteDemo, ErrorDemo, VirtualizedDemo, DynamicRowHeightDemo } from '../../../components/DataTableDemo'
+
+数据表格家族。行为全部由 React Aria 的 `Table` 承担：网格键盘导航（方向键在单元格间移动）、
+行选择、列排序都是 RAC 原生语义。你只提供一个**列定义数组**和数据，不写 JSX 表格结构。
+配套的 `DataPagination` 负责 offset 分页；游标分页走无限滚动；大数据集可用
+`virtualized` 开启 TanStack Virtual 行虚拟化，见下文。
+
+下面的 demo 用 Promise 模拟异步接口（300–500ms 随机延时）。
+
+## 基础用法
+
+列定义是普通对象：`id` 是列标识，`header` 是表头内容，`cell` 收到行数据和行号、返回单元格内容。
+
+<BasicDemo client:load />
+
+```tsx
+import type { DataTableColumn } from '@gedatou/cadenza-ui'
+import { DataTable } from '@gedatou/cadenza-ui'
+
+const columns: DataTableColumn<Person>[] = [
+  { id: 'name', header: '姓名', cell: (p) => p.name, isRowHeader: true },
+  { id: 'role', header: '角色', cell: (p) => p.role },
+  { id: 'born', header: '生年', cell: (p) => p.born, width: 90 },
+]
+
+<DataTable<Person> aria-label="作曲家" columns={columns} items={people} />
+```
+
+两个约定：
+
+- `isRowHeader` 标记「代表这一行」的列（读屏播报行时念它），不标时默认第一列。
+- 行的 key 默认取 `item.id`；数据没有 `id` 字段时传 `getRowId`。
+
+## 排序
+
+列上开 `allowsSorting`，表头变为可按压并显示排序指示。组件只维护**排序意图**
+（`sortDescriptor` 受控 + `onSortChange`），真正的排序是数据层的事 ——
+本地数据自己 `sort`，服务端数据把 descriptor 转成请求参数：
+
+<SortDemo client:load />
+
+```tsx
+const [sort, setSort] = useState<SortDescriptor>({ column: 'name', direction: 'ascending' })
+const sorted = useMemo(() => sortBy(people, sort), [sort])
+
+<DataTable<Person>
+  columns={columns.map((c) => ({ ...c, allowsSorting: true }))}
+  items={sorted}
+  sortDescriptor={sort}
+  onSortChange={setSort}
+  {/* … */}
+/>
+```
+
+`SortDescriptor` 类型（`{ column, direction }`）从 `@gedatou/cadenza-ui` 导出，
+业务层不需要直接依赖 react-aria-components。
+
+## 行选择与行动作
+
+选择是 React Aria 的透传：`selectionMode`（`single` / `multiple`）+
+`selectedKeys` / `onSelectionChange`，键盘上 Space 切换、Shift 范围选择都随之生效。
+
+<SelectionDemo client:load />
+
+`onRowAction` 是行激活（点击 / Enter），回调直接拿到行对象而不是 key：
+
+```tsx
+<DataTable<Person> onRowAction={(person) => navigate(person.id)} {/* … */} />
+```
+
+注意：同时开启选择和 `onRowAction` 时，React Aria 会把「点击行」让给动作，
+选择退到显式手势（长按 / 复选框）—— 这是 RAC 的标准行为。
+
+## 横向滚动与固定列
+
+横向滚动由**列宽**驱动：给列设数字 `width` 后它就是固定宽度（不会被表格布局
+压缩），各列宽度加起来超出容器时自动出现横向滚动——滚动条、左右边缘渐隐
+都不用配置：
+
+<HScrollDemo client:load />
+
+```tsx
+// 7 列都给了数字宽度,合计 990px,超出容器即横向滚动
+const columns: DataTableColumn<Person>[] = [
+  { id: 'name', header: '姓名', cell: (p) => p.name, isRowHeader: true, width: 140 },
+  { id: 'role', header: '角色', cell: (p) => p.role, width: 130 },
+  { id: 'born', header: '生年', cell: (p) => p.born, width: 110 },
+  { id: 'era', header: '时期', cell: (p) => p.era, width: 110 },
+  { id: 'active', header: '活跃年代', cell: (p) => p.active, width: 150 },
+  { id: 'label', header: '唱片公司', cell: (p) => p.label, width: 150 },
+  { id: 'works', header: '作品数', cell: (p) => p.works, width: 110 },
+]
+
+<DataTable<Person> columns={columns} items={people} />
+```
+
+不给 `width` 的列是弹性的：总宽不足容器时由它们吸收剩余空间，此时不会出现
+横向滚动。
+
+需要某些列在横向滚动时钉住，在列定义上加 `pinned`。同一侧可以固定多列，
+sticky 偏移按数组顺序累加——下面的 demo 左侧钉了姓名、角色两列：
+
+<PinnedDemo client:load />
+
+```tsx
+const columns: DataTableColumn<Person>[] = [
+  { id: 'name', header: '姓名', cell: (p) => p.name, isRowHeader: true, width: 140, pinned: 'start' },
+  { id: 'role', header: '角色', cell: (p) => p.role, width: 130, pinned: 'start' },
+  // …中间的列随内容横向滚动…
+  { id: 'actions', header: '操作', cell: (p) => <RowActions person={p} />, width: 90, pinned: 'end' },
+]
+```
+
+三个约定：
+
+- **`pinned: 'start'` 的列排在数组头部、`'end'` 的列排在尾部**——sticky
+  偏移按数组顺序累加，夹在中间的固定列没有意义。
+- **固定列必须给数字 `width`**，偏移量由它算出。
+- 固定列的单元格自带不透明底色（并跟随行的 hover / 选中态），滚过去的内容
+  不会从下面透出来；边缘渐隐会自动跳过固定列的区域，只作用于会动的部分。
+
+## 状态插槽
+
+基座**零文案**。空 / 加载 / 错误都是 context 驱动的插槽组件，渲染在表头下方的
+空态区域，按状态自渲染、互斥，文案由你注入 —— i18n 只存在于你的业务层：
+
+<ErrorDemo client:load />
+
+```tsx
+const slots = (
+  <>
+    <DataTableLoading>加载中…</DataTableLoading>
+    <DataTableEmpty>暂无数据</DataTableEmpty>
+    <DataTableError>
+      加载失败
+      <DataTableRetry>重试</DataTableRetry>
+    </DataTableError>
+  </>
+)
+
+<DataTable {/* … */}>{slots}</DataTable>
+```
+
+`DataTableRetry` 自己接好基座的 `onRetry`（没有则不渲染），你只出文案。
+所有状态共用一个 `role="status"` 容器，状态切换会被读屏播报。
+
+## 分页
+
+`DataPagination` 是独立组件，放在表格下方由你组合。`page` 和 `limit`
+各自支持受控 / 非受控（`useControllableState` 语义：传 `page` 即受控，
+传 `defaultPage` 即非受控）。它同样零文案：页码指示默认是语言中立的
+`3 / 12`，摘要和「每页」标签由你注入：
+
+<PaginationDemo client:load />
+
+```tsx
+const [page, setPage] = useState(1)
+const [limit, setLimit] = useState(10)
+const { items, total, isLoading } = usePersonPage(page, limit) // 你的数据层
+
+<DataTable<Person> columns={columns} items={items} isLoading={isLoading}>
+  {slots}
+</DataTable>
+<DataPagination
+  page={page}
+  onPageChange={setPage}
+  limit={limit}
+  onLimitChange={(next) => { setLimit(next); setPage(1) }}
+  total={total}
+  rowsPerPageLabel="每页"
+  summary={({ total }) => `共 ${total} 条`}
+/>
+```
+
+两个内建守卫：`total=0` 视为「数据未加载完」不会去钳位 `page`
+（避免翻页瞬间把 URL 闪回）；`limit` 为 0 / NaN 时页数按 1 兜底。
+
+## 无限滚动
+
+游标分页不用 `DataPagination`，用列表状态 props：滚动到底部附近自动触发
+`onLoadMore`（React Aria 的哨兵行，提前预取）。这组 props 的形状与
+`InfiniteSelectAdapterProps` 完全一致，适配器对象直接展开：
+
+<InfiniteDemo client:load />
+
+```tsx
+const list = usePersonList() // { items, isLoading, isFetchingNextPage, hasNextPage, isError, onLoadMore, onRetry }
+
+<DataTable<Person>
+  columns={columns}
+  maxHeight={320}
+  loadingMoreIndicator="加载更多…"
+  virtualized
+  {...list}
+>
+  {slots}
+</DataTable>
+```
+
+`maxHeight` 限定行区高度、表头 sticky —— 无限滚动需要一个会滚动的容器，
+所以这里必须传。`loadingMoreIndicator` 渲染在滚动流末尾：预取提前触发，
+停在顶部的用户根本看不到它。
+
+demo 同时开了 `virtualized`，这不是巧合：**无限滚动的已加载集是无界累积的**
+——每翻一页 DOM 净增一页的行，翻几十页表格就自己长成了性能陷阱。虚拟化把
+任意页数的 DOM 压在窗口大小；加载哨兵位于已加载内容的真实末尾（底部填充行
+之后），虚拟化下照样提前触发。总量有限、页数可控时才可以不开。
+
+「加载更多」是预取失败时的兜底，不是功能——理想状态下用户感知不到分页。
+`loadMoreScrollOffset` 控制预取距离（默认提前 1 个视口高度触发），接口延迟高
+就调大它；预取距离本质是成本权衡（每个用户都提前拉一页 = 服务端 QPS 翻倍），
+所以留给业务层定。更激进的做法在数据层：第 N 页一到就预取第 N+1 页
+（react-query 的 `prefetchQuery`），滚动只消费缓存，指示器几乎绝迹。
+
+滚动条默认 `scrollbars="hover"`：平时隐藏，指针悬停或滚动进行时淡入
+（另外两个值：`'always'` 常显、`'hidden'` 常隐）。
+
+## 虚拟化
+
+开启 `virtualized` 后行渲染交给 TanStack Virtual（与 InfiniteSelect 同一套引擎）：
+**任何时刻只有视口内可见的行、加上少量预渲染的行（overscan）存在于 DOM**，
+上下各一条不可交互的填充行撑住完整滚动高度，表格保持原生 `<table>`——
+sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 demo 一次拉满 10000 条：
+
+<VirtualizedDemo client:load />
+
+```tsx
+<DataTable<Person> virtualized rowHeight={40} maxHeight={400} {/* … */} />
+```
+
+开启前要知道的取舍：
+
+1. **行高固定**为 `rowHeight`（默认 40px）——虚拟化靠固定行高换取零测量、零跳动；
+   单元格内容更高时必须同步调大它。内容真正不定高时开 `dynamicRowHeight`，
+   见「动态行高」。
+2. **键盘和读屏的作用域变窄**：React Aria 只认识 DOM 里的那几十行，typeahead、
+   Home / End、读屏播报的行数都以窗口为准。
+3. 因此**几百行以内不建议开**——不开时 React Aria 认识完整列表，上面这些能力
+   都是全量的，而几百行的 DOM 根本不构成性能问题。
+
+给列设置 `width` 可以避免滚动时列宽随窗口内容轻微抖动（自动布局的表格列宽
+由可见内容决定）。
+
+虚拟化与无限滚动**可以同时开**，而且页数无上限时应该同时开——见「无限滚动」
+一节的说明。
+
+## 动态行高
+
+非虚拟模式下行高本来就由内容决定，什么都不用做。虚拟化默认用**固定行高**换
+零测量、零跳动；内容不定高（多行文本、标签组）时开 `dynamicRowHeight`：
+`rowHeight` 降级为初始估算，行渲染后按实际高度测量（ResizeObserver）并自动
+校正布局。下面的 demo 一次载入 10000 行，简介列长短不一：
+
+<DynamicRowHeightDemo client:load />
+
+```tsx
+const columns: DataTableColumn<Person>[] = [
+  { id: 'name', header: '姓名', cell: (p) => p.name, isRowHeader: true, width: 140 },
+  // 单元格默认 nowrap,需要换行的列自己开
+  { id: 'bio', header: '简介', cell: (p) => p.bio, className: 'whitespace-normal' },
+]
+
+<DataTable<Person> virtualized dynamicRowHeight rowHeight={44} {/* … */} />
+```
+
+代价：滚动中实测值替换估算值时滚动条会有轻微校正跳动，且每行多一份测量
+开销——**行高均匀时用固定行高**，把 `dynamicRowHeight` 留给真正不定高的表。
+
+## 导出的类型
+
+| 类型 | 说明 |
+| --- | --- |
+| `DataTableColumn<T>` | 列定义：`{ id, header, cell, isRowHeader?, allowsSorting?, pinned?, width?, minWidth?, maxWidth?, className? }` |
+| `DataTableColumnWidth` | 列宽：px 数字或百分比字符串（如 `'50%'`） |
+| `DataTableProps<T>` | `DataTable` 完整 props，业务层包一层时直接复用 |
+| `DataPaginationProps` / `DataPaginationState` | 分页器 props 与 `summary` / `pageIndicator` 收到的状态 |
+| `SortDescriptor` / `Selection` / `Key` | React Aria 词汇的再导出，排序与选择回调的类型 |
+
+## 键盘交互
+
+| 按键 | 行为 |
+| --- | --- |
+| `↓` / `↑` / `←` / `→` | 在行 / 单元格间移动焦点 |
+| `Space` | 切换当前行选中（选择模式下） |
+| `Enter` | 触发行动作（有 `onRowAction` 时） |
+| `Home` / `End` | 跳到首行 / 末行 |
+
+## Props
+
+### DataTable
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `aria-label` | `string` | — | 网格的可访问名（必填） |
+| `columns` | `DataTableColumn<T>[]` | — | 列定义 |
+| `items` | `T[]` | — | 行数据 |
+| `getRowId` | `(item: T) => string` | 取 `item.id` | 行 key 提取 |
+| `isLoading` / `isError` / `onRetry` | — | — | 状态插槽的驱动，见「状态插槽」 |
+| `hasNextPage` / `isFetchingNextPage` / `onLoadMore` | — | — | 无限滚动，见上文 |
+| `loadingMoreIndicator` | `ReactNode` | — | 列表末尾的加载更多指示（滚动流内） |
+| `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
+| `selectionMode` | `'none' \| 'single' \| 'multiple'` | `'none'` | 行选择模式 |
+| `selectedKeys` / `defaultSelectedKeys` / `onSelectionChange` | — | — | React Aria 选择透传 |
+| `sortDescriptor` / `onSortChange` | `SortDescriptor` | — | 排序意图（受控） |
+| `onRowAction` | `(item: T) => void` | — | 行激活，回调收行对象 |
+| `maxHeight` | `number` | — | 行区最大高度；无限滚动 / 虚拟化需要（虚拟化未传时兜 480） |
+| `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | 滚动条可见性：常显 / hover 与滚动时显示 / 常隐 |
+| `virtualized` | `boolean` | `false` | TanStack Virtual 行虚拟化，大数据集用 |
+| `rowHeight` | `number` | `40` | 虚拟化行的固定高度；`dynamicRowHeight` 下为初始估算 |
+| `dynamicRowHeight` | `boolean` | `false` | 虚拟化行按内容实测高度（估算 + 校正），见「动态行高」 |
+| `children` | `ReactNode` | — | 状态插槽通道 |
+
+### DataPagination
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `total` | `number` | — | 总条数；`0` 视为未加载完，不触发钳位 |
+| `page` / `defaultPage` / `onPageChange` | `number` | `1` | 页码（受控 / 非受控） |
+| `limit` / `defaultLimit` / `onLimitChange` | `number` | `20` | 每页条数（受控 / 非受控） |
+| `limitOptions` | `number[]` | `[10, 20, 50, 100]` | 每页条数选项 |
+| `showLimitChanger` | `boolean` | `true` | 是否渲染每页条数选择器 |
+| `summary` | `(state) => ReactNode` | — | 左侧摘要，收 `{ page, limit, total, totalPages }` |
+| `rowsPerPageLabel` | `ReactNode` | — | 选择器前的可见标签（不传则不渲染） |
+| `pageIndicator` | `(state) => ReactNode` | `page / totalPages` | 页码指示 |
+| `firstPageLabel` 等 4 个 | `string` | 英文 | 图标按钮的 aria-label，从业务层传译文 |

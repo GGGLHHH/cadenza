@@ -2,9 +2,9 @@
 
 import type { ComponentProps, CSSProperties, ReactElement, ReactNode } from 'react'
 import type { Key, Selection } from 'react-aria-components'
+import type { ScrollAreaScrollbars } from './scroll-area'
 import { cn } from '@gedatou/cadenza-ui/lib/utils'
 import { Button } from '@gedatou/cadenza-ui/primitives/button'
-import { ScrollArea } from '@gedatou/cadenza-ui/primitives/scroll-area'
 import { Separator } from '@gedatou/cadenza-ui/primitives/separator'
 import { IconCheck, IconSearch } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -17,6 +17,7 @@ import {
   ListBoxLoadMoreItem,
   SearchField,
 } from 'react-aria-components'
+import { ScrollArea } from './scroll-area'
 
 /**
  * Searchable infinite-scrolling list panel, single or multi select.
@@ -98,8 +99,16 @@ interface InfiniteSelectCommonProps<T> {
    * prop and not a slot child.
    */
   'loadingMoreIndicator'?: ReactNode
+  /**
+   * How far ahead of the visible bottom the next page starts loading, in
+   * viewport heights (the RAC sentinel's `scrollOffset` semantics). Larger
+   * values make the loading state rarer at the cost of eager requests.
+   */
+  'loadMoreScrollOffset'?: number
 
   'maxListHeight'?: number
+  /** Scrollbar visibility for the list: always shown, shown on hover, or none. */
+  'scrollbars'?: ScrollAreaScrollbars
   /**
    * Virtualize rows with TanStack Virtual: only the visible window plus
    * overscan reaches the DOM. Off by default — turn on for large loaded sets
@@ -238,7 +247,9 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     'aria-label': ariaLabel,
     searchPlaceholder = 'Search',
     loadingMoreIndicator,
+    loadMoreScrollOffset = 1,
     maxListHeight = 256,
+    scrollbars,
     virtualized = false,
     rowHeight = 32,
     className,
@@ -330,16 +341,17 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
   const virtualItems = virtualizer.getVirtualItems()
 
   // Virtualized load-more, the TanStack way: fire when the overscan window
-  // reaches the last loaded row (~1.5 viewports ahead — the same prefetch feel
-  // as the RAC sentinel used in the non-virtual path). Adapters are expected
-  // to dedupe repeat calls, as react-query's fetchNextPage does.
-  const lastVirtualIndex = virtualItems.at(-1)?.index
+  // nears the loaded tail. The trigger distance mirrors the RAC sentinel used
+  // in the non-virtual path: fire while less than `loadMoreScrollOffset`
+  // viewports of unrendered content remain below the window. Adapters are
+  // expected to dedupe repeat calls, as react-query's fetchNextPage does.
+  const lastVirtualEnd = virtualItems.at(-1)?.end
   useEffect(() => {
-    if (!virtualized || !hasNextPage || isFetchingNextPage || lastVirtualIndex === undefined)
+    if (!virtualized || !hasNextPage || isFetchingNextPage || lastVirtualEnd === undefined)
       return
-    if (lastVirtualIndex >= items.length - 1)
+    if (virtualizer.getTotalSize() - lastVirtualEnd <= loadMoreScrollOffset * maxListHeight)
       onLoadMore?.()
-  }, [virtualized, hasNextPage, isFetchingNextPage, items.length, lastVirtualIndex, onLoadMore])
+  }, [virtualized, hasNextPage, isFetchingNextPage, lastVirtualEnd, loadMoreScrollOffset, maxListHeight, virtualizer, onLoadMore])
 
   const renderOption = (item: T, index: number, style?: CSSProperties): ReactElement => {
     const option = getOption(item)
@@ -441,9 +453,10 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
 
           {hasItems && (
             <ScrollArea
-              ref={scrollRef}
-              className="scroll-fade-y"
-              style={{ maxHeight: maxListHeight }}
+              scrollbars={scrollbars}
+              viewportClassName="scroll-fade-y"
+              viewportRef={scrollRef}
+              viewportStyle={{ maxHeight: maxListHeight }}
             >
               <ListBox
                 aria-label={ariaLabel ?? searchPlaceholder}
@@ -470,6 +483,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
                   <ListBoxLoadMoreItem
                     isLoading={isFetchingNextPage}
                     onLoadMore={onLoadMore ?? (() => {})}
+                    scrollOffset={loadMoreScrollOffset}
                     className={cn(
                       isFetchingNextPage
                         ? 'py-1.5 text-center text-xs text-muted-foreground'

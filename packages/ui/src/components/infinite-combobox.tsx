@@ -2,6 +2,7 @@
 
 import type { ReactElement, ReactNode } from 'react'
 import type { ControllableSelectionProps, InfiniteSelectActions, InfiniteSelectAdapterProps, InfiniteSelectItemRenderParams, InfiniteSelectOption } from './infinite-select'
+import type { ScrollAreaScrollbars } from './scroll-area'
 import { cn } from '@gedatou/cadenza-ui/lib/utils'
 import { Popover, PopoverTrigger } from '@gedatou/cadenza-ui/primitives/popover'
 import { useControllableState } from '@gedatou/cadenza-utils'
@@ -156,12 +157,16 @@ interface InfiniteComboboxCommonProps<T> {
   'searchPlaceholder'?: string
   /** Rendered at the end of the list while the next page fetches. See InfiniteSelect. */
   'loadingMoreIndicator'?: ReactNode
+  /** Prefetch distance in viewport heights. See InfiniteSelect. */
+  'loadMoreScrollOffset'?: number
   /**
    * The slot channel, passed through as `InfiniteSelect` children: state slots
    * plus footer. Footer buttons reach clear/close via `useInfiniteSelectActions`.
    */
   'slots'?: ReactNode
   'maxListHeight'?: number
+  /** Scrollbar visibility for the list: always shown, shown on hover, or none. */
+  'scrollbars'?: ScrollAreaScrollbars
   /** Virtualize rows for large loaded sets. See InfiniteSelect. */
   'virtualized'?: boolean
   /** Fixed row height for the virtualized list. See InfiniteSelect. */
@@ -196,11 +201,13 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     getOption,
     list,
     maxListHeight,
+    scrollbars,
     virtualized,
     rowHeight,
     renderItem,
     searchPlaceholder,
     loadingMoreIndicator,
+    loadMoreScrollOffset,
     slots,
     state,
     closeOnSelect = true,
@@ -331,9 +338,11 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
   const shared = {
     'aria-label': props['aria-label'],
     loadingMoreIndicator,
+    loadMoreScrollOffset,
     ...list,
     getOption,
     maxListHeight,
+    scrollbars,
     virtualized,
     rowHeight,
     renderItem,

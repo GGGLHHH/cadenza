@@ -267,8 +267,10 @@ interface InfiniteSelectItemRenderParams<T> {
 | `closeOnScroll` | `boolean` | `false` | 页面滚动时关闭弹层（原生 select 感）；默认弹层随锚点滚动、保持打开 |
 | `slots` | `ReactNode` | — | 状态插槽 + footer |
 | `loadingMoreIndicator` | `ReactNode` | — | 列表末尾的加载更多指示（滚动流内） |
+| `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
 | `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | 替换行内容（`ListBoxItem` 外壳保留），参数见「自定义行内容」 |
 | `maxListHeight` | `number` | `256` | 列表最大高度 |
+| `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | 滚动条可见性：常显 / hover 与滚动时显示 / 常隐 |
 | `virtualized` | `boolean` | `false` | TanStack Virtual 行虚拟化，大数据集用 |
 | `rowHeight` | `number` | `32` | 虚拟化行的固定高度；自定义 `renderItem` 更高时需同步调整 |
 | `debounceMs`（state 上） | `number` | `300` | 搜索 → 请求的防抖 |
