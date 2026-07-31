@@ -63,6 +63,7 @@
     "tailwind-merge": "catalog:ui"
   },
   "devDependencies": {
+    "@types/node": "catalog:types",
     "react": "catalog:react",
     "react-dom": "catalog:react",
     "tailwindcss": "catalog:ui",

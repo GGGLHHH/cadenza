@@ -297,6 +297,9 @@ importers:
         specifier: catalog:ui
         version: 3.6.0
     devDependencies:
+      '@types/node':
+        specifier: catalog:types
+        version: 26.1.2
       react:
         specifier: catalog:react
         version: 19.2.8

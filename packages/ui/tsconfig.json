@@ -3,7 +3,10 @@
   "compilerOptions": {
     "paths": {
       "@gedatou/cadenza-ui/*": ["./src/*"]
-    }
+    },
+    // The vendored-sources test reads the filesystem. Ambient @types discovery does
+    // not reach node's under pnpm's isolated layout, so name it.
+    "types": ["node"]
   },
   "include": ["src", "test", "tsdown.config.ts"]
 }
