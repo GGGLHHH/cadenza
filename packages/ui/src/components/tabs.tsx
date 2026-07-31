@@ -2,16 +2,16 @@
 
 import type { ComponentProps, ReactElement } from 'react'
 import type { TabListState } from 'react-aria-components'
-import { cn } from '@gedatou/cadenza-ui/lib/utils'
+import { Children, isValidElement, use, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { TabListStateContext, TabsContext } from 'react-aria-components'
+import { cn } from '#lib/utils'
 import {
   Tabs,
   TabsContent,
   TabsList,
   tabsListVariants,
   TabsTrigger,
-} from '@gedatou/cadenza-ui/primitives/tabs'
-import { Children, isValidElement, use, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { TabListStateContext, TabsContext } from 'react-aria-components'
+} from '#primitives/tabs'
 
 /**
  * The published Tabs family.

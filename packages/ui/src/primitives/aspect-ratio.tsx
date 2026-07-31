@@ -1,4 +1,4 @@
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
+import { cn } from "#lib/utils"
 
 function AspectRatio({
   ratio,

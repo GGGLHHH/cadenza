@@ -6,7 +6,7 @@ import {
   TextArea as TextareaPrimitive,
 } from "react-aria-components"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
+import { cn } from "#lib/utils"
 
 function Textarea({
   className,

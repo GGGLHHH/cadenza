@@ -19,17 +19,17 @@ import {
   type SeparatorProps,
 } from "react-aria-components"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
+import { cn } from "#lib/utils"
 import {
   Dialog,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@gedatou/cadenza-ui/primitives/dialog"
+} from "#primitives/dialog"
 import {
   InputGroup,
   InputGroupAddon,
-} from "@gedatou/cadenza-ui/primitives/input-group"
+} from "#primitives/input-group"
 import { IconSearch, IconCheck } from "@tabler/icons-react"
 
 function Command({

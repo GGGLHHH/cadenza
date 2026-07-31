@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
+import { cn } from "#lib/utils"
 
 function Avatar({
   className,

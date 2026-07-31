@@ -5,8 +5,8 @@ import useEmblaCarousel, {
   type UseEmblaCarouselType,
 } from "embla-carousel-react"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { Button } from "@gedatou/cadenza-ui/primitives/button"
+import { cn } from "#lib/utils"
+import { Button } from "#primitives/button"
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react"
 
 type CarouselApi = UseEmblaCarouselType[1]

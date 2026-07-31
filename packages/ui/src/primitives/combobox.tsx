@@ -32,14 +32,14 @@ import {
   type TagProps,
 } from "react-aria-components"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { Button } from "@gedatou/cadenza-ui/primitives/button"
+import { cn } from "#lib/utils"
+import { Button } from "#primitives/button"
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from "@gedatou/cadenza-ui/primitives/input-group"
+} from "#primitives/input-group"
 import { IconChevronDown, IconX, IconCheck } from "@tabler/icons-react"
 
 function ComboboxValue<T>({ ...props }: ComboBoxValueProps<T>) {

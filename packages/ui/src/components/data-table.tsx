@@ -3,16 +3,6 @@
 import type { ComponentProps, CSSProperties, ReactElement, ReactNode } from 'react'
 import type { Key, Selection, SortDescriptor } from 'react-aria-components'
 import type { ScrollAreaScrollbars } from './scroll-area'
-import { cn } from '@gedatou/cadenza-ui/lib/utils'
-import { Button } from '@gedatou/cadenza-ui/primitives/button'
-import { Checkbox } from '@gedatou/cadenza-ui/primitives/checkbox'
-import {
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@gedatou/cadenza-ui/primitives/table'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconChevronDown, IconChevronUp, IconSelector } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -22,6 +12,16 @@ import {
   Table,
   TableLoadMoreItem,
 } from 'react-aria-components'
+import { cn } from '#lib/utils'
+import { Button } from '#primitives/button'
+import { Checkbox } from '#primitives/checkbox'
+import {
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '#primitives/table'
 import { ScrollArea } from './scroll-area'
 
 /**

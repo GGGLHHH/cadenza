@@ -4,7 +4,7 @@ import {
   type CheckboxProps,
 } from "react-aria-components"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
+import { cn } from "#lib/utils"
 import { IconCheck } from "@tabler/icons-react"
 
 function Checkbox({ className, children, ...props }: CheckboxProps) {

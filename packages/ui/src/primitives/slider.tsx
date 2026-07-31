@@ -6,7 +6,7 @@ import {
   type SliderProps as SliderPrimitiveProps,
 } from "react-aria-components"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
+import { cn } from "#lib/utils"
 
 type SliderValue = number | number[]
 type SliderProps<T extends SliderValue = SliderValue> = Omit<

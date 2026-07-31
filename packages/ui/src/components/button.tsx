@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react'
-import { Button, buttonVariants, LinkButton } from '@gedatou/cadenza-ui/primitives/button'
+import { Button, buttonVariants, LinkButton } from '#primitives/button'
 
 /**
  * The published Button.

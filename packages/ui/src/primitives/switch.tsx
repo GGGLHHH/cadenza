@@ -4,7 +4,7 @@ import {
   type SwitchProps as SwitchPrimitiveProps,
 } from "react-aria-components"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
+import { cn } from "#lib/utils"
 
 function Switch({
   className,

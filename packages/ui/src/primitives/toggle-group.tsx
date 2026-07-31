@@ -9,8 +9,8 @@ import {
   type ToggleButtonProps,
 } from "react-aria-components"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { toggleVariants } from "@gedatou/cadenza-ui/primitives/toggle"
+import { cn } from "#lib/utils"
+import { toggleVariants } from "#primitives/toggle"
 
 const ToggleGroupContext = React.createContext<
   VariantProps<typeof toggleVariants> & {

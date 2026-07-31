@@ -17,7 +17,7 @@ import {
 } from "react-aria-components"
 import { createPortal } from "react-dom"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
+import { cn } from "#lib/utils"
 import { IconCheck, IconChevronRight } from "@tabler/icons-react"
 
 function ContextMenu({

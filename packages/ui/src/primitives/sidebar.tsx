@@ -7,19 +7,19 @@ import {
   type LinkProps,
 } from "react-aria-components"
 
-import { useIsMobile } from "@gedatou/cadenza-ui/hooks/use-mobile"
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { Button } from "@gedatou/cadenza-ui/primitives/button"
-import { Input } from "@gedatou/cadenza-ui/primitives/input"
-import { Separator } from "@gedatou/cadenza-ui/primitives/separator"
+import { useIsMobile } from "#hooks/use-mobile"
+import { cn } from "#lib/utils"
+import { Button } from "#primitives/button"
+import { Input } from "#primitives/input"
+import { Separator } from "#primitives/separator"
 import {
   Sheet,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@gedatou/cadenza-ui/primitives/sheet"
-import { Skeleton } from "@gedatou/cadenza-ui/primitives/skeleton"
-import { Tooltip, TooltipTrigger } from "@gedatou/cadenza-ui/primitives/tooltip"
+} from "#primitives/sheet"
+import { Skeleton } from "#primitives/skeleton"
+import { Tooltip, TooltipTrigger } from "#primitives/tooltip"
 import { IconLayoutSidebar } from "@tabler/icons-react"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"

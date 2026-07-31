@@ -16,7 +16,7 @@ import {
   type MenuSectionProps as MenuSectionPrimitiveProps,
 } from "react-aria-components"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
+import { cn } from "#lib/utils"
 import { IconCheck, IconChevronRight } from "@tabler/icons-react"
 
 function DropdownMenuTrigger({

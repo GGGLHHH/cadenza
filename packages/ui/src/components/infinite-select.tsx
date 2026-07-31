@@ -3,9 +3,6 @@
 import type { ComponentProps, CSSProperties, ReactElement, ReactNode } from 'react'
 import type { Selection } from 'react-aria-components'
 import type { ScrollAreaScrollbars } from './scroll-area'
-import { cn } from '@gedatou/cadenza-ui/lib/utils'
-import { Button } from '@gedatou/cadenza-ui/primitives/button'
-import { Separator } from '@gedatou/cadenza-ui/primitives/separator'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck, IconSearch } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -18,6 +15,9 @@ import {
   ListBoxLoadMoreItem,
   SearchField,
 } from 'react-aria-components'
+import { cn } from '#lib/utils'
+import { Button } from '#primitives/button'
+import { Separator } from '#primitives/separator'
 import { ScrollArea } from './scroll-area'
 
 /**

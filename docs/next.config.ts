@@ -13,17 +13,13 @@ const withMDX = createMDX()
  * leaving the production build pointed at dist, so the docs site stays the
  * smoke test for what actually gets published.
  *
- * The wildcard is not a third package — `packages/ui/src` self-references its
- * own internals (`@gedatou/cadenza-ui/lib/utils`, `/primitives/*`, `/hooks/*`),
- * which resolve through that package's tsconfig `paths` and are absent from its
- * `exports`. Reading source means resolving them here too. It does not swallow
- * the published `./styles.css` subpath: that import is a CSS `@import`, which
- * `@tailwindcss/postcss` resolves before Turbopack ever sees it.
+ * Only the two published entry points need an entry: the packages' internal
+ * cross-references go through Node's `imports` field (`#lib/utils`,
+ * `#primitives/*`), which Turbopack resolves on its own.
  */
 const dev = process.env.NODE_ENV === 'development'
 const sourceAlias = {
   '@gedatou/cadenza-ui': '../packages/ui/src/index.ts',
-  '@gedatou/cadenza-ui/*': '../packages/ui/src/*',
   '@gedatou/cadenza-utils': '../packages/utils/src/index.ts',
 }
 

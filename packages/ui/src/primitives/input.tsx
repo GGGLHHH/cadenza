@@ -4,7 +4,7 @@ import {
   Input as InputPrimitive,
 } from "react-aria-components"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
+import { cn } from "#lib/utils"
 
 function Input({
   className,

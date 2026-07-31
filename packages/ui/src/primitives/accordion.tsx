@@ -11,7 +11,7 @@ import {
   type DisclosureProps,
 } from "react-aria-components"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
+import { cn } from "#lib/utils"
 import { IconChevronDown, IconChevronUp } from "@tabler/icons-react"
 
 function Accordion({ className, ...props }: DisclosureGroupProps) {

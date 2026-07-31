@@ -2,7 +2,7 @@
   "name": "@gedatou/cadenza-ui",
   "type": "module",
   "version": "0.0.0",
-  "description": "Accessible React components — React Aria behaviour, shadcn aria-nova styling",
+  "description": "Accessible React components \u2014 React Aria behaviour, shadcn aria-nova styling",
   "license": "MIT",
   "homepage": "https://github.com/GGGLHHH/cadenza#readme",
   "repository": {
@@ -22,6 +22,11 @@
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
+  },
+  "imports": {
+    "#lib/*": "./src/lib/*.ts",
+    "#hooks/*": "./src/hooks/*.ts",
+    "#primitives/*": "./src/primitives/*.tsx"
   },
   "exports": {
     ".": "./dist/index.mjs",

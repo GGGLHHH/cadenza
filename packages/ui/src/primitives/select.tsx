@@ -20,12 +20,12 @@ import {
   type SelectValueProps,
 } from "react-aria-components"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
+import { cn } from "#lib/utils"
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-} from "@gedatou/cadenza-ui/primitives/input-group"
+} from "#primitives/input-group"
 import { IconSelector, IconSearch, IconCheck } from "@tabler/icons-react"
 
 function Select<T extends object, M extends "single" | "multiple" = "single">({

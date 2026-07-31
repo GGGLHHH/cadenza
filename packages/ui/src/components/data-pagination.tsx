@@ -1,20 +1,6 @@
 'use client'
 
 import type { Dispatch, ReactElement, ReactNode, SetStateAction } from 'react'
-import { cn } from '@gedatou/cadenza-ui/lib/utils'
-import { Button } from '@gedatou/cadenza-ui/primitives/button'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-} from '@gedatou/cadenza-ui/primitives/pagination'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@gedatou/cadenza-ui/primitives/select'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import {
   IconChevronLeft,
@@ -23,6 +9,20 @@ import {
   IconChevronsRight,
 } from '@tabler/icons-react'
 import { useEffect } from 'react'
+import { cn } from '#lib/utils'
+import { Button } from '#primitives/button'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+} from '#primitives/pagination'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '#primitives/select'
 
 /**
  * Offset pagination bar: summary on the start side, controls on the end side.

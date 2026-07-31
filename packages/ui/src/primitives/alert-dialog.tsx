@@ -10,8 +10,8 @@ import {
   type ModalOverlayProps as ModalOverlayPrimitiveProps,
 } from "react-aria-components"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { Button } from "@gedatou/cadenza-ui/primitives/button"
+import { cn } from "#lib/utils"
+import { Button } from "#primitives/button"
 
 function AlertDialogTrigger({ ...props }: AlertDialogTriggerPrimitiveProps) {
   return (

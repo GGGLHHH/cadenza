@@ -3,10 +3,10 @@
 import type { ReactElement, ReactNode } from 'react'
 import type { ControllableSelectionProps, InfiniteSelectActions, InfiniteSelectAdapterProps, InfiniteSelectItemRenderParams, InfiniteSelectOption } from './infinite-select'
 import type { ScrollAreaScrollbars } from './scroll-area'
-import { cn } from '@gedatou/cadenza-ui/lib/utils'
-import { Popover, PopoverTrigger } from '@gedatou/cadenza-ui/primitives/popover'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { cn } from '#lib/utils'
+import { Popover, PopoverTrigger } from '#primitives/popover'
 import {
   InfiniteSelect,
   InfiniteSelectActionsProvider,

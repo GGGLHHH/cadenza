@@ -8,8 +8,8 @@ import {
   useMessageScrollerVisibility,
 } from "@shadcn/react/message-scroller"
 
-import { cn } from "@gedatou/cadenza-ui/lib/utils"
-import { Button } from "@gedatou/cadenza-ui/primitives/button"
+import { cn } from "#lib/utils"
+import { Button } from "#primitives/button"
 import { IconArrowDown } from "@tabler/icons-react"
 
 function MessageScrollerProvider(
