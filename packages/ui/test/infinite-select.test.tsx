@@ -27,6 +27,17 @@ beforeAll(() => {
     }
   })
   Element.prototype.scrollIntoView = vi.fn()
+  // TanStack Virtual sizes its window from offsetWidth/offsetHeight, which are
+  // always 0 in layout-less jsdom — every row would be culled. Pretend to be a
+  // viewport.
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+    configurable: true,
+    get: () => 256,
+  })
+  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+    configurable: true,
+    get: () => 288,
+  })
 })
 
 function getOption(item: { id: string, label: string }): InfiniteSelectOption {
@@ -158,6 +169,31 @@ describe('infiniteSelect selection', () => {
 
     rerender(<InfiniteSelect getOption={getOption} items={items} value={undefined} />)
     expect(screen.getByRole('option', { name: 'Alice', selected: false })).not.toBeNull()
+  })
+
+  it('virtualizes: only the window plus overscan reaches the DOM', () => {
+    const many = Array.from({ length: 1000 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
+    render(<InfiniteSelect getOption={getOption} items={many} virtualized />)
+    const rendered = screen.getAllByRole('option').length
+    // 256px viewport / 34px stride ≈ 8 visible + 12 overscan, far below 1000.
+    expect(rendered).toBeGreaterThan(5)
+    expect(rendered).toBeLessThan(60)
+  })
+
+  it('renderItem receives the loaded-list index in both render paths', () => {
+    const many = Array.from({ length: 3 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
+    const renderWithIndex = ({ option, index }: { option: InfiniteSelectOption, index: number }): string => `#${index} ${String(option.label)}`
+
+    const { unmount } = render(
+      <InfiniteSelect getOption={getOption} items={many} renderItem={renderWithIndex} />,
+    )
+    expect(screen.getByText('#2 Item 2')).not.toBeNull()
+    unmount()
+
+    render(
+      <InfiniteSelect getOption={getOption} items={many} renderItem={renderWithIndex} virtualized />,
+    )
+    expect(screen.getByText('#2 Item 2')).not.toBeNull()
   })
 
   it('multi: marks selected options with aria-selected', () => {

@@ -3,12 +3,12 @@ title: InfiniteSelect
 description: 可搜索、无限滚动的选择器 —— React Aria 行为 + 组合式插槽
 ---
 
-import { SingleDemo, MultiDemo, ErrorDemo } from '../../../components/InfiniteSelectDemo'
+import { SingleDemo, MultiDemo, ErrorDemo, VirtualizedDemo, RenderItemDemo } from '../../../components/InfiniteSelectDemo'
 
 可搜索、游标分页无限滚动的选择器家族。行为全部由 React Aria 承担：`Autocomplete`
 用虚拟焦点把搜索框和列表接起来（输入框保持 DOM 焦点，方向键在列表里移动），
-`ListBox` 提供选择语义、方向键 / Home / End / typeahead，`ListBoxLoadMoreItem`
-在哨兵接近视口时触发 `onLoadMore`。
+`ListBox` 提供选择语义、方向键 / Home / End / typeahead。大数据集可用
+`virtualized` 开启 TanStack Virtual 行虚拟化，见下文。
 
 下面的 demo 用 Promise 模拟异步接口（300–500ms 随机延时）。
 
@@ -79,6 +79,30 @@ function PersonPicker() {
 
 多选的 `onChange(items, ids)` 里 **`ids` 是权威全集**：预选 id 落在未加载的页上时，
 它有 id 没对象，`items` 只回显已加载的那些。持久化请存 `ids`。
+
+## 虚拟化
+
+默认情况下，加载了多少行就渲染多少行。开启 `virtualized` 后行渲染交给
+TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外少量预渲染的行
+（overscan）存在于 DOM**——加载一万行，DOM 里也始终只有几十个节点。
+下面的 demo 一次拉满 10000 条（无翻页）：
+
+<VirtualizedDemo client:load />
+
+```tsx
+<InfiniteCombobox<Person> virtualized rowHeight={32} … />
+```
+
+开启前要知道的三个取舍：
+
+1. **行高固定**为 `rowHeight`（默认 32px）——虚拟化靠固定行高换取零测量、零跳动；
+   自定义 `renderItem` 比默认行高时必须同步调大它。
+2. **键盘和读屏的作用域变窄**：React Aria 只认识 DOM 里的那几十行，所以打字定位
+   （typeahead）、Home / End 只在这几十行内生效，读屏播报的列表总数也是这个数。
+3. 因此**几百行以内不建议开**——不开时 React Aria 认识完整列表，上面这些能力
+   都是全量的，而几百行的 DOM 根本不构成性能问题。
+
+加载下一页的触发时机与非虚拟模式一致（提前约 1.5 个视口预取），无需关心。
 
 ## 状态插槽
 
@@ -151,21 +175,71 @@ function usePersonList(query: string | undefined): InfiniteSelectAdapterProps<Pe
 ## 自定义行内容
 
 `renderItem` 替换的是行**内容**，不是行本身 —— `ListBoxItem` 外壳保留，
-键盘导航和选中语义不受影响：
+键盘导航和选中语义不受影响。签名：
+
+```ts
+renderItem?: (params: InfiniteSelectItemRenderParams<T>) => ReactNode
+
+interface InfiniteSelectItemRenderParams<T> {
+  /** 这一行对应的原始数据对象。 */
+  item: T
+  /** getOption(item) 的结果:id / label / textValue / disabled。 */
+  option: InfiniteSelectOption
+  /** 行在当前已加载列表中的位置,从 0 开始。语义见下方说明。 */
+  index: number
+  /** 该行当前是否选中。 */
+  selected: boolean
+  /** 面板是否处于多选模式(用于决定要不要自绘勾选框)。 */
+  isMultiple: boolean
+}
+```
+
+提供 `renderItem` 后默认行内容整体不再渲染——包括多选的勾选框和单选的对勾，
+需要这些视觉时用 `selected` / `isMultiple` 自行绘制：
+
+<RenderItemDemo client:load />
 
 ```tsx
 <InfiniteCombobox<Person>
-  renderItem={({ item, selected }) => (
+  renderItem={({ item, index, selected }) => (
     <>
+      <span className="w-8 text-right text-xs tabular-nums text-muted-foreground">
+        {index + 1}.
+      </span>
       <span className="flex-1 truncate">{item.name}</span>
       <span className="text-xs text-muted-foreground">{item.role}</span>
+      {selected && <span className="text-xs text-primary">✓</span>}
     </>
   )}
   {/* … */}
 />
 ```
 
+`index` 是这一行在**当前已加载列表**里的位置，从 0 开始，用来做序号、斑马纹这类
+「第几行」的展示。两点注意：
+
+- 它不是稳定标识。搜索或翻页之后，同一条数据的 `index` 会变——要唯一标识一行，
+  用 `option.id`。
+- 开了 `virtualized` 就别再用 CSS 的 `nth-child` 做奇偶条纹。那时 DOM 里只有
+  滚动位置附近的几十行，`nth-child` 数的是这几十行的相对位置，一滚动奇偶就错乱；
+  `index` 数的是完整列表的位置，不受滚动影响。
+
 `label` 不是纯字符串时，请在 `getOption` 里补 `textValue`，typeahead 靠它检索。
+
+## 导出的类型
+
+除组件外，`@gedatou/cadenza-ui` 还导出以下类型，供业务层封装和数据适配器使用：
+
+| 类型 | 说明 |
+| --- | --- |
+| `InfiniteSelectOption` | `getOption` 的返回形状：`{ id, label, textValue?, disabled? }` |
+| `InfiniteSelectItemRenderParams<T>` | `renderItem` 的参数，见上节 |
+| `InfiniteSelectAdapterProps<T>` | `list` prop 的契约——数据适配器要实现的形状，见「数据适配器」 |
+| `ControllableSelectionProps<T>` | 选择相关 props 的判别联合（单选 `value?: string` / 多选 `value?: string[]`，`onChange` 签名随之切换） |
+| `InfiniteSelectProps<T>` / `InfiniteComboboxProps<T>` | 两个组件的完整 props，业务层包一层时直接复用 |
+| `InfiniteSelectActions<T>` | footer 内 `useInfiniteSelectActions()` 的返回：`selectedItems` / `selectedIds` / `clear` / `close` |
+| `InfiniteComboboxState<T>` / `InfiniteComboboxStateOptions` | `useInfiniteComboboxState` 的返回值与入参 |
+| `InfiniteComboboxChildren<T>` | trigger 的类型：`ReactElement` 或接收状态的函数 |
 
 ## 键盘交互
 
@@ -193,6 +267,8 @@ function usePersonList(query: string | undefined): InfiniteSelectAdapterProps<Pe
 | `closeOnScroll` | `boolean` | `false` | 页面滚动时关闭弹层（原生 select 感）；默认弹层随锚点滚动、保持打开 |
 | `slots` | `ReactNode` | — | 状态插槽 + footer |
 | `loadingMoreIndicator` | `ReactNode` | — | 列表末尾的加载更多指示（滚动流内） |
-| `renderItem` | `(params) => ReactNode` | — | 自定义行内容 |
+| `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | 替换行内容（`ListBoxItem` 外壳保留），参数见「自定义行内容」 |
 | `maxListHeight` | `number` | `256` | 列表最大高度 |
+| `virtualized` | `boolean` | `false` | TanStack Virtual 行虚拟化，大数据集用 |
+| `rowHeight` | `number` | `32` | 虚拟化行的固定高度；自定义 `renderItem` 更高时需同步调整 |
 | `debounceMs`（state 上） | `number` | `300` | 搜索 → 请求的防抖 |

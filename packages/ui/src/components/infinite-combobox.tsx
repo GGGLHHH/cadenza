@@ -162,6 +162,10 @@ interface InfiniteComboboxCommonProps<T> {
    */
   'slots'?: ReactNode
   'maxListHeight'?: number
+  /** Virtualize rows for large loaded sets. See InfiniteSelect. */
+  'virtualized'?: boolean
+  /** Fixed row height for the virtualized list. See InfiniteSelect. */
+  'rowHeight'?: number
   /** Single only: close the popover after picking. Defaults to true. */
   'closeOnSelect'?: boolean
   /**
@@ -192,6 +196,8 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     getOption,
     list,
     maxListHeight,
+    virtualized,
+    rowHeight,
     renderItem,
     searchPlaceholder,
     loadingMoreIndicator,
@@ -328,6 +334,8 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     ...list,
     getOption,
     maxListHeight,
+    virtualized,
+    rowHeight,
     renderItem,
     searchPlaceholder,
     'className': cn('rounded-none border-0 shadow-none', selectClassName),

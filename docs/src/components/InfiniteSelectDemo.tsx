@@ -65,7 +65,7 @@ const PEOPLE: Person[] = Array.from({ length: TOTAL }, (_, index) => ({
   role: ROLES[index % ROLES.length]!,
 }))
 
-const PAGE_SIZE = 8
+const DEFAULT_PAGE_SIZE = 20
 
 function delay(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200))
@@ -74,14 +74,15 @@ function delay(): Promise<void> {
 async function fetchPeople(options: {
   cursor?: number
   query?: string
+  pageSize?: number
 }): Promise<{ items: Person[], nextCursor?: number }> {
   await delay()
-  const { cursor = 0, query } = options
+  const { cursor = 0, query, pageSize = DEFAULT_PAGE_SIZE } = options
   const filtered = query
     ? PEOPLE.filter(person => person.name.toLowerCase().includes(query.toLowerCase()))
     : PEOPLE
-  const items = filtered.slice(cursor, cursor + PAGE_SIZE)
-  const next = cursor + PAGE_SIZE
+  const items = filtered.slice(cursor, cursor + pageSize)
+  const next = cursor + pageSize
   return { items, nextCursor: next < filtered.length ? next : undefined }
 }
 
@@ -90,7 +91,7 @@ async function fetchPeople(options: {
 
 function useFakeInfiniteList(
   query: string | undefined,
-  { failFirst = false }: { failFirst?: boolean } = {},
+  { failFirst = false, pageSize }: { failFirst?: boolean, pageSize?: number } = {},
 ): InfiniteSelectAdapterProps<Person> {
   const [items, setItems] = useState<Person[]>([])
   const [nextCursor, setNextCursor] = useState<number | undefined>(undefined)
@@ -115,13 +116,13 @@ function useFakeInfiniteList(
       setIsLoading(false)
       return
     }
-    const page = await fetchPeople({ query })
+    const page = await fetchPeople({ query, pageSize })
     if (requestId !== requestIdRef.current)
       return
     setItems(page.items)
     setNextCursor(page.nextCursor)
     setIsLoading(false)
-  }, [failFirst, query])
+  }, [failFirst, pageSize, query])
 
   useEffect(() => {
     void loadFirstPage()
@@ -132,13 +133,13 @@ function useFakeInfiniteList(
       return
     const requestId = requestIdRef.current
     setIsFetchingNextPage(true)
-    const page = await fetchPeople({ cursor: nextCursor, query })
+    const page = await fetchPeople({ cursor: nextCursor, query, pageSize })
     if (requestId !== requestIdRef.current)
       return
     setItems(current => [...current, ...page.items])
     setNextCursor(page.nextCursor)
     setIsFetchingNextPage(false)
-  }, [isFetchingNextPage, nextCursor, query])
+  }, [isFetchingNextPage, nextCursor, pageSize, query])
 
   return {
     items,
@@ -244,6 +245,67 @@ export function ErrorDemo(): ReactElement {
         state={state}
       >
         <Button variant="outline">首次加载会失败</Button>
+      </InfiniteCombobox>
+    </div>
+  )
+}
+
+export function VirtualizedDemo(): ReactElement {
+  const state = useInfiniteComboboxState()
+  // 一页直接拉全量 10000 条:没有翻页,纯粹考验渲染 —— 虚拟化让 DOM 始终只有
+  // 可视窗口加 overscan 的几十个节点。
+  const list = useFakeInfiniteList(state.queryValue, { pageSize: 10000 })
+  const [picked, setPicked] = useState<Person | undefined>(undefined)
+
+  return (
+    <div className="not-content">
+      <InfiniteCombobox<Person>
+        getOption={getOption}
+        list={list}
+        onChange={setPicked}
+        searchPlaceholder="在 10000 条里搜索…"
+        slots={demoSlots}
+        state={state}
+        virtualized
+      >
+        <Button variant="outline">{picked ? picked.name : '虚拟化:一次载入 10000 条'}</Button>
+      </InfiniteCombobox>
+    </div>
+  )
+}
+
+export function RenderItemDemo(): ReactElement {
+  const state = useInfiniteComboboxState()
+  const list = useFakeInfiniteList(state.queryValue)
+  const [picked, setPicked] = useState<Person | undefined>(undefined)
+
+  return (
+    <div className="not-content">
+      <InfiniteCombobox<Person>
+        getOption={getOption}
+        list={list}
+        onChange={setPicked}
+        loadingMoreIndicator="加载更多…"
+        searchPlaceholder="搜索作曲家…"
+        slots={demoSlots}
+        state={state}
+        // renderItem 替换整行内容:默认的对勾也没了,选中态用 selected 自绘
+        renderItem={({ item, index, selected }) => (
+          <>
+            <span className="
+              text-end text-xs text-muted-foreground tabular-nums inline-8
+            "
+            >
+              {index + 1}
+              .
+            </span>
+            <span className="flex-1 truncate">{item.name}</span>
+            <span className="text-xs text-muted-foreground">{item.role}</span>
+            {selected && <span className="text-xs text-primary">✓</span>}
+          </>
+        )}
+      >
+        <Button variant="outline">{picked ? picked.name : '自定义行内容'}</Button>
       </InfiniteCombobox>
     </div>
   )

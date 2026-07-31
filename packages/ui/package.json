@@ -49,6 +49,7 @@
   "dependencies": {
     "@gedatou/cadenza-utils": "workspace:*",
     "@tabler/icons-react": "catalog:ui",
+    "@tanstack/react-virtual": "catalog:ui",
     "class-variance-authority": "catalog:ui",
     "clsx": "catalog:ui",
     "react-aria-components": "catalog:ui",

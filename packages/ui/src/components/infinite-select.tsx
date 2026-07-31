@@ -1,13 +1,14 @@
 'use client'
 
-import type { ComponentProps, ReactElement, ReactNode } from 'react'
+import type { ComponentProps, CSSProperties, ReactElement, ReactNode } from 'react'
 import type { Key, Selection } from 'react-aria-components'
 import { cn } from '@gedatou/cadenza-ui/lib/utils'
 import { Button } from '@gedatou/cadenza-ui/primitives/button'
 import { ScrollArea } from '@gedatou/cadenza-ui/primitives/scroll-area'
 import { Separator } from '@gedatou/cadenza-ui/primitives/separator'
 import { IconCheck, IconSearch } from '@tabler/icons-react'
-import { createContext, use, useRef } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { createContext, use, useEffect, useRef } from 'react'
 import {
   Autocomplete,
   Input,
@@ -21,9 +22,10 @@ import {
  * Searchable infinite-scrolling list panel, single or multi select.
  *
  * React Aria owns the behaviour: `Autocomplete` wires the search input to the
- * list with virtual focus (arrow keys navigate while the input keeps DOM focus),
- * `ListBox` owns selection semantics and typeahead, and `ListBoxLoadMoreItem`
- * fires `onLoadMore` as its sentinel approaches the viewport. The panel itself
+ * list with virtual focus (arrow keys navigate while the input keeps DOM focus)
+ * and `ListBox` owns selection semantics. Rows are virtualized with TanStack
+ * Virtual — only the visible window plus overscan reaches the DOM, and
+ * `onLoadMore` fires as the window nears the loaded tail. The panel itself
  * renders zero copy — state messages come in through the slot children
  * (`InfiniteSelectEmpty` / `Loading` / `Error`), so i18n stays in
  * the caller's layer.
@@ -44,6 +46,13 @@ export interface InfiniteSelectOption {
 export interface InfiniteSelectItemRenderParams<T> {
   item: T
   option: InfiniteSelectOption
+  /**
+   * Position in the currently loaded (server-filtered) list — a display
+   * ordinal for ranks and zebra striping, not an identity: searching reshuffles
+   * it. Identity is `option.id`. Provided because CSS ordinal selectors cannot
+   * work across a virtualized window.
+   */
+  index: number
   selected: boolean
   isMultiple: boolean
 }
@@ -91,6 +100,20 @@ interface InfiniteSelectCommonProps<T> {
   'loadingMoreIndicator'?: ReactNode
 
   'maxListHeight'?: number
+  /**
+   * Virtualize rows with TanStack Virtual: only the visible window plus
+   * overscan reaches the DOM. Off by default — turn on for large loaded sets
+   * (thousands of rows). Trade-offs while on: rows are fixed-height
+   * (`rowHeight`), and typeahead / Home / End / aria-setsize operate on the
+   * rendered window instead of the loaded set.
+   */
+  'virtualized'?: boolean
+  /**
+   * Fixed pixel height of every virtualized row. Heights come from this
+   * number, never from DOM measurement, so a custom `renderItem` taller than
+   * the default must set it accordingly. Ignored when `virtualized` is off.
+   */
+  'rowHeight'?: number
   'className'?: string
   /**
    * The single slot channel: state slots (`InfiniteSelectEmpty` / `Loading` /
@@ -216,6 +239,8 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     searchPlaceholder = 'Search',
     loadingMoreIndicator,
     maxListHeight = 256,
+    virtualized = false,
+    rowHeight = 32,
     className,
     children,
   } = props
@@ -284,6 +309,98 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
   const isEmpty = !isLoading && !isError && items.length === 0
   const hasItems = !isLoading && !isError && items.length > 0
 
+  // When virtualized, TanStack Virtual owns windowing and positioning while
+  // RAC keeps the semantics. Rows are uniform (rowHeight): no DOM measurement,
+  // no correction pass. The generous overscan keeps arrow-key navigation
+  // fluid — focus advancing into the overscan scrolls, which shifts the
+  // window before focus can reach its edge. The hook must run unconditionally
+  // (rules of hooks); count 0 keeps it inert when virtualization is off.
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const virtualizer = useVirtualizer({
+    count: virtualized ? items.length : 0,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => rowHeight,
+    getItemKey: index => getOption(items[index]!).id,
+    gap: 2,
+    paddingStart: 4,
+    paddingEnd: 4,
+    overscan: 12,
+    initialRect: { width: 288, height: maxListHeight },
+  })
+  const virtualItems = virtualizer.getVirtualItems()
+
+  // Virtualized load-more, the TanStack way: fire when the overscan window
+  // reaches the last loaded row (~1.5 viewports ahead — the same prefetch feel
+  // as the RAC sentinel used in the non-virtual path). Adapters are expected
+  // to dedupe repeat calls, as react-query's fetchNextPage does.
+  const lastVirtualIndex = virtualItems.at(-1)?.index
+  useEffect(() => {
+    if (!virtualized || !hasNextPage || isFetchingNextPage || lastVirtualIndex === undefined)
+      return
+    if (lastVirtualIndex >= items.length - 1)
+      onLoadMore?.()
+  }, [virtualized, hasNextPage, isFetchingNextPage, items.length, lastVirtualIndex, onLoadMore])
+
+  const renderOption = (item: T, index: number, style?: CSSProperties): ReactElement => {
+    const option = getOption(item)
+    return (
+      <ListBoxItem
+        key={option.id}
+        style={style}
+        className={cn(
+          `
+            flex cursor-default items-center gap-2 rounded-lg px-2 py-1.5
+            text-sm/5 text-popover-foreground transition-colors outline-none
+            select-none
+          `,
+          `
+            data-focused:bg-muted
+            data-hovered:bg-muted
+            data-pressed:translate-y-px
+            data-selected:bg-muted/50
+            data-selected:data-focused:bg-muted
+            data-selected:data-hovered:bg-muted
+          `,
+          `data-disabled:cursor-not-allowed data-disabled:opacity-50`,
+        )}
+        data-slot="infinite-select-item"
+        id={option.id}
+        isDisabled={option.disabled}
+        textValue={option.textValue ?? (typeof option.label === 'string' ? option.label : option.id)}
+      >
+        {({ isSelected }) => renderItem
+          ? renderItem({ item, option, index, selected: isSelected, isMultiple })
+          : (
+              <>
+                {isMultiple && (
+                  <span
+                    aria-hidden
+                    data-slot="infinite-select-checkbox"
+                    className={cn(
+                      `
+                        flex shrink-0 items-center justify-center rounded-[4px]
+                        border transition-colors block-4 inline-4
+                      `,
+                      isSelected
+                        ? `border-primary bg-primary text-primary-foreground`
+                        : `border-input bg-background text-transparent`,
+                    )}
+                  >
+                    {isSelected && (
+                      <IconCheck className="block-3 inline-3" />
+                    )}
+                  </span>
+                )}
+                <span className="flex-1 truncate min-inline-0">{option.label}</span>
+                {!isMultiple && isSelected && (
+                  <IconCheck className="shrink-0 text-primary block-4 inline-4" />
+                )}
+              </>
+            )}
+      </ListBoxItem>
+    )
+  }
+
   return (
     <div
       className={cn(
@@ -324,89 +441,32 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
 
           {hasItems && (
             <ScrollArea
+              ref={scrollRef}
               className="scroll-fade-y"
               style={{ maxHeight: maxListHeight }}
             >
               <ListBox
                 aria-label={ariaLabel ?? searchPlaceholder}
-                className="flex flex-col gap-0.5 p-1 outline-none"
                 data-slot="infinite-select-list"
                 selectionMode={isMultiple ? 'multiple' : 'single'}
+                className={cn(
+                  'outline-none',
+                  virtualized ? 'relative' : 'flex flex-col gap-0.5 p-1',
+                )}
+                style={virtualized ? { height: virtualizer.getTotalSize() } : undefined}
                 {...(selectedKeys ? { selectedKeys } : { defaultSelectedKeys })}
                 onSelectionChange={handleSelectionChange}
               >
-                {items.map((item) => {
-                  const option = getOption(item)
-                  return (
-                    <ListBoxItem
-                      key={option.id}
-                      className={cn(
-                        `
-                          flex cursor-default items-center gap-2 rounded-lg px-2
-                          py-1.5 text-sm/5 text-popover-foreground
-                          transition-colors outline-none select-none inline-full
-                        `,
-                        `
-                          data-focused:bg-muted
-                          data-hovered:bg-muted
-                          data-pressed:translate-y-px
-                          data-selected:bg-muted/50
-                          data-selected:data-focused:bg-muted
-                          data-selected:data-hovered:bg-muted
-                        `,
-                        `
-                          data-disabled:cursor-not-allowed
-                          data-disabled:opacity-50
-                        `,
-                      )}
-                      data-slot="infinite-select-item"
-                      id={option.id}
-                      isDisabled={option.disabled}
-                      textValue={option.textValue ?? (typeof option.label === 'string' ? option.label : option.id)}
-                    >
-                      {({ isSelected }) => renderItem
-                        ? renderItem({ item, option, selected: isSelected, isMultiple })
-                        : (
-                            <>
-                              {isMultiple && (
-                                <span
-                                  aria-hidden
-                                  data-slot="infinite-select-checkbox"
-                                  className={cn(
-                                    `
-                                      flex shrink-0 items-center justify-center
-                                      rounded-[4px] border transition-colors
-                                      block-4 inline-4
-                                    `,
-                                    isSelected
-                                      ? `
-                                        border-primary bg-primary
-                                        text-primary-foreground
-                                      `
-                                      : `
-                                        border-input bg-background
-                                        text-transparent
-                                      `,
-                                  )}
-                                >
-                                  {isSelected && (
-                                    <IconCheck className="block-3 inline-3" />
-                                  )}
-                                </span>
-                              )}
-                              <span className="flex-1 truncate min-inline-0">{option.label}</span>
-                              {!isMultiple && isSelected && (
-                                <IconCheck className="
-                                  shrink-0 text-primary block-4 inline-4
-                                "
-                                />
-                              )}
-                            </>
-                          )}
-                    </ListBoxItem>
-                  )
-                })}
-                {hasNextPage && (
+                {virtualized
+                  ? virtualItems.map(virtualItem => renderOption(items[virtualItem.index]!, virtualItem.index, {
+                      position: 'absolute',
+                      top: 0,
+                      insetInline: 4,
+                      height: virtualItem.size,
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }))
+                  : items.map((item, index) => renderOption(item, index))}
+                {!virtualized && hasNextPage && (
                   <ListBoxLoadMoreItem
                     isLoading={isFetchingNextPage}
                     onLoadMore={onLoadMore ?? (() => {})}
@@ -420,6 +480,14 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
                   </ListBoxLoadMoreItem>
                 )}
               </ListBox>
+              {virtualized && isFetchingNextPage && loadingMoreIndicator !== undefined && (
+                <div
+                  className="py-1.5 text-center text-xs text-muted-foreground"
+                  data-slot="infinite-select-loading-more"
+                >
+                  {loadingMoreIndicator}
+                </div>
+              )}
             </ScrollArea>
           )}
         </Autocomplete>
