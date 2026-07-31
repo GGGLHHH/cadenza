@@ -8,6 +8,11 @@ description: 可搜索、无限滚动的选择器 —— React Aria 行为 + 组
 `ListBox` 提供选择语义、方向键 / Home / End / typeahead。大数据集可用
 `virtualized` 开启 TanStack Virtual 行虚拟化，见下文。
 
+分层也照 React Aria 的方式：底下是 **hooks 层**（状态与行为），中间是
+**组合式 parts**（context 接线、按书写顺序渲染），`InfiniteCombobox`
+是把这些一把组好的**便利层**。日常用便利层就够；要改结构时降到 parts
+层自由组合，见「[组合式架构与 hooks](#组合式架构与-hooks)」。
+
 每个 demo 下方都附完整源码（View Code 展开、右上角复制）；异步接口用 Promise
 模拟（300–500ms 随机延时），mock 数据源在 `demos/lib` 里。
 
@@ -168,8 +173,9 @@ function usePersonList(query: string | undefined): InfiniteSelectAdapterProps<Pe
 }
 ```
 
-搜索的分工：`searchValue` 是输入框的即时值，`queryValue` 是防抖 300ms 后的请求值
-（可用 `debounceMs` 调）。把 `state.queryValue` 传给适配器即可；关闭弹层后再次打开会自动清空搜索。
+搜索的分工：`inputValue` 是输入框的即时值（React Aria ComboBox 的同名概念），
+`queryValue` 是防抖 300ms 后的请求值（可用 `debounceMs` 调）。把
+`state.queryValue` 传给适配器即可；关闭弹层后再次打开会自动清空搜索。
 
 ## 自定义行内容
 
@@ -182,32 +188,32 @@ renderItem?: (params: InfiniteSelectItemRenderParams<T>) => ReactNode
 interface InfiniteSelectItemRenderParams<T> {
   /** 这一行对应的原始数据对象。 */
   item: T
-  /** getOption(item) 的结果:id / label / textValue / disabled。 */
+  /** getOption(item) 的结果:id / label / textValue / isDisabled。 */
   option: InfiniteSelectOption
   /** 行在当前已加载列表中的位置,从 0 开始。语义见下方说明。 */
   index: number
-  /** 该行当前是否选中。 */
-  selected: boolean
-  /** 面板是否处于多选模式(用于决定要不要自绘勾选框)。 */
-  isMultiple: boolean
+  /** 该行当前是否选中(React Aria render-prop 命名)。 */
+  isSelected: boolean
+  /** 面板的选择模式(用于决定要不要自绘勾选框)。 */
+  selectionMode: 'single' | 'multiple'
 }
 ```
 
 提供 `renderItem` 后默认行内容整体不再渲染——包括多选的勾选框和单选的对勾，
-需要这些视觉时用 `selected` / `isMultiple` 自行绘制：
+需要这些视觉时用 `isSelected` / `selectionMode` 自行绘制：
 
 <ComponentPreview name="infinite-select/render-item" />
 
 ```tsx
 <InfiniteCombobox<Person>
-  renderItem={({ item, index, selected }) => (
+  renderItem={({ item, index, isSelected }) => (
     <>
       <span className="w-8 text-right text-xs tabular-nums text-muted-foreground">
         {index + 1}.
       </span>
       <span className="flex-1 truncate">{item.name}</span>
       <span className="text-xs text-muted-foreground">{item.role}</span>
-      {selected && <span className="text-xs text-primary">✓</span>}
+      {isSelected && <span className="text-xs text-primary">✓</span>}
     </>
   )}
   {/* … */}
@@ -225,17 +231,57 @@ interface InfiniteSelectItemRenderParams<T> {
 
 `label` 不是纯字符串时，请在 `getOption` 里补 `textValue`，typeahead 靠它检索。
 
+## 组合式架构与 hooks
+
+严格对齐 React Aria 的三层结构：
+
+1. **Hooks 层**（`useXxxState` 语义）——
+   `useInfiniteSelectSelection` 管选择：受控/非受控 ids、跨页对象缓存、
+   RAC `Selection` → 业务 `onChange` 的翻译；`useInfiniteComboboxState`
+   管弹层开合与搜索/防抖；`useDataPaginationState` 是同一模式在分页器上的应用。
+   全部导出，可脱离组件 headless 使用。
+2. **Parts 层（组合式组件 + context 接线）**——根组件 `InfiniteSelect` 只提供
+   数据与选择的 context 和 RAC `Autocomplete` 外壳；`InfiniteSelectSearch`
+   （搜索框）、`InfiniteSelectList`（列表，含虚拟化与预取）、状态插槽、footer
+   一族都是普通 children，**按书写顺序渲染**，各自带自己的 props：
+
+   ```tsx
+   <InfiniteSelect
+     {...list}
+     getOption={getOption}
+     selectionMode="multiple"
+     value={ids}
+     onChange={(items, nextIds) => setIds(nextIds)}
+     inputValue={state.inputValue}
+     onInputChange={state.setInputValue}
+   >
+     <InfiniteSelectSearch placeholder="搜索…" />
+     <InfiniteSelectList virtualized />
+     <InfiniteSelectEmpty>没有结果</InfiniteSelectEmpty>
+   </InfiniteSelect>
+   ```
+
+   搜索框与列表之间不用手动接线——根组件的 `Autocomplete` 会通过 RAC 自己的
+   context 把任意深度的 `SearchField` / `ListBox` 后代配对（虚拟焦点、过滤）。
+   自定义 part 用 `useInfiniteSelectContext()` 读根组件提供的接线
+   （items / getOption / selectionMode / selectedIds / onSelectionChange …）。
+3. **便利层** —— `InfiniteCombobox` 用一组扁平 props 把弹层 + parts + 插槽
+   组好，是业务代码的默认入口；它内部就是上面那段组合代码。
+
 ## 导出的类型
 
 除组件外，`@gedatou/cadenza-ui` 还导出以下类型，供业务层封装和数据适配器使用：
 
 | 类型 | 说明 |
 | --- | --- |
-| `InfiniteSelectOption` | `getOption` 的返回形状：`{ id, label, textValue?, disabled? }` |
+| `InfiniteSelectOption` | `getOption` 的返回形状：`{ id, label, textValue?, isDisabled? }` |
 | `InfiniteSelectItemRenderParams<T>` | `renderItem` 的参数，见上节 |
 | `InfiniteSelectAdapterProps<T>` | `list` prop 的契约——数据适配器要实现的形状，见「数据适配器」 |
-| `ControllableSelectionProps<T>` | 选择相关 props 的判别联合（单选 `value?: string` / 多选 `value?: string[]`，`onChange` 签名随之切换） |
-| `InfiniteSelectProps<T>` / `InfiniteComboboxProps<T>` | 两个组件的完整 props，业务层包一层时直接复用 |
+| `ControllableSelectionProps<T>` | 选择相关 props 的判别联合，判别键是 `selectionMode`（单选 `value?: string` / 多选 `value?: string[]`，`onChange` 签名随之切换） |
+| `InfiniteSelectProps<T>` / `InfiniteComboboxProps<T>` | 根组件与便利层的完整 props，业务层包一层时直接复用 |
+| `InfiniteSelectSearchProps` / `InfiniteSelectListProps<T>` | 两个 parts 的 props |
+| `InfiniteSelectContextValue<T>` | `useInfiniteSelectContext()` 的返回——自定义 part 可读的接线 |
+| `InfiniteSelectSelectionState<T>` | `useInfiniteSelectSelection()` 的返回：`selectedIds` / `selectedItems` / `onSelectionChange` |
 | `InfiniteSelectActions<T>` | 动作上下文的值形状（`useInfiniteSelectActions()` 的返回 / `InfiniteSelectActionsProvider` 的入参），见「动作上下文」 |
 | `InfiniteComboboxState<T>` / `InfiniteComboboxStateOptions` | `useInfiniteComboboxState` 的返回值与入参 |
 | `InfiniteComboboxChildren<T>` | trigger 的类型：`ReactElement` 或接收状态的函数 |
@@ -251,15 +297,20 @@ interface InfiniteSelectItemRenderParams<T> {
 
 ## Props
 
-`InfiniteCombobox` 除下表外的 props 透传规则见类型定义。
+下表是便利层 `InfiniteCombobox` 的 props（内部拆解后路由到根组件与各 part）。
+组合式用法时，`searchPlaceholder` 对应 `InfiniteSelectSearch` 的
+`placeholder`，`renderItem` / `virtualized` / `rowHeight` / `maxListHeight` /
+`scrollbars` / `loadingMoreIndicator` / `loadMoreScrollOffset` 都在
+`InfiniteSelectList` 上。
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `state` | `InfiniteComboboxState` | — | 来自 `useInfiniteComboboxState()` |
 | `list` | `InfiniteSelectAdapterProps<T>` | — | 数据适配器 |
-| `getOption` | `(item: T) => InfiniteSelectOption` | — | 提取 id / label / textValue / disabled |
-| `multiple` | `boolean` | `false` | 多选模式 |
+| `getOption` | `(item: T) => InfiniteSelectOption` | — | 提取 id / label / textValue / isDisabled |
+| `selectionMode` | `'single' \| 'multiple'` | `'single'` | 选择模式（React Aria 的枚举，与 DataTable 同名） |
 | `value` / `defaultValue` | `string` \| `string[]` | — | 受控 / 非受控选择 |
+| `isDisabled` | `boolean` | `false` | 禁用触发器（弹层不可打开） |
 | `commitOnClose` | `boolean` | `false` | 多选草稿模式，关弹层才提交 |
 | `closeOnSelect` | `boolean` | `true` | 单选选中后自动关闭 |
 | `lockScroll` | `boolean` | `false` | 锁定页面滚动（模态感） |

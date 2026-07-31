@@ -37,7 +37,7 @@ export default function FooterDemo(): ReactElement {
       commitOnClose
       getOption={getOption}
       list={list}
-      multiple
+      selectionMode="multiple"
       onChange={(_items, nextIds) => setIds(nextIds)}
       searchPlaceholder="搜索作曲家…"
       state={state}

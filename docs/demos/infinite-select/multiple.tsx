@@ -26,7 +26,7 @@ export default function MultiDemo(): ReactElement {
       getOption={getOption}
       list={list}
       loadingMoreIndicator="加载更多…"
-      multiple
+      selectionMode="multiple"
       onChange={(_items, nextIds) => setIds(nextIds)}
       searchPlaceholder="搜索作曲家…"
       state={state}

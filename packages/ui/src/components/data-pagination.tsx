@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactElement, ReactNode } from 'react'
+import type { Dispatch, ReactElement, ReactNode, SetStateAction } from 'react'
 import { cn } from '@gedatou/cadenza-ui/lib/utils'
 import { Button } from '@gedatou/cadenza-ui/primitives/button'
 import {
@@ -39,7 +39,8 @@ export interface DataPaginationState {
   totalPages: number
 }
 
-export interface DataPaginationProps {
+/** Options of the state hook — also the state slice of `DataPaginationProps`. */
+export interface DataPaginationStateOptions {
   /** Total row count across all pages. `0` reads as "not loaded yet" — the clamp effect leaves `page` alone. */
   total: number
   page?: number
@@ -48,6 +49,64 @@ export interface DataPaginationProps {
   limit?: number
   defaultLimit?: number
   onLimitChange?: (limit: number) => void
+}
+
+export interface DataPaginationStateResult extends DataPaginationState {
+  setPage: Dispatch<SetStateAction<number>>
+  setLimit: Dispatch<SetStateAction<number>>
+  canPrevious: boolean
+  canNext: boolean
+}
+
+/**
+ * Pagination state, extracted React Aria-style (`useXxxState`): `page` and
+ * `limit` independently controllable, derived page count with the zero/NaN
+ * guard, and the overshoot clamp. `DataPagination` consumes it internally;
+ * a custom pagination UI can be driven by it headlessly.
+ */
+export function useDataPaginationState(options: DataPaginationStateOptions): DataPaginationStateResult {
+  const { total } = options
+
+  const [page, setPage] = useControllableState({
+    value: options.page,
+    defaultValue: options.defaultPage,
+    onChange: options.onPageChange,
+    fallback: 1,
+  })
+  const [limit, setLimit] = useControllableState({
+    value: options.limit,
+    defaultValue: options.defaultLimit,
+    onChange: options.onLimitChange,
+    fallback: 20,
+  })
+
+  // Guard against limit=0/NaN (e.g. parsed from an untrusted URL param):
+  // unguarded division yields "page 1 / Infinity" and dead NaN buttons.
+  const totalPages = Number.isFinite(limit) && limit > 0
+    ? Math.max(1, Math.ceil(total / limit))
+    : 1
+
+  // Clamp only when data is known to exist and `page` overshoots. total=0 means
+  // "not loaded yet" (react-query swaps data to undefined mid-flight) — walking
+  // `page` back then would flash a stale page into a URL-synced caller.
+  useEffect(() => {
+    if (total > 0 && page > totalPages)
+      setPage(totalPages)
+  }, [total, totalPages, page, setPage])
+
+  return {
+    page,
+    limit,
+    total,
+    totalPages,
+    setPage,
+    setLimit,
+    canPrevious: page > 1,
+    canNext: page < totalPages,
+  }
+}
+
+export interface DataPaginationProps extends DataPaginationStateOptions {
   limitOptions?: number[]
   showLimitChanger?: boolean
   /** Start-side summary (e.g. "共 N 条"). Omitted: the slot collapses. */
@@ -82,34 +141,15 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
     className,
   } = props
 
-  const [page, setPage] = useControllableState({
-    value: props.page,
-    defaultValue: props.defaultPage,
-    onChange: props.onPageChange,
-    fallback: 1,
-  })
-  const [limit, setLimit] = useControllableState({
-    value: props.limit,
-    defaultValue: props.defaultLimit,
-    onChange: props.onLimitChange,
-    fallback: 20,
-  })
-
-  // Guard against limit=0/NaN (e.g. parsed from an untrusted URL param):
-  // unguarded division yields "page 1 / Infinity" and dead NaN buttons.
-  const totalPages = Number.isFinite(limit) && limit > 0
-    ? Math.max(1, Math.ceil(total / limit))
-    : 1
-  const canPrevious = page > 1
-  const canNext = page < totalPages
-
-  // Clamp only when data is known to exist and `page` overshoots. total=0 means
-  // "not loaded yet" (react-query swaps data to undefined mid-flight) — walking
-  // `page` back then would flash a stale page into a URL-synced caller.
-  useEffect(() => {
-    if (total > 0 && page > totalPages)
-      setPage(totalPages)
-  }, [total, totalPages, page, setPage])
+  const {
+    page,
+    limit,
+    totalPages,
+    setPage,
+    setLimit,
+    canPrevious,
+    canNext,
+  } = useDataPaginationState(props)
 
   const state: DataPaginationState = { page, limit, total, totalPages }
 

@@ -6,8 +6,8 @@ import {
   InfiniteSelect,
   InfiniteSelectEmpty,
   InfiniteSelectError,
+  InfiniteSelectList,
   InfiniteSelectLoading,
-
   InfiniteSelectRetry,
 } from '../src/components/infinite-select'
 
@@ -50,9 +50,11 @@ function getOption(item: { id: string, label: string }): InfiniteSelectOption {
 }
 
 // State slots: context-driven, self-rendering per panel state. The base has
-// zero copy — all text below comes from these children.
+// zero copy — all text below comes from these children. The List part joins
+// the same composition channel (React Aria-style parts, caller order).
 const slots = (
   <>
+    <InfiniteSelectList />
     <InfiniteSelectEmpty>No results</InfiniteSelectEmpty>
     <InfiniteSelectLoading>Loading</InfiniteSelectLoading>
     <InfiniteSelectError>
@@ -125,14 +127,22 @@ describe('infiniteSelect selection', () => {
   ]
 
   it('renders an aria listbox with options', () => {
-    render(<InfiniteSelect getOption={getOption} items={items} />)
+    render(
+      <InfiniteSelect getOption={getOption} items={items}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
     expect(screen.getByRole('listbox')).not.toBeNull()
     expect(screen.getAllByRole('option')).toHaveLength(2)
   })
 
   it('single: reports the picked item, then undefined on toggle-off', async () => {
     const onChange = vi.fn()
-    render(<InfiniteSelect getOption={getOption} items={items} onChange={onChange} />)
+    render(
+      <InfiniteSelect getOption={getOption} items={items} onChange={onChange}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
 
     await userEvent.click(screen.getByRole('option', { name: 'Alice' }))
     expect(onChange).toHaveBeenLastCalledWith(items[0])
@@ -149,10 +159,12 @@ describe('infiniteSelect selection', () => {
       <InfiniteSelect
         getOption={getOption}
         items={items}
-        multiple
+        selectionMode="multiple"
         onChange={onChange}
         value={['x']}
-      />,
+      >
+        <InfiniteSelectList />
+      </InfiniteSelect>,
     )
 
     await userEvent.click(screen.getByRole('option', { name: 'Alice' }))
@@ -165,17 +177,27 @@ describe('infiniteSelect selection', () => {
 
   it('single: a controlled value can be cleared back to undefined', () => {
     const { rerender } = render(
-      <InfiniteSelect getOption={getOption} items={items} value="a" />,
+      <InfiniteSelect getOption={getOption} items={items} value="a">
+        <InfiniteSelectList />
+      </InfiniteSelect>,
     )
     expect(screen.getByRole('option', { name: 'Alice', selected: true })).not.toBeNull()
 
-    rerender(<InfiniteSelect getOption={getOption} items={items} value={undefined} />)
+    rerender(
+      <InfiniteSelect getOption={getOption} items={items} value={undefined}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
     expect(screen.getByRole('option', { name: 'Alice', selected: false })).not.toBeNull()
   })
 
   it('virtualizes: only the window plus overscan reaches the DOM', () => {
     const many = Array.from({ length: 1000 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
-    render(<InfiniteSelect getOption={getOption} items={many} virtualized />)
+    render(
+      <InfiniteSelect getOption={getOption} items={many}>
+        <InfiniteSelectList virtualized />
+      </InfiniteSelect>,
+    )
     const rendered = screen.getAllByRole('option').length
     // 256px viewport / 34px stride ≈ 8 visible + 12 overscan, far below 1000.
     expect(rendered).toBeGreaterThan(5)
@@ -186,7 +208,9 @@ describe('infiniteSelect selection', () => {
     const onLoadMore = vi.fn()
     const many = Array.from({ length: 1000 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
     const { unmount } = render(
-      <InfiniteSelect getOption={getOption} hasNextPage items={many} onLoadMore={onLoadMore} virtualized />,
+      <InfiniteSelect getOption={getOption} hasNextPage items={many} onLoadMore={onLoadMore}>
+        <InfiniteSelectList virtualized />
+      </InfiniteSelect>,
     )
     // Window sits at the top; ~30k px of unrendered rows remain below.
     expect(onLoadMore).not.toHaveBeenCalled()
@@ -194,7 +218,9 @@ describe('infiniteSelect selection', () => {
 
     const few = Array.from({ length: 5 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
     render(
-      <InfiniteSelect getOption={getOption} hasNextPage items={few} onLoadMore={onLoadMore} virtualized />,
+      <InfiniteSelect getOption={getOption} hasNextPage items={few} onLoadMore={onLoadMore}>
+        <InfiniteSelectList virtualized />
+      </InfiniteSelect>,
     )
     // The window covers the whole list: within a viewport of the tail.
     expect(onLoadMore).toHaveBeenCalled()
@@ -205,20 +231,26 @@ describe('infiniteSelect selection', () => {
     const renderWithIndex = ({ option, index }: { option: InfiniteSelectOption, index: number }): string => `#${index} ${String(option.label)}`
 
     const { unmount } = render(
-      <InfiniteSelect getOption={getOption} items={many} renderItem={renderWithIndex} />,
+      <InfiniteSelect getOption={getOption} items={many}>
+        <InfiniteSelectList renderItem={renderWithIndex} />
+      </InfiniteSelect>,
     )
     expect(screen.getByText('#2 Item 2')).not.toBeNull()
     unmount()
 
     render(
-      <InfiniteSelect getOption={getOption} items={many} renderItem={renderWithIndex} virtualized />,
+      <InfiniteSelect getOption={getOption} items={many}>
+        <InfiniteSelectList renderItem={renderWithIndex} virtualized />
+      </InfiniteSelect>,
     )
     expect(screen.getByText('#2 Item 2')).not.toBeNull()
   })
 
   it('multi: marks selected options with aria-selected', () => {
     render(
-      <InfiniteSelect getOption={getOption} items={items} multiple value={['b']} />,
+      <InfiniteSelect getOption={getOption} items={items} selectionMode="multiple" value={['b']}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
     )
     expect(screen.getByRole('option', { name: 'Bob', selected: true })).not.toBeNull()
     expect(screen.getByRole('option', { name: 'Alice', selected: false })).not.toBeNull()

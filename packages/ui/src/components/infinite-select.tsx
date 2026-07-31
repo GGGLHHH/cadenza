@@ -37,7 +37,7 @@ export interface InfiniteSelectOption {
   label: ReactNode
   /** Typeahead text. Required when `label` is not a plain string. */
   textValue?: string
-  disabled?: boolean
+  isDisabled?: boolean
 }
 
 /**
@@ -55,8 +55,9 @@ export interface InfiniteSelectItemRenderParams<T> {
    * work across a virtualized window.
    */
   index: number
-  selected: boolean
-  isMultiple: boolean
+  // React Aria render-prop vocabulary (ListBoxItemRenderProps).
+  isSelected: boolean
+  selectionMode: 'single' | 'multiple'
 }
 
 /** The list-state props a data adapter must supply (a react-query wrapper, say). */
@@ -71,7 +72,7 @@ export interface InfiniteSelectAdapterProps<T> {
 }
 
 interface InfiniteSelectCommonProps<T> {
-  /** Accessible name for the option list. Falls back to `searchPlaceholder`. */
+  /** Root accessible name; the List part falls back to it. */
   'aria-label'?: string
   'items': T[]
 
@@ -83,20 +84,48 @@ interface InfiniteSelectCommonProps<T> {
   'onLoadMore'?: () => void
   'onRetry'?: () => void
 
-  'onSearchInputValueChange'?: (value: string) => void
-  'searchInputValue'?: string
+  // RAC ComboBox vocabulary for the embedded search field. The root hosts
+  // RAC's Autocomplete, which context-wires any SearchField / ListBox
+  // descendants — that is what lets the parts compose freely as children.
+  'inputValue'?: string
+  'onInputChange'?: (value: string) => void
 
   'getOption': (item: T) => InfiniteSelectOption
 
+  'className'?: string
+  /**
+   * The composition channel, React Aria-style: parts
+   * (`InfiniteSelectSearch` / `InfiniteSelectList`), state slots
+   * (`InfiniteSelectEmpty` / `Loading` / `Error`) and the footer bar, in
+   * caller order. The base renders no copy — and no parts — of its own.
+   */
+  'children'?: ReactNode
+}
+
+/** Props of the search-field part. */
+export interface InfiniteSelectSearchProps {
+  /** Placeholder text, doubling as the field's accessible name. */
+  placeholder?: string
+  /**
+   * Focus the input on mount. Off by default (an inline panel must not steal
+   * page focus); popover hosts pass it so typing works the moment the panel
+   * opens — `InfiniteCombobox` does.
+   */
+  autoFocus?: boolean
+  className?: string
+}
+
+/** Props of the option-list part. */
+export interface InfiniteSelectListProps<T = unknown> {
+  /** Accessible name for the listbox. Falls back to the root `aria-label`. */
+  'aria-label'?: string
   /** Replaces the default row content while keeping RAC selection and focus. */
   'renderItem'?: (params: InfiniteSelectItemRenderParams<T>) => ReactNode
-
-  'searchPlaceholder'?: string
   /**
    * Rendered inside the list, at the end of the scrolled content, while the
    * next page is fetching. In-flow on purpose: prefetch fires a viewport ahead,
    * so a user at the top never sees it — only someone at the bottom, exactly
-   * when it is relevant. Position is the base's call, which is why this is a
+   * when it is relevant. Position is the part's call, which is why this is a
    * prop and not a slot child.
    */
   'loadingMoreIndicator'?: ReactNode
@@ -106,7 +135,6 @@ interface InfiniteSelectCommonProps<T> {
    * values make the loading state rarer at the cost of eager requests.
    */
   'loadMoreScrollOffset'?: number
-
   'maxListHeight'?: number
   /** Scrollbar visibility for the list: always shown, shown on hover, or none. */
   'scrollbars'?: ScrollAreaScrollbars
@@ -125,19 +153,15 @@ interface InfiniteSelectCommonProps<T> {
    */
   'rowHeight'?: number
   'className'?: string
-  /**
-   * The single slot channel: state slots (`InfiniteSelectEmpty` / `Loading` /
-   * `Error`, context-driven and self-rendering) plus the footer
-   * bar (`InfiniteSelectFooter`, last child lands at the bottom naturally).
-   * The base renders no copy of its own.
-   */
-  'children'?: ReactNode
 }
 
-/** Controlled/uncontrolled selection props for single and multi-select modes. */
+/**
+ * Controlled/uncontrolled selection props, discriminated on `selectionMode`
+ * (React Aria's enum, same as our DataTable — never a `multiple` boolean).
+ */
 export type ControllableSelectionProps<TItem = unknown>
   = | {
-    multiple: true
+    selectionMode: 'multiple'
     value?: string[]
     defaultValue?: string[]
     /**
@@ -148,13 +172,131 @@ export type ControllableSelectionProps<TItem = unknown>
     onChange?: (items: TItem[], ids: string[]) => void
   }
   | {
-    multiple?: false
+    selectionMode?: 'single'
     value?: string
     defaultValue?: string
     onChange?: (item: TItem | undefined) => void
   }
 
 export type InfiniteSelectProps<T> = InfiniteSelectCommonProps<T> & ControllableSelectionProps<T>
+
+// ── Hooks layer (React Aria's useXxxState pattern): the selection state that
+//    drives the panel, exported for headless composition. ──
+
+export interface InfiniteSelectSelectionState<T> {
+  /** The authoritative selection — unloaded pages included. */
+  selectedIds: string[]
+  /** Selected item objects, loaded pages only (cross-page cache). */
+  selectedItems: T[]
+  /** Feed RAC's `onSelectionChange` with this. */
+  onSelectionChange: (selection: Selection) => void
+}
+
+/**
+ * Controllable selection + the cross-page item cache + the RAC `Selection` →
+ * business `onChange` translation. `InfiniteSelect` consumes it internally;
+ * a custom composition can drive its own `ListBox` with it.
+ */
+export function useInfiniteSelectSelection<T>(
+  options: ControllableSelectionProps<T> & {
+    items: T[]
+    getOption: (item: T) => InfiniteSelectOption
+  },
+): InfiniteSelectSelectionState<T> {
+  const { items, getOption } = options
+  const isMultiple = options.selectionMode === 'multiple'
+
+  // Controlled-ness is key presence, not `!== undefined` — a controlled single
+  // select passes `value={undefined}` for "nothing selected". Normalizing to
+  // arrays BEFORE the hook turns that undefined into a controlled [], which is
+  // what useControllableState's value-presence convention needs.
+  const normalizeIds = (value: string | string[] | undefined): string[] => {
+    if (value === undefined)
+      return []
+    return Array.isArray(value) ? value : [value]
+  }
+  const [selectedIds, setSelectedIds] = useControllableState<string[]>({
+    value: 'value' in options ? normalizeIds(options.value) : undefined,
+    defaultValue: 'defaultValue' in options ? normalizeIds(options.defaultValue) : undefined,
+    fallback: [],
+  })
+
+  // `ids` from onSelectionChange is authoritative; this cache only echoes item
+  // objects for ids whose page happens to be loaded. Search can swap `items`
+  // wholesale, so selected objects are remembered across pages here.
+  const selectedItemsCacheRef = useRef<Map<string, T>>(new Map())
+  if (isMultiple) {
+    for (const item of items) {
+      const id = getOption(item).id
+      if (selectedIds.includes(id))
+        selectedItemsCacheRef.current.set(id, item)
+    }
+  }
+
+  const onSelectionChange = (selection: Selection): void => {
+    const ids = selection === 'all'
+      ? items.map(item => getOption(item).id)
+      : [...selection].map(String)
+    // Controlled mode makes this a no-op (the hook only mirrors props there).
+    setSelectedIds(ids)
+
+    if (options.selectionMode === 'multiple') {
+      for (const item of items) {
+        const id = getOption(item).id
+        if (ids.includes(id))
+          selectedItemsCacheRef.current.set(id, item)
+      }
+      // Map 迭代器允许边遍历边删,无需先拷贝
+      for (const id of selectedItemsCacheRef.current.keys()) {
+        if (!ids.includes(id))
+          selectedItemsCacheRef.current.delete(id)
+      }
+      const nextItems = ids
+        .map(id => selectedItemsCacheRef.current.get(id))
+        .filter((entry): entry is T => entry !== undefined)
+      options.onChange?.(nextItems, ids)
+      return
+    }
+
+    const id = ids[0]
+    options.onChange?.(id === undefined ? undefined : items.find(item => getOption(item).id === id))
+  }
+
+  const selectedItems = selectedIds
+    .map(id => selectedItemsCacheRef.current.get(id))
+    .filter((entry): entry is T => entry !== undefined)
+
+  return { selectedIds, selectedItems, onSelectionChange }
+}
+
+// ── Wiring context: the root provides data + selection, the parts consume —
+//    React Aria's context-wiring pattern, so parts compose in caller order
+//    as plain children. ──
+
+export interface InfiniteSelectContextValue<T = unknown> {
+  'items': T[]
+  'getOption': (item: T) => InfiniteSelectOption
+  'selectionMode': 'single' | 'multiple'
+  'selectedIds': string[]
+  'onSelectionChange': (selection: Selection) => void
+  /** The list has rows to show (loaded, no error, non-empty). */
+  'hasItems': boolean
+  'hasNextPage': boolean
+  'isFetchingNextPage': boolean
+  'onLoadMore'?: (() => void) | undefined
+  /** Root-level accessible name — the List part's fallback. */
+  'aria-label'?: string | undefined
+}
+
+const InfiniteSelectContext = createContext<InfiniteSelectContextValue | null>(null)
+
+/** Read the panel wiring inside custom parts. Throws outside `InfiniteSelect`. */
+export function useInfiniteSelectContext<T = unknown>(): InfiniteSelectContextValue<T> {
+  const ctx = use(InfiniteSelectContext)
+  if (!ctx)
+    throw new Error('useInfiniteSelectContext must be used inside InfiniteSelect')
+  return ctx as InfiniteSelectContextValue<T>
+}
 
 /** Shared status container for the state slots: `role=status` announces changes. */
 export function InfiniteSelectStatus({ className, ...props }: ComponentProps<'div'>): ReactElement {
@@ -241,12 +383,89 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     isError = false,
     onLoadMore,
     onRetry,
-    onSearchInputValueChange,
-    searchInputValue,
+    inputValue,
+    onInputChange,
     getOption,
-    renderItem,
     'aria-label': ariaLabel,
-    searchPlaceholder = 'Search',
+    className,
+    children,
+  } = props
+
+  const selectionMode = props.selectionMode ?? 'single'
+  const { selectedIds, onSelectionChange } = useInfiniteSelectSelection<T>(props)
+
+  // States are mutually exclusive; the scrolling list only exists with results.
+  const isEmpty = !isLoading && !isError && items.length === 0
+  const hasItems = !isLoading && !isError && items.length > 0
+
+  const contextValue: InfiniteSelectContextValue<T> = {
+    items,
+    getOption,
+    selectionMode,
+    selectedIds,
+    onSelectionChange,
+    hasItems,
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore,
+    'aria-label': ariaLabel,
+  }
+
+  return (
+    <div
+      className={cn(
+        `
+          flex flex-col rounded-md border border-border bg-popover
+          text-popover-foreground shadow-md inline-full
+        `,
+        className,
+      )}
+      data-slot="infinite-select"
+    >
+      <InfiniteSelectStateContext
+        value={{ isLoading, isError, isEmpty, isFetchingNextPage, onRetry }}
+      >
+        <InfiniteSelectContext value={contextValue as InfiniteSelectContextValue}>
+          <Autocomplete inputValue={inputValue} onInputChange={onInputChange}>
+            {children}
+          </Autocomplete>
+        </InfiniteSelectContext>
+      </InfiniteSelectStateContext>
+    </div>
+  )
+}
+
+/** The search-field part: RAC `SearchField` + `Input`, wired to the List by the root's `Autocomplete`. */
+export function InfiniteSelectSearch({
+  placeholder = 'Search',
+  autoFocus = false,
+  className,
+}: InfiniteSelectSearchProps): ReactElement {
+  return (
+    <SearchField
+      aria-label={placeholder}
+      className={cn('flex items-center gap-2 border-be border-border px-3', className)}
+      data-slot="infinite-select-search"
+    >
+      <IconSearch className="shrink-0 text-muted-foreground block-4 inline-4" />
+      <Input
+        className="
+          flex-1 bg-transparent py-2 text-sm/5 text-popover-foreground
+          outline-none min-inline-0
+          placeholder:text-muted-foreground
+          [&::-webkit-search-cancel-button]:appearance-none
+        "
+        autoFocus={autoFocus}
+        placeholder={placeholder}
+      />
+    </SearchField>
+  )
+}
+
+/** The option-list part: ScrollArea + RAC `ListBox`, TanStack-virtualized on demand. */
+export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T>): ReactElement | null {
+  const {
+    renderItem,
     loadingMoreIndicator,
     loadMoreScrollOffset = 1,
     maxListHeight = 256,
@@ -254,70 +473,23 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     virtualized = false,
     rowHeight = 32,
     className,
-    children,
+    'aria-label': ariaLabelProp,
   } = props
 
-  const isMultiple = props.multiple === true
-
-  // Controlled-ness is key presence, not `!== undefined` — a controlled single
-  // select passes `value={undefined}` for "nothing selected". Normalizing to
-  // arrays BEFORE the hook turns that undefined into a controlled [], which is
-  // what useControllableState's value-presence convention needs.
-  const normalizeIds = (value: string | string[] | undefined): string[] => {
-    if (value === undefined)
-      return []
-    return Array.isArray(value) ? value : [value]
-  }
-  const [selectedIds, setSelectedIds] = useControllableState<string[]>({
-    value: 'value' in props ? normalizeIds(props.value) : undefined,
-    defaultValue: 'defaultValue' in props ? normalizeIds(props.defaultValue) : undefined,
-    fallback: [],
-  })
-
-  // `ids` from onSelectionChange is authoritative; this cache only echoes item
-  // objects for ids whose page happens to be loaded. Search can swap `items`
-  // wholesale, so selected objects are remembered across pages here.
-  const selectedItemsCacheRef = useRef<Map<string, T>>(new Map())
-  if (isMultiple) {
-    for (const item of items) {
-      const id = getOption(item).id
-      if (selectedIds.includes(id))
-        selectedItemsCacheRef.current.set(id, item)
-    }
-  }
-
-  const handleSelectionChange = (selection: Selection): void => {
-    const ids = selection === 'all'
-      ? items.map(item => getOption(item).id)
-      : [...selection].map(String)
-    // Controlled mode makes this a no-op (the hook only mirrors props there).
-    setSelectedIds(ids)
-
-    if (props.multiple) {
-      for (const item of items) {
-        const id = getOption(item).id
-        if (ids.includes(id))
-          selectedItemsCacheRef.current.set(id, item)
-      }
-      // Map 迭代器允许边遍历边删,无需先拷贝
-      for (const id of selectedItemsCacheRef.current.keys()) {
-        if (!ids.includes(id))
-          selectedItemsCacheRef.current.delete(id)
-      }
-      const nextItems = ids
-        .map(id => selectedItemsCacheRef.current.get(id))
-        .filter((entry): entry is T => entry !== undefined)
-      props.onChange?.(nextItems, ids)
-      return
-    }
-
-    const id = ids[0]
-    props.onChange?.(id === undefined ? undefined : items.find(item => getOption(item).id === id))
-  }
-
-  // States are mutually exclusive; the scrolling list only exists with results.
-  const isEmpty = !isLoading && !isError && items.length === 0
-  const hasItems = !isLoading && !isError && items.length > 0
+  const ctx = useInfiniteSelectContext<T>()
+  const {
+    items,
+    getOption,
+    selectionMode,
+    selectedIds,
+    onSelectionChange,
+    hasItems,
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore,
+  } = ctx
+  const isMultiple = selectionMode === 'multiple'
+  const ariaLabel = ariaLabelProp ?? ctx['aria-label']
 
   // When virtualized, TanStack Virtual owns windowing and positioning while
   // RAC keeps the semantics. Rows are uniform (rowHeight): no DOM measurement,
@@ -376,11 +548,11 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
         )}
         data-slot="infinite-select-item"
         id={option.id}
-        isDisabled={option.disabled}
+        isDisabled={option.isDisabled}
         textValue={option.textValue ?? (typeof option.label === 'string' ? option.label : option.id)}
       >
         {({ isSelected }) => renderItem
-          ? renderItem({ item, option, index, selected: isSelected, isMultiple })
+          ? renderItem({ item, option, index, isSelected, selectionMode })
           : (
               <>
                 {isMultiple && (
@@ -412,103 +584,66 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     )
   }
 
+  if (!hasItems)
+    return null
+
   return (
-    <div
-      className={cn(
-        `
-          flex flex-col rounded-md border border-border bg-popover
-          text-popover-foreground shadow-md inline-full
-        `,
-        className,
-      )}
-      data-slot="infinite-select"
+    <ScrollArea
+      className={className}
+      scrollbars={scrollbars}
+      viewportClassName="scroll-fade-y"
+      viewportRef={scrollRef}
+      viewportStyle={{ maxHeight: maxListHeight }}
     >
-      <InfiniteSelectStateContext
-        value={{ isLoading, isError, isEmpty, isFetchingNextPage, onRetry }}
+      <ListBox
+        aria-label={ariaLabel}
+        data-slot="infinite-select-list"
+        selectionMode={isMultiple ? 'multiple' : 'single'}
+        // useListBox 支持但 RAC 1.19 类型漏了(运行时 ...props 透传)。
+        // 默认 'clearSelection' 让 Esc 清空选择——在 commitOnClose 下
+        // 意味着"清空草稿并提交空集"。Esc 的语义应该是关闭,不是清空。
+        {...{ escapeKeyBehavior: 'none' }}
+        className={cn(
+          'outline-none',
+          virtualized ? 'relative' : 'flex flex-col gap-0.5 p-1',
+        )}
+        style={virtualized ? { height: virtualizer.getTotalSize() } : undefined}
+        selectedKeys={selectedIds}
+        onSelectionChange={onSelectionChange}
       >
-        <Autocomplete
-          inputValue={searchInputValue}
-          onInputChange={onSearchInputValueChange}
-        >
-          <SearchField
-            aria-label={searchPlaceholder}
-            className="flex items-center gap-2 border-be border-border px-3"
-            data-slot="infinite-select-search"
+        {virtualized
+          ? virtualItems.map(virtualItem => renderOption(items[virtualItem.index], virtualItem.index, {
+              position: 'absolute',
+              top: 0,
+              insetInline: 4,
+              height: virtualItem.size,
+              transform: `translateY(${virtualItem.start}px)`,
+            }))
+          : items.map((item, index) => renderOption(item, index))}
+        {!virtualized && hasNextPage && (
+          <ListBoxLoadMoreItem
+            isLoading={isFetchingNextPage}
+            onLoadMore={onLoadMore ?? (() => {})}
+            scrollOffset={loadMoreScrollOffset}
+            className={cn(
+              isFetchingNextPage
+                ? 'py-1.5 text-center text-xs text-muted-foreground'
+                : 'block-px',
+            )}
           >
-            <IconSearch className="
-              shrink-0 text-muted-foreground block-4 inline-4
-            "
-            />
-            <Input
-              className="
-                flex-1 bg-transparent py-2 text-sm/5 text-popover-foreground
-                outline-none min-inline-0
-                placeholder:text-muted-foreground
-                [&::-webkit-search-cancel-button]:appearance-none
-              "
-              placeholder={searchPlaceholder}
-            />
-          </SearchField>
-
-          {hasItems && (
-            <ScrollArea
-              scrollbars={scrollbars}
-              viewportClassName="scroll-fade-y"
-              viewportRef={scrollRef}
-              viewportStyle={{ maxHeight: maxListHeight }}
-            >
-              <ListBox
-                aria-label={ariaLabel ?? searchPlaceholder}
-                data-slot="infinite-select-list"
-                selectionMode={isMultiple ? 'multiple' : 'single'}
-                className={cn(
-                  'outline-none',
-                  virtualized ? 'relative' : 'flex flex-col gap-0.5 p-1',
-                )}
-                style={virtualized ? { height: virtualizer.getTotalSize() } : undefined}
-                selectedKeys={selectedIds}
-                onSelectionChange={handleSelectionChange}
-              >
-                {virtualized
-                  ? virtualItems.map(virtualItem => renderOption(items[virtualItem.index], virtualItem.index, {
-                      position: 'absolute',
-                      top: 0,
-                      insetInline: 4,
-                      height: virtualItem.size,
-                      transform: `translateY(${virtualItem.start}px)`,
-                    }))
-                  : items.map((item, index) => renderOption(item, index))}
-                {!virtualized && hasNextPage && (
-                  <ListBoxLoadMoreItem
-                    isLoading={isFetchingNextPage}
-                    onLoadMore={onLoadMore ?? (() => {})}
-                    scrollOffset={loadMoreScrollOffset}
-                    className={cn(
-                      isFetchingNextPage
-                        ? 'py-1.5 text-center text-xs text-muted-foreground'
-                        : 'block-px',
-                    )}
-                  >
-                    {loadingMoreIndicator}
-                  </ListBoxLoadMoreItem>
-                )}
-              </ListBox>
-              {virtualized && isFetchingNextPage && loadingMoreIndicator !== undefined && (
-                <div
-                  className="py-1.5 text-center text-xs text-muted-foreground"
-                  data-slot="infinite-select-loading-more"
-                >
-                  {loadingMoreIndicator}
-                </div>
-              )}
-            </ScrollArea>
-          )}
-        </Autocomplete>
-
-        {/* Single slot channel: state slots plus footer, in caller order. */}
-        {children}
-      </InfiniteSelectStateContext>
-    </div>
+            {loadingMoreIndicator}
+          </ListBoxLoadMoreItem>
+        )}
+      </ListBox>
+      {virtualized && isFetchingNextPage && loadingMoreIndicator !== undefined && (
+        <div
+          className="py-1.5 text-center text-xs text-muted-foreground"
+          data-slot="infinite-select-loading-more"
+        >
+          {loadingMoreIndicator}
+        </div>
+      )}
+    </ScrollArea>
   )
 }
 

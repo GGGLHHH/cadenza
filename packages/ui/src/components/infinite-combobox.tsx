@@ -7,7 +7,12 @@ import { cn } from '@gedatou/cadenza-ui/lib/utils'
 import { Popover, PopoverTrigger } from '@gedatou/cadenza-ui/primitives/popover'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { InfiniteSelect, InfiniteSelectActionsProvider } from './infinite-select'
+import {
+  InfiniteSelect,
+  InfiniteSelectActionsProvider,
+  InfiniteSelectList,
+  InfiniteSelectSearch,
+} from './infinite-select'
 
 /**
  * Popover wrapper for `InfiniteSelect`: React Aria's `DialogTrigger` (via the
@@ -16,13 +21,17 @@ import { InfiniteSelect, InfiniteSelectActionsProvider } from './infinite-select
  * draft mode for multi selection.
  */
 
+// Naming follows React Aria: `isOpen`/`defaultOpen`/`onOpenChange` (overlay
+// trio) and `inputValue`/`defaultInputValue`/`onInputChange` (ComboBox trio).
+// `queryValue` — the debounced value meant for the request — is our own
+// concept with no RA counterpart.
 export interface InfiniteComboboxStateOptions {
-  open?: boolean
+  isOpen?: boolean
   defaultOpen?: boolean
-  onOpenChange?: (open: boolean) => void
-  searchValue?: string
-  defaultSearchValue?: string
-  onSearchValueChange?: (value: string) => void
+  onOpenChange?: (isOpen: boolean) => void
+  inputValue?: string
+  defaultInputValue?: string
+  onInputChange?: (value: string) => void
   /** The debounced value meant for the actual request. */
   queryValue?: string
   defaultQueryValue?: string
@@ -31,10 +40,10 @@ export interface InfiniteComboboxStateOptions {
 }
 
 export interface InfiniteComboboxState<T = unknown> {
-  open: boolean
-  setOpen: (open: boolean) => void
-  searchValue: string
-  setSearchValue: (value: string) => void
+  isOpen: boolean
+  setOpen: (isOpen: boolean) => void
+  inputValue: string
+  setInputValue: (value: string) => void
   resetSearch: () => void
   queryValue: string | undefined
   selectedValue?: string | string[] | undefined
@@ -42,27 +51,27 @@ export interface InfiniteComboboxState<T = unknown> {
 }
 
 export function useInfiniteComboboxState({
-  open,
+  isOpen,
   defaultOpen,
   onOpenChange,
-  searchValue,
-  defaultSearchValue,
-  onSearchValueChange,
+  inputValue,
+  defaultInputValue,
+  onInputChange,
   queryValue,
   defaultQueryValue,
   onQueryValueChange,
   debounceMs = 300,
 }: InfiniteComboboxStateOptions = {}): InfiniteComboboxState {
   const [openState, setOpenState] = useControllableState({
-    value: open,
+    value: isOpen,
     defaultValue: defaultOpen,
     onChange: onOpenChange,
     fallback: false,
   })
-  const [inputValue, setInputValue] = useControllableState({
-    value: searchValue,
-    defaultValue: defaultSearchValue,
-    onChange: onSearchValueChange,
+  const [inputState, setInputState] = useControllableState({
+    value: inputValue,
+    defaultValue: defaultInputValue,
+    onChange: onInputChange,
     fallback: '',
   })
   const [queryState, setQueryState] = useControllableState<string | undefined>({
@@ -75,20 +84,20 @@ export function useInfiniteComboboxState({
   const cancelQueryValue = useCallback(() => clearTimeout(timeoutRef.current), [])
   useEffect(() => cancelQueryValue, [cancelQueryValue])
 
-  const setSearchValue = useCallback(
+  const setInputValue = useCallback(
     (value: string) => {
-      setInputValue(value)
+      setInputState(value)
       clearTimeout(timeoutRef.current)
       timeoutRef.current = setTimeout(setQueryState, debounceMs, value === '' ? undefined : value)
     },
-    [debounceMs, setInputValue, setQueryState],
+    [debounceMs, setInputState, setQueryState],
   )
 
   const resetSearch = useCallback(() => {
     cancelQueryValue()
-    setInputValue('')
+    setInputState('')
     setQueryState(undefined)
-  }, [cancelQueryValue, setInputValue, setQueryState])
+  }, [cancelQueryValue, setInputState, setQueryState])
 
   // Stale search from the previous session resets on the next open, not on
   // close — resetting while the exit animation plays would flash the full list.
@@ -124,12 +133,12 @@ export function useInfiniteComboboxState({
   }, [openState, resetSearch])
 
   return {
-    open: openState,
+    isOpen: openState,
     queryValue: queryState,
     resetSearch,
-    searchValue: inputValue,
+    inputValue: inputState,
     setOpen,
-    setSearchValue,
+    setInputValue,
   }
 }
 
@@ -150,7 +159,7 @@ interface InfiniteComboboxCommonProps<T> {
   'list': InfiniteSelectAdapterProps<T>
   'getOption': (item: T) => InfiniteSelectOption
   'renderItem'?: (params: InfiniteSelectItemRenderParams<T>) => ReactNode
-  'disabled'?: boolean
+  'isDisabled'?: boolean
   'contentClassName'?: string
   /** Multi only: hold toggles as a draft and commit once, when the popover closes. */
   'commitOnClose'?: boolean
@@ -197,7 +206,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     children,
     commitOnClose = false,
     contentClassName,
-    disabled = false,
+    isDisabled = false,
     getOption,
     list,
     maxListHeight,
@@ -216,7 +225,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     selectClassName,
   } = props
 
-  const isMultiple = props.multiple === true
+  const isMultiple = props.selectionMode === 'multiple'
   const deferredEnabled = isMultiple && commitOnClose
 
   // Key presence, matching InfiniteSelect: a controlled single select clears with
@@ -259,11 +268,11 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
 
   useEffect(() => {
     const wasOpen = prevOpenRef.current
-    prevOpenRef.current = state.open
+    prevOpenRef.current = state.isOpen
     if (!deferredEnabled)
       return
 
-    const justClosed = wasOpen === true && !state.open
+    const justClosed = wasOpen === true && !state.isOpen
     const justCommitted = justClosed && hasChangedRef.current
     if (justCommitted) {
       // draftIdsRef is authoritative (from InfiniteSelect); draftItemsRef only
@@ -288,15 +297,15 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
           hasChangedRef.current = false
       }
     }
-  }, [deferredEnabled, props, setSelectedValue, state.open])
+  }, [deferredEnabled, props, setSelectedValue, state.isOpen])
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
-      if (disabled && next)
+      if (isDisabled && next)
         return
       state.setOpen(next)
     },
-    [disabled, state],
+    [isDisabled, state],
   )
 
   const clearSelection = useCallback(() => {
@@ -309,7 +318,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
       hasChangedRef.current = true
       return
     }
-    if (props.multiple) {
+    if (props.selectionMode === 'multiple') {
       setSelectedValue([])
       props.onChange?.([], [])
     }
@@ -335,25 +344,35 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
         })
       : children
 
+  // Root gets data + selection wiring; presentation config goes to the parts.
   const shared = {
-    'aria-label': props['aria-label'],
-    loadingMoreIndicator,
-    loadMoreScrollOffset,
+    'aria-label': props['aria-label'] ?? searchPlaceholder,
     ...list,
     getOption,
-    maxListHeight,
-    scrollbars,
-    virtualized,
-    rowHeight,
-    renderItem,
-    searchPlaceholder,
     'className': cn('rounded-none border-0 shadow-none', selectClassName),
-    'onSearchInputValueChange': state.setSearchValue,
-    'searchInputValue': state.searchValue,
+    'inputValue': state.inputValue,
+    'onInputChange': state.setInputValue,
   }
 
+  // The business-convenience layer: monolith props compose the RA-style parts.
+  const panelChildren = (
+    <>
+      <InfiniteSelectSearch autoFocus placeholder={searchPlaceholder} />
+      <InfiniteSelectList<T>
+        loadingMoreIndicator={loadingMoreIndicator}
+        loadMoreScrollOffset={loadMoreScrollOffset}
+        maxListHeight={maxListHeight}
+        renderItem={renderItem}
+        rowHeight={rowHeight}
+        scrollbars={scrollbars}
+        virtualized={virtualized}
+      />
+      {slots}
+    </>
+  )
+
   return (
-    <PopoverTrigger isOpen={state.open} onOpenChange={handleOpenChange}>
+    <PopoverTrigger isOpen={state.isOpen} onOpenChange={handleOpenChange}>
       {trigger}
       <Popover
         isNonModal={!lockScroll}
@@ -369,11 +388,11 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
         data-slot="infinite-combobox-content"
       >
         <InfiniteSelectActionsProvider value={actions}>
-          {props.multiple
+          {props.selectionMode === 'multiple'
             ? (
                 <InfiniteSelect<T>
                   {...shared}
-                  multiple
+                  selectionMode="multiple"
                   value={deferredEnabled ? draftIds : ((selectedValue as string[] | undefined) ?? [])}
                   onChange={(items, ids) => {
                     if (deferredEnabled) {
@@ -387,7 +406,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
                     props.onChange?.(items, ids)
                   }}
                 >
-                  {slots}
+                  {panelChildren}
                 </InfiniteSelect>
               )
             : (
@@ -401,7 +420,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
                       state.setOpen(false)
                   }}
                 >
-                  {slots}
+                  {panelChildren}
                 </InfiniteSelect>
               )}
         </InfiniteSelectActionsProvider>
