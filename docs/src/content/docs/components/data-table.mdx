@@ -3,7 +3,7 @@ title: DataTable
 description: React Aria Table 语义的数据表格 —— 列定义驱动 + 组合式插槽 + 分页 / 无限滚动 / 虚拟化
 ---
 
-import { BasicDemo, SortDemo, SelectionDemo, HScrollDemo, PinnedDemo, PaginationDemo, InfiniteDemo, ErrorDemo, VirtualizedDemo, DynamicRowHeightDemo } from '../../../components/DataTableDemo'
+import { BasicDemo, SortDemo, SingleSelectionDemo, MultiSelectionDemo, ArchiveDemo, HScrollDemo, PinnedDemo, PaginationDemo, InfiniteDemo, EmptySlotDemo, LoadingSlotDemo, ErrorDemo, VirtualizedDemo, DynamicRowHeightDemo } from '../../../components/DataTableDemo'
 
 数据表格家族。行为全部由 React Aria 的 `Table` 承担：网格键盘导航（方向键在单元格间移动）、
 行选择、列排序都是 RAC 原生语义。你只提供一个**列定义数组**和数据，不写 JSX 表格结构。
@@ -62,19 +62,93 @@ const sorted = useMemo(() => sortBy(people, sort), [sort])
 
 ## 行选择与行动作
 
-选择是 React Aria 的透传：`selectionMode`（`single` / `multiple`）+
-`selectedKeys` / `onSelectionChange`，键盘上 Space 切换、Shift 范围选择都随之生效。
+选择推荐走**便利层**：`selectionMode`（`single` / `multiple`）+
+`value` / `defaultValue` / `onChange`，与 InfiniteSelect 同一套契约。
+开 `selectionColumn` 会在最前面合成一列复选框（RAC 的 `slot="selection"` 协议）：
+行内勾选、表头全选/半选全部自动接线，文案来自 react-aria 内置多语言；
+键盘上 Space 切换、Shift 范围选择随之生效。需要 RAC 原始语义
+（`selectedKeys` / `onSelectionChange` / `'all'` 哨兵）的高级场景仍可用
+透传层，两层不要混用。
 
-<SelectionDemo client:load />
+### 单选
 
-`onRowAction` 是行激活（点击 / Enter），回调直接拿到行对象而不是 key：
+`value` 是单个 id，`onChange` 直接收行对象（取消选中时收 `undefined`）；
+表头不渲染全选框。点击行、点击 checkbox 都可以选中：
+
+<SingleSelectionDemo client:load />
 
 ```tsx
-<DataTable<Person> onRowAction={(person) => navigate(person.id)} {/* … */} />
+const [picked, setPicked] = useState<Person | undefined>(undefined)
+
+<DataTable<Person>
+  selectionMode="single"
+  selectionColumn
+  value={picked?.id}
+  onChange={setPicked}
+  {/* … */}
+/>
 ```
 
-注意：同时开启选择和 `onRowAction` 时，React Aria 会把「点击行」让给动作，
-选择退到显式手势（长按 / 复选框）—— 这是 RAC 的标准行为。
+### 多选
+
+`value` 是 id 数组；`onChange(items, ids)` 里 **`ids` 是权威全集**，
+`items` 只回显已加载页的对象——与 InfiniteSelect 的口径一致，持久化请存 `ids`。
+
+<MultiSelectionDemo client:load />
+
+```tsx
+const [ids, setIds] = useState<string[]>([])
+
+<DataTable<Person>
+  selectionMode="multiple"
+  selectionColumn
+  value={ids}
+  onChange={(items, nextIds) => setIds(nextIds)}
+  onRowAction={(person) => open(person)}
+  {/* … */}
+/>
+```
+
+`onRowAction` 是行激活，回调直接拿到行对象而不是 key。与选择同时开启时，
+React Aria 的路由规则（demo 就是这个组合，可以亲手验证）：
+
+- **选择集为空**时：点击行 / Enter 触发动作，`Space` 或 checkbox 开始选择；
+- **选择集非空**时：点击行切换选择（方便连续勾选，Files 应用式交互），
+  动作只剩 Enter；
+- checkbox 永远是明确的选择入口——这正是 `selectionColumn` 的用武之地。
+
+两个细节：
+
+- 合成列永远不做行头（读屏播报行名仍取你的数据列），有 `pinned: 'start'`
+  数据列时它会跟着钉住；
+- 便利层把表头全选归一为「**已加载行并入**选择集」、反选（含 Esc 清除）归一为
+  「已加载行剔除」——真正的「服务端全选」（所有匹配项，含未加载页）组件表达
+  不了，那是业务层与后端的契约（如 `select_all=true` + 排除名单）。
+
+### 跨页存档
+
+选择集按 id 存档，**天然跨页**：翻页只是换 `items`，`value` 里的 id 不动，
+翻回来 checkbox 自动恢复；勾选第 2 页的行不会丢第 1 页的存档；跨页的行对象
+由组件缓存，`onChange` 的 `items` 参数里能拿到。把选择 state 放在翻页 state
+外面即可。下面的 demo 每页 5 条——跨几页勾选，名单一直完整（跨页的名字
+来自组件的对象缓存，不是当前页数据）：
+
+<ArchiveDemo client:load />
+
+```tsx
+const [page, setPage] = useState(1)
+const [ids, setIds] = useState<string[]>([])       // 跨页存档,放在翻页 state 外
+const { items, total } = usePersonPage(page, 5)
+
+<DataTable<Person>
+  selectionMode="multiple"
+  selectionColumn
+  value={ids}
+  onChange={(items, nextIds) => setIds(nextIds)}   // items 含跨页缓存的对象
+  {/* … */}
+/>
+<DataPagination page={page} onPageChange={setPage} limit={5} total={total} />
+```
 
 ## 横向滚动与固定列
 
@@ -124,12 +198,11 @@ const columns: DataTableColumn<Person>[] = [
 - 固定列的单元格自带不透明底色（并跟随行的 hover / 选中态），滚过去的内容
   不会从下面透出来；边缘渐隐会自动跳过固定列的区域，只作用于会动的部分。
 
-## 状态插槽
+## 插槽
 
-基座**零文案**。空 / 加载 / 错误都是 context 驱动的插槽组件，渲染在表头下方的
-空态区域，按状态自渲染、互斥，文案由你注入 —— i18n 只存在于你的业务层：
-
-<ErrorDemo client:load />
+基座**零文案**。空 / 加载 / 错误都是 context 驱动的插槽组件，经 `children`
+通道传入、渲染在表头下方的空态区域，按状态自渲染、互斥，文案由你注入 ——
+i18n 只存在于你的业务层：
 
 ```tsx
 const slots = (
@@ -146,8 +219,30 @@ const slots = (
 <DataTable {/* … */}>{slots}</DataTable>
 ```
 
-`DataTableRetry` 自己接好基座的 `onRetry`（没有则不渲染），你只出文案。
-所有状态共用一个 `role="status"` 容器，状态切换会被读屏播报。
+### DataTableEmpty:空
+
+`items` 为空（且不在加载 / 错误中）时自渲染：
+
+<EmptySlotDemo client:load />
+
+### DataTableLoading:加载中
+
+首屏加载（`isLoading`）期间行让位给它——翻页、换查询条件重新请求时同样：
+
+<LoadingSlotDemo client:load />
+
+### DataTableError / DataTableRetry:错误与重试
+
+`isError` 时自渲染；`DataTableRetry` 自己接好基座的 `onRetry`（没有则不渲染），
+你只出文案。这个 demo 首次加载必定失败，点重试恢复：
+
+<ErrorDemo client:load />
+
+### DataTableStatus:状态容器
+
+三个状态插槽最终都渲染成同一个 `role="status"` 容器（状态切换会被读屏播报），
+它也单独导出——自定义状态视觉时给各插槽传 `className` 微调，或复用这个容器
+保持一致的排版。
 
 ## 分页
 
@@ -278,6 +373,7 @@ const columns: DataTableColumn<Person>[] = [
 | `DataTableColumn<T>` | 列定义：`{ id, header, cell, isRowHeader?, allowsSorting?, pinned?, width?, minWidth?, maxWidth?, className? }` |
 | `DataTableColumnWidth` | 列宽：px 数字或百分比字符串（如 `'50%'`） |
 | `DataTableProps<T>` | `DataTable` 完整 props，业务层包一层时直接复用 |
+| `DataTableSelectionProps<T>` | 便利层选择的判别联合（单选 `value?: string` / 多选 `value?: string[]`，`onChange` 签名随之切换） |
 | `DataPaginationProps` / `DataPaginationState` | 分页器 props 与 `summary` / `pageIndicator` 收到的状态 |
 | `SortDescriptor` / `Selection` / `Key` | React Aria 词汇的再导出，排序与选择回调的类型 |
 
@@ -305,7 +401,9 @@ const columns: DataTableColumn<Person>[] = [
 | `loadingMoreIndicator` | `ReactNode` | — | 列表末尾的加载更多指示（滚动流内） |
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
 | `selectionMode` | `'none' \| 'single' \| 'multiple'` | `'none'` | 行选择模式 |
-| `selectedKeys` / `defaultSelectedKeys` / `onSelectionChange` | — | — | React Aria 选择透传 |
+| `value` / `defaultValue` / `onChange` | `string` \| `string[]` | — | 便利层选择（跨页存档），签名随 `selectionMode` 切换，见「行选择与行动作」 |
+| `selectedKeys` / `defaultSelectedKeys` / `onSelectionChange` | — | — | React Aria 选择透传（高级层，与便利层不混用） |
+| `selectionColumn` | `boolean` | `false` | 合成复选框列（行勾选 + 表头全选），见「行选择与行动作」 |
 | `sortDescriptor` / `onSortChange` | `SortDescriptor` | — | 排序意图（受控） |
 | `onRowAction` | `(item: T) => void` | — | 行激活，回调收行对象 |
 | `maxHeight` | `number` | — | 行区最大高度；无限滚动 / 虚拟化需要（虚拟化未传时兜 480） |

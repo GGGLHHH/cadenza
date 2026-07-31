@@ -1,11 +1,12 @@
 'use client'
 
 import type { ComponentProps, CSSProperties, ReactElement, ReactNode } from 'react'
-import type { Key, Selection } from 'react-aria-components'
+import type { Selection } from 'react-aria-components'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { cn } from '@gedatou/cadenza-ui/lib/utils'
 import { Button } from '@gedatou/cadenza-ui/primitives/button'
 import { Separator } from '@gedatou/cadenza-ui/primitives/separator'
+import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck, IconSearch } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { createContext, use, useEffect, useRef } from 'react'
@@ -257,29 +258,30 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
   } = props
 
   const isMultiple = props.multiple === true
-  // Key presence, not `!== undefined`: a controlled single select passes
-  // `value={undefined}` for "nothing selected", and flipping to uncontrolled
-  // there would both warn (RAC) and pin the stale internal selection.
-  const isControlled = 'value' in props
+
+  // Controlled-ness is key presence, not `!== undefined` — a controlled single
+  // select passes `value={undefined}` for "nothing selected". Normalizing to
+  // arrays BEFORE the hook turns that undefined into a controlled [], which is
+  // what useControllableState's value-presence convention needs.
+  const normalizeIds = (value: string | string[] | undefined): string[] => {
+    if (value === undefined)
+      return []
+    return Array.isArray(value) ? value : [value]
+  }
+  const [selectedIds, setSelectedIds] = useControllableState<string[]>({
+    value: 'value' in props ? normalizeIds(props.value) : undefined,
+    defaultValue: 'defaultValue' in props ? normalizeIds(props.defaultValue) : undefined,
+    fallback: [],
+  })
 
   // `ids` from onSelectionChange is authoritative; this cache only echoes item
   // objects for ids whose page happens to be loaded. Search can swap `items`
   // wholesale, so selected objects are remembered across pages here.
   const selectedItemsCacheRef = useRef<Map<string, T>>(new Map())
-  const lastSelectionRef = useRef<string[]>(
-    isMultiple
-      ? ((props.value ?? props.defaultValue ?? []) as string[])
-      : [props.value ?? props.defaultValue].filter((id): id is string => id !== undefined),
-  )
-  if (isControlled) {
-    lastSelectionRef.current = isMultiple
-      ? ((props.value ?? []) as string[])
-      : props.value === undefined ? [] : [props.value]
-  }
   if (isMultiple) {
     for (const item of items) {
       const id = getOption(item).id
-      if (lastSelectionRef.current.includes(id))
+      if (selectedIds.includes(id))
         selectedItemsCacheRef.current.set(id, item)
     }
   }
@@ -288,7 +290,8 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     const ids = selection === 'all'
       ? items.map(item => getOption(item).id)
       : [...selection].map(String)
-    lastSelectionRef.current = ids
+    // Controlled mode makes this a no-op (the hook only mirrors props there).
+    setSelectedIds(ids)
 
     if (props.multiple) {
       for (const item of items) {
@@ -310,11 +313,6 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     const id = ids[0]
     props.onChange?.(id === undefined ? undefined : items.find(item => getOption(item).id === id))
   }
-
-  const selectedKeys: Key[] | undefined = isControlled ? lastSelectionRef.current : undefined
-  const defaultSelectedKeys: Key[] = isMultiple
-    ? ((props.defaultValue ?? []) as string[])
-    : [props.defaultValue].filter((id): id is string => id !== undefined)
 
   // States are mutually exclusive; the scrolling list only exists with results.
   const isEmpty = !isLoading && !isError && items.length === 0
@@ -467,7 +465,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
                   virtualized ? 'relative' : 'flex flex-col gap-0.5 p-1',
                 )}
                 style={virtualized ? { height: virtualizer.getTotalSize() } : undefined}
-                {...(selectedKeys ? { selectedKeys } : { defaultSelectedKeys })}
+                selectedKeys={selectedIds}
                 onSelectionChange={handleSelectionChange}
               >
                 {virtualized

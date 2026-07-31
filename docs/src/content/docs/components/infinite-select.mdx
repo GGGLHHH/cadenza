@@ -3,7 +3,7 @@ title: InfiniteSelect
 description: 可搜索、无限滚动的选择器 —— React Aria 行为 + 组合式插槽
 ---
 
-import { SingleDemo, MultiDemo, ErrorDemo, VirtualizedDemo, RenderItemDemo } from '../../../components/InfiniteSelectDemo'
+import { SingleDemo, MultiDemo, EmptySlotDemo, LoadingSlotDemo, ErrorDemo, FooterSlotDemo, VirtualizedDemo, RenderItemDemo } from '../../../components/InfiniteSelectDemo'
 
 可搜索、游标分页无限滚动的选择器家族。行为全部由 React Aria 承担：`Autocomplete`
 用虚拟焦点把搜索框和列表接起来（输入框保持 DOM 焦点，方向键在列表里移动），
@@ -104,12 +104,11 @@ TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外�
 
 加载下一页的触发时机与非虚拟模式一致（提前约 1.5 个视口预取），无需关心。
 
-## 状态插槽
+## 插槽
 
-基座**零文案**。空 / 加载 / 错误 / 加载更多都是 context 驱动的插槽组件，按状态自渲染、
-互斥，文案由你注入 —— i18n 只存在于你的业务层：
-
-<ErrorDemo client:load />
+基座**零文案**。所有可见文案都从 `slots` 通道注入，i18n 只存在于你的业务层。
+状态插槽是 context 驱动的组件，按状态自渲染、互斥；footer 一族是组合式部件，
+放在 slots 末尾自然落在面板底部：
 
 ```tsx
 const slots = (
@@ -124,12 +123,94 @@ const slots = (
 )
 ```
 
+### InfiniteSelectEmpty:空
+
+列表为空（且不在加载 / 错误中）时自渲染——搜索无结果也是这个插槽：
+
+<EmptySlotDemo client:load />
+
+### InfiniteSelectLoading:加载中
+
+首屏加载（`isLoading`）期间自渲染，此时列表还不存在：
+
+<LoadingSlotDemo client:load />
+
+### InfiniteSelectError / InfiniteSelectRetry:错误与重试
+
+`isError` 时自渲染；`InfiniteSelectRetry` 自己接好基座的 `onRetry`（没有则
+不渲染），你只出文案。这个 demo 首次加载必定失败，点重试恢复：
+
+<ErrorDemo client:load />
+
+### Footer 一族:清空 / 分隔 / 确定 / 自定义部件
+
+`InfiniteSelectFooter` 是底部动作条；`InfiniteSelectClearButton` /
+`InfiniteSelectConfirmButton` 通过 context 拿到 `clear` / `close`，不需要你
+穿线；`InfiniteSelectFooterSeparator` 是竖向分隔。自定义部件用
+`useInfiniteSelectActions()` 同样能拿到 `selectedIds` / `selectedItems` /
+`clear` / `close`——下面 demo 中间的「已选 N」就是一个自定义部件：
+
+<FooterSlotDemo client:load />
+
+```tsx
+function FooterSelectedCount() {
+  const { selectedIds } = useInfiniteSelectActions()
+  return <span>已选 {selectedIds.length}</span>
+}
+
+const slots = (
+  <>
+    {stateSlots}
+    <InfiniteSelectFooter>
+      <InfiniteSelectClearButton>清空</InfiniteSelectClearButton>
+      <InfiniteSelectFooterSeparator />
+      <FooterSelectedCount />
+      <InfiniteSelectFooterSeparator />
+      <InfiniteSelectConfirmButton>确定</InfiniteSelectConfirmButton>
+    </InfiniteSelectFooter>
+  </>
+)
+```
+
+### InfiniteSelectStatus:状态容器
+
+三个状态插槽最终都渲染成同一个 `role="status"` 容器（状态切换会被读屏播报），
+它也单独导出，自定义状态视觉时可复用。
+
 加载更多的指示不走插槽——它必须渲染在**列表滚动流的末尾**（位置由基座决定），
-用 `loadingMoreIndicator` prop 传：预取提前一个视口触发，停在顶部的用户根本看不到它，
+用 `loadingMoreIndicator` prop 传：预取提前触发，停在顶部的用户根本看不到它，
 只有滚到底部、恰好在等下一页的人才会看见。
 
-`InfiniteSelectRetry` 自己接好基座的 `onRetry`（没有则不渲染），你只出文案。
-所有状态共用一个 `role="status"` 容器，状态切换会被读屏播报。
+## 动作上下文
+
+footer 部件之所以不需要穿线，是因为面板内有一个**动作上下文**。
+`useInfiniteSelectActions<T>()` 在 slots 里的任何部件中都可调用，返回
+`InfiniteSelectActions<T>`：
+
+| 字段 | 说明 |
+| --- | --- |
+| `selectedIds` | 当前选择的权威全集（含未加载页的 id） |
+| `selectedItems` | 已加载页的选中对象（口径与 `onChange` 的 `items` 一致） |
+| `clear()` | 清空选择 |
+| `close()` | 关闭弹层（`commitOnClose` 下即提交草稿） |
+
+`InfiniteSelectClearButton` / `InfiniteSelectConfirmButton` 内部就是调它；
+「插槽」一节 Footer demo 里的「已选 N」自定义部件也是。两个注意点：
+
+- 在 provider 之外调用会**直接抛错**（fail loud），所以它只能出现在 slots
+  子树里；
+- 上下文由 `InfiniteCombobox` 自动填充。只有当你不用 InfiniteCombobox、
+  自己拿 `InfiniteSelect` 基座组弹层时，才需要用
+  `InfiniteSelectActionsProvider` 亲自喂值：
+
+```tsx
+<InfiniteSelectActionsProvider value={{ selectedItems, selectedIds, clear, close }}>
+  <InfiniteSelect {/* … */}>{slots}</InfiniteSelect>
+</InfiniteSelectActionsProvider>
+```
+
+上下文定义在基座层而不是 combobox 层，是为了避免循环导入：combobox 已经
+导入基座，钩子若住在上层，基座再反向导入就成环了——业务层做同类分层时同理。
 
 ## 数据适配器
 
@@ -237,7 +318,7 @@ interface InfiniteSelectItemRenderParams<T> {
 | `InfiniteSelectAdapterProps<T>` | `list` prop 的契约——数据适配器要实现的形状，见「数据适配器」 |
 | `ControllableSelectionProps<T>` | 选择相关 props 的判别联合（单选 `value?: string` / 多选 `value?: string[]`，`onChange` 签名随之切换） |
 | `InfiniteSelectProps<T>` / `InfiniteComboboxProps<T>` | 两个组件的完整 props，业务层包一层时直接复用 |
-| `InfiniteSelectActions<T>` | footer 内 `useInfiniteSelectActions()` 的返回：`selectedItems` / `selectedIds` / `clear` / `close` |
+| `InfiniteSelectActions<T>` | 动作上下文的值形状（`useInfiniteSelectActions()` 的返回 / `InfiniteSelectActionsProvider` 的入参），见「动作上下文」 |
 | `InfiniteComboboxState<T>` / `InfiniteComboboxStateOptions` | `useInfiniteComboboxState` 的返回值与入参 |
 | `InfiniteComboboxChildren<T>` | trigger 的类型：`ReactElement` 或接收状态的函数 |
 

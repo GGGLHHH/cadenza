@@ -14,6 +14,7 @@
     "@astrojs/starlight": "catalog:docs",
     "@astrojs/starlight-tailwind": "catalog:docs",
     "@gedatou/cadenza-ui": "workspace:*",
+    "@gedatou/cadenza-utils": "workspace:*",
     "astro": "catalog:docs",
     "react": "catalog:react",
     "react-dom": "catalog:react"

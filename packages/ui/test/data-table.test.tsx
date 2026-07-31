@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react'
 import type { DataTableColumn } from '../src/components/data-table'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -269,6 +270,158 @@ describe('dataTable interactions', () => {
     )
     expect(screen.getByText('More…')).not.toBeNull()
     expect(screen.getAllByRole('row').length).toBeLessThan(60)
+  })
+
+  it('selectionColumn: row checkboxes plus a select-all header, row header stays on data', async () => {
+    const onSelectionChange = vi.fn()
+    render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        items={people}
+        onSelectionChange={onSelectionChange}
+        selectionColumn
+        selectionMode="multiple"
+      />,
+    )
+    // 3 row checkboxes + 1 select-all in the header
+    const checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes).toHaveLength(4)
+    // the synthesized column never becomes the row header
+    expect(screen.getByRole('rowheader', { name: 'Bach' })).not.toBeNull()
+
+    await userEvent.click(checkboxes[1]!)
+    expect([...onSelectionChange.mock.calls[0]![0] as Set<string>]).toEqual(['p1'])
+
+    await userEvent.click(checkboxes[0]!)
+    expect(onSelectionChange.mock.lastCall![0]).toBe('all')
+  })
+
+  it('selectionColumn: no header checkbox in single mode, ignored without selectionMode', () => {
+    const { unmount } = render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        items={people}
+        selectionColumn
+        selectionMode="single"
+      />,
+    )
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3)
+    unmount()
+
+    render(
+      <DataTable aria-label="People" columns={columns} items={people} selectionColumn />,
+    )
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
+  })
+
+  it('value/onChange: toggling a row reports items and ids', async () => {
+    const onChange = vi.fn()
+    render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        items={people}
+        onChange={onChange}
+        selectionColumn
+        selectionMode="multiple"
+        value={[]}
+      />,
+    )
+    await userEvent.click(screen.getAllByRole('checkbox')[1]!)
+    expect(onChange).toHaveBeenCalledWith([people[0]], ['p1'])
+  })
+
+  it('cross-page archive: select-all unions loaded rows, keeps unloaded ids', async () => {
+    const onChange = vi.fn()
+    render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        items={people}
+        onChange={onChange}
+        selectionColumn
+        selectionMode="multiple"
+        value={['ghost-from-other-page']}
+      />,
+    )
+    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
+    const [items, ids] = onChange.mock.lastCall! as [Person[], string[]]
+    expect(ids).toEqual(['ghost-from-other-page', 'p1', 'p2', 'p3'])
+    // items echo loaded objects only — the ghost has no object to echo
+    expect(items).toEqual(people)
+  })
+
+  it('cross-page archive: header deselect-all removes loaded rows only', async () => {
+    const onChange = vi.fn()
+    render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        items={people}
+        onChange={onChange}
+        selectionColumn
+        selectionMode="multiple"
+        value={['ghost-from-other-page', 'p1', 'p2', 'p3']}
+      />,
+    )
+    // all loaded rows selected → header checkbox unchecks everything loaded
+    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
+    const [, ids] = onChange.mock.lastCall! as [Person[], string[]]
+    expect(ids).toEqual(['ghost-from-other-page'])
+  })
+
+  it('cross-page archive: item objects are cached across page flips', async () => {
+    const pageOne = people
+    const pageTwo: Person[] = [
+      { id: 'p4', name: 'Mahler', role: 'Composer' },
+      { id: 'p5', name: 'Ravel', role: 'Pianist' },
+    ]
+    let latest: { items: Person[], ids: string[] } = { items: [], ids: [] }
+    function Harness({ items, value }: { items: Person[], value: string[] }): ReactElement {
+      return (
+        <DataTable
+          aria-label="People"
+          columns={columns}
+          items={items}
+          onChange={(nextItems, nextIds) => {
+            latest = { items: nextItems, ids: nextIds }
+          }}
+          selectionColumn
+          selectionMode="multiple"
+          value={value}
+        />
+      )
+    }
+    const { rerender } = render(<Harness items={pageOne} value={[]} />)
+    await userEvent.click(screen.getAllByRole('checkbox')[1]!)
+    expect(latest.ids).toEqual(['p1'])
+
+    // flip to page 2 with the archive kept, then select a page-2 row
+    rerender(<Harness items={pageTwo} value={latest.ids} />)
+    await userEvent.click(screen.getAllByRole('checkbox')[1]!)
+    expect(latest.ids).toEqual(['p1', 'p4'])
+    // page 1's object came from the cache — it is not in the current items
+    expect(latest.items).toEqual([pageOne[0], pageTwo[0]])
+  })
+
+  it('single mode value/onChange: reports the item, then undefined on toggle-off', async () => {
+    const onChange = vi.fn()
+    render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        items={people}
+        onChange={onChange}
+        selectionColumn
+        selectionMode="single"
+      />,
+    )
+    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
+    expect(onChange).toHaveBeenCalledWith(people[0])
+    await userEvent.click(screen.getAllByRole('checkbox')[0]!)
+    expect(onChange).toHaveBeenLastCalledWith(undefined)
   })
 
   it('renders the loading-more indicator at the tail while fetching the next page', () => {

@@ -1,10 +1,11 @@
 'use client'
 
 import type { ComponentProps, CSSProperties, ReactElement, ReactNode } from 'react'
-import type { Key, Selection, SelectionMode, SortDescriptor } from 'react-aria-components'
+import type { Key, Selection, SortDescriptor } from 'react-aria-components'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { cn } from '@gedatou/cadenza-ui/lib/utils'
 import { Button } from '@gedatou/cadenza-ui/primitives/button'
+import { Checkbox } from '@gedatou/cadenza-ui/primitives/checkbox'
 import {
   TableBody,
   TableCell,
@@ -12,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@gedatou/cadenza-ui/primitives/table'
+import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconChevronDown, IconChevronUp, IconSelector } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { createContext, use, useMemo, useRef } from 'react'
@@ -63,7 +65,39 @@ export interface DataTableColumn<T> {
   className?: string
 }
 
-export interface DataTableProps<T> {
+/**
+ * The convenience selection layer, mirroring InfiniteSelect's contract. It
+ * owns the cross-page archive: ids survive page flips, `'all'` from the
+ * header expands to "union the loaded rows in", deselect-all (and Esc)
+ * expands to "remove the loaded rows", and item objects are cached across
+ * pages — `ids` is the authoritative set, `items` only echoes objects whose
+ * page was actually loaded. Persist `ids`. Server-side select-all ("all
+ * 10000 matches, loaded or not") is inherently a business-layer contract the
+ * component cannot express — it never saw the unloaded data.
+ */
+export type DataTableSelectionProps<T>
+  = | {
+    selectionMode?: 'none'
+    value?: undefined
+    defaultValue?: undefined
+    onChange?: undefined
+  }
+  | {
+    selectionMode: 'single'
+    /** Controlled selected row id; `undefined` while controlled means none. */
+    value?: string
+    defaultValue?: string
+    onChange?: (item: T | undefined) => void
+  }
+  | {
+    selectionMode: 'multiple'
+    /** Controlled selected row ids — the cross-page archive. */
+    value?: string[]
+    defaultValue?: string[]
+    onChange?: (items: T[], ids: string[]) => void
+  }
+
+export interface DataTableBaseProps<T> {
   /** Accessible name for the grid. */
   'aria-label': string
   'columns': DataTableColumn<T>[]
@@ -88,14 +122,25 @@ export interface DataTableProps<T> {
    */
   'loadMoreScrollOffset'?: number
 
-  // Selection and sorting are React Aria passthroughs — RAC owns the
-  // semantics, the data layer owns the actual sort.
-  'selectionMode'?: SelectionMode
+  // Raw React Aria selection passthrough — RAC semantics verbatim, no
+  // cross-page bookkeeping. Ignored while the value/onChange convenience
+  // layer (see DataTableSelectionProps) is in use, except that
+  // onSelectionChange still observes the raw selection.
   'selectedKeys'?: Iterable<Key> | 'all'
   'defaultSelectedKeys'?: Iterable<Key> | 'all'
   'onSelectionChange'?: (keys: Selection) => void
   'sortDescriptor'?: SortDescriptor
   'onSortChange'?: (descriptor: SortDescriptor) => void
+  /**
+   * Prepend a checkbox column wired to row selection (React Aria's
+   * `slot="selection"` protocol): row checkboxes toggle, the header checkbox
+   * selects all (multiple mode only; the header stays empty in single mode).
+   * The column pins itself when the leading data columns are pinned, and is
+   * never the row header. Ignored while `selectionMode` is off. Essential
+   * together with `onRowAction`, which hands row clicks to the action and
+   * leaves checkboxes as the selection gesture.
+   */
+  'selectionColumn'?: boolean
   /** Row activation (click / Enter). With selection on, RAC moves selection to the checkbox/long-press gestures. */
   'onRowAction'?: (item: T) => void
 
@@ -136,6 +181,8 @@ export interface DataTableProps<T> {
    */
   'children'?: ReactNode
 }
+
+export type DataTableProps<T> = DataTableBaseProps<T> & DataTableSelectionProps<T>
 
 /** Shared status container for the state slots: `role=status` announces changes. */
 export function DataTableStatus({ className, ...props }: ComponentProps<'div'>): ReactElement {
@@ -306,6 +353,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     loadingMoreIndicator,
     loadMoreScrollOffset = 1,
     selectionMode,
+    selectionColumn = false,
     selectedKeys,
     defaultSelectedKeys,
     onSelectionChange,
@@ -334,9 +382,27 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
   const isEmpty = showRows && rows.length === 0
   const hasRows = showRows && rows.length > 0
 
+  // The row header defaults against the caller's columns, before the
+  // synthesized selection column is prepended — a checkbox must never be what
+  // a screen reader announces as the row's name.
   const rowHeaderId = columns.find(column => column.isRowHeader)?.id ?? columns[0]?.id
 
-  const pinnedLayout = useMemo(() => computePinnedLayout(columns), [columns])
+  const hasSelectionColumn = selectionColumn && selectionMode !== undefined && selectionMode !== 'none'
+  const allColumns = useMemo<DataTableColumn<T>[]>(() => {
+    if (!hasSelectionColumn)
+      return columns
+    const selection: DataTableColumn<T> = {
+      id: '__cadenza-selection',
+      header: selectionMode === 'multiple' ? <Checkbox slot="selection" /> : null,
+      cell: () => <Checkbox slot="selection" />,
+      width: 44,
+      // Keep the pinned block contiguous when the leading data columns pin.
+      pinned: columns.some(column => column.pinned === 'start') ? 'start' : undefined,
+    }
+    return [selection, ...columns]
+  }, [hasSelectionColumn, selectionMode, columns])
+
+  const pinnedLayout = useMemo(() => computePinnedLayout(allColumns), [allColumns])
 
   const cellStyle = (column: DataTableColumn<T>): CSSProperties | undefined => {
     const size = columnSizeStyle(column)
@@ -358,6 +424,80 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
         if (row)
           onRowAction(row.item)
       }
+
+  // ── Convenience selection layer (cross-page archive). Active only when the
+  //    caller opted into value/defaultValue/onChange; otherwise the raw RAC
+  //    passthrough below behaves exactly as before. Controlled-ness is key
+  //    presence, not `!== undefined` — a controlled single select clears with
+  //    value={undefined} — so the ids are normalized to arrays BEFORE the
+  //    hook, which turns that undefined into a controlled []. ──
+  const usesSelectionValue = 'value' in props || 'defaultValue' in props || props.onChange !== undefined
+
+  const normalizeIds = (value: string | string[] | undefined): string[] => {
+    if (value === undefined)
+      return []
+    return Array.isArray(value) ? value : [value]
+  }
+
+  const [selectedIds, setSelectedIds] = useControllableState<string[]>({
+    value: 'value' in props ? normalizeIds(props.value) : undefined,
+    defaultValue: 'defaultValue' in props ? normalizeIds(props.defaultValue) : undefined,
+    fallback: [],
+  })
+
+  // `ids` is authoritative; this cache only echoes item objects for ids whose
+  // page happens to be loaded. Page flips swap `items` wholesale, so selected
+  // objects are remembered across pages here.
+  const selectedItemsCacheRef = useRef<Map<string, T>>(new Map())
+  if (usesSelectionValue) {
+    for (const row of rows) {
+      if (selectedIds.includes(row.id))
+        selectedItemsCacheRef.current.set(row.id, row.item)
+    }
+  }
+
+  const handleSelectionValueChange = (selection: Selection): void => {
+    const loadedIds = rows.map(row => row.id)
+    let ids: string[]
+    if (selection === 'all') {
+      // Header select-all: union the loaded rows into the archive.
+      ids = [...new Set([...selectedIds, ...loadedIds])]
+    }
+    else if (selection.size === 0) {
+      // RAC clears to an empty set on header deselect-all (and Esc); the
+      // archive interpretation is "remove the loaded rows", never "wipe".
+      ids = selectedIds.filter(id => !loadedIds.includes(id))
+    }
+    else {
+      // Per-row toggles: RAC preserves keys outside the current collection,
+      // so the enumerated set already is the full archive.
+      ids = [...selection].map(String)
+    }
+
+    const cache = selectedItemsCacheRef.current
+    for (const row of rows) {
+      if (ids.includes(row.id))
+        cache.set(row.id, row.item)
+    }
+    for (const id of [...cache.keys()]) {
+      if (!ids.includes(id))
+        cache.delete(id)
+    }
+
+    // Controlled mode makes this a no-op (the hook only mirrors props there).
+    setSelectedIds(ids)
+
+    if (props.selectionMode === 'multiple') {
+      const selectedItems = ids
+        .map(id => cache.get(id))
+        .filter((entry): entry is T => entry !== undefined)
+      props.onChange?.(selectedItems, ids)
+    }
+    else if (props.selectionMode === 'single') {
+      const id = ids[0]
+      props.onChange?.(id === undefined ? undefined : cache.get(id))
+    }
+  }
 
   // Height must be bounded for a virtualizer viewport to exist at all, hence
   // the fallback.
@@ -398,7 +538,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
       isDisabled
       style={{ blockSize }}
     >
-      {columns.map(column => (
+      {allColumns.map(column => (
         <TableCell className="p-0" key={column.id} />
       ))}
     </TableRow>
@@ -419,13 +559,18 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     <Table
       aria-label={ariaLabel}
       data-slot="data-table-grid"
-      defaultSelectedKeys={defaultSelectedKeys}
+      defaultSelectedKeys={usesSelectionValue ? undefined : defaultSelectedKeys}
       onRowAction={handleRowAction}
-      onSelectionChange={onSelectionChange}
       onSortChange={onSortChange}
-      selectedKeys={selectedKeys}
+      selectedKeys={usesSelectionValue ? selectedIds : selectedKeys}
       selectionMode={selectionMode}
       sortDescriptor={sortDescriptor}
+      onSelectionChange={usesSelectionValue
+        ? (selection) => {
+            handleSelectionValueChange(selection)
+            onSelectionChange?.(selection)
+          }
+        : onSelectionChange}
       // border model declared explicitly: without Tailwind preflight the UA
       // default is border-separate + 2px border-spacing, which opens gaps
       // between the header cell backgrounds and the card's rounded corners.
@@ -434,7 +579,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
       "
       disabledBehavior="all"
     >
-      <TableHeader columns={columns} dependencies={[sortDescriptor]}>
+      <TableHeader columns={allColumns} dependencies={[sortDescriptor]}>
         {column => (
           <TableHead
             allowsSorting={column.allowsSorting}
@@ -460,12 +605,12 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
       </TableHeader>
       <TableBody renderEmptyState={() => children}>
         {padStart > 0 && spacerRow('__cadenza-pad-start', padStart)}
-        <Collection dependencies={[columns]} items={windowRows}>
+        <Collection dependencies={[allColumns]} items={windowRows}>
           {row => (
             <TableRow
-              columns={columns}
+              columns={allColumns}
               data-slot="data-table-row"
-              dependencies={[columns]}
+              dependencies={[allColumns]}
               id={row.id}
               style={virtualized && !dynamicRowHeight ? { blockSize: rowHeight } : undefined}
               // TanStack's measureElement maps the node back to its item via

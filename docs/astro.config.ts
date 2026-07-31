@@ -12,6 +12,7 @@ export default defineConfig({
       customCss: ['./src/styles/global.css'],
       sidebar: [
         { label: '组件', items: [{ autogenerate: { directory: 'components' } }] },
+        { label: '工具', items: [{ autogenerate: { directory: 'utils' } }] },
       ],
     }),
   ],

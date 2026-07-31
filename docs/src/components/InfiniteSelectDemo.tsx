@@ -12,6 +12,7 @@ import {
   InfiniteSelectLoading,
   InfiniteSelectRetry,
   useInfiniteComboboxState,
+  useInfiniteSelectActions,
 } from '@gedatou/cadenza-ui'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -224,6 +225,107 @@ export function MultiDemo(): ReactElement {
       >
         <Button variant="outline">
           {ids.length > 0 ? `已选 ${ids.length} 位` : '选择多位作曲家'}
+        </Button>
+      </InfiniteCombobox>
+    </div>
+  )
+}
+
+// ── 插槽逐项演示:空/加载中用静态适配器定格,错误走真实异步,footer 展示动作上下文。 ──
+
+function noop(): void {}
+
+const emptyList: InfiniteSelectAdapterProps<Person> = {
+  items: [],
+  isLoading: false,
+  isFetchingNextPage: false,
+  hasNextPage: false,
+  isError: false,
+  onLoadMore: noop,
+  onRetry: noop,
+}
+
+const loadingList: InfiniteSelectAdapterProps<Person> = { ...emptyList, isLoading: true }
+
+export function EmptySlotDemo(): ReactElement {
+  const state = useInfiniteComboboxState()
+
+  return (
+    <div className="not-content">
+      <InfiniteCombobox<Person>
+        getOption={getOption}
+        list={emptyList}
+        searchPlaceholder="搜索作曲家…"
+        slots={demoSlots}
+        state={state}
+      >
+        <Button variant="outline">空数据源</Button>
+      </InfiniteCombobox>
+    </div>
+  )
+}
+
+export function LoadingSlotDemo(): ReactElement {
+  const state = useInfiniteComboboxState()
+
+  return (
+    <div className="not-content">
+      <InfiniteCombobox<Person>
+        getOption={getOption}
+        list={loadingList}
+        searchPlaceholder="搜索作曲家…"
+        slots={demoSlots}
+        state={state}
+      >
+        <Button variant="outline">永远在加载</Button>
+      </InfiniteCombobox>
+    </div>
+  )
+}
+
+// 自定义 footer 部件:经 useInfiniteSelectActions 拿到当前选择,不需要外部穿线
+function FooterSelectedCount(): ReactElement {
+  const { selectedIds } = useInfiniteSelectActions()
+  return (
+    <span className="px-3 text-xs whitespace-nowrap text-muted-foreground">
+      已选
+      {' '}
+      {selectedIds.length}
+    </span>
+  )
+}
+
+export function FooterSlotDemo(): ReactElement {
+  const state = useInfiniteComboboxState()
+  const list = useFakeInfiniteList(state.queryValue)
+  const [ids, setIds] = useState<string[]>([])
+
+  return (
+    <div className="not-content">
+      <InfiniteCombobox<Person>
+        commitOnClose
+        getOption={getOption}
+        list={list}
+        multiple
+        onChange={(_items, nextIds) => setIds(nextIds)}
+        searchPlaceholder="搜索作曲家…"
+        state={state}
+        value={ids}
+        slots={(
+          <>
+            {demoSlots}
+            <InfiniteSelectFooter>
+              <InfiniteSelectClearButton>清空</InfiniteSelectClearButton>
+              <InfiniteSelectFooterSeparator />
+              <FooterSelectedCount />
+              <InfiniteSelectFooterSeparator />
+              <InfiniteSelectConfirmButton>确定</InfiniteSelectConfirmButton>
+            </InfiniteSelectFooter>
+          </>
+        )}
+      >
+        <Button variant="outline">
+          {ids.length > 0 ? `已选 ${ids.length} 位` : 'footer 三件套 + 自定义部件'}
         </Button>
       </InfiniteCombobox>
     </div>

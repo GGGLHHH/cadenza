@@ -1,0 +1,84 @@
+---
+title: useControllableState
+description: useState 形状的受控/非受控二态 hook —— @gedatou/cadenza-utils
+---
+
+import { ControllableDemo } from '../../../components/UtilsDemo'
+
+`@gedatou/cadenza-utils` 是配套的工具包，目前的核心是 `useControllableState`：
+把 ahooks 的 `useControllableValue` 收敛成 **`useState` 的形状**，让一个组件
+同时支持受控与非受控两种用法——**库里所有组件的受控实现都建立在它上面**。
+
+```bash
+pnpm add @gedatou/cadenza-utils
+```
+
+## 契约
+
+```ts
+const [state, setState] = useControllableState({ value, defaultValue, onChange, fallback })
+```
+
+- 返回 `[state, setState]`，`setState` 是标准的 `Dispatch<SetStateAction<T>>`：
+  接受值或 `(prev) => next` 更新函数，且**引用恒定**，可以安全放进依赖数组；
+- **`value` 非 `undefined` 即受控**：state 跟随 prop，`setState` 只触发
+  `onChange`，内部状态不动——与 React 原生输入框的受控约定一致；
+- 否则为非受控：hook 自持状态，`defaultValue` 是初始值，`onChange` 照样触发；
+- `fallback` 兜底"非受控且没给 defaultValue"的情形，让返回类型收窄为 `T`
+  而不是 `T | undefined`。
+
+## 示例
+
+同一个 `Stepper` 组件，传 `value` 即受控、只传 `defaultValue` 即非受控：
+
+<ControllableDemo client:load />
+
+```tsx
+function Stepper({ value, defaultValue, onChange }: StepperProps) {
+  const [count, setCount] = useControllableState({ value, defaultValue, onChange, fallback: 0 })
+  return (
+    <>
+      <Button onPress={() => setCount((c) => c - 1)}>−</Button>
+      <span>{count}</span>
+      <Button onPress={() => setCount((c) => c + 1)}>+</Button>
+    </>
+  )
+}
+
+<Stepper defaultValue={1} />                        {/* 非受控 */}
+<Stepper value={volume} onChange={setVolume} />     {/* 受控 */}
+```
+
+## 为什么二次封装 ahooks
+
+`useControllableValue` 本身能干这活，但它的 API 是「props 对象 + 字符串
+propName 配置 + setter 带变长参数」，和 `useState` 长得完全不一样。这层封装
+把它压回 `useState` 的形状，调用处零学习成本、可直接替换既有的 `useState`。
+另有一个实现细节：ahooks 用 `hasOwnProperty('value')` 判定受控，所以封装内
+只在值非 `undefined` 时才挂载对应 key——否则「传了 undefined」会被误判成
+「受控且值为 undefined」，状态被永久钉死。
+
+## 一个进阶技巧：key 存在性受控
+
+`value !== undefined` 的判定有一个边界：受控组件想表达「清空」时传
+`value={undefined}`，会被误判为切换到非受控。库内组件（DataTable /
+InfiniteSelect 的选择）的处理是**先归一化、再交给 hook**——用 key 存在性
+判定受控，把 `undefined` 归一成空数组这类非 `undefined` 值：
+
+```ts
+const [selectedIds, setSelectedIds] = useControllableState<string[]>({
+  value: 'value' in props ? normalizeIds(props.value) : undefined,
+  defaultValue: 'defaultValue' in props ? normalizeIds(props.defaultValue) : undefined,
+  fallback: [],
+})
+```
+
+业务层包装组件遇到同样的边界时，可以复用这个模式。
+
+## 库内的使用点
+
+| 位置 | 受控的状态 |
+| --- | --- |
+| `DataTable` | 选择便利层的 `value / defaultValue / onChange`（跨页存档） |
+| `InfiniteSelect` / `InfiniteCombobox` | 选择 ids；弹层 `open`、搜索词 `searchValue` |
+| `DataPagination` | `page` 与 `limit` 各自独立受控 |

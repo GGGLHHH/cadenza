@@ -256,28 +256,53 @@ export function SortDemo(): ReactElement {
   )
 }
 
-export function SelectionDemo(): ReactElement {
-  const [selected, setSelected] = useState<Set<string>>(() => new Set())
+export function SingleSelectionDemo(): ReactElement {
+  const [picked, setPicked] = useState<Person | undefined>(undefined)
   const items = PEOPLE.slice(0, 6)
 
   return (
     <div className="not-content flex flex-col gap-2">
       <DataTable<Person>
+        aria-label="作曲家(单选)"
+        columns={columns}
+        items={items}
+        onChange={setPicked}
+        selectionColumn
+        selectionMode="single"
+        value={picked?.id}
+      />
+      <p className="text-sm text-muted-foreground">
+        {picked ? `当前选中:${picked.name}` : '未选择'}
+      </p>
+    </div>
+  )
+}
+
+export function MultiSelectionDemo(): ReactElement {
+  const [ids, setIds] = useState<string[]>([])
+  const [lastOpened, setLastOpened] = useState<string | undefined>(undefined)
+  const items = PEOPLE.slice(0, 6)
+
+  return (
+    <div className="not-content flex flex-col gap-2">
+      {/* onRowAction 在场时,点击行是"打开",勾选走 checkbox 列 */}
+      <DataTable<Person>
         aria-label="作曲家(可多选)"
         columns={columns}
         items={items}
-        selectedKeys={selected}
+        onChange={(_items, nextIds) => setIds(nextIds)}
+        onRowAction={person => setLastOpened(person.name)}
+        selectionColumn
         selectionMode="multiple"
-        onSelectionChange={(keys) => {
-          setSelected(keys === 'all' ? new Set(items.map(person => person.id)) : new Set([...keys].map(String)))
-        }}
+        value={ids}
       />
       <p className="text-sm text-muted-foreground">
         已选
         {' '}
-        {selected.size}
+        {ids.length}
         {' '}
         行
+        {lastOpened !== undefined && `,最近打开:${lastOpened}`}
       </p>
     </div>
   )
@@ -311,6 +336,72 @@ export function PaginationDemo(): ReactElement {
         }}
         onPageChange={setPage}
       />
+    </div>
+  )
+}
+
+// ── 状态插槽:三种状态各自演示。空/加载中用静态 props 定格,错误走真实异步。 ──
+
+export function EmptySlotDemo(): ReactElement {
+  return (
+    <div className="not-content">
+      <DataTable<Person> aria-label="作曲家(空)" columns={columns} items={[]}>
+        {demoSlots}
+      </DataTable>
+    </div>
+  )
+}
+
+export function LoadingSlotDemo(): ReactElement {
+  return (
+    <div className="not-content">
+      <DataTable<Person> aria-label="作曲家(加载中)" columns={columns} isLoading items={[]}>
+        {demoSlots}
+      </DataTable>
+    </div>
+  )
+}
+
+export function ArchiveDemo(): ReactElement {
+  const [page, setPage] = useState(1)
+  // 跨页存档:选择集在翻页状态之外。ids 是权威全集;items 里跨页的对象来自组件缓存
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [selectedItems, setSelectedItems] = useState<Person[]>([])
+  const { items, total, ...listState } = usePersonPage(page, 5)
+
+  return (
+    <div className="not-content flex flex-col gap-3">
+      <DataTable<Person>
+        aria-label="作曲家(跨页存档)"
+        columns={columns}
+        items={items}
+        selectionColumn
+        selectionMode="multiple"
+        value={selectedIds}
+        onChange={(nextItems, nextIds) => {
+          setSelectedIds(nextIds)
+          setSelectedItems(nextItems)
+        }}
+        {...listState}
+      >
+        {demoSlots}
+      </DataTable>
+      <DataPagination
+        limit={5}
+        page={page}
+        showLimitChanger={false}
+        summary={({ total: totalCount }) => `共 ${totalCount} 条`}
+        total={total}
+        onPageChange={setPage}
+      />
+      <p className="text-sm text-muted-foreground">
+        已选
+        {' '}
+        {selectedIds.length}
+        {' '}
+        条
+        {selectedItems.length > 0 && `:${selectedItems.map(person => person.name).join('、')}`}
+      </p>
     </div>
   )
 }
