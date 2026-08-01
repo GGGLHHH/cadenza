@@ -1,0 +1,152 @@
+---
+title: InputGroup
+description: 带前后缀的输入框 —— 图标、文本、按钮和输入框共处一个边框，焦点环画在整组上
+---
+
+一个输入框加若干附加物（图标、单位、按钮、快捷键提示），**共处同一个边框**，焦点环
+画在整组而不是输入框上。shadcn 的组合，原样收录 —— [SearchField](/docs/components/search-field)
+就是拿它搭的。
+
+控件底下是 React Aria 的 `Input` / `TextArea` / `Button`，所以把它放进 RAC 的字段里
+（`SearchField`、`TextField`）就自动接线，不用往下传 props。
+
+## 图标
+
+`InputGroupAddon` 的 `align` 决定放行首还是行尾，默认 `inline-start`：
+
+<ComponentPreview name="input-group/icon" />
+
+## 文本
+
+`InputGroupText` 用来嵌固定的协议头、单位、域名后缀 —— 用户就不用自己敲了：
+
+<ComponentPreview name="input-group/text" />
+
+## 按钮
+
+`InputGroupButton` 底下是 React Aria 的 `Button`，所以用 **`onPress`** 而不是
+`onClick`。`size` 默认 `xs`，纯图标按钮用 `icon-xs`：
+
+<ComponentPreview name="input-group/button" />
+
+## 快捷键提示
+
+addon 里直接放 `<kbd>`，`InputGroup` 会替它对齐并收掉多余外边距：
+
+<ComponentPreview name="input-group/kbd" />
+
+## 文本域与底部工具条
+
+`align="block-end"` 的 addon 横跨整行、排到下方，`InputGroup` 随之从一行变成竖向布局
+（`block-start` 则排到上方）。配 `InputGroupTextarea` 就是一个带工具条的输入区：
+
+<ComponentPreview name="input-group/textarea" />
+
+## 焦点环怎么来的
+
+环画在 `InputGroup` 上，触发条件是**内部某个 `data-slot="input-group-control"` 的元素**
+处于 `:focus-visible`：
+
+```
+has-[[data-slot=input-group-control]:focus-visible]:border-ring
+has-[[data-slot=input-group-control]:focus-visible]:ring-3
+```
+
+`InputGroupInput` / `InputGroupTextarea` 自带这个 slot，同时用 `focus-visible:ring-0`
+把控件自身的环压掉，所以整组只有一圈。
+
+**这个 slot 值是接线契约，不是标记。** 别给控件传 `data-slot` —— 组件是先写属性、
+后展开 props，外面传一个同名的会把契约值顶掉，焦点环就此静默消失：不报错，只是不再出现。
+要加自己的标记，另起一个属性名。
+
+文本输入框在鼠标点击时也会命中 `:focus-visible`（浏览器认定它预期要打字），所以点一下
+就有环 —— 这是原生行为，不是额外加的。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+每个部件的 Props 表后面跟一张**状态**表，左列是挂在 DOM 上的 `data-*`，右列是同一状态
+在 render props 里的名字。
+
+### InputGroup
+
+底下是 React Aria 的 `Group`。边框、圆角、高度和焦点环都在它身上。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `isDisabled` | `boolean` | `false` | 整组禁用；放进 RAC 字段里时会自动从字段继承 |
+| `isInvalid` | `boolean` | `false` | 校验失败态 |
+| `isReadOnly` | `boolean` | `false` | 只读 |
+| `className` | `string` | — | 类名 |
+
+**状态**
+
+| 状态 | 出现时机 | render prop |
+| --- | --- | --- |
+| `data-hovered` | 指针悬停在组内 | `isHovered` |
+| `data-focus-within` | 组内某个元素持有焦点 | `isFocusWithin` |
+| `data-focus-visible` | 焦点且应当显示焦点环 | `isFocusVisible` |
+| `data-disabled` | `isDisabled`，或所在的 RAC 字段被禁用 | `isDisabled` |
+| `data-invalid` | `isInvalid` | `isInvalid` |
+
+除此之外它还会对**后代**的原生 disabled 作出反应（`has-disabled:opacity-50`）——
+组里只要有任何一个 `:disabled` 元素，整组就按禁用渲染。这一条是坑：React Aria 在只读
+模式下会禁用字段的清除按钮，于是一个只读字段会长得跟禁用的一样。`SearchField`
+的做法是只读时**不渲染**那个按钮；`hidden` 没用，`display: none` 的元素仍然会被
+`:has(:disabled)` 命中。
+
+### InputGroupAddon
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `align` | `'inline-start' \| 'inline-end' \| 'block-start' \| 'block-end'` | `'inline-start'` | 行首 / 行尾 / 上方整行 / 下方整行 |
+| `className` | `string` | — | 类名 |
+
+点击 addon 的空白处会把焦点送给组内的输入框（点在按钮上时不会）——
+这样整个边框范围内哪里都能点出焦点。
+
+### InputGroupInput
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `placeholder` | `string` | — | 占位符 |
+| `className` | `string` | — | 类名 |
+| 其余 | RAC `Input` 的 props | — | 透传 |
+
+自带 `data-slot="input-group-control"`（见[上文](#焦点环怎么来的)），去掉了自己的边框和
+环，交给外层的组来画。没有可见 `Label` 时记得给 `aria-label`。
+
+### InputGroupTextarea
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `rows` | `number` | — | 初始行数 |
+| `className` | `string` | — | 类名 |
+| 其余 | RAC `TextArea` 的 props | — | 透传 |
+
+同样带 `input-group-control`。组里有它时高度自动放开，不再固定成一行。
+
+### InputGroupButton
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `onPress` | `(event) => void` | — | **不是 `onClick`** —— 底下是 React Aria 的 `Button` |
+| `size` | `'xs' \| 'sm' \| 'icon-xs' \| 'icon-sm'` | `'xs'` | 纯图标用 `icon-*` |
+| `variant` | `Button` 的变体 | `'ghost'` | 默认是幽灵按钮，融进输入框 |
+| `isDisabled` | `boolean` | `false` | 禁用 |
+| `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | 表单里需要提交时改它 |
+| `className` | `string` | — | 类名 |
+
+纯图标按钮**必给 `aria-label`**。
+
+### InputGroupText
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名 |
+
+一段静音色的文本，用于单位、协议头、计数。它是 `<span>`，不接收焦点。
+
+六个部件的 props 类型也一并导出：`InputGroupProps` / `InputGroupAddonProps` /
+`InputGroupButtonProps` / `InputGroupInputProps` / `InputGroupTextProps` /
+`InputGroupTextareaProps`。
