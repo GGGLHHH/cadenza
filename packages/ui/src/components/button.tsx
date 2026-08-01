@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactElement, RefAttributes } from 'react'
 import { cn } from '#lib/utils'
 import { Button as ButtonPrimitive, buttonVariants, LinkButton as LinkButtonPrimitive } from '#primitives/button'
+import { LoadingOverlay } from './loading-overlay'
 import { Spinner } from './spinner'
 
 /**
@@ -27,56 +28,67 @@ export type ButtonProps = ComponentProps<typeof ButtonPrimitive> & {
 export type LinkButtonProps = ComponentProps<typeof LinkButtonPrimitive> & RefAttributes<HTMLAnchorElement>
 
 /**
- * RAC's Button with a default pending look, Spectrum-style: the label goes
- * invisible in place — still sizing the button, still in the accessibility
- * tree — while a centred spinner cross-fades in over it. Width never changes,
- * so neighbours never shift; the only animation is 150ms of opacity, both
- * directions CSS-driven off `data-pending` (React unmounting can't cut the
- * exit short). No built-in anti-flicker delay: whether a fast operation
- * should show a spinner at all is the caller's call — delay setting
- * `isPending` if it matters. The wait cursor comes from styles.css, where
- * `data-pending` outranks the disabled not-allowed rule.
+ * RAC's Button pending on the same `LoadingOverlay` as everything else in the
+ * library: the label stays in flow — still sizing the button, still the
+ * accessible name — melting under a content blur while the flat scrim veils
+ * it and a spinner centres on top (decorative, `aria-hidden`: RAC announces
+ * the pending state itself). Width never changes, every fade runs in CSS off
+ * `data-pending`, and there is no built-in anti-flicker delay — delay setting
+ * `isPending` if a fast operation should not flash. The wait cursor comes
+ * from styles.css, where `data-pending` outranks the disabled rule.
  *
- * The machinery mounts only while `isPending`/`isLoading` is *passed* (even
- * as false — that is what keeps the exit animation alive); buttons that never
- * use the feature render bare children. Function children are the caller
- * taking over the whole rendering (they see `isPending` in their render
- * props), so nothing is injected for them either.
+ * The overlay mounts only while `isPending`/`isLoading` is *passed* (even as
+ * false — that is what keeps the exit fade alive); buttons that never use the
+ * feature render bare children. Function children are the caller taking over
+ * the whole rendering (they see `isPending` in their render props), so
+ * nothing is injected for them either.
  */
 export function Button({ children, className, isPending, isLoading, ...props }: ButtonProps): ReactElement {
   const pendingCapable = (isPending ?? isLoading) !== undefined && typeof children !== 'function'
   return (
     <ButtonPrimitive
-      className={cn(pendingCapable && 'relative', className)}
+      // overflow-hidden shapes the flat scrim to the button's rounded padding
+      // box — the same clip that shapes the background, so they coincide to
+      // the pixel. Focus ring and outline are box-shadow/outline, which
+      // clipping never touches.
+      className={cn(pendingCapable && 'relative overflow-hidden', className)}
       isPending={isPending || isLoading}
       {...props}
     >
       {pendingCapable
         ? (
             <>
-              <span
-                aria-hidden
-                data-slot="button-pending"
-                className="
-                  absolute inset-0 grid place-items-center opacity-0
-                  transition-opacity duration-150
-                  group-data-pending/button:opacity-100
-                  motion-reduce:transition-none
-                "
-              >
-                <Spinner className="block-[1em] inline-[1em]" />
-              </span>
+              {/* The frost, without backdrop-filter: a blur kernel sampling
+                  up to the button's own silhouette smears halos along every
+                  edge and corner (verified on the real button — inset,
+                  transform, isolation, smaller radii all fail). Blurring the
+                  CONTENT instead melts the label identically while the
+                  button's edges never enter a kernel: the label stays put,
+                  veiled and softly visible — covered, never replaced. */}
               <span
                 data-slot="button-label"
                 className="
-                  inline-flex items-center gap-[inherit] transition-opacity
+                  inline-flex items-center gap-[inherit] transition-[filter]
                   duration-150
-                  group-data-pending/button:opacity-0
+                  group-data-pending/button:blur-[2px]
                   motion-reduce:transition-none
                 "
               >
                 {children}
               </span>
+              {/* rounded-none + backdrop-blur-none: the flat scrim is shaped
+                  entirely by the host's overflow clip — the same geometry
+                  that shapes the background, so they coincide to the pixel. */}
+              <LoadingOverlay className="rounded-none backdrop-blur-none" isLoading={isPending || isLoading}>
+                {/* text-foreground, not currentColor: inside the button the
+                    inherited colour is the label's own, which camouflages the
+                    spinner against the veiled label — foreground pairs with
+                    the background-toned scrim in both themes. */}
+                <Spinner
+                  aria-hidden
+                  className="text-foreground block-[1em] inline-[1em]"
+                />
+              </LoadingOverlay>
             </>
           )
         : children}

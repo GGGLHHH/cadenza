@@ -54,23 +54,34 @@ it('renders no spinner at rest', () => {
   expect(screen.getByRole('button').querySelector('[data-slot="spinner"]')).toBeNull()
 })
 
-it('keeps the label in place while pending — width never changes', () => {
-  // Spectrum's pattern: the label goes opacity-0 but keeps sizing the button
-  // and stays in the accessibility tree; the spinner overlays it, centred.
+it('frosts the label in place — covered and melted, never replaced', () => {
   render(<Button isPending>保存</Button>)
-  const button = screen.getByRole('button')
-  expect(button.querySelector('[data-slot="button-label"]')?.textContent).toBe('保存')
-  expect(button.querySelector('[data-slot="button-pending"]')?.getAttribute('aria-hidden')).toBe('true')
-  // Accessible name still comes from the label.
-  expect(screen.getByRole('button', { name: '保存' })).not.toBeNull()
+  const button = screen.getByRole('button', { name: '保存' })
+  const overlay = button.querySelector('[data-slot="loading-overlay"]')
+  expect(overlay?.getAttribute('data-loading')).toBe('true')
+  // The frost is a CONTENT blur on the label wrapper, not a backdrop blur:
+  // the label stays in the tree (width, accessible name) and melts softly.
+  const label = button.querySelector('[data-slot="button-label"]')
+  expect(label?.textContent).toBe('保存')
+  expect(label?.className).toContain('group-data-pending/button:blur-[2px]')
+  // The spinner pairs with the background-toned scrim — currentColor would
+  // camouflage it against the veiled label underneath.
+  expect(button.querySelector('[data-slot="spinner"]')?.getAttribute('class')).toContain('text-foreground')
+  // Button-scale physics, pinned so it never regresses: a backdrop kernel
+  // sampling up to the button's silhouette smears edge halos — so the scrim
+  // is flat and the host's overflow clip does ALL the shaping (verified in a
+  // real browser at 8x magnification).
+  expect(button.className).toContain('overflow-hidden')
+  expect(overlay?.className).toContain('backdrop-blur-none')
+  expect(overlay?.className).toContain('rounded-none')
 })
 
 it('keeps the machinery mounted while the prop is in play, so the exit can animate', () => {
   const { rerender } = render(<Button isPending>保存</Button>)
   rerender(<Button isPending={false}>保存</Button>)
-  // Still in the DOM (hidden by CSS off data-pending) — unmounting would cut
+  // Still in the DOM (hidden by the overlay's own CSS) — unmounting would cut
   // the fade-out short, since React removes nodes synchronously.
-  expect(document.querySelector('[data-slot="spinner"]')).not.toBeNull()
+  expect(document.querySelector('[data-slot="loading-overlay"]')).not.toBeNull()
   expect(screen.getByRole('button').getAttribute('aria-disabled')).toBeNull()
 })
 

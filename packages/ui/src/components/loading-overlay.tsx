@@ -38,9 +38,16 @@ export function LoadingOverlay({
       data-slot="loading-overlay"
       data-loading={isLoading || undefined}
       className={cn(
+        // rounded-[inherit] is load-bearing: Chromium does not clip
+        // backdrop-filter by an ancestor's rounded overflow — only the
+        // element's OWN radius bounds the frost, anything else leaves square
+        // corner notches (verified on the real Button at 6x magnification;
+        // host transform/isolation do not help). Rounded hosts still add
+        // overflow-hidden as the belt that shapes the painted background.
         `
-          absolute inset-0 z-10 grid place-items-center bg-background/60
-          backdrop-blur-sm transition-[opacity,visibility] duration-150
+          absolute inset-0 z-10 grid place-items-center rounded-[inherit]
+          bg-background/60 backdrop-blur-sm transition-[opacity,visibility]
+          duration-150
           motion-reduce:transition-none
         `,
         isLoading

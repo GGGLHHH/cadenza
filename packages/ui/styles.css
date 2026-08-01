@@ -869,6 +869,32 @@
   cursor: wait;
 }
 
+/* Hover feedback is an affordance — "you can act on me" — so it must not
+   fire inside pending or disabled subtrees, where the cursor above already
+   says the opposite. `:hover` itself cannot be blocked (it walks up the
+   ancestor chain no matter how pointer-events are arranged), so the `hover:`
+   VARIANT is redefined with a guard instead: every hover: utility, vendored
+   classes included, goes inert on these states. Note this is deliberately
+   library-wide policy, like the cursor rules — the `pointer-events: auto`
+   they force is also what re-enables :hover on disabled controls, so the two
+   conventions only work as a pair. */
+@custom-variant hover {
+  @media (hover: hover) {
+    &:hover:not(
+      [data-pending],
+      [data-pending] *,
+      :disabled,
+      :disabled *,
+      [aria-disabled="true"],
+      [aria-disabled="true"] *,
+      [data-disabled]:not([data-disabled="false"]),
+      [data-disabled]:not([data-disabled="false"]) *
+    ) {
+      @slot;
+    }
+  }
+}
+
 /* Not every disabled element is disabled *to the user*. DataTable's virtualized
    filler rows carry `isDisabled` only to stay out of selection and keyboard
    navigation — they are empty padding holding the scroll height, often hundreds

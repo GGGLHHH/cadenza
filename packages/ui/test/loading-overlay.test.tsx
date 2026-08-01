@@ -20,6 +20,9 @@ it('shows the centred spinner and the wait cursor while loading', () => {
   expect(overlay?.getAttribute('data-loading')).toBe('true')
   expect(overlay?.className).toContain('cursor-wait')
   expect(overlay?.className).not.toContain('invisible')
+  // Load-bearing, not cosmetic: Chromium only clips backdrop-filter by the
+  // element's own radius — dropping this reopens square corner notches.
+  expect(overlay?.className).toContain('rounded-[inherit]')
   expect(screen.getByRole('status', { name: 'Loading' })).not.toBeNull()
 })
 
