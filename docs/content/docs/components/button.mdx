@@ -17,6 +17,21 @@ description: React Aria Button 的封装 —— cva 变体与尺寸，按压语�
 
 <ComponentPreview name="button/sizes" />
 
+## 按状态渲染:children 的 render props
+
+`children` 是双形态的：普通 ReactNode，或 **`(state) => ReactNode` 的函数**——参数
+就是下方状态表右列那套 render props（`isHovered` / `isPressed` / `isFocused` /
+`isFocusVisible` / `isDisabled` / `isPending`，外加 `defaultChildren`），内容跟着
+交互状态走，不用自己监听任何事件：
+
+<ComponentPreview name="button/render-props" />
+
+这是 React Aria 的原生契约。同一组状态由此有两条平行的路：**改样式**挂状态表左列的
+`data-*`（纯 CSS 变体）；**改内容**用右列的 render props（要换的不只是样式时）。
+下文「自定义 pending」正是这个机制的应用；`LinkButton` 同样支持（状态多一个
+`isCurrent`）。注意 `className` 在 Button 上是全库少数例外——只收字符串、没有函数
+形态（vendored 层的诚实收窄，见 Props 表）。
+
 ## 进行中
 
 `isPending` 表示**这个按钮触发的动作还在途中**（对齐 React 的 `useTransition` /
@@ -24,18 +39,32 @@ description: React Aria Button 的封装 —— cva 变体与尺寸，按压语�
 按压被吞掉（天然防双击）、按钮**保持可聚焦**（`aria-disabled` 而非原生 `disabled`，
 焦点不会凭空丢失）、向辅助技术播报。
 
-默认视觉照 Spectrum 的做法：**标签原地隐形——继续撑宽度、留在无障碍树里**，
-[Spinner](/docs/components/spinner) 居中交叉淡入盖在上面。宽度全程不变，
-邻居不位移；唯一的动画是 150ms 透明度，进出两个方向都由 `data-pending` 驱动纯 CSS
-过渡（`motion-reduce` 下豁免）。没有内建防闪延迟——快操作（比如 200ms 就返回的请求）
-该不该出 spinner 由你决定，需要就延迟置起 `isPending`：
+默认视觉就是全库同一个 [LoadingOverlay](/docs/components/loading-overlay)：
+**真正的覆盖层**——标签留在原地被磨砂融开、隐约可见、继续撑宽度、仍是无障碍名，
+什么都不替换；[Spinner](/docs/components/spinner) 用 `foreground` 色浮在纱上
+（装饰性 `aria-hidden`，RAC 自己播报 pending；不用 currentColor 是因为会和纱下
+的标签同色伪装）。按钮的磨砂是**内容滤镜**而非 backdrop：在 32px 高的小亮元素上，
+backdrop 模糊核会沿边角涂出晕染（真机放大验证过的物理事实），改为模糊标签本身 +
+平面暗纱由宿主裁切成形，磨砂观感相同、边缘与背景像素级贴合；暗纱浓度、过渡、
+`wait` 光标、`data-loading` 钩子与表格/下拉完全同源。宽度全程不变，邻居不位移；
+150ms 交叉淡入进出两向生效（`motion-reduce` 下豁免）。没有内建防闪延迟——快操作
+（比如 200ms 就返回的请求）该不该出 spinner 由你决定，需要就延迟置起 `isPending`：
 
 <ComponentPreview name="button/pending" />
 
 这套结构只在**传了** `isPending` / `isLoading` 时挂载（传 `false` 也算——机制留在
 DOM 里退出动画才放得完）；没用这个特性的按钮渲染裸 children，零开销。
-传**函数 children** 时视为你接管了渲染——什么都不注入，`isPending` 在 render props
-里自己取用。想让宽度真正纹丝不动，pending 期间别换文案——spinner 已经在说话了。
+想让宽度真正纹丝不动，pending 期间别换文案——spinner 已经在说话了。
+
+#### 自定义 pending:函数 children 接管
+
+传**函数 children** 就拿到整个渲染权——暗纱、Spinner 一概不注入，`isPending`
+从 render props 里取，想画什么画什么。下例是经典的「spinner 排在文案旁 +
+换文案」形态；注意内容变化会改变宽度，这是接管的代价（默认组合的宽度恒定
+靠的正是覆盖而不替换）。行为保护不受影响：按压吞没、`wait` 光标、hover
+豁免都跟着 `data-pending` 走，与渲染方式无关：
+
+<ComponentPreview name="button/pending-custom" />
 
 ## 链接按钮
 
@@ -56,11 +85,12 @@ DOM 里退出动画才放得完）；没用这个特性的按钮渲染裸 childr
 | --- | --- | --- | --- |
 | `onPress` | `(e: PressEvent) => void` | — | **不是 `onClick`** —— 统一鼠标 / 触摸 / 键盘的按压语义 |
 | `isDisabled` | `boolean` | `false` | 禁用（渲染原生 `disabled` 属性） |
-| `isPending` | `boolean` | `false` | 进行中：阻断按压但保持可聚焦、打 `data-pending`。默认视觉是标签隐形撑位 + Spinner 居中交叉淡入；函数 children 视为接管渲染、不注入 |
+| `isPending` | `boolean` | `false` | 进行中：阻断按压但保持可聚焦、打 `data-pending`。默认视觉是同一个 LoadingOverlay（真覆盖：标签留在暗纱下，Spinner 浮在纱上；按钮尺度不模糊）；函数 children 视为接管渲染、不注入 |
 | `isLoading` | `boolean` | `false` | `isPending` 的别名，任一为真即进行中（给习惯 `loading` 词汇的业务层） |
 | `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | 表单里需要提交时改它 |
 | `variant` | `'default' \| 'secondary' \| 'outline' \| 'ghost' \| 'destructive' \| 'link'` | `'default'` | 变体，同时回显为 `data-variant` |
 | `size` | `'xs' \| 'sm' \| 'default' \| 'lg' \| 'icon-xs' \| 'icon-sm' \| 'icon' \| 'icon-lg'` | `'default'` | 尺寸，同时回显为 `data-size` |
+| `children` | `ReactNode \| (state) => ReactNode` | — | 内容。函数形态收到状态表右列的 render props（含 `defaultChildren`），见「按状态渲染」 |
 | `className` | `string` | — | 类名。**只收字符串** —— 这是全库少数收窄掉函数形式的部件（vendored 层的类型收窄，诚实且无静默丢失） |
 | 其余 | RAC `Button` 的 props | — | 透传（`autoFocus`、`onPressStart` 一族、`excludeFromTabOrder`……） |
 
@@ -80,6 +110,11 @@ DOM 里退出动画才放得完）；没用这个特性的按钮渲染裸 childr
 `pointer`、禁用时 `not-allowed`、**进行中是 `wait`**——pending 是「在忙」不是
 「禁止」，虽然它也带 `aria-disabled`，styles.css 里 `data-pending` 的规则排在
 禁用规则之后、专门胜出（全局规则，无需自己写）。
+
+与光标约定配套的还有一条：**pending / 禁用状态及其子树内，`hover:` 反馈一律不触发**
+——hover 是「你可以对我做点什么」的 affordance，和 `wait` / `not-allowed` 光标同框
+就是自相矛盾。styles.css 重定义了 `hover` 变体加守卫，对所有 `hover:` 工具类生效
+（包括你自己写的），无需逐处处理。
 
 ### LinkButton
 

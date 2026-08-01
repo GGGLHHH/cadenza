@@ -8,7 +8,10 @@ export default function BasicDemo(): ReactElement {
   const [isLoading, setIsLoading] = useState(true)
   return (
     <div className="flex flex-col items-start gap-3">
-      <div className="relative rounded-xl border p-4 inline-full max-inline-sm">
+      <div className="
+        relative overflow-hidden rounded-xl border p-4 inline-full max-inline-sm
+      "
+      >
         <p className="text-sm font-medium">巴黎场次</p>
         <p className="mbs-1 text-sm text-muted-foreground">
           拉威尔《G 大调钢琴协奏曲》，香榭丽舍剧院，10 月 14 日。

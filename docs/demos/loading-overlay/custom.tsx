@@ -5,7 +5,10 @@ import { LoadingOverlay, Spinner } from '@gedatou/cadenza-ui'
 // 由文字承担语义
 export default function CustomDemo(): ReactElement {
   return (
-    <div className="relative rounded-xl border p-4 inline-full max-inline-sm">
+    <div className="
+      relative overflow-hidden rounded-xl border p-4 inline-full max-inline-sm
+    "
+    >
       <p className="text-sm text-muted-foreground">这一段内容正在刷新。</p>
       <p className="mbs-1 text-sm text-muted-foreground">磨砂层下还能隐约看到它。</p>
       <LoadingOverlay isLoading>

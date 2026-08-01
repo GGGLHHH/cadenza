@@ -15,14 +15,24 @@ description: 区域级磨砂加载覆盖层 —— 铺满最近的 relative 父�
 
 <ComponentPreview name="loading-overlay/basic" />
 
-忘记给父容器 `relative` 是这个模式唯一的坑——覆盖层会铺到更外层的定位祖先上去。
+父容器要记两件事：**`relative`**（忘了它，覆盖层会铺到更外层的定位祖先上去）；
+圆角容器再加 **`overflow-hidden`**。覆盖层自带 `rounded-[inherit]`——这不是装饰
+而是必需：Chromium 的 `backdrop-filter` **不吃祖先的圆角裁切**，只有元素自身的
+圆角能约束磨砂范围，否则四角会凸出方形缺口（在真实 Button 上放大验证过，宿主加
+transform / isolation 都救不了）。宿主的 `overflow-hidden` 负责另一半——把覆盖层
+画出的背景裁进宿主的可见形状。库内的内嵌实例（表格卡片、Button）都已按此处理。
 
 它就是库内加载态的**默认视觉**：[DataTable](/docs/components/data-table) 和
-[InfiniteSelect](/docs/components/infinite-select) 的一切 `isLoading` 都渲染这层磨砂——
-首屏给最低高度防坍缩，刷新盖住旧内容（业务层配 react-query 的 `placeholderData`
-保住旧数据即可触发）。内嵌实例的定制走各自的 slotted 标记部件
-`DataTableLoadingOverlay` / `InfiniteSelectLoadingOverlay`，props 就是本组件的
-（`isLoading` 除外——那是基座的接线）；样例见两个组件页各自的「加载中」小节。
+[InfiniteSelect](/docs/components/infinite-select) 的一切 `isLoading`、
+[Button](/docs/components/button) 的 `isPending`，渲染的都是这同一层
+（Button 的实例传 `rounded-none backdrop-blur-none`、磨砂改由标签的**内容滤镜**
+承担——按钮尺度下 backdrop 模糊核会沿边角涂出晕染，模糊内容本身观感相同而边缘
+像素级干净，这是真机放大验证过的结论）——
+首屏给最低高度防坍缩，刷新/进行中盖住旧内容（表格和下拉由业务层配 react-query 的
+`placeholderData` 保住旧数据即可触发）。内嵌实例的定制：表格和下拉走各自的
+slotted 标记部件 `DataTableLoadingOverlay` / `InfiniteSelectLoadingOverlay`
+（props 就是本组件的，`isLoading` 除外——那是基座的接线），样例见两个组件页的
+「加载中」小节；Button 走函数 children 整体接管。
 
 ## 自定义内容
 
