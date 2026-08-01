@@ -2,6 +2,9 @@
 
 React Aria 负责行为与无障碍，Tailwind + cva 负责外观 —— shadcn 风格的可访问组件库。
 
+**文档站：<https://cadenza-ui-docs.vercel.app>** —— 每个组件的交互 demo、Props 与状态表、
+封装约定都在那里。
+
 ## 结构
 
 分两层，只发布一层：
@@ -15,7 +18,7 @@ packages/ui/               @gedatou/cadenza-ui，tsdown 打包
   src/lib/utils.ts         cn()
   src/index.ts             只导出 ./components/*
   styles.css               aria-nova token，@source 指向 dist
-docs/                      Astro + Starlight 文档站，MDX 里直接跑 React 组件
+docs/                      Next.js + fumadocs（headless，自绘外壳），MDX 里直接跑 React demo
 ```
 
 `src/primitives` 是 shadcn 的源码，不是我们准备的组件——原样发布等于把 shadcn 换个名字重新打包。
@@ -24,11 +27,13 @@ tree-shaking 直接扔掉。
 
 这条边界不只是洁癖，它决定三个数字：
 
-| | 全量导出 primitives | 只导出 components |
+| 首发时的测量（只有 Button） | 全量导出 primitives | 只导出 components |
 | --- | --- | --- |
 | `dist/index.mjs` | 177.8 kB | 3.6 kB |
 | `dependencies` | 14 个 | 4 个 |
 | 消费者 CSS（只用 Button） | 199.8 kB | 23.7 kB |
+
+如今 9 个组件模块对应 76 kB / 9 个依赖 —— 体积随真正提升的组件走，边界的含义没变。
 
 `recharts`、`embla-carousel-react` 这些是 chart / carousel 拖进来的，它们不发布就不必声明为
 依赖——但仍是 `devDependencies`，因为 `tsc` 要 typecheck 全部 primitives。
@@ -51,7 +56,7 @@ tree-shaking 直接扔掉。
 | `pnpm build`       | 构建所有包（拓扑序：ui → docs）         |
 | `pnpm test`        | vitest（jsdom + Testing Library），含 primitives 哈希校验 |
 | `pnpm test -u`     | 接受新哈希，`shadcn add -o` 之后跑      |
-| `pnpm typecheck`   | 根 tsc + docs 的 astro sync && tsc      |
+| `pnpm typecheck`   | 各包 tsc（ui + docs）                   |
 | `pnpm lint`        | eslint                                  |
 | `pnpm release`     | bumpp 打版本，GitHub Actions 负责发布   |
 
@@ -66,7 +71,11 @@ primitives 已经全装好了。把其中一个变成公开 API 是**两步**：
 variant、收紧 prop、包一层 provider 都不必碰 vendored 代码、不会破坏哈希校验。它现在已经
 在补 primitive 的缺口——primitive 把 props 类型内联在签名里没导出，谁想包一层都无从 import。
 
-然后到 `docs/src/content/docs/components/` 加一页。
+然后到 `docs/content/docs/components/` 加一页（demo 放 `docs/demos/`，在
+`docs/demos/index.tsx` 注册）。
+
+封装的完整约定 —— className 函数契约、ref 类型重述、wiring props 检查单 —— 在仓库
+skill `.claude/skills/wrapping-rac-components/SKILL.md`，Claude Code 会自动套用。
 
 拉取新的 primitive：
 

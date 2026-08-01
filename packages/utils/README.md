@@ -1,6 +1,7 @@
 # @gedatou/cadenza-utils
 
 [`@gedatou/cadenza-ui`](https://www.npmjs.com/package/@gedatou/cadenza-ui) 内部使用的 React hooks，单独发包以便业务层直接复用。
+文档：<https://cadenza-ui-docs.vercel.app/docs/utils/use-controllable-state>。
 
 ## 安装
 
