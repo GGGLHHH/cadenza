@@ -799,6 +799,73 @@
   }
 }
 
+/* A hand on what you can click. Tailwind v4 dropped the preflight rule that
+   gave buttons `cursor: pointer`, and shadcn went along with it — its own docs
+   just note "Buttons now use the default cursor", with no snippet to undo it.
+   Native apps do behave that way; the web does not, and an arrow over a button
+   reads as "not clickable" to most people. So we put it back.
+
+   Scoped to buttons and tabs on purpose. Menu items, listbox options, combobox
+   entries and calendar cells keep the arrow that `cursor-default` gives them
+   upstream — those imitate native menus, where a hand would be the odd one out.
+
+   Sits above the disabled rules so that on equal specificity, disabled wins. */
+:where(button, [role="button"], [role="tab"]):not(
+  :disabled,
+  [aria-disabled="true"],
+  [data-disabled]:not([data-disabled="false"])
+) {
+  cursor: pointer;
+}
+
+/* One disabled cursor across the library. Upstream is split three ways: some
+   parts set only `pointer-events-none` (arrow), some only `cursor-not-allowed`
+   (blocked sign), and input/select/native-select/combobox set both — where the
+   cursor is dead code, since an element with no pointer events never receives
+   the pointer that would change it.
+
+   The two are mutually exclusive, so unifying means dropping one. Dropped:
+   `pointer-events: none`. It was never what blocks interaction — the browser
+   ignores clicks on a disabled control, and React Aria blocks press on an
+   aria-disabled one in JS. Its only effect here was killing the cursor, and
+   with it any tooltip explaining why the control is disabled.
+
+   Unlayered on purpose: `disabled:pointer-events-none` is a utility, and no
+   @layer rule can outrank the utilities layer. */
+:where(
+  [disabled],
+  [aria-disabled="true"],
+  [data-disabled]:not([data-disabled="false"])
+) {
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+/* …and everything inside it. A disabled control is usually a container: an
+   InputGroup's leading addon hardcodes `cursor-text` and carries no disabled
+   marker of its own, so the icon beside a disabled input would still offer a
+   text caret. Cursor only here — forcing `pointer-events` back on would undo
+   the deliberate `pointer-events-none` that keeps icons from stealing a
+   button's clicks. */
+:where(
+  [disabled],
+  [aria-disabled="true"],
+  [data-disabled]:not([data-disabled="false"])
+)
+  * {
+  cursor: not-allowed;
+}
+
+/* Not every disabled element is disabled *to the user*. DataTable's virtualized
+   filler rows carry `isDisabled` only to stay out of selection and keyboard
+   navigation — they are empty padding holding the scroll height, often hundreds
+   of thousands of pixels tall. A blocked cursor over that expanse would be
+   nonsense. */
+[data-slot="data-table-spacer"],
+[data-slot="data-table-spacer"] * {
+  cursor: default;
+}
+
 /* A TabIndicator takes over painting the selection, so the tabs must stop
    painting their own — otherwise both are visible mid-slide, and again on hover
    (the indicator leaves, the tab's own background stays behind). Deliberately
