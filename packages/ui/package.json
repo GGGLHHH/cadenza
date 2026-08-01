@@ -1,7 +1,7 @@
 {
   "name": "@gedatou/cadenza-ui",
   "type": "module",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Accessible React components \u2014 React Aria behaviour, shadcn aria-nova styling",
   "license": "MIT",
   "homepage": "https://github.com/GGGLHHH/cadenza#readme",
