@@ -143,6 +143,27 @@ describe('searchField', () => {
     expect(screen.getByRole('button', { name: '清除搜索' })).toHaveProperty('disabled', true)
   })
 
+  it('chains a caller onClear after the immediate reset instead of being replaced by it', async () => {
+    const user = userEvent.setup()
+    const onClear = vi.fn()
+    const onQueryValueChange = vi.fn()
+    render(
+      <SearchField
+        aria-label="搜索"
+        debounceMs={NEVER}
+        defaultValue="ravel"
+        onClear={onClear}
+        onQueryValueChange={onQueryValueChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: '清除搜索' }))
+    expect(onClear).toHaveBeenCalledTimes(1)
+    // Still the immediate path: listening to onClear must not silently turn
+    // clearing back into a debounced act.
+    expect(onQueryValueChange).toHaveBeenCalledExactlyOnceWith(undefined)
+  })
+
   it('lets children replace the default composition', () => {
     render(
       <SearchField aria-label="搜索">

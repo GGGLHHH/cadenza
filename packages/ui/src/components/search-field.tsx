@@ -198,6 +198,7 @@ export function SearchField({
   defaultQueryValue,
   onQueryValueChange,
   debounceMs,
+  onClear,
   ...props
 }: SearchFieldProps): ReactElement {
   const search = useSearchQuery({
@@ -216,7 +217,13 @@ export function SearchField({
       data-slot="search-field"
       value={search.value}
       onChange={search.setValue}
-      onClear={search.resetSearch}
+      // Destructured and chained, not left to the spread: a caller's onClear
+      // would otherwise replace resetSearch wholesale, and clearing would wait
+      // out the debounce instead of dropping the query immediately.
+      onClear={() => {
+        search.resetSearch()
+        onClear?.()
+      }}
       {...props}
     >
       {renderProps => children ?? (
