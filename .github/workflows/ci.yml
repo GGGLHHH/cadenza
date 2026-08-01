@@ -28,6 +28,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Before linting, not after: the packages resolve each other through their
+      # `exports`, so `@gedatou/cadenza-utils` has no types until it is built —
+      # and type-aware lint reports every value that flows from it as `error`
+      # typed. On a fresh checkout that is ~180 phantom errors.
+      - name: Build packages
+        run: pnpm --filter "@gedatou/*" run build
+
       - name: Lint
         run: pnpm lint
 
@@ -37,5 +44,5 @@ jobs:
       - name: Unit tests
         run: pnpm test run
 
-      - name: Build
-        run: pnpm build
+      - name: Build docs
+        run: pnpm --filter docs run build
