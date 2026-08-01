@@ -17,6 +17,26 @@ description: React Aria Button 的封装 —— cva 变体与尺寸，按压语�
 
 <ComponentPreview name="button/sizes" />
 
+## 进行中
+
+`isPending` 表示**这个按钮触发的动作还在途中**（对齐 React 的 `useTransition` /
+`useFormStatus` 词汇；`isLoading` 是它的别名，任一为真即进行中）。React Aria 负责行为：
+按压被吞掉（天然防双击）、按钮**保持可聚焦**（`aria-disabled` 而非原生 `disabled`，
+焦点不会凭空丢失）、向辅助技术播报。
+
+默认视觉照 Spectrum 的做法：**标签原地隐形——继续撑宽度、留在无障碍树里**，
+[Spinner](/docs/components/spinner) 居中交叉淡入盖在上面。宽度全程不变，
+邻居不位移；唯一的动画是 150ms 透明度，进出两个方向都由 `data-pending` 驱动纯 CSS
+过渡（`motion-reduce` 下豁免）。没有内建防闪延迟——快操作（比如 200ms 就返回的请求）
+该不该出 spinner 由你决定，需要就延迟置起 `isPending`：
+
+<ComponentPreview name="button/pending" />
+
+这套结构只在**传了** `isPending` / `isLoading` 时挂载（传 `false` 也算——机制留在
+DOM 里退出动画才放得完）；没用这个特性的按钮渲染裸 children，零开销。
+传**函数 children** 时视为你接管了渲染——什么都不注入，`isPending` 在 render props
+里自己取用。想让宽度真正纹丝不动，pending 期间别换文案——spinner 已经在说话了。
+
 ## 链接按钮
 
 `LinkButton` 是穿着按钮衣服的 `<a>`：有 `href`、支持 `target`，变体和尺寸同 `Button`。
@@ -36,7 +56,8 @@ description: React Aria Button 的封装 —— cva 变体与尺寸，按压语�
 | --- | --- | --- | --- |
 | `onPress` | `(e: PressEvent) => void` | — | **不是 `onClick`** —— 统一鼠标 / 触摸 / 键盘的按压语义 |
 | `isDisabled` | `boolean` | `false` | 禁用（渲染原生 `disabled` 属性） |
-| `isPending` | `boolean` | `false` | 进行中：阻断交互、打 `data-pending`。默认样式不消费它，进行中的视觉（换文案、加 spinner）由调用方渲染 |
+| `isPending` | `boolean` | `false` | 进行中：阻断按压但保持可聚焦、打 `data-pending`。默认视觉是标签隐形撑位 + Spinner 居中交叉淡入；函数 children 视为接管渲染、不注入 |
+| `isLoading` | `boolean` | `false` | `isPending` 的别名，任一为真即进行中（给习惯 `loading` 词汇的业务层） |
 | `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | 表单里需要提交时改它 |
 | `variant` | `'default' \| 'secondary' \| 'outline' \| 'ghost' \| 'destructive' \| 'link'` | `'default'` | 变体，同时回显为 `data-variant` |
 | `size` | `'xs' \| 'sm' \| 'default' \| 'lg' \| 'icon-xs' \| 'icon-sm' \| 'icon' \| 'icon-lg'` | `'default'` | 尺寸，同时回显为 `data-size` |
@@ -56,7 +77,9 @@ description: React Aria Button 的封装 —— cva 变体与尺寸，按压语�
 
 默认样式走 CSS 伪类（`hover:` / `:disabled`），对原生 `<button>` 两者基本等价；
 自定义样式建议挂 data 属性，跨输入模态更一致。光标是全库统一的约定：可点时
-`pointer`，禁用时 `not-allowed`（styles.css 的全局规则，无需自己写）。
+`pointer`、禁用时 `not-allowed`、**进行中是 `wait`**——pending 是「在忙」不是
+「禁止」，虽然它也带 `aria-disabled`，styles.css 里 `data-pending` 的规则排在
+禁用规则之后、专门胜出（全局规则，无需自己写）。
 
 ### LinkButton
 

@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactElement, RefAttributes } from 'react'
 import { cn } from '#lib/utils'
-import { Button, buttonVariants, LinkButton as LinkButtonPrimitive } from '#primitives/button'
+import { Button as ButtonPrimitive, buttonVariants, LinkButton as LinkButtonPrimitive } from '#primitives/button'
+import { Spinner } from './spinner'
 
 /**
  * The published Button.
@@ -12,14 +13,76 @@ import { Button, buttonVariants, LinkButton as LinkButtonPrimitive } from '#prim
  *
  * It also keeps the dependency list honest: only primitives reachable from
  * src/components reach dist, so those are the only ones we declare dependencies for.
- *
- * Already earning it — the primitive inlines its props types rather than exporting
- * them, which leaves anyone wrapping Button with nothing to import.
  */
-export type ButtonProps = ComponentProps<typeof Button>
+export type ButtonProps = ComponentProps<typeof ButtonPrimitive> & {
+  /**
+   * Alias of `isPending` — either being true marks the action as in flight.
+   * `isPending` is React's vocabulary (`useTransition` / `useFormStatus`);
+   * this one is for codebases that grew up on `loading` buttons.
+   */
+  isLoading?: boolean
+}
 // The primitive's type omits the ref half of RAC's public Link type; the spread
 // already carries it (React 19), so only the type needs restating.
 export type LinkButtonProps = ComponentProps<typeof LinkButtonPrimitive> & RefAttributes<HTMLAnchorElement>
+
+/**
+ * RAC's Button with a default pending look, Spectrum-style: the label goes
+ * invisible in place — still sizing the button, still in the accessibility
+ * tree — while a centred spinner cross-fades in over it. Width never changes,
+ * so neighbours never shift; the only animation is 150ms of opacity, both
+ * directions CSS-driven off `data-pending` (React unmounting can't cut the
+ * exit short). No built-in anti-flicker delay: whether a fast operation
+ * should show a spinner at all is the caller's call — delay setting
+ * `isPending` if it matters. The wait cursor comes from styles.css, where
+ * `data-pending` outranks the disabled not-allowed rule.
+ *
+ * The machinery mounts only while `isPending`/`isLoading` is *passed* (even
+ * as false — that is what keeps the exit animation alive); buttons that never
+ * use the feature render bare children. Function children are the caller
+ * taking over the whole rendering (they see `isPending` in their render
+ * props), so nothing is injected for them either.
+ */
+export function Button({ children, className, isPending, isLoading, ...props }: ButtonProps): ReactElement {
+  const pendingCapable = (isPending ?? isLoading) !== undefined && typeof children !== 'function'
+  return (
+    <ButtonPrimitive
+      className={cn(pendingCapable && 'relative', className)}
+      isPending={isPending || isLoading}
+      {...props}
+    >
+      {pendingCapable
+        ? (
+            <>
+              <span
+                aria-hidden
+                data-slot="button-pending"
+                className="
+                  absolute inset-0 grid place-items-center opacity-0
+                  transition-opacity duration-150
+                  group-data-pending/button:opacity-100
+                  motion-reduce:transition-none
+                "
+              >
+                <Spinner className="block-[1em] inline-[1em]" />
+              </span>
+              <span
+                data-slot="button-label"
+                className="
+                  inline-flex items-center gap-[inherit] transition-opacity
+                  duration-150
+                  group-data-pending/button:opacity-0
+                  motion-reduce:transition-none
+                "
+              >
+                {children}
+              </span>
+            </>
+          )
+        : children}
+    </ButtonPrimitive>
+  )
+}
 
 /**
  * A link in button clothing — RAC's `Link` under `buttonVariants`.
@@ -39,4 +102,4 @@ export function LinkButton({ className, ...props }: LinkButtonProps): ReactEleme
   )
 }
 
-export { Button, buttonVariants }
+export { buttonVariants }

@@ -856,6 +856,19 @@
   cursor: not-allowed;
 }
 
+/* An action in flight is busy, not forbidden. React Aria marks a pending
+   button with BOTH aria-disabled (matching the not-allowed rules above) and
+   data-pending — these come later at the same zero specificity, so the wait
+   cursor wins for the pending case only. */
+:where([data-pending]:not([data-pending="false"])) {
+  cursor: wait;
+  pointer-events: auto;
+}
+
+:where([data-pending]:not([data-pending="false"])) * {
+  cursor: wait;
+}
+
 /* Not every disabled element is disabled *to the user*. DataTable's virtualized
    filler rows carry `isDisabled` only to stay out of selection and keyboard
    navigation — they are empty padding holding the scroll height, often hundreds
