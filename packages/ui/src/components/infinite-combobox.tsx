@@ -4,6 +4,7 @@ import type { ReactElement, ReactNode } from 'react'
 import type { ControllableSelectionProps, InfiniteSelectActions, InfiniteSelectAdapterProps, InfiniteSelectItemRenderParams, InfiniteSelectOption } from './infinite-select'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { useControllableState } from '@gedatou/cadenza-utils'
+import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { cn } from '#lib/utils'
 import { Popover, PopoverTrigger } from '#primitives/popover'
@@ -80,17 +81,18 @@ export function useInfiniteComboboxState({
     ...(onQueryValueChange ? { onChange: onQueryValueChange } : {}),
   })
 
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const cancelQueryValue = useCallback(() => clearTimeout(timeoutRef.current), [])
-  useEffect(() => cancelQueryValue, [cancelQueryValue])
+  // `debounceMs` is read at mount: ahooks builds the debounce once.
+  const { run: commitQueryValue, cancel: cancelQueryValue } = useDebounceFn(
+    setQueryState,
+    { wait: debounceMs },
+  )
 
   const setInputValue = useCallback(
     (value: string) => {
       setInputState(value)
-      clearTimeout(timeoutRef.current)
-      timeoutRef.current = setTimeout(setQueryState, debounceMs, value === '' ? undefined : value)
+      commitQueryValue(value === '' ? undefined : value)
     },
-    [debounceMs, setInputState, setQueryState],
+    [commitQueryValue, setInputState],
   )
 
   const resetSearch = useCallback(() => {

@@ -73,6 +73,7 @@ catalogs:
     jsdom: ^30.0.1
     vitest: ^4.1.10
   types:
+    '@types/lodash': ^4.17.20
     '@types/node': ^26.1.2
     '@types/react': ^19.2.17
     '@types/react-dom': ^19.2.3

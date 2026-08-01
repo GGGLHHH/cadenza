@@ -56,6 +56,7 @@
     "@gedatou/cadenza-utils": "workspace:*",
     "@tabler/icons-react": "catalog:ui",
     "@tanstack/react-virtual": "catalog:ui",
+    "ahooks": "catalog:ui",
     "class-variance-authority": "catalog:ui",
     "clsx": "catalog:ui",
     "react-aria-components": "catalog:ui",
@@ -64,6 +65,7 @@
   "devDependencies": {
     "@react-types/shared": "catalog:ui",
     "@shadcn/react": "catalog:ui",
+    "@types/lodash": "catalog:types",
     "@types/node": "catalog:types",
     "embla-carousel-react": "catalog:ui",
     "input-otp": "catalog:ui",

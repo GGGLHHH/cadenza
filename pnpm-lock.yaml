@@ -97,6 +97,9 @@ catalogs:
       specifier: ^4.1.10
       version: 4.1.10
   types:
+    '@types/lodash':
+      specifier: ^4.17.20
+      version: 4.17.24
     '@types/node':
       specifier: ^26.1.2
       version: 26.1.2
@@ -323,6 +326,9 @@ importers:
       '@tanstack/react-virtual':
         specifier: catalog:ui
         version: 3.14.9(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      ahooks:
+        specifier: catalog:ui
+        version: 3.9.7(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       class-variance-authority:
         specifier: catalog:ui
         version: 0.7.1
@@ -342,6 +348,9 @@ importers:
       '@shadcn/react':
         specifier: catalog:ui
         version: 0.2.1(@types/react@19.2.17)(react@19.2.8)
+      '@types/lodash':
+        specifier: catalog:types
+        version: 4.17.24
       '@types/node':
         specifier: catalog:types
         version: 26.1.2
@@ -1784,6 +1793,9 @@ packages:
 
   '@types/katex@0.16.8':
     resolution: {integrity: sha512-trgaNyfU+Xh2Tc+ABIb44a5AYUpicB3uwirOioeOkNPPbmgRNtcWyDeeFRzjPZENO9Vq8gvVqfhaaXWLlevVwg==}
+
+  '@types/lodash@4.17.24':
+    resolution: {integrity: sha512-gIW7lQLZbue7lRSWEFql49QJJWThrTFFeIMJdp3eH4tKoxm1OvEPg02rm4wCCSHS0cL3/Fizimb35b7k8atwsQ==}
 
   '@types/mdast@4.0.4':
     resolution: {integrity: sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA==}
@@ -5712,6 +5724,8 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/katex@0.16.8': {}
+
+  '@types/lodash@4.17.24': {}
 
   '@types/mdast@4.0.4':
     dependencies:
