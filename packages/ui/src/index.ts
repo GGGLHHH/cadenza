@@ -8,6 +8,7 @@ export * from './components/infinite-combobox'
 export * from './components/infinite-select'
 export * from './components/input-group'
 export * from './components/scroll-area'
+export * from './components/search-field'
 export * from './components/tabs'
 export * from './lib/utils'
 // React Aria vocabulary used in our public props (sorting, selection): re-export
