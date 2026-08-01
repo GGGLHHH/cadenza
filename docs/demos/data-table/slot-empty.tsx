@@ -4,7 +4,6 @@ import {
   DataTable,
   DataTableEmpty,
   DataTableError,
-  DataTableLoading,
   DataTableRetry,
 } from '@gedatou/cadenza-ui'
 import { personColumns } from './columns'
@@ -13,7 +12,6 @@ import { personColumns } from './columns'
 export default function EmptySlotDemo(): ReactElement {
   return (
     <DataTable<Person> aria-label="作曲家(空)" columns={personColumns} items={[]}>
-      <DataTableLoading>加载中…</DataTableLoading>
       <DataTableEmpty>暂无数据</DataTableEmpty>
       <DataTableError>
         加载失败

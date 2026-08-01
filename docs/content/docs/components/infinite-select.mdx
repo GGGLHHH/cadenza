@@ -73,11 +73,31 @@ TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外�
 
 <ComponentPreview name="infinite-select/slot-empty" />
 
-### InfiniteSelectLoading:加载中
+### 加载中:统一的磨砂覆盖层
 
-首屏加载（`isLoading`）期间自渲染，此时列表还不存在：
+加载**没有文案插槽**——无论首屏还是刷新，视觉统一是列表区内建的
+[LoadingOverlay](/docs/components/loading-overlay)，一种加载长相。**只盖列表区**：
+搜索框在覆盖范围之外，打字正是触发刷新的动作，盖住输入框等于打断输入。
 
-<ComponentPreview name="infinite-select/slot-loading" />
+**首屏**（`isLoading` 且还没有结果）：列表壳给最低高度（`min-block-24`）防坍缩，磨砂盖在空白上：
+
+<ComponentPreview name="infinite-select/loading" />
+
+**刷新**（`isLoading` 且上一批结果还在——业务层配 react-query 的 `placeholderData`）：
+列表原地保留、被磨砂盖住。
+
+#### InfiniteSelectLoadingOverlay:定制磨砂
+
+在组合通道里放它即可定制上面那层磨砂。它是 TabIndicator 式的**标记部件**——
+写在哪里都不渲染（绝对定位的覆盖层没法住在面板的文档流里），由 List 部件
+提升到列表壳的位置渲染；`children` 替换居中的 Spinner，`className` 调磨砂浓度，
+`isLoading` 是基座的接线、不在它的 props 里。直接子级或 Fragment 内有效，
+包进自定义组件会找不到（与 TabIndicator 同一限制）。用 `InfiniteCombobox` 时
+放进 `slots` 即可：
+
+<ComponentPreview name="infinite-select/loading-custom" />
+
+（旧版的 `InfiniteSelectLoading` 文案插槽已移除，定制走 `InfiniteSelectLoadingOverlay`。）
 
 ### InfiniteSelectError / InfiniteSelectRetry:错误与重试
 
@@ -462,11 +482,11 @@ part 上。
 | 部件 | 何时渲染 | data-slot |
 | --- | --- | --- |
 | `InfiniteSelectEmpty` | 加载完、无错误、`items` 为空 | `infinite-select-status` |
-| `InfiniteSelectLoading` | `isLoading` | `infinite-select-status` |
 | `InfiniteSelectError` | `isError` | `infinite-select-status` |
 | `InfiniteSelectRetry` | 在 `Error` 内，且根上传了 `onRetry` | `infinite-select-retry` |
 | `InfiniteSelectFooter` | 总是（由调用方决定放不放） | `infinite-select-footer` |
 | `InfiniteSelectFooterSeparator` | 总是 | `infinite-select-footer-separator` |
+| `InfiniteSelectLoadingOverlay` | 标记部件：原地不渲染，props 被提升到列表壳的覆盖层上 | 提升后为 `loading-overlay` |
 | `InfiniteSelectClearButton` | 总是 | `infinite-select-clear` |
 | `InfiniteSelectConfirmButton` | 总是 | `infinite-select-confirm` |
 

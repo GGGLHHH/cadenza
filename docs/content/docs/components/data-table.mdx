@@ -122,11 +122,32 @@ i18n 只存在于你的业务层。
 
 <ComponentPreview name="data-table/slot-empty" align="stretch" />
 
-### DataTableLoading:加载中
+### 加载中:统一的磨砂覆盖层
 
-首屏加载（`isLoading`）期间行让位给它——翻页、换查询条件重新请求时同样：
+加载**没有文案插槽**——无论首屏还是刷新，视觉统一是内建的
+[LoadingOverlay](/docs/components/loading-overlay)，一种加载长相。
 
-<ComponentPreview name="data-table/slot-loading" align="stretch" />
+**首屏**（`isLoading` 且还没有行）：卡片给最低高度（`min-block-32`）防坍缩，磨砂盖在空白上：
+
+<ComponentPreview name="data-table/loading" align="stretch" />
+
+**刷新**（`isLoading` 且行还在屏上——业务层配 react-query 的 `placeholderData`
+保住上一页数据）：旧行原地保留、被磨砂盖住。含表头一起盖，刷新中重复点排序
+只会把请求打成串，挡住是保护：
+
+<ComponentPreview name="data-table/refresh" align="stretch" />
+
+#### DataTableLoadingOverlay:定制磨砂
+
+在插槽通道里组合它即可定制上面那层磨砂。它是 TabIndicator 式的**标记部件**——
+写在哪里都不渲染（绝对定位的覆盖层没法住在空态区的文档流里），由卡片提升到
+覆盖层的位置渲染；`children` 替换居中的 Spinner（品牌动画、文案都行），
+`className` 调磨砂浓度，`isLoading` 是基座的接线、不在它的 props 里。直接子级或
+Fragment 内有效，包进自定义组件会找不到（与 TabIndicator 同一限制）：
+
+<ComponentPreview name="data-table/loading-custom" align="stretch" />
+
+（旧版的 `DataTableLoading` 文案插槽已移除，定制走 `DataTableLoadingOverlay`。）
 
 ### DataTableError / DataTableRetry:错误与重试
 
@@ -245,7 +266,7 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | `columns` | `DataTableColumn<T>[]` | — | 列定义 |
 | `items` | `T[]` | — | 行数据 |
 | `getRowId` | `(item: T) => string` | 取 `item.id` | 行 key 提取 |
-| `isLoading` / `isError` / `onRetry` | — | — | 状态插槽的驱动，见「插槽」 |
+| `isLoading` / `isError` / `onRetry` | — | — | `isLoading` 统一渲染内建磨砂覆盖层（首屏给最低高度）；`isError` / `onRetry` 驱动错误插槽，见「插槽」 |
 | `hasNextPage` / `isFetchingNextPage` / `onLoadMore` | — | — | 无限滚动，见上文 |
 | `loadingMoreIndicator` | `ReactNode` | — | 列表末尾的加载更多指示（滚动流内） |
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |

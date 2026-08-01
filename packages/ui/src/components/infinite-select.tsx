@@ -2,6 +2,7 @@
 
 import type { ComponentProps, CSSProperties, ReactElement, ReactNode, RefAttributes } from 'react'
 import type { ListBoxItemProps, ListBoxProps, SearchFieldProps as RACSearchFieldProps, Selection } from 'react-aria-components'
+import type { LoadingOverlayProps } from './loading-overlay'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck, IconSearch } from '@tabler/icons-react'
@@ -15,9 +16,11 @@ import {
   ListBoxLoadMoreItem,
   SearchField,
 } from 'react-aria-components'
+import { findComposedPart } from '#lib/find-part'
 import { cn } from '#lib/utils'
 import { Button } from '#primitives/button'
 import { Separator } from '#primitives/separator'
+import { LoadingOverlay } from './loading-overlay'
 import { ScrollArea } from './scroll-area'
 
 /**
@@ -28,9 +31,9 @@ import { ScrollArea } from './scroll-area'
  * and `ListBox` owns selection semantics. Rows are virtualized with TanStack
  * Virtual — only the visible window plus overscan reaches the DOM, and
  * `onLoadMore` fires as the window nears the loaded tail. The panel itself
- * renders zero copy — state messages come in through the slot children
- * (`InfiniteSelectEmpty` / `Loading` / `Error`), so i18n stays in
- * the caller's layer.
+ * renders zero copy — empty/error messages come in through the slot children
+ * (`InfiniteSelectEmpty` / `Error`), so i18n stays in the caller's layer;
+ * loading is copyless by design, the List part's frosted `LoadingOverlay`.
  */
 export interface InfiniteSelectOption {
   id: string
@@ -104,7 +107,7 @@ interface InfiniteSelectCommonProps<T> {
   /**
    * The composition channel, React Aria-style: parts
    * (`InfiniteSelectSearch` / `InfiniteSelectList`), state slots
-   * (`InfiniteSelectEmpty` / `Loading` / `Error`) and the footer bar, in
+   * (`InfiniteSelectEmpty` / `Error`) and the footer bar, in
    * caller order. The base renders no copy — and no parts — of its own.
    */
   'children'?: ReactNode
@@ -320,6 +323,8 @@ export interface InfiniteSelectContextValue<T = unknown> {
   'onLoadMore'?: (() => void) | undefined
   /** Root-level accessible name — the List part's fallback. */
   'aria-label'?: string | undefined
+  /** Lifted from a composed `InfiniteSelectLoadingOverlay`; the List renders it. */
+  'loadingOverlayProps'?: InfiniteSelectLoadingOverlayProps | undefined
 }
 
 const InfiniteSelectContext = createContext<InfiniteSelectContextValue | null>(null)
@@ -369,10 +374,19 @@ export function InfiniteSelectEmpty(props: ComponentProps<'div'>): ReactElement 
   return isEmpty ? <InfiniteSelectStatus {...props} /> : null
 }
 
-/** Loading slot: renders its children during the first-page load. */
-export function InfiniteSelectLoading(props: ComponentProps<'div'>): ReactElement | null {
-  const { isLoading } = useInfiniteSelectState()
-  return isLoading ? <InfiniteSelectStatus {...props} /> : null
+export type InfiniteSelectLoadingOverlayProps = Omit<LoadingOverlayProps, 'isLoading'>
+
+/**
+ * Slotted customization for the built-in loading overlay: compose it anywhere
+ * in the panel's children and the List part renders your props over the list
+ * region — `children` replace the centred spinner, `className` tunes the
+ * frost. A marker like TabIndicator: it renders nothing where written (an
+ * absolute overlay cannot live in the panel's flow), and `isLoading` stays
+ * the base's wiring. Direct child or inside a Fragment only — a custom
+ * wrapper hides it.
+ */
+export function InfiniteSelectLoadingOverlay(_props: InfiniteSelectLoadingOverlayProps): null {
+  return null
 }
 
 /** Error slot: container for the error copy plus `InfiniteSelectRetry`. */
@@ -428,9 +442,12 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
   const selectionMode = props.selectionMode ?? 'single'
   const { selectedIds, onSelectionChange } = useInfiniteSelectSelection<T>(props)
 
-  // States are mutually exclusive; the scrolling list only exists with results.
+  // One loading look everywhere: `isLoading` always renders the List part's
+  // frosted LoadingOverlay — over the results when a reload keeps them on
+  // screen (react-query placeholderData), over a min-height blank while the
+  // first page is still coming. Only errors unmount the list.
   const isEmpty = !isLoading && !isError && items.length === 0
-  const hasItems = !isLoading && !isError && items.length > 0
+  const hasItems = !isError && items.length > 0
 
   const contextValue: InfiniteSelectContextValue<T> = {
     items,
@@ -443,6 +460,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     isFetchingNextPage,
     onLoadMore,
     'aria-label': ariaLabel,
+    'loadingOverlayProps': findComposedPart(children, InfiniteSelectLoadingOverlay),
   }
 
   return (
@@ -534,7 +552,9 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
     hasNextPage,
     isFetchingNextPage,
     onLoadMore,
+    loadingOverlayProps,
   } = ctx
+  const { isLoading } = useInfiniteSelectState()
   const isMultiple = selectionMode === 'multiple'
   const ariaLabel = ariaLabelProp ?? ctx['aria-label']
 
@@ -632,67 +652,84 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
     )
   }
 
-  if (!hasItems)
-    return null
+  // First page still coming: nothing exists to size the list yet, so the
+  // shell gets a minimum height for the frosted overlay to show on. Same
+  // look as a refresh — one loading visual everywhere.
+  if (!hasItems) {
+    return isLoading
+      ? (
+          <div className="relative min-block-24" data-slot="infinite-select-list-container">
+            <LoadingOverlay {...loadingOverlayProps} isLoading />
+          </div>
+        )
+      : null
+  }
 
   return (
-    <ScrollArea
-      className={className}
-      scrollbars={scrollbars}
-      viewportClassName="scroll-fade-y"
-      viewportRef={scrollRef}
-      viewportStyle={{ maxHeight: maxListHeight }}
-    >
-      <ListBox
-        aria-label={ariaLabel}
-        data-slot="infinite-select-list"
-        selectionMode={isMultiple ? 'multiple' : 'single'}
-        // useListBox 支持但 RAC 1.19 类型漏了(运行时 ...props 透传)。
-        // 默认 'clearSelection' 让 Esc 清空选择——在 commitOnClose 下
-        // 意味着"清空草稿并提交空集"。Esc 的语义应该是关闭,不是清空。
-        {...{ escapeKeyBehavior: 'none' }}
-        className={cn(
-          'outline-none',
-          virtualized ? 'relative' : 'flex flex-col gap-0.5 p-1',
-          listClassName,
-        )}
-        style={virtualized ? { height: virtualizer.getTotalSize() } : undefined}
-        selectedKeys={selectedIds}
-        onSelectionChange={onSelectionChange}
+    // The overlay must cover the visible viewport, not scroll with the rows —
+    // hence the positioned shell around the ScrollArea rather than inside it.
+    // The search field stays outside on purpose: typing is what drives the
+    // refresh, covering the input would interrupt it.
+    <div className="relative" data-slot="infinite-select-list-container">
+      <ScrollArea
+        className={className}
+        scrollbars={scrollbars}
+        viewportClassName="scroll-fade-y"
+        viewportRef={scrollRef}
+        viewportStyle={{ maxHeight: maxListHeight }}
       >
-        {virtualized
-          ? virtualItems.map(virtualItem => renderOption(items[virtualItem.index], virtualItem.index, {
-              position: 'absolute',
-              top: 0,
-              insetInline: 4,
-              height: virtualItem.size,
-              transform: `translateY(${virtualItem.start}px)`,
-            }))
-          : items.map((item, index) => renderOption(item, index))}
-        {!virtualized && hasNextPage && (
-          <ListBoxLoadMoreItem
-            isLoading={isFetchingNextPage}
-            onLoadMore={onLoadMore ?? (() => {})}
-            scrollOffset={loadMoreScrollOffset}
-            className={cn(
-              isFetchingNextPage
-                ? 'py-1.5 text-center text-xs text-muted-foreground'
-                : 'block-px',
-            )}
+        <ListBox
+          aria-label={ariaLabel}
+          data-slot="infinite-select-list"
+          selectionMode={isMultiple ? 'multiple' : 'single'}
+          // useListBox 支持但 RAC 1.19 类型漏了(运行时 ...props 透传)。
+          // 默认 'clearSelection' 让 Esc 清空选择——在 commitOnClose 下
+          // 意味着"清空草稿并提交空集"。Esc 的语义应该是关闭,不是清空。
+          {...{ escapeKeyBehavior: 'none' }}
+          className={cn(
+            'outline-none',
+            virtualized ? 'relative' : 'flex flex-col gap-0.5 p-1',
+            listClassName,
+          )}
+          style={virtualized ? { height: virtualizer.getTotalSize() } : undefined}
+          selectedKeys={selectedIds}
+          onSelectionChange={onSelectionChange}
+        >
+          {virtualized
+            ? virtualItems.map(virtualItem => renderOption(items[virtualItem.index], virtualItem.index, {
+                position: 'absolute',
+                top: 0,
+                insetInline: 4,
+                height: virtualItem.size,
+                transform: `translateY(${virtualItem.start}px)`,
+              }))
+            : items.map((item, index) => renderOption(item, index))}
+          {!virtualized && hasNextPage && (
+            <ListBoxLoadMoreItem
+              isLoading={isFetchingNextPage}
+              onLoadMore={onLoadMore ?? (() => {})}
+              scrollOffset={loadMoreScrollOffset}
+              className={cn(
+                isFetchingNextPage
+                  ? 'py-1.5 text-center text-xs text-muted-foreground'
+                  : 'block-px',
+              )}
+            >
+              {loadingMoreIndicator}
+            </ListBoxLoadMoreItem>
+          )}
+        </ListBox>
+        {virtualized && isFetchingNextPage && loadingMoreIndicator !== undefined && (
+          <div
+            className="py-1.5 text-center text-xs text-muted-foreground"
+            data-slot="infinite-select-loading-more"
           >
             {loadingMoreIndicator}
-          </ListBoxLoadMoreItem>
+          </div>
         )}
-      </ListBox>
-      {virtualized && isFetchingNextPage && loadingMoreIndicator !== undefined && (
-        <div
-          className="py-1.5 text-center text-xs text-muted-foreground"
-          data-slot="infinite-select-loading-more"
-        >
-          {loadingMoreIndicator}
-        </div>
-      )}
-    </ScrollArea>
+      </ScrollArea>
+      <LoadingOverlay {...loadingOverlayProps} isLoading={isLoading} />
+    </div>
   )
 }
 

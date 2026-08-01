@@ -1,0 +1,58 @@
+---
+title: LoadingOverlay
+description: 区域级磨砂加载覆盖层 —— 铺满最近的 relative 父容器，挡住指针、光标 wait，内容隐约可见
+---
+
+区域级的加载覆盖层：放进一个 **`relative` 的父容器**，默认 `absolute inset-0`
+铺满同宽高；半透明背景 + `backdrop-blur` 的磨砂玻璃，底下的内容隐约可见——
+语义是「内容还在、正在刷新」，不是空白骨架屏。
+
+**保持渲染、切换 `isLoading`**，进出两个方向都有 150ms 交叉淡入
+（`motion-reduce` 豁免）。隐藏靠 `visibility` 一起过渡：退场时淡完才消失，
+消失后**离开无障碍树**——不会有幽灵的「Loading」播报，也不会挡任何点击。
+
+## 基础用法
+
+<ComponentPreview name="loading-overlay/basic" />
+
+忘记给父容器 `relative` 是这个模式唯一的坑——覆盖层会铺到更外层的定位祖先上去。
+
+它就是库内加载态的**默认视觉**：[DataTable](/docs/components/data-table) 和
+[InfiniteSelect](/docs/components/infinite-select) 的一切 `isLoading` 都渲染这层磨砂——
+首屏给最低高度防坍缩，刷新盖住旧内容（业务层配 react-query 的 `placeholderData`
+保住旧数据即可触发）。内嵌实例的定制走各自的 slotted 标记部件
+`DataTableLoadingOverlay` / `InfiniteSelectLoadingOverlay`，props 就是本组件的
+（`isLoading` 除外——那是基座的接线）；样例见两个组件页各自的「加载中」小节。
+
+## 自定义内容
+
+不传 `children` 就是居中一个 [Spinner](/docs/components/spinner)（英文 aria 兜底、
+零可见文案）。传了就完全替换——自带文案时让 Spinner 装饰化（`aria-hidden`），
+语义交给文字：
+
+<ComponentPreview name="loading-overlay/custom" />
+
+## Props
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `isLoading` | `boolean` | `false` | 显示覆盖层。**内容面词汇**——和数据适配器的 `isLoading` 同义；动作面的「在途」用 Button 的 `isPending` |
+| `children` | `ReactNode` | 居中 Spinner | 传了就完全替换默认内容 |
+| `className` | `string` | — | 类名。纯 div（无 RAC 底座），只收字符串；改磨砂程度（`backdrop-blur-*`）、背景浓度（`bg-background/*`）、`z-*` 都从这里 |
+| 其余 | 原生 `div` 属性 | — | 透传（含 `ref`） |
+
+**状态**
+
+| 状态 | 出现时机 |
+| --- | --- |
+| `data-loading` | `isLoading` 为真（自定义 CSS 的钩子，如 `data-loading:…`） |
+
+## 边界与无障碍
+
+- **挡鼠标不挡键盘**：Tab 仍能聚焦到覆盖层底下的控件（Mantine / antd 同样如此）。
+  要彻底封锁，给内容区上 [`inert`](https://developer.mozilla.org/docs/Web/HTML/Global_attributes/inert)
+  ——那是调用方的决定，本组件不替你做。
+- 加载期间光标是 `wait`（覆盖层自带，含其内所有后代）。
+- 建议给被刷新的区域标 `aria-busy`，让辅助技术知道这块内容暂不可靠。
+
+`LoadingOverlayProps` 类型一并导出。

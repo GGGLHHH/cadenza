@@ -4,7 +4,6 @@ import {
   DataTable,
   DataTableEmpty,
   DataTableError,
-  DataTableLoading,
   DataTableRetry,
 } from '@gedatou/cadenza-ui'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
@@ -21,7 +20,6 @@ export default function ErrorSlotDemo(): ReactElement {
       maxHeight={320}
       {...list}
     >
-      <DataTableLoading>加载中…</DataTableLoading>
       <DataTableEmpty>暂无数据</DataTableEmpty>
       <DataTableError>
         加载失败

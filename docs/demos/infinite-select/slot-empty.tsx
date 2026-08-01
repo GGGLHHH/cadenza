@@ -5,7 +5,6 @@ import {
   InfiniteCombobox,
   InfiniteSelectEmpty,
   InfiniteSelectError,
-  InfiniteSelectLoading,
   InfiniteSelectRetry,
   useInfiniteComboboxState,
 } from '@gedatou/cadenza-ui'
@@ -34,7 +33,6 @@ export default function EmptySlotDemo(): ReactElement {
       state={state}
       slots={(
         <>
-          <InfiniteSelectLoading>加载中…</InfiniteSelectLoading>
           <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
           <InfiniteSelectError>
             加载失败

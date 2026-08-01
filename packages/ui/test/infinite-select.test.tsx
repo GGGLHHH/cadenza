@@ -7,7 +7,7 @@ import {
   InfiniteSelectEmpty,
   InfiniteSelectError,
   InfiniteSelectList,
-  InfiniteSelectLoading,
+  InfiniteSelectLoadingOverlay,
   InfiniteSelectRetry,
   InfiniteSelectSearch,
 } from '../src/components/infinite-select'
@@ -57,7 +57,6 @@ const slots = (
   <>
     <InfiniteSelectList />
     <InfiniteSelectEmpty>No results</InfiniteSelectEmpty>
-    <InfiniteSelectLoading>Loading</InfiniteSelectLoading>
     <InfiniteSelectError>
       Failed
       <InfiniteSelectRetry>Retry</InfiniteSelectRetry>
@@ -73,18 +72,54 @@ describe('infiniteSelect state slots', () => {
       </InfiniteSelect>,
     )
     expect(screen.getByText('No results')).not.toBeNull()
-    expect(screen.queryByText('Loading')).toBeNull()
     expect(screen.queryByText('Failed')).toBeNull()
   })
 
-  it('shows the loading slot (not empty) while first-page loading', () => {
+  it('frosts a min-height shell while first-page loading — one loading look, no copy', () => {
     render(
       <InfiniteSelect getOption={getOption} isLoading items={[]}>
         {slots}
       </InfiniteSelect>,
     )
-    expect(screen.getByText('Loading')).not.toBeNull()
     expect(screen.queryByText('No results')).toBeNull()
+    const shell = document.querySelector('[data-slot="infinite-select-list-container"]')
+    expect(shell?.className).toContain('min-block-24')
+    expect(
+      shell?.querySelector('[data-slot="loading-overlay"]')?.getAttribute('data-loading'),
+    ).toBe('true')
+  })
+
+  it('keeps the list under a frosted overlay on refresh — never the loading slot', () => {
+    // isLoading with results on screen (react-query placeholderData) used to
+    // unmount the whole list; now the rows stay put and frost over.
+    render(
+      <InfiniteSelect getOption={getOption} isLoading items={[{ id: '1', label: 'Alice' }]}>
+        {slots}
+      </InfiniteSelect>,
+    )
+    expect(screen.getByText('Alice')).not.toBeNull()
+    const overlay = document.querySelector('[data-slot="loading-overlay"]')
+    expect(overlay?.getAttribute('data-loading')).toBe('true')
+  })
+
+  it('lifts a composed LoadingOverlay part into the list shell — fragment included', () => {
+    // The marker renders null where written; the List renders its props at
+    // the one position an absolute overlay works. Wrapped in a fragment on
+    // purpose: slot channels routinely are.
+    render(
+      <InfiniteSelect getOption={getOption} isLoading items={[{ id: '1', label: 'Alice' }]}>
+        <InfiniteSelectList />
+        <>
+          <InfiniteSelectLoadingOverlay className="backdrop-blur-lg">
+            <span data-testid="brand">品牌加载</span>
+          </InfiniteSelectLoadingOverlay>
+        </>
+      </InfiniteSelect>,
+    )
+    const overlay = document.querySelector('[data-slot="loading-overlay"]')
+    expect(overlay?.className).toContain('backdrop-blur-lg')
+    expect(screen.getByTestId('brand')).not.toBeNull()
+    expect(overlay?.querySelector('[data-slot="spinner"]')).toBeNull()
   })
 
   it('shows the error slot with a retry button wired to onRetry', async () => {
@@ -107,7 +142,6 @@ describe('infiniteSelect state slots', () => {
     )
     expect(screen.getByText('Alice')).not.toBeNull()
     expect(screen.queryByText('No results')).toBeNull()
-    expect(screen.queryByText('Loading')).toBeNull()
   })
 
   it('retry slot renders nothing when onRetry is absent', () => {

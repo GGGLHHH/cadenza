@@ -5,14 +5,14 @@ import {
   InfiniteCombobox,
   InfiniteSelectEmpty,
   InfiniteSelectError,
-  InfiniteSelectLoading,
   InfiniteSelectRetry,
   useInfiniteComboboxState,
 } from '@gedatou/cadenza-ui'
 import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
 
-// 静态加载中适配器:首屏加载(isLoading)期间 InfiniteSelectLoading 自渲染
+// 静态加载中适配器:首屏加载期间列表区渲染最低高度的磨砂壳 —— 统一的加载视觉,
+// 文案插槽只剩空态和错误态
 const loadingList: InfiniteSelectAdapterProps<Person> = {
   items: [],
   isLoading: true,
@@ -23,7 +23,7 @@ const loadingList: InfiniteSelectAdapterProps<Person> = {
   onRetry: () => {},
 }
 
-export default function LoadingSlotDemo(): ReactElement {
+export default function LoadingDemo(): ReactElement {
   const state = useInfiniteComboboxState()
 
   return (
@@ -34,7 +34,6 @@ export default function LoadingSlotDemo(): ReactElement {
       state={state}
       slots={(
         <>
-          <InfiniteSelectLoading>加载中…</InfiniteSelectLoading>
           <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
           <InfiniteSelectError>
             加载失败

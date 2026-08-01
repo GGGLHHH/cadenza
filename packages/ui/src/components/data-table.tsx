@@ -2,6 +2,7 @@
 
 import type { ComponentProps, CSSProperties, ReactElement, ReactNode } from 'react'
 import type { Key, Selection, SortDescriptor } from 'react-aria-components'
+import type { LoadingOverlayProps } from './loading-overlay'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconChevronDown, IconChevronUp, IconSelector } from '@tabler/icons-react'
@@ -12,6 +13,7 @@ import {
   Table,
   TableLoadMoreItem,
 } from 'react-aria-components'
+import { findComposedPart } from '#lib/find-part'
 import { cn } from '#lib/utils'
 import { Button } from '#primitives/button'
 import { Checkbox } from '#primitives/checkbox'
@@ -22,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '#primitives/table'
+import { LoadingOverlay } from './loading-overlay'
 import { ScrollArea } from './scroll-area'
 
 /**
@@ -221,12 +224,6 @@ export function DataTableEmpty(props: ComponentProps<'div'>): ReactElement | nul
   return isEmpty ? <DataTableStatus {...props} /> : null
 }
 
-/** Loading slot: renders its children during the first-page load. */
-export function DataTableLoading(props: ComponentProps<'div'>): ReactElement | null {
-  const { isLoading } = useDataTableState()
-  return isLoading ? <DataTableStatus {...props} /> : null
-}
-
 /** Error slot: container for the error copy plus `DataTableRetry`. */
 export function DataTableError({ className, ...props }: ComponentProps<'div'>): ReactElement | null {
   const { isError } = useDataTableState()
@@ -258,6 +255,20 @@ export function DataTableRetry({ onPress, ...props }: ComponentProps<typeof Butt
       {...props}
     />
   )
+}
+
+export type DataTableLoadingOverlayProps = Omit<LoadingOverlayProps, 'isLoading'>
+
+/**
+ * Slotted customization for the built-in loading overlay: compose it in the
+ * slot channel and the card renders your props over the table — `children`
+ * replace the centred spinner, `className` tunes the frost. A marker like
+ * TabIndicator: it renders nothing where written (an absolute overlay cannot
+ * live in the empty-state flow), and `isLoading` stays the base's wiring.
+ * Direct child or inside a Fragment only — a custom wrapper hides it.
+ */
+export function DataTableLoadingOverlay(_props: DataTableLoadingOverlayProps): null {
+  return null
 }
 
 interface DataTableRowEntry<T> {
@@ -374,13 +385,16 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     [items, getRowId],
   )
 
-  // States are mutually exclusive, mirroring InfiniteSelect: while loading or
-  // errored the rows give way to the status region (renderEmptyState fires on
-  // an empty collection, which is where the slot children land).
-  const showRows = !isLoading && !isError
+  // One loading look everywhere: `isLoading` always renders the frosted
+  // LoadingOverlay — over the rows when a reload keeps them on screen
+  // (react-query's placeholderData), over a min-height blank when the first
+  // page is still coming. Only errors clear the rows; empty/error copy still
+  // lands through renderEmptyState, which fires on an empty collection.
+  const showRows = !isError
   const displayRows = showRows ? rows : []
-  const isEmpty = showRows && rows.length === 0
+  const isEmpty = !isLoading && !isError && rows.length === 0
   const hasRows = showRows && rows.length > 0
+  const loadingOverlayProps = findComposedPart(children, DataTableLoadingOverlay)
 
   // The row header defaults against the caller's columns, before the
   // synthesized selection column is prepended — a checkbox must never be what
@@ -658,9 +672,12 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     <div
       className={cn(
         `
-          overflow-hidden rounded-lg border border-border bg-card
+          relative overflow-hidden rounded-lg border border-border bg-card
           text-card-foreground shadow-xs
         `,
+        // First page still coming: nothing is sizing the card yet, and a
+        // frosted overlay over a zero-height area is invisible.
+        isLoading && rows.length === 0 && 'min-block-32',
         className,
       )}
       data-slot="data-table"
@@ -677,6 +694,13 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
         >
           {table}
         </ScrollArea>
+        {/* Header included on purpose: re-sorting mid-refresh would only queue
+            contradictory requests. z-30 clears the pinned header cells' z-20. */}
+        <LoadingOverlay
+          {...loadingOverlayProps}
+          className={cn('z-30', loadingOverlayProps?.className)}
+          isLoading={isLoading}
+        />
       </DataTableStateContext>
     </div>
   )

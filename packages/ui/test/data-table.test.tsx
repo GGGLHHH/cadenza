@@ -7,7 +7,7 @@ import {
   DataTable,
   DataTableEmpty,
   DataTableError,
-  DataTableLoading,
+  DataTableLoadingOverlay,
   DataTableRetry,
 } from '../src/components/data-table'
 
@@ -68,7 +68,6 @@ const columns: DataTableColumn<Person>[] = [
 const slots = (
   <>
     <DataTableEmpty>No rows</DataTableEmpty>
-    <DataTableLoading>Loading</DataTableLoading>
     <DataTableError>
       Failed
       <DataTableRetry>Retry</DataTableRetry>
@@ -105,19 +104,49 @@ describe('dataTable state slots', () => {
       </DataTable>,
     )
     expect(screen.getByText('No rows')).not.toBeNull()
-    expect(screen.queryByText('Loading')).toBeNull()
     expect(screen.queryByText('Failed')).toBeNull()
   })
 
-  it('shows the loading slot and hides rows while first-page loading', () => {
+  it('frosts a min-height blank while first-page loading — one loading look, no copy', () => {
+    render(
+      <DataTable aria-label="People" columns={columns} isLoading items={[]}>
+        {slots}
+      </DataTable>,
+    )
+    expect(screen.queryByText('No rows')).toBeNull()
+    const card = document.querySelector('[data-slot="data-table"]')
+    expect(card?.className).toContain('min-block-32')
+    expect(
+      card?.querySelector('[data-slot="loading-overlay"]')?.getAttribute('data-loading'),
+    ).toBe('true')
+  })
+
+  it('keeps loaded rows under a frosted overlay on refresh — never the loading slot', () => {
+    // isLoading with rows on screen (react-query placeholderData) used to
+    // blank the table; now the rows stay put and frost over.
     render(
       <DataTable aria-label="People" columns={columns} isLoading items={people}>
         {slots}
       </DataTable>,
     )
-    expect(screen.getByText('Loading')).not.toBeNull()
-    expect(screen.queryByText('Bach')).toBeNull()
-    expect(screen.queryByText('No rows')).toBeNull()
+    expect(screen.getByText('Bach')).not.toBeNull()
+    const overlay = document.querySelector('[data-slot="loading-overlay"]')
+    expect(overlay?.getAttribute('data-loading')).toBe('true')
+  })
+
+  it('lifts a composed LoadingOverlay part onto the card, keeping the z order', () => {
+    render(
+      <DataTable aria-label="People" columns={columns} isLoading items={people}>
+        <DataTableLoadingOverlay className="backdrop-blur-lg">
+          <span data-testid="brand">品牌加载</span>
+        </DataTableLoadingOverlay>
+      </DataTable>,
+    )
+    const overlay = document.querySelector('[data-slot="loading-overlay"]')
+    expect(overlay?.className).toContain('backdrop-blur-lg')
+    // The card's z-30 (clearing pinned cells) survives a caller className.
+    expect(overlay?.className).toContain('z-30')
+    expect(screen.getByTestId('brand')).not.toBeNull()
   })
 
   it('shows the error slot with a retry button wired to onRetry', async () => {
