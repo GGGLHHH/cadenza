@@ -19,6 +19,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -187,11 +188,13 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {limitOptions.map(size => (
-                  <SelectItem id={size} key={size} textValue={String(size)}>
-                    {size}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  {limitOptions.map(size => (
+                    <SelectItem id={size} key={size} textValue={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
