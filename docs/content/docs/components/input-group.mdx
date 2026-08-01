@@ -92,6 +92,7 @@ has-[[data-slot=input-group-control]:focus-visible]:ring-3
 | `data-focus-visible` | 焦点且应当显示焦点环 | `isFocusVisible` |
 | `data-disabled` | `isDisabled`，或所在的 RAC 字段被禁用 | `isDisabled` |
 | `data-invalid` | `isInvalid` | `isInvalid` |
+| `data-readonly` | `isReadOnly`，或所在 RAC 字段只读 | —（Group 的 render props 不含它，只有 DOM 属性可选） |
 
 除此之外它还会对**后代**的原生 disabled 作出反应（`has-disabled:opacity-50`）——
 组里只要有任何一个 `:disabled` 元素，整组就按禁用渲染。这一条是坑：React Aria 在只读

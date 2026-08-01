@@ -4,8 +4,10 @@ description: offset 分页条 —— page / limit 独立受控，零文案设计
 ---
 
 offset 分页条：左侧摘要、右侧「每页条数选择器 + 页码指示 + 四个导航按钮」。
-组件自己**不产出任何文案** —— 页码指示默认是语言中立的 `3 / 13`，摘要、
-「每页」标签、按钮的 aria-label 全部由外部注入，i18n 天然留在业务层。
+组件自己**不产出任何可见文案** —— 页码指示默认是语言中立的 `3 / 13`，摘要、
+「每页」标签由外部注入，i18n 天然留在业务层。aria-label 有英文兜底（四个导航
+按钮，以及每页选择器在 `rowsPerPageLabel` 非字符串时的 `'Rows per page'`），
+从业务层传译文即可覆盖。
 
 `page` 和 `limit` 各自支持受控 / 非受控（`useControllableState` 语义：
 传 `page` 即受控，传 `defaultPage` 即非受控，两者互不影响）。
@@ -48,6 +50,23 @@ aria-label 从业务层传译文；`showLimitChanger={false}` 关掉每页条数
 <kbd>Space</kbd> 触发，不可用时真实 `disabled`；每页条数是 RAC Select，
 <kbd>方向键</kbd> 选择、<kbd>Enter</kbd> 确认、<kbd>Esc</kbd> 关闭。
 
+## Headless：useDataPaginationState
+
+分页状态本身单独导出（React Aria 的 `useXxxState` 风格）。入参就是 Props 表里的
+状态切片（`DataPaginationStateOptions`），返回 `DataPaginationStateResult`：
+`page` / `limit` / `totalPages` / `setPage` / `setLimit` / `canPrevious` /
+`canNext` —— 零与 `NaN` 守卫、越界钳位同样生效。不渲染我们这个分页条、
+自己画分页 UI 时用它：
+
+```tsx
+import { useDataPaginationState } from '@gedatou/cadenza-ui'
+
+const { page, setPage, canNext } = useDataPaginationState({
+  total: 137,
+  defaultLimit: 20,
+})
+```
+
 ## Props
 
 | Prop | 类型 | 默认值 | 说明 |
@@ -58,9 +77,11 @@ aria-label 从业务层传译文；`showLimitChanger={false}` 关掉每页条数
 | `limitOptions` | `number[]` | `[10, 20, 50, 100]` | 每页条数选项 |
 | `showLimitChanger` | `boolean` | `true` | 是否渲染每页条数选择器 |
 | `summary` | `(state) => ReactNode` | — | 左侧摘要；不传则该槽位收起 |
-| `rowsPerPageLabel` | `ReactNode` | — | 选择器前的可见标签（不传则不渲染） |
+| `rowsPerPageLabel` | `ReactNode` | — | 选择器前的可见标签（不传则不渲染）。传字符串时同时作为选择器的 aria-label，否则 aria-label 兜底英文 `'Rows per page'` |
 | `pageIndicator` | `(state) => ReactNode` | `page / totalPages` | 页码指示 |
 | `firstPageLabel` 等 4 个 | `string` | 英文 | 图标按钮的 aria-label，从业务层传译文 |
 | `className` | `string` | — | 根元素类名 |
 
 `state` 即导出的 `DataPaginationState`：`{ page, limit, total, totalPages }`。
+`DataPaginationStateOptions` / `DataPaginationStateResult`（上文 headless hook
+的入参与返回值）也一并导出。

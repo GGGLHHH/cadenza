@@ -41,7 +41,9 @@ description: React Aria Table 语义的数据表格 —— 列定义驱动 + 组
 行内勾选、表头全选/半选全部自动接线，文案来自 react-aria 内置多语言；
 键盘上 Space 切换、Shift 范围选择随之生效。需要 RAC 原始语义
 （`selectedKeys` / `onSelectionChange` / `'all'` 哨兵）的高级场景仍可用
-透传层，两层不要混用。
+透传层。两层的关系：便利层激活时 `selectedKeys` / `defaultSelectedKeys`
+被忽略，但 `onSelectionChange` 仍会收到原始 RAC `Selection`（含 `'all'`
+哨兵），可以当观察钩子用。
 
 ### 单选
 
@@ -249,7 +251,7 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
 | `selectionMode` | `'none' \| 'single' \| 'multiple'` | `'none'` | 行选择模式 |
 | `value` / `defaultValue` / `onChange` | `string` \| `string[]` | — | 便利层选择（跨页存档），签名随 `selectionMode` 切换，见「行选择与行动作」 |
-| `selectedKeys` / `defaultSelectedKeys` / `onSelectionChange` | — | — | React Aria 选择透传（高级层，与便利层不混用） |
+| `selectedKeys` / `defaultSelectedKeys` / `onSelectionChange` | — | — | React Aria 选择透传。便利层激活时前两者被忽略；`onSelectionChange` 仍触发，仅作观察 |
 | `selectionColumn` | `boolean` | `false` | 合成复选框列（行勾选 + 表头全选），见「行选择与行动作」 |
 | `sortDescriptor` / `onSortChange` | `SortDescriptor` | — | 排序意图（受控） |
 | `onRowAction` | `(item: T) => void` | — | 行激活，回调收行对象 |
@@ -258,6 +260,7 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | `virtualized` | `boolean` | `false` | TanStack Virtual 行虚拟化，大数据集用 |
 | `rowHeight` | `number` | `40` | 虚拟化行的固定高度；`dynamicRowHeight` 下为初始估算 |
 | `dynamicRowHeight` | `boolean` | `false` | 虚拟化行按内容实测高度（估算 + 校正），见「动态行高」 |
+| `className` | `string` | — | 外层卡片容器的附加类（落在普通 div，不支持函数形式） |
 | `children` | `ReactNode` | — | 状态插槽通道 |
 
 `DataPagination` 的 props 见[它自己的页面](/docs/components/data-pagination#props)。

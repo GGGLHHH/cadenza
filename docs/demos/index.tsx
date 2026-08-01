@@ -5,6 +5,9 @@ import { lazy, Suspense } from 'react'
 
 // 客户端 demo registry:lazy 让每个 demo 独立分包,页面只拉用到的
 const registry: Record<string, ComponentType> = {
+  'button/variants': lazy(async () => import('./button/variants')),
+  'button/sizes': lazy(async () => import('./button/sizes')),
+  'button/link': lazy(async () => import('./button/link')),
   'data-pagination/basic': lazy(async () => import('./data-pagination/basic')),
   'data-pagination/controlled': lazy(async () => import('./data-pagination/controlled')),
   'data-pagination/labels': lazy(async () => import('./data-pagination/labels')),

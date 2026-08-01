@@ -1,0 +1,75 @@
+---
+title: Button
+description: React Aria Button 的封装 —— cva 变体与尺寸，按压语义、键盘与禁用态全部由 React Aria 承担
+---
+
+按钮。底下是 React Aria 的 `Button`，所以事件是 **`onPress`** 而不是 `onClick` ——
+它把鼠标、触摸、键盘（空格/回车）统一成一个语义，长按拖出按钮再松开不会误触发。
+外观是 shadcn 的 `buttonVariants`（cva）：六个变体、四档尺寸加四档纯图标尺寸。
+
+## 变体
+
+<ComponentPreview name="button/variants" />
+
+## 尺寸
+
+`icon-*` 是方形档，只放一个图标 —— **必给 `aria-label`**：
+
+<ComponentPreview name="button/sizes" />
+
+## 链接按钮
+
+`LinkButton` 是穿着按钮衣服的 `<a>`：有 `href`、支持 `target`，变体和尺寸同 `Button`。
+禁用时 React Aria 渲染**没有 `href` 的 `<span>`** —— 链接没有原生禁用语义，这是它
+阻断导航的方式。因此 `:disabled` 在它身上永远不会命中，置灰靠 `data-disabled`
+（封装已接好，无需关心）：
+
+<ComponentPreview name="button/link" />
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### Button
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `onPress` | `(e: PressEvent) => void` | — | **不是 `onClick`** —— 统一鼠标 / 触摸 / 键盘的按压语义 |
+| `isDisabled` | `boolean` | `false` | 禁用（渲染原生 `disabled` 属性） |
+| `isPending` | `boolean` | `false` | 进行中：阻断交互、打 `data-pending`。默认样式不消费它，进行中的视觉（换文案、加 spinner）由调用方渲染 |
+| `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | 表单里需要提交时改它 |
+| `variant` | `'default' \| 'secondary' \| 'outline' \| 'ghost' \| 'destructive' \| 'link'` | `'default'` | 变体，同时回显为 `data-variant` |
+| `size` | `'xs' \| 'sm' \| 'default' \| 'lg' \| 'icon-xs' \| 'icon-sm' \| 'icon' \| 'icon-lg'` | `'default'` | 尺寸，同时回显为 `data-size` |
+| `className` | `string` | — | 类名。**只收字符串** —— 这是全库少数收窄掉函数形式的部件（vendored 层的类型收窄，诚实且无静默丢失） |
+| 其余 | RAC `Button` 的 props | — | 透传（`autoFocus`、`onPressStart` 一族、`excludeFromTabOrder`……） |
+
+**状态**
+
+| 状态 | 出现时机 | render prop |
+| --- | --- | --- |
+| `data-hovered` | 指针悬停；触摸不触发 | `isHovered` |
+| `data-pressed` | 按住未松开（指针或空格/回车） | `isPressed` |
+| `data-focused` | 拿到焦点，不分来源 | `isFocused` |
+| `data-focus-visible` | 焦点且应当显示焦点环（键盘来的） | `isFocusVisible` |
+| `data-disabled` | `isDisabled` | `isDisabled` |
+| `data-pending` | `isPending` | `isPending` |
+
+默认样式走 CSS 伪类（`hover:` / `:disabled`），对原生 `<button>` 两者基本等价；
+自定义样式建议挂 data 属性，跨输入模态更一致。光标是全库统一的约定：可点时
+`pointer`，禁用时 `not-allowed`（styles.css 的全局规则，无需自己写）。
+
+### LinkButton
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `href` | `string` | — | 目标地址；禁用时整个属性不渲染 |
+| `target` / `rel` 等 | 原生 `<a>` 属性 | — | 透传 |
+| `isDisabled` | `boolean` | `false` | 禁用：渲染 `<span data-disabled>`，导航被阻断、视觉置灰 |
+| `variant` / `size` | 同 `Button` | `'default'` | 同一套 `buttonVariants` |
+| `className` | `string` | — | 类名（同上，只收字符串） |
+
+**状态**：同 `Button`，外加 `data-current`（`aria-current` 场景）；没有 `data-pending`。
+
+`buttonVariants` 也单独导出 —— 需要把别的元素画成按钮的样子（比如 fumadocs 的卡片链接）
+时直接调用：`buttonVariants({ variant: 'outline', size: 'sm', className: '...' })`。
+`ButtonProps` / `LinkButtonProps` 两个类型一并导出。

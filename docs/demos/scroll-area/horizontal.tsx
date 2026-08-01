@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import { ScrollArea } from '@gedatou/cadenza-ui'
 import { PEOPLE } from '../lib/people'
 
-// orientation="horizontal" 只渲染横向滚动条;内容用 w-max 撑开
+// orientation="horizontal" 只渲染横向滚动条;内容用 inline-max 撑开
 export default function HorizontalDemo(): ReactElement {
   return (
     <ScrollArea className="rounded-xl border inline-96" orientation="horizontal">

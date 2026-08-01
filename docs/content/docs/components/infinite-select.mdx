@@ -1,6 +1,6 @@
 ---
 title: InfiniteSelect
-description: 可搜索、无限滚动的选择器 —— React Aria 行为 + 组合式插槽
+description: 可搜索、无限滚动的选择器与 InfiniteCombobox 弹层便利层 —— React Aria 行为 + 组合式插槽
 ---
 
 可搜索、游标分页无限滚动的选择器家族。行为全部由 React Aria 承担：`Autocomplete`
@@ -58,7 +58,8 @@ TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外�
 3. 因此**几百行以内不建议开**——不开时 React Aria 认识完整列表，上面这些能力
    都是全量的，而几百行的 DOM 根本不构成性能问题。
 
-加载下一页的触发时机与非虚拟模式一致（提前约 1.5 个视口预取），无需关心。
+加载下一页的触发时机与非虚拟模式一致（提前约 1 个视口预取，由
+`loadMoreScrollOffset` 控制），无需关心。
 
 ## 插槽
 
@@ -89,7 +90,8 @@ TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外�
 
 `InfiniteSelectFooter` 是底部动作条；`InfiniteSelectClearButton` /
 `InfiniteSelectConfirmButton` 通过 context 拿到 `clear` / `close`，不需要你
-穿线；`InfiniteSelectFooterSeparator` 是竖向分隔。自定义部件用
+穿线。注意**清空按钮清空后会顺带关闭弹层** —— `commitOnClose` 下这等于提交
+空选择；`InfiniteSelectFooterSeparator` 是竖向分隔。自定义部件用
 `useInfiniteSelectActions()` 同样能拿到 `selectedIds` / `selectedItems` /
 `clear` / `close`——下面 demo 中间的「已选 N」就是一个自定义部件：
 
@@ -192,10 +194,17 @@ interface InfiniteSelectItemRenderParams<T> {
   option: InfiniteSelectOption
   /** 行在当前已加载列表中的位置,从 0 开始。语义见下方说明。 */
   index: number
-  /** 该行当前是否选中(React Aria render-prop 命名)。 */
+  // React Aria 的 render-prop 状态词汇,整包透传 —— 与「选项行」状态表逐行对应
   isSelected: boolean
+  isHovered: boolean
+  isPressed: boolean
+  isFocused: boolean
+  isFocusVisible: boolean
+  isDisabled: boolean
   /** 面板的选择模式(用于决定要不要自绘勾选框)。 */
   selectionMode: 'single' | 'multiple'
+  /** React Aria 的选择行为。 */
+  selectionBehavior: 'toggle' | 'replace'
 }
 ```
 
@@ -316,7 +325,7 @@ interface InfiniteSelectItemRenderParams<T> {
 | `state` | `InfiniteComboboxState` | — | **必填**，来自 `useInfiniteComboboxState()` |
 | `list` | `InfiniteSelectAdapterProps<T>` | — | **必填**，数据适配器 |
 | `getOption` | `(item: T) => InfiniteSelectOption` | — | **必填**，提取 id / label / textValue / isDisabled |
-| `children` | `ReactNode` \| `(state) => ReactNode` | — | 触发器；函数形式可拿到 `isOpen` / `selectedItems` / `selectedValue` / `isDisabled` |
+| `children` | `ReactElement` \| `(state) => ReactElement` | — | **必填**。触发器，必须是可按压元素（RAC pressable）；函数形式可拿到 `isOpen` / `selectedItems` / `selectedValue` / `isDisabled` |
 | `selectionMode` | `'single' \| 'multiple'` | `'single'` | 判别式：决定下面三个的类型（React Aria 的枚举，与 DataTable 同名） |
 | `defaultValue` | `string` \| `string[]` | — | 非受控初始选择 |
 | `value` | `string` \| `string[]` | — | 受控选择 |
@@ -347,7 +356,7 @@ interface InfiniteSelectItemRenderParams<T> {
 | 状态 | 出现时机 | 说明 |
 | --- | --- | --- |
 | `data-placement` | 弹层已定位，值是 `bottom` / `top` / … | 出场动画按方向分岔时挂这个 |
-| `data-trigger` | 固定是 `SubmenuTrigger` | 见源码注释：借这个分支换取「弹层随锚点滚动」，不是真的子菜单 |
+| `data-trigger` | 默认是 `SubmenuTrigger`（借该分支换取「弹层随锚点滚动」，不是真的子菜单）；`lockScroll` / `closeOnScroll` 下回落为 `DialogTrigger` | 出场动画等选择器谨慎依赖此值 |
 
 触发器是你自己传的 `children`，状态取决于你用什么渲染。用我们的 `Button` 的话，
 它带 `data-hovered` / `data-pressed` / `data-focus-visible` / `data-disabled`。
@@ -457,6 +466,7 @@ part 上。
 | `InfiniteSelectError` | `isError` | `infinite-select-status` |
 | `InfiniteSelectRetry` | 在 `Error` 内，且根上传了 `onRetry` | `infinite-select-retry` |
 | `InfiniteSelectFooter` | 总是（由调用方决定放不放） | `infinite-select-footer` |
+| `InfiniteSelectFooterSeparator` | 总是 | `infinite-select-footer-separator` |
 | `InfiniteSelectClearButton` | 总是 | `infinite-select-clear` |
 | `InfiniteSelectConfirmButton` | 总是 | `infinite-select-confirm` |
 

@@ -83,7 +83,7 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | --- | --- |
 | `Esc` | 清空字段（React Aria 内建，与点击清除按钮等价） |
 | `Enter` | 触发 `onSubmit`，回调参数是当前文本 |
-| `Tab` | 有内容时清除按钮是一个独立停留点，空时它不在 DOM 里 |
+| `Tab` | 清除按钮**不占** Tab 停留点（RAC 给它 `tabIndex=-1`，键盘用户用 Esc 清空）；空时它仍在 DOM 中，由 `data-empty` 经 CSS 隐藏 |
 
 ## Props
 
@@ -106,7 +106,7 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | `queryValue` | `string` | — | 受控查询值 |
 | `onQueryValueChange` | `(value: string \| undefined) => void` | — | 去抖后触发，已 trim、空白归一为 `undefined` |
 | `onSubmit` | `(value: string) => void` | — | 按 Enter 时触发（RAC） |
-| `onClear` | `() => void` | — | 清除时触发（RAC）；我们内部已用它接了 `resetSearch` |
+| `onClear` | `() => void` | — | 清除时触发（Esc 或清除按钮）。内部的 `resetSearch` 先执行、你传的随后执行 —— 传入**不会**顶掉「清除跳过防抖立即生效」 |
 | `debounceMs` | `number` | `300` | 去抖间隔。**挂载时读取一次**，之后改动不生效（同 `defaultValue` 的约定）|
 | `placeholder` | `string` | — | 默认组合里输入框的占位符 |
 | `isDisabled` | `boolean` | `false` | 禁用整个字段 |
@@ -127,9 +127,10 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | `data-required` | `isRequired` | `isRequired` |
 | `data-invalid` | 校验失败 | `isInvalid` |
 
-render props 里还有 `state`，是 React Aria 的 `SearchFieldState`。RAC 没有为
-SearchField 暴露 state context，所以要在内部读它只能用根组件的 render props：
-`<SearchField>{({ state }) => …}</SearchField>`。
+注意本封装的 `children` 只接受 **ReactNode**，不透传 RAC 的函数 children ——
+`children ?? 默认组合` 的兜底占掉了那个位置。要按状态读 `state`（React Aria 的
+`SearchFieldState`），用函数 `className` 的参数（render props 里带 `state`）；
+要按状态决定**渲染结构**，把结构下放到会收到各自 render props 的部件里去。
 
 ### InputGroup 一族
 

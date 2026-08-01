@@ -1,0 +1,43 @@
+---
+title: cn
+description: 类名合并工具 —— clsx + tailwind-merge，并且会组合 React Aria / Base UI 的函数 className
+---
+
+类名合并：clsx 语义（条件、数组、对象都行）加 tailwind-merge 去冲突，
+**同组工具类后写的赢**：
+
+```tsx
+import { cn } from '@gedatou/cadenza-ui'
+
+cn('p-2 text-sm', condition && 'p-4') // => 'text-sm p-4'（p-2 被后来的 p-4 顶掉）
+```
+
+## 函数 className 的组合
+
+React Aria 和 Base UI 都把 `className` 定义为 `string | (state) => string`。
+clsx 会**静默丢弃函数**（不报错、类名整体消失），所以普通的
+`cn(基础类, className)` 会在封装层悄悄弄断这个契约。本库的 `cn` 在这里兜底：
+参数里有函数时，返回一个**延迟解析函数**，由 RAC / Base UI 在渲染时带着状态
+调用 —— 先解析函数、再照常合并，合并顺序语义不变（调用方的类仍然后写、仍然赢）：
+
+```tsx
+// 封装组件里照常写,函数契约由 cn 保住:
+<TabListPrimitive className={cn(tabsListVariants({ variant }), className)} />
+
+// 于是调用方可以传状态函数:
+<Tab className={({ isSelected }) => isSelected ? 'underline' : 'opacity-60'} />
+```
+
+纯字符串调用零变化 —— 没有函数参数时返回的还是字符串。
+
+## 返回类型是诚实的
+
+`cn` 的返回类型按入参条件推导：参数类型都不含函数 → `string`；可能含函数 →
+`string | (values) => string`。这意味着**把可能是函数的结果灌给普通 DOM 元素会
+编译报错** —— 那正是要拦的事故：函数到不了 RAC 就没人解析它，落到 DOM 上只会
+变成垃圾 class。规则很简单：
+
+- `cn` 的结果落在 **RAC / Base UI 的 className 槽位** → 随便用，函数自动兑现；
+- 落在普通 `<div>` / `<span>` → 参数只能是字符串（把 props 类型收窄成 `string`）。
+
+写新封装时的完整约定见仓库 skill `wrapping-rac-components`。
