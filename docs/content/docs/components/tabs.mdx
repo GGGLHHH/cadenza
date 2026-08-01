@@ -174,6 +174,9 @@ export default function TabsPositionDemo(): ReactElement {
 两个出口，按手头顺手的用。表里没有的 `data-rac` / `data-collection` / `data-key`
 是 RAC 的内部标记，不要依赖。
 
+`className` 一律双形态：字符串，或 `(state) => string` 的函数（参数就是状态表右列的
+render props）。`TabIndicator` 除外 —— 它是纯 span，只收字符串。
+
 ### Tabs
 
 | Prop | 类型 | 默认值 | 说明 |
@@ -185,7 +188,7 @@ export default function TabsPositionDemo(): ReactElement {
 | `keyboardActivation` | `'automatic' \| 'manual'` | `'automatic'` | 方向键是否顺带切换面板 |
 | `disabledKeys` | `Iterable<Key>` | — | 按 key 批量禁用标签 |
 | `isDisabled` | `boolean` | `false` | 整组禁用 |
-| `className` | `string` | — | 根元素类名 |
+| `className` | `string \| (state) => string` | — | 根元素类名 |
 
 **状态**
 
@@ -200,7 +203,7 @@ export default function TabsPositionDemo(): ReactElement {
 | `aria-label` | `string` | — | 这组标签页的无障碍名，**必给** |
 | `items` | `Iterable<T>` | — | 动态集合数据源，配函数 children 使用 |
 | `variant` | `'default' \| 'line'` | `'default'` | 胶囊底色 / 底部指示线 |
-| `className` | `string` | — | 类名 |
+| `className` | `string \| (state) => string` | — | 类名 |
 
 **状态**
 
@@ -229,7 +232,7 @@ export default function TabsPositionDemo(): ReactElement {
 | `id` | `Key` | — | 这个标签的 key，与对应 `TabPanel` 的 `id` 相同 |
 | `isDisabled` | `boolean` | `false` | 禁用这一个标签 |
 | `href` | `string` | — | 链接型标签，渲染成 `<a>`（路由驱动的标签页用它） |
-| `className` | `string` | — | 类名 |
+| `className` | `string \| (state) => string` | — | 类名 |
 
 **状态**
 
@@ -251,7 +254,7 @@ export default function TabsPositionDemo(): ReactElement {
 | --- | --- | --- | --- |
 | `id` | `Key` | — | 与对应 `Tab` 的 `id` 相同即自动配对 |
 | `shouldForceMount` | `boolean` | `false` | 未选中时也保留在 DOM（默认只渲染选中的那个） |
-| `className` | `string` | — | 类名 |
+| `className` | `string \| (state) => string` | — | 类名 |
 
 **状态**
 

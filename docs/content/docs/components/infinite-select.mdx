@@ -316,12 +316,12 @@ interface InfiniteSelectItemRenderParams<T> {
 | `state` | `InfiniteComboboxState` | — | **必填**，来自 `useInfiniteComboboxState()` |
 | `list` | `InfiniteSelectAdapterProps<T>` | — | **必填**，数据适配器 |
 | `getOption` | `(item: T) => InfiniteSelectOption` | — | **必填**，提取 id / label / textValue / isDisabled |
-| `children` | `ReactNode` \| `(state) => ReactNode` | — | 触发器；函数形式可拿到 `isOpen` / `selectedItems` / `selectedValue` |
+| `children` | `ReactNode` \| `(state) => ReactNode` | — | 触发器；函数形式可拿到 `isOpen` / `selectedItems` / `selectedValue` / `isDisabled` |
 | `selectionMode` | `'single' \| 'multiple'` | `'single'` | 判别式：决定下面三个的类型（React Aria 的枚举，与 DataTable 同名） |
 | `defaultValue` | `string` \| `string[]` | — | 非受控初始选择 |
 | `value` | `string` \| `string[]` | — | 受控选择 |
 | `onChange` | 单选 `(item?: T) => void`；多选 `(items: T[], ids: string[]) => void` | — | 多选时 `ids` 才是权威值，`items` 只含已加载页的对象 |
-| `isDisabled` | `boolean` | `false` | 禁用触发器（弹层不可打开） |
+| `isDisabled` | `boolean` | `false` | 禁用整个选择器：触发器元素会被注入 `isDisabled`（RAC pressable 契约），弹层不可打开 |
 | `commitOnClose` | `boolean` | `false` | 多选草稿模式，关弹层才提交 |
 | `closeOnSelect` | `boolean` | `true` | 单选选中后自动关闭 |
 | `lockScroll` | `boolean` | `false` | 锁定页面滚动（模态感） |
@@ -338,6 +338,7 @@ interface InfiniteSelectItemRenderParams<T> {
 | `aria-label` | `string` | 取 `searchPlaceholder` | 面板的无障碍名 |
 | `selectClassName` | `string` | — | 弹层内根组件的类名 |
 | `contentClassName` | `string` | — | 弹层本身的类名 |
+| `popoverProps` | `Omit<PopoverProps, 接线项>` | — | 弹层定位面：`placement` / `offset` / `shouldFlip`…… 接线项（`trigger` / `isNonModal` / 开合三件套 / `className`）已从类型里排除，接线写在展开之后、始终占上风 |
 
 防抖不在这张表上 —— `debounceMs`（默认 `300`）是 `useInfiniteComboboxState()` 的选项。
 
@@ -382,15 +383,18 @@ part 上。
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `placeholder` | `string` | — | 占位符，同时兼作这个搜索框的无障碍名 |
+| `placeholder` | `string` | — | 默认组合里输入框的占位符，同时兼作无障碍名。**没有默认文案**——基座零可见文案；两者都没传时无障碍名兜底为 `'Search'`（只进 aria，不上屏） |
 | `autoFocus` | `boolean` | `false` | 挂载即聚焦。默认关闭（内联面板不该抢页面焦点）；`InfiniteCombobox` 会传 `true`，弹层一开就能打字 |
-| `className` | `string` | — | 类名 |
+| `children` | `ReactNode` | 图标 + 输入框 | 传了就完全接管内部结构；里面的 RAC `Input` 由字段 context 自动接线，`placeholder` / `autoFocus` 只作用于默认组合 |
+| `className` | `string \| (state) => string` | — | 类名，函数形式收到下表的 render props |
+| 其余 | RAC `SearchField` 的 props | — | 透传（`onSubmit`、`isDisabled`、`isReadOnly`……）。**除** `value` / `defaultValue` / `onChange` —— 那是根组件 `Autocomplete` 的过滤接线，已保留不放开 |
 
 **状态**
 
 | 状态 | 出现时机 | render prop |
 | --- | --- | --- |
 | `data-empty` | 搜索框没有内容（RAC `SearchField`，清除按钮靠它显隐） | `isEmpty` |
+| `data-disabled` | 透传 `isDisabled` 时 | `isDisabled` |
 
 ### InfiniteSelectList
 
@@ -404,7 +408,9 @@ part 上。
 | `rowHeight` | `number` | `32` | 虚拟化行的固定高度 |
 | `maxListHeight` | `number` | `256` | 最大高度 |
 | `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | 滚动条可见性 |
-| `className` | `string` | — | 类名 |
+| `className` | `string` | — | 外层滚动容器的类名（尺寸约束定在这里） |
+| `listClassName` | `string \| (state) => string` | — | RAC `ListBox` 本体的类名，函数形式收到它的 render props |
+| `itemClassName` | `string \| (state) => string` | — | 每一行的类名，函数形式收到该行的 render props（见「选项行」状态表） |
 
 **状态**
 
@@ -425,15 +431,16 @@ part 上。
 | --- | --- | --- |
 | `data-selection-mode` | 始终有值：`single` / `multiple` | `selectionMode` |
 | `data-selected` | 该项已选中 | `isSelected` |
-| `data-hovered` | 指针悬停其上；触摸和键盘都不触发 | — |
-| `data-pressed` | 指针按住未松开 | — |
-| `data-focused` | 是当前的活动项（虚拟焦点，真实焦点留在搜索框） | — |
-| `data-focus-visible` | 活动项**且**由键盘导航到达 | — |
-| `data-disabled` | `getOption` 返回了 `isDisabled: true` | — |
+| `data-hovered` | 指针悬停其上；触摸和键盘都不触发 | `isHovered` |
+| `data-pressed` | 指针按住未松开 | `isPressed` |
+| `data-focused` | 是当前的活动项（虚拟焦点，真实焦点留在搜索框） | `isFocused` |
+| `data-focus-visible` | 活动项**且**由键盘导航到达 | `isFocusVisible` |
+| `data-disabled` | `getOption` 返回了 `isDisabled: true` | `isDisabled` |
 
-`renderItem` 的参数只给 `item` / `option` / `index` / `isSelected` / `selectionMode`
-五个 —— 悬停、按下、焦点这些高频变化的状态刻意不进参数，走 CSS 就够了，进了参数
-反而会让每行在悬停时重渲染。
+`renderItem` 的参数是 `item` / `option` / `index` 加上表里的全套 RAC 状态词汇
+（另有 `selectionBehavior`）。参数带全不增加渲染成本 —— 行为了更新 `data-*`
+属性本来就会在这些状态变化时重渲染；样式仍然优先走 CSS 变体，参数是给
+需要按状态换内容（不只换样式）的渲染器用的。
 
 搜索框保持真实焦点、列表项拿虚拟焦点，是 RAC `Autocomplete` 的设计：这样打字和
 上下键可以同时工作。所以焦点样式要挂在 `data-focused` 上，别挂 `:focus`。

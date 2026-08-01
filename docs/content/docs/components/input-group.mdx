@@ -68,6 +68,10 @@ has-[[data-slot=input-group-control]:focus-visible]:ring-3
 每个部件的 Props 表后面跟一张**状态**表，左列是挂在 DOM 上的 `data-*`，右列是同一状态
 在 render props 里的名字。
 
+`InputGroup` / `InputGroupInput` / `InputGroupTextarea` 的 `className` 是双形态：
+字符串，或 `(state) => string` 的函数（参数就是各自状态表的 render props）。
+`InputGroupAddon` 和 `InputGroupText` 是纯元素、`InputGroupButton` 收窄为字符串。
+
 ### InputGroup
 
 底下是 React Aria 的 `Group`。边框、圆角、高度和焦点环都在它身上。
@@ -77,7 +81,7 @@ has-[[data-slot=input-group-control]:focus-visible]:ring-3
 | `isDisabled` | `boolean` | `false` | 整组禁用；放进 RAC 字段里时会自动从字段继承 |
 | `isInvalid` | `boolean` | `false` | 校验失败态 |
 | `isReadOnly` | `boolean` | `false` | 只读 |
-| `className` | `string` | — | 类名 |
+| `className` | `string \| (state) => string` | — | 类名 |
 
 **状态**
 
@@ -110,8 +114,8 @@ has-[[data-slot=input-group-control]:focus-visible]:ring-3
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `placeholder` | `string` | — | 占位符 |
-| `className` | `string` | — | 类名 |
-| 其余 | RAC `Input` 的 props | — | 透传 |
+| `className` | `string \| (state) => string` | — | 类名 |
+| 其余 | RAC `Input` 的 props | — | 透传（含 `onHoverStart` 一族与函数形式 `style`） |
 
 自带 `data-slot="input-group-control"`（见[上文](#焦点环怎么来的)），去掉了自己的边框和
 环，交给外层的组来画。没有可见 `Label` 时记得给 `aria-label`。
@@ -121,8 +125,8 @@ has-[[data-slot=input-group-control]:focus-visible]:ring-3
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `rows` | `number` | — | 初始行数 |
-| `className` | `string` | — | 类名 |
-| 其余 | RAC `TextArea` 的 props | — | 透传 |
+| `className` | `string \| (state) => string` | — | 类名 |
+| 其余 | RAC `TextArea` 的 props | — | 透传（含 `onHoverStart` 一族与函数形式 `style`） |
 
 同样带 `input-group-control`。组里有它时高度自动放开，不再固定成一行。
 

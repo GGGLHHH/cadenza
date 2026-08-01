@@ -91,6 +91,9 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 每个部件的 Props 表后面跟一张**状态**表，左列是挂在 DOM 上的 `data-*`（Tailwind
 直接当变体写），右列是同一状态在 render props 里的名字。
 
+落在 React Aria 部件上的 `className` 都是双形态：字符串，或 `(state) => string`
+的函数（参数就是状态表右列的 render props）。
+
 ### SearchField
 
 | Prop | 类型 | 默认值 | 说明 |
@@ -112,7 +115,7 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | `isInvalid` | `boolean` | — | 受控的校验失败态 |
 | `autoFocus` | `boolean` | `false` | 挂载即聚焦 |
 | `children` | `ReactNode` | 默认组合 | 传了就完全接管内部结构 |
-| `className` | `string` | — | 根元素类名 |
+| `className` | `string \| (state) => string` | — | 根元素类名 |
 
 **状态**
 
@@ -148,7 +151,8 @@ SearchField 暴露 state context，所以要在内部读它只能用根组件的
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `placeholder` | `string` | — | 占位符 |
-| `className` | `string` | — | 类名 |
+| `className` | `string \| (state) => string` | — | 类名 |
+| 其余 | RAC `Input` 的 props | — | 透传（含 `onHoverStart` 一族与函数形式 `style`） |
 
 不需要 `value` / `onChange` —— 它底下是 RAC 的 `Input`，进到 `SearchField`
 里就由字段接管了。原生的 `::-webkit-search-cancel-button` 已经隐掉，

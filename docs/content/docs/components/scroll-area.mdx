@@ -52,7 +52,7 @@ description: 覆盖式滚动条的滚动容器 —— 滚动条渲染在视口�
 | `viewportClassName` | `string` | — | 视口类名；scroll-fade 挂这里 |
 | `viewportStyle` | `CSSProperties` | — | 视口内联样式（如 `maxHeight`） |
 | `viewportRef` | `Ref<HTMLDivElement>` | — | 视口引用（滚动位置、虚拟化都要它） |
-| `className` | `string` | — | 根元素类名；尺寸约束定在这里 |
+| `className` | `string \| (state) => string` | — | 根元素类名；尺寸约束定在这里。函数形式收到 Base UI 的状态（`hovering` / `scrolling` / 溢出方向等） |
 | 其余 | `ScrollArea.Root.Props` | — | 透传 Base UI Root |
 
 单独导出的 `ScrollBar` 供自定义组合场景使用，一般用不到。
