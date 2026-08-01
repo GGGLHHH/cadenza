@@ -114,7 +114,7 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | `isRequired` | `boolean` | `false` | 必填（表单校验用） |
 | `isInvalid` | `boolean` | — | 受控的校验失败态 |
 | `autoFocus` | `boolean` | `false` | 挂载即聚焦 |
-| `children` | `ReactNode` | 默认组合 | 传了就完全接管内部结构 |
+| `children` | `ReactNode \| (state) => ReactNode` | 默认组合 | 传了就完全接管内部结构。函数形态收到状态表右列的 render props，外加 `defaultChildren`（默认组合，可扩展） |
 | `className` | `string \| (state) => string` | — | 根元素类名 |
 
 **状态**
@@ -127,10 +127,25 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | `data-required` | `isRequired` | `isRequired` |
 | `data-invalid` | 校验失败 | `isInvalid` |
 
-注意本封装的 `children` 只接受 **ReactNode**，不透传 RAC 的函数 children ——
-`children ?? 默认组合` 的兜底占掉了那个位置。要按状态读 `state`（React Aria 的
-`SearchFieldState`），用函数 `className` 的参数（render props 里带 `state`）；
-要按状态决定**渲染结构**，把结构下放到会收到各自 render props 的部件里去。
+`children` 是 RAC 原生的双形态：ReactNode，或 `(state) => ReactNode` 的函数——
+参数就是上表右列的 render props，**外加 `defaultChildren`（默认组合本身）**。
+函数形态与 [Button 的约定](/docs/components/button#按状态渲染children-的-render-props)
+一致，是**完全接管**：什么都不自动注入；但要扩展而不是重造时，把
+`defaultChildren` 渲染出来再往旁边加即可（RAC 官方语义）：
+
+```tsx
+<SearchField aria-label="搜索">
+  {({ defaultChildren }) => (
+    <>
+      {defaultChildren}
+      <FilterButton />
+    </>
+  )}
+</SearchField>
+```
+
+默认组合自己也在用这套能力（只读时靠 `isReadOnly` 收起清除按钮），
+接管后这些状态原样到你手上。
 
 ### InputGroup 一族
 
@@ -169,7 +184,7 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `children` | `ReactNode` | ✕ | 换图标从这里传 |
-| `aria-label` | `string` | `'清除搜索'` | 按钮的无障碍名 |
+| `aria-label` | `string` | `'Clear search'` | 按钮的无障碍名。默认值是 aria-only 的英文兜底（同 `'Search'` / `'Loading'` 的家法），业务层传译文覆盖 |
 | `className` | `string` | — | 类名 |
 
 清除行为**不用接**：React Aria 给 `SearchField` 内的任何 `Button` 都装上了清除。

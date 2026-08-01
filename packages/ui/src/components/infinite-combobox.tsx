@@ -3,7 +3,7 @@
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import type { ControllableSelectionProps, InfiniteSelectActions, InfiniteSelectAdapterProps, InfiniteSelectItemRenderParams, InfiniteSelectOption } from './infinite-select'
 import type { ScrollAreaScrollbars } from './scroll-area'
-import { useControllableState } from '@gedatou/cadenza-utils'
+import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { useDebounceFn } from 'ahooks'
 import { cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { cn } from '#lib/utils'
@@ -349,15 +349,12 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     close: () => state.setOpen(false),
   }
 
-  const trigger
-    = typeof children === 'function'
-      ? children({
-          ...state,
-          selectedItems,
-          selectedValue: effectiveSelectedValue,
-          isDisabled,
-        })
-      : children
+  const trigger = resolveRenderChildren(children, {
+    ...state,
+    selectedItems,
+    selectedValue: effectiveSelectedValue,
+    isDisabled,
+  })
 
   // A disabled combobox must read as disabled at its trigger — the caller's
   // element — or it looks live and just swallows presses. The documented

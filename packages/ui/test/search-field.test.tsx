@@ -97,7 +97,7 @@ describe('searchField', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '清除搜索' }))
+    await user.click(screen.getByRole('button', { name: 'Clear search' }))
     expect(screen.getByRole('searchbox')).toHaveProperty('value', '')
     // debounceMs is 10s here, so this can only have come from the immediate
     // path: dropping a filter must not lag behind the click.
@@ -134,13 +134,13 @@ describe('searchField', () => {
     // a read-only field render as a disabled one. `hidden` would not help,
     // since a display:none element still answers `:has(:disabled)`.
     render(<SearchField aria-label="搜索" defaultValue="ravel" isReadOnly />)
-    expect(screen.queryByRole('button', { name: '清除搜索' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Clear search' })).toBeNull()
     expect(document.querySelector('[data-slot="input-group"] :disabled')).toBeNull()
   })
 
   it('keeps the clear button on a disabled field, dimmed with the rest', () => {
     render(<SearchField aria-label="搜索" defaultValue="ravel" isDisabled />)
-    expect(screen.getByRole('button', { name: '清除搜索' })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('button', { name: 'Clear search' })).toHaveProperty('disabled', true)
   })
 
   it('chains a caller onClear after the immediate reset instead of being replaced by it', async () => {
@@ -157,7 +157,7 @@ describe('searchField', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '清除搜索' }))
+    await user.click(screen.getByRole('button', { name: 'Clear search' }))
     expect(onClear).toHaveBeenCalledTimes(1)
     // Still the immediate path: listening to onClear must not silently turn
     // clearing back into a debounced act.
@@ -190,6 +190,41 @@ describe('searchField', () => {
     )
     expect(screen.getByTestId('extra')).not.toBeNull()
     expect(screen.getByRole('searchbox').getAttribute('placeholder')).toBe('自定义')
+  })
+
+  it('hands function children the field render props — RAC\'s dual-form contract', () => {
+    // A takeover, like Button's: the default composition is not injected, and
+    // the caller reads the same states the default composition itself uses
+    // (it hides the clear button off isReadOnly).
+    render(
+      <SearchField aria-label="搜索" defaultValue="ravel">
+        {({ isEmpty }) => (
+          <InputGroup>
+            <SearchFieldInput />
+            <span data-testid="state">{isEmpty ? '空' : '有值'}</span>
+          </InputGroup>
+        )}
+      </SearchField>,
+    )
+    expect(screen.getByTestId('state').textContent).toBe('有值')
+    expect(screen.getByRole('searchbox')).toHaveProperty('value', 'ravel')
+  })
+
+  it('hands function children the default composition as defaultChildren — extend, not rebuild', () => {
+    // RAC's own defaultChildren semantics: nothing is injected, but the
+    // function can render the default composition and add around it.
+    render(
+      <SearchField aria-label="搜索" placeholder="搜索...">
+        {({ defaultChildren }) => (
+          <>
+            {defaultChildren}
+            <span data-testid="extra">追加部件</span>
+          </>
+        )}
+      </SearchField>,
+    )
+    expect(screen.getByRole('searchbox').getAttribute('placeholder')).toBe('搜索...')
+    expect(screen.getByTestId('extra')).not.toBeNull()
   })
 
   it('passes RAC state props straight through', () => {

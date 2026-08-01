@@ -1,8 +1,8 @@
 'use client'
 
-import type { ComponentProps, ReactElement, ReactNode, RefAttributes } from 'react'
+import type { ComponentProps, ReactElement, RefAttributes } from 'react'
 import type { SearchFieldProps as RACSearchFieldProps } from 'react-aria-components'
-import { useControllableState } from '@gedatou/cadenza-utils'
+import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { IconSearch, IconX } from '@tabler/icons-react'
 import { useDebounceFn } from 'ahooks'
 import { useCallback } from 'react'
@@ -129,9 +129,12 @@ export type SearchFieldProps
       /**
        * Replaces the default composition (icon, input, clear button). Compose
        * the parts yourself to add a shortcut hint, a filter button, a second
-       * addon — see the docs' composition example.
+       * addon — see the docs' composition example. RAC's dual form: a function
+       * receives the field's render props (`isEmpty` / `isDisabled` / …) plus
+       * the default composition as `defaultChildren` — nothing is injected,
+       * but extending beats rebuilding: `{({ defaultChildren }) => …}`.
        */
-      children?: ReactNode
+      children?: RACSearchFieldProps['children']
     }
 
 /**
@@ -181,7 +184,9 @@ export function SearchFieldClearButton({
       data-slot="search-field-clear-addon"
     >
       <InputGroupButton
-        aria-label="清除搜索"
+        // English aria-only fallback, the house pattern ('Search', 'Loading'):
+        // it never renders visibly, and a caller-passed aria-label wins.
+        aria-label="Clear search"
         className={cn('rounded-full', className)}
         data-slot="search-field-clear"
         {...props}
@@ -231,14 +236,16 @@ export function SearchField({
       }}
       {...props}
     >
-      {renderProps => children ?? (
+      {renderProps => resolveRenderChildren(
+        children,
+        renderProps,
         <InputGroup>
           <InputGroupAddon>
             <IconSearch aria-hidden />
           </InputGroupAddon>
           <SearchFieldInput placeholder={placeholder} />
           {!renderProps.isReadOnly && <SearchFieldClearButton />}
-        </InputGroup>
+        </InputGroup>,
       )}
     </SearchFieldPrimitive>
   )

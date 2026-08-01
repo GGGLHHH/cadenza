@@ -144,6 +144,27 @@ describe('tabIndicator', () => {
     expect(indicator?.closest('[role="tablist"]')).toBeNull()
   })
 
+  it('is found inside a Fragment — the slot channel is routinely one', () => {
+    // Same findComposedPart contract as the LoadingOverlay markers: direct
+    // child or Fragment; a custom wrapper hides it.
+    render(
+      <Tabs defaultSelectedKey="overview">
+        <TabList aria-label="项目仪表盘">
+          <>
+            <TabIndicator className="bg-amber-500" />
+            <Tab id="overview">概览</Tab>
+            <Tab id="analytics">分析</Tab>
+          </>
+        </TabList>
+        <TabPanel id="overview">概览面板</TabPanel>
+        <TabPanel id="analytics">分析面板</TabPanel>
+      </Tabs>,
+    )
+    const indicator = document.querySelector('[data-slot="tab-indicator"]')
+    expect(indicator?.className).toContain('bg-amber-500')
+    expect(screen.getAllByRole('tab')).toHaveLength(2)
+  })
+
   it('leaves the tabs and panels untouched', () => {
     renderWithIndicator()
     expect(screen.getAllByRole('tab')).toHaveLength(2)

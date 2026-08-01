@@ -3,8 +3,9 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { ComponentProps, ReactElement, RefAttributes } from 'react'
 import type { TabListProps as RACTabListProps, TabListState } from 'react-aria-components'
-import { Children, isValidElement, use, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { use, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { TabListStateContext, TabsContext } from 'react-aria-components'
+import { findComposedPart } from '#lib/find-part'
 import { cn } from '#lib/utils'
 import {
   TabsContent,
@@ -81,9 +82,10 @@ export function useTabsState<T extends object = object>(): TabListState<T> | nul
  * indicator follows. The container exists because RAC's `TabList` renders only
  * its collection — it sets `children: null` and emits the collection instead —
  * so an indicator written between the tabs would silently vanish.
- * `TabIndicator` is therefore a marker: we lift it out of `children` here and
- * render it as the list's sibling, which is also where it can paint behind the
- * tabs without being clipped by the strip's own background.
+ * `TabIndicator` is therefore a marker: the scan here only reads its props
+ * (the marker itself renders null, so children pass through untouched) and
+ * the real indicator renders as the list's sibling, which is also where it
+ * can paint behind the tabs without being clipped by the strip's background.
  */
 export function TabList<T extends object = object>({
   className,
@@ -92,15 +94,9 @@ export function TabList<T extends object = object>({
   ...props
 }: TabListProps<T>): ReactElement {
   // Function children are RAC's dynamic collection form; nothing to lift there.
-  let indicator: ReactElement | null = null
-  const tabs = typeof children === 'function'
-    ? children
-    : Children.map(children, (child) => {
-        if (!isValidElement(child) || child.type !== TabIndicator)
-          return child
-        indicator = <TabIndicatorImpl {...(child.props as TabIndicatorProps)} />
-        return null
-      })
+  const indicatorProps = typeof children === 'function'
+    ? undefined
+    : findComposedPart(children, TabIndicator)
 
   return (
     // The variant is mirrored here because the indicator is the list's sibling,
@@ -111,9 +107,9 @@ export function TabList<T extends object = object>({
       data-variant={variant}
     >
       <GenericTabsList<T> className={className} variant={variant} {...props}>
-        {tabs}
+        {children}
       </GenericTabsList>
-      {indicator}
+      {indicatorProps !== undefined && <TabIndicatorImpl {...indicatorProps} />}
     </div>
   )
 }
@@ -157,9 +153,11 @@ const INDICATOR_LINE_CLASSNAME = `
  * readable), then the **selected** one. So it reads as "the tab you are about
  * to get", and returns to the selected tab when the pointer leaves.
  *
- * Write it inside `TabList`, in any position; the tabs' own selected background
- * is suppressed as soon as it is present (a `:has()` rule in styles.css). It
- * renders nothing itself — see `TabList` for why it is a marker.
+ * Write it inside `TabList`, in any position — direct child or inside a
+ * Fragment; a custom wrapper hides it (the same documented limit as the other
+ * marker parts). The tabs' own selected background is suppressed as soon as it
+ * is present (a `:has()` rule in styles.css). It renders nothing itself — see
+ * `TabList` for why it is a marker.
  */
 export function TabIndicator(_props: TabIndicatorProps): null {
   return null
