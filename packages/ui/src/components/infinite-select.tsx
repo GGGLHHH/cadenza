@@ -1,7 +1,7 @@
 'use client'
 
-import type { ComponentProps, CSSProperties, ReactElement, ReactNode } from 'react'
-import type { Selection } from 'react-aria-components'
+import type { ComponentProps, CSSProperties, ReactElement, ReactNode, RefAttributes } from 'react'
+import type { ListBoxItemProps, ListBoxProps, SearchFieldProps as RACSearchFieldProps, Selection } from 'react-aria-components'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck, IconSearch } from '@tabler/icons-react'
@@ -55,9 +55,17 @@ export interface InfiniteSelectItemRenderParams<T> {
    * work across a virtualized window.
    */
   index: number
-  // React Aria render-prop vocabulary (ListBoxItemRenderProps).
+  // React Aria render-prop vocabulary (ListBoxItemRenderProps), passed through
+  // whole: a custom renderer gets the same states CSS gets as data-*.
   isSelected: boolean
+  isHovered: boolean
+  isPressed: boolean
+  isFocused: boolean
+  isFocusVisible: boolean
+  isDisabled: boolean
   selectionMode: 'single' | 'multiple'
+  /** React Aria's selection behaviour for the list. */
+  selectionBehavior: 'toggle' | 'replace'
 }
 
 /** The list-state props a data adapter must supply (a react-query wrapper, say). */
@@ -102,18 +110,35 @@ interface InfiniteSelectCommonProps<T> {
   'children'?: ReactNode
 }
 
-/** Props of the search-field part. */
-export interface InfiniteSelectSearchProps {
-  /** Placeholder text, doubling as the field's accessible name. */
-  placeholder?: string
-  /**
-   * Focus the input on mount. Off by default (an inline panel must not steal
-   * page focus); popover hosts pass it so typing works the moment the panel
-   * opens — `InfiniteCombobox` does.
-   */
-  autoFocus?: boolean
-  className?: string
-}
+/**
+ * Props of the search-field part: RAC's SearchField surface, minus what the
+ * root's `Autocomplete` owns. `value` / `defaultValue` / `onChange` are its
+ * filter wiring — context props merge with local ones and local wins, so
+ * reopening them here would sever the filter. Handlers a caller passes
+ * (`onSubmit`, `onClear`, …) merge fine: React Aria chains both.
+ *
+ * `children` replaces the default composition (icon + input). Any RAC `Input`
+ * inside is wired by the field's context — no props to thread; `placeholder`
+ * and `autoFocus` only apply to the default composition.
+ */
+export type InfiniteSelectSearchProps
+  = Omit<RACSearchFieldProps, 'value' | 'defaultValue' | 'onChange' | 'autoFocus'>
+    & RefAttributes<HTMLDivElement>
+    & {
+      /**
+       * Placeholder for the default input, doubling as the field's accessible
+       * name. No default copy: the base renders zero visible text of its own.
+       * Without it (and without an `aria-label`) the accessible name falls
+       * back to `'Search'` — a safety net, not copy, since it never renders.
+       */
+      placeholder?: string
+      /**
+       * Focus the input on mount. Off by default (an inline panel must not steal
+       * page focus); popover hosts pass it so typing works the moment the panel
+       * opens — `InfiniteCombobox` does.
+       */
+      autoFocus?: boolean
+    }
 
 /** Props of the option-list part. */
 export interface InfiniteSelectListProps<T = unknown> {
@@ -152,7 +177,16 @@ export interface InfiniteSelectListProps<T = unknown> {
    * the default must set it accordingly. Ignored when `virtualized` is off.
    */
   'rowHeight'?: number
+  /** Class for the scroll container around the list. */
   'className'?: string
+  /**
+   * Class for the RAC ListBox itself. Function form receives its render props
+   * — this and `itemClassName` are the RAC-slot styling outlets; `className`
+   * stays on the (Base UI) scroll container for layout constraints.
+   */
+  'listClassName'?: ListBoxProps<InfiniteSelectOption>['className']
+  /** Class for each option row; function form receives the row's render props. */
+  'itemClassName'?: ListBoxItemProps['className']
 }
 
 /**
@@ -437,27 +471,38 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
 
 /** The search-field part: RAC `SearchField` + `Input`, wired to the List by the root's `Autocomplete`. */
 export function InfiniteSelectSearch({
-  placeholder = 'Search',
+  placeholder,
   autoFocus = false,
   className,
+  children,
+  ...props
 }: InfiniteSelectSearchProps): ReactElement {
   return (
     <SearchField
-      aria-label={placeholder}
+      aria-label={placeholder ?? 'Search'}
       className={cn('flex items-center gap-2 border-be border-border px-3', className)}
       data-slot="infinite-select-search"
+      {...props}
     >
-      <IconSearch className="shrink-0 text-muted-foreground block-4 inline-4" />
-      <Input
-        className="
-          flex-1 bg-transparent py-2 text-sm/5 text-popover-foreground
-          outline-none min-inline-0
-          placeholder:text-muted-foreground
-          [&::-webkit-search-cancel-button]:appearance-none
-        "
-        autoFocus={autoFocus}
-        placeholder={placeholder}
-      />
+      {children ?? (
+        <>
+          <IconSearch
+            className="shrink-0 text-muted-foreground block-4 inline-4"
+            data-slot="infinite-select-search-icon"
+          />
+          <Input
+            className="
+              flex-1 bg-transparent py-2 text-sm/5 text-popover-foreground
+              outline-none min-inline-0
+              placeholder:text-muted-foreground
+              [&::-webkit-search-cancel-button]:appearance-none
+            "
+            autoFocus={autoFocus}
+            data-slot="infinite-select-search-input"
+            placeholder={placeholder}
+          />
+        </>
+      )}
     </SearchField>
   )
 }
@@ -473,6 +518,8 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
     virtualized = false,
     rowHeight = 32,
     className,
+    listClassName,
+    itemClassName,
     'aria-label': ariaLabelProp,
   } = props
 
@@ -545,14 +592,15 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
             data-selected:data-hovered:bg-muted
           `,
           `data-disabled:cursor-not-allowed data-disabled:opacity-50`,
+          itemClassName,
         )}
         data-slot="infinite-select-item"
         id={option.id}
         isDisabled={option.isDisabled}
         textValue={option.textValue ?? (typeof option.label === 'string' ? option.label : option.id)}
       >
-        {({ isSelected }) => renderItem
-          ? renderItem({ item, option, index, isSelected, selectionMode })
+        {({ isSelected, isHovered, isPressed, isFocused, isFocusVisible, isDisabled, selectionBehavior }) => renderItem
+          ? renderItem({ item, option, index, isSelected, isHovered, isPressed, isFocused, isFocusVisible, isDisabled, selectionBehavior, selectionMode })
           : (
               <>
                 {isMultiple && (
@@ -606,6 +654,7 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
         className={cn(
           'outline-none',
           virtualized ? 'relative' : 'flex flex-col gap-0.5 p-1',
+          listClassName,
         )}
         style={virtualized ? { height: virtualizer.getTotalSize() } : undefined}
         selectedKeys={selectedIds}

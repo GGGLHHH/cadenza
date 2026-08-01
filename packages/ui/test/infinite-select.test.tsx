@@ -9,6 +9,7 @@ import {
   InfiniteSelectList,
   InfiniteSelectLoading,
   InfiniteSelectRetry,
+  InfiniteSelectSearch,
 } from '../src/components/infinite-select'
 
 beforeAll(() => {
@@ -254,5 +255,77 @@ describe('infiniteSelect selection', () => {
     )
     expect(screen.getByRole('option', { name: 'Bob', selected: true })).not.toBeNull()
     expect(screen.getByRole('option', { name: 'Alice', selected: false })).not.toBeNull()
+  })
+
+  it('passes RAC field props through the search part — only the filter wiring is reserved', () => {
+    render(
+      <InfiniteSelect getOption={getOption} items={items}>
+        <InfiniteSelectSearch isDisabled />
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    expect(screen.getByRole('searchbox', { name: 'Search' })).toHaveProperty('disabled', true)
+  })
+
+  it('lets children replace the search composition', () => {
+    render(
+      <InfiniteSelect getOption={getOption} items={items}>
+        <InfiniteSelectSearch>
+          <span data-testid="custom-search">自定义搜索</span>
+        </InfiniteSelectSearch>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    expect(screen.getByTestId('custom-search')).not.toBeNull()
+    expect(document.querySelector('[data-slot="infinite-select-search-input"]')).toBeNull()
+  })
+
+  it('renders no placeholder copy by default — the aria fallback never shows', () => {
+    render(
+      <InfiniteSelect getOption={getOption} items={items}>
+        <InfiniteSelectSearch />
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    const input = screen.getByRole('searchbox', { name: 'Search' })
+    expect(input.getAttribute('placeholder')).toBeNull()
+  })
+
+  it('hands renderItem the full RAC render-prop vocabulary', () => {
+    let captured: unknown
+    render(
+      <InfiniteSelect getOption={getOption} items={items} value="a">
+        <InfiniteSelectList renderItem={(params) => {
+          if (params.option.id === 'a')
+            captured = params
+          return params.option.label
+        }}
+        />
+      </InfiniteSelect>,
+    )
+    expect(captured).toMatchObject({
+      index: 0,
+      isSelected: true,
+      isHovered: false,
+      isPressed: false,
+      isFocusVisible: false,
+      isDisabled: false,
+      selectionMode: 'single',
+      selectionBehavior: 'toggle',
+    })
+  })
+
+  it('styles the listbox and the rows through their own outlets, function form included', () => {
+    render(
+      <InfiniteSelect getOption={getOption} items={items} value="b">
+        <InfiniteSelectList
+          itemClassName={({ isSelected }) => isSelected ? 'opacity-25' : 'opacity-75'}
+          listClassName="tracking-widest"
+        />
+      </InfiniteSelect>,
+    )
+    expect(document.querySelector('[data-slot="infinite-select-list"]')?.className).toContain('tracking-widest')
+    expect(screen.getByRole('option', { name: 'Bob' }).className).toContain('opacity-25')
+    expect(screen.getByRole('option', { name: 'Alice' }).className).toContain('opacity-75')
   })
 })

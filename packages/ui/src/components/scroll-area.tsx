@@ -66,7 +66,7 @@ export function ScrollArea({
           {(orientation === 'horizontal' || orientation === 'both') && (
             <ScrollBar className={hoverClassName(scrollbars)} orientation="horizontal" />
           )}
-          <ScrollAreaPrimitive.Corner />
+          <ScrollAreaPrimitive.Corner data-slot="scroll-area-corner" />
         </>
       )}
     </ScrollAreaPrimitive.Root>

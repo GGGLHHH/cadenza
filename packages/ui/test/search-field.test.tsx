@@ -164,6 +164,19 @@ describe('searchField', () => {
     expect(onQueryValueChange).toHaveBeenCalledExactlyOnceWith(undefined)
   })
 
+  it('resolves a function className against the field state', () => {
+    render(
+      <SearchField
+        aria-label="搜索"
+        className={({ isDisabled }) => isDisabled ? 'opacity-25' : 'opacity-75'}
+        isDisabled
+      />,
+    )
+    const field = document.querySelector('[data-slot="search-field"]')
+    expect(field?.className).toContain('opacity-25')
+    expect(field?.className).toContain('group/search-field')
+  })
+
   it('lets children replace the default composition', () => {
     render(
       <SearchField aria-label="搜索">

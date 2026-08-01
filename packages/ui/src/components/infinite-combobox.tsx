@@ -1,11 +1,11 @@
 'use client'
 
-import type { ReactElement, ReactNode } from 'react'
+import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import type { ControllableSelectionProps, InfiniteSelectActions, InfiniteSelectAdapterProps, InfiniteSelectItemRenderParams, InfiniteSelectOption } from './infinite-select'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { useDebounceFn } from 'ahooks'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { cn } from '#lib/utils'
 import { Popover, PopoverTrigger } from '#primitives/popover'
 import {
@@ -146,7 +146,7 @@ export function useInfiniteComboboxState({
 
 export type InfiniteComboboxChildren<T>
   = | ReactElement
-    | ((params: InfiniteComboboxState<T>) => ReactElement)
+    | ((params: InfiniteComboboxState<T> & { isDisabled: boolean }) => ReactElement)
 
 interface InfiniteComboboxCommonProps<T> {
   /** Accessible name for the option list. Falls back to `searchPlaceholder`. */
@@ -198,6 +198,17 @@ interface InfiniteComboboxCommonProps<T> {
    */
   'closeOnScroll'?: boolean
   'selectClassName'?: string
+  /**
+   * The popover shell's positioning surface — `placement`, `offset`,
+   * `shouldFlip` and the rest. An object on purpose, not flattened into this
+   * panel: the wired props (`trigger` / `isNonModal` / the open-state trio)
+   * are excluded from the type, and the wiring is written after the spread so
+   * it stays in charge. `contentClassName` remains the class outlet.
+   */
+  'popoverProps'?: Omit<
+    ComponentProps<typeof Popover>,
+    'children' | 'className' | 'trigger' | 'isNonModal' | 'isOpen' | 'defaultOpen' | 'onOpenChange'
+  >
 }
 
 export type InfiniteComboboxProps<T> = InfiniteComboboxCommonProps<T>
@@ -225,6 +236,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     lockScroll = false,
     closeOnScroll = false,
     selectClassName,
+    popoverProps,
   } = props
 
   const isMultiple = props.selectionMode === 'multiple'
@@ -343,8 +355,18 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
           ...state,
           selectedItems,
           selectedValue: effectiveSelectedValue,
+          isDisabled,
         })
       : children
+
+  // A disabled combobox must read as disabled at its trigger — the caller's
+  // element — or it looks live and just swallows presses. The documented
+  // trigger contract is a RAC pressable, which takes `isDisabled`; a plain DOM
+  // tag would only warn about the unknown prop, so those are left alone.
+  const wiredTrigger
+    = isDisabled && isValidElement(trigger) && typeof trigger.type !== 'string'
+      ? cloneElement(trigger as ReactElement<{ isDisabled?: boolean }>, { isDisabled: true })
+      : trigger
 
   // Root gets data + selection wiring; presentation config goes to the parts.
   const shared = {
@@ -375,8 +397,9 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
 
   return (
     <PopoverTrigger isOpen={state.isOpen} onOpenChange={handleOpenChange}>
-      {trigger}
+      {wiredTrigger}
       <Popover
+        {...popoverProps}
         isNonModal={!lockScroll}
         // RAC hard-wires non-modal popovers to dismiss on outside scroll, with
         // one exception: submenus (non-modal, no scroll listener, outside click

@@ -5,5 +5,11 @@
     // not reach node's under pnpm's isolated layout, so name it.
     "types": ["node"]
   },
-  "include": ["src", "test", "tsdown.config.ts"]
+  "include": ["src", "test", "tsdown.config.ts"],
+  // Upstream routes the RAC-typed (function-capable) className onto a plain
+  // <div>, which cn's honest return type rightly rejects — but the file is
+  // byte-pinned vendored source, so the fix cannot land here. It is not
+  // promoted and unreachable from src/index.ts, so nothing ships unchecked.
+  // Promoting it later means forking it out of primitives first.
+  "exclude": ["src/primitives/accordion.tsx"]
 }

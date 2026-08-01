@@ -1,16 +1,16 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { ComponentProps, ReactElement } from 'react'
+import type { ComponentProps, ReactElement, RefAttributes } from 'react'
 import type { TabListProps as RACTabListProps, TabListState } from 'react-aria-components'
 import { Children, isValidElement, use, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { TabListStateContext, TabsContext } from 'react-aria-components'
 import { cn } from '#lib/utils'
 import {
-  Tabs,
   TabsContent,
   TabsList,
   tabsListVariants,
+  Tabs as TabsPrimitive,
   TabsTrigger,
 } from '#primitives/tabs'
 
@@ -31,7 +31,10 @@ import {
  * still accepts RAC's dynamic-collection form — `items` plus function children
  * — for tab sets computed from data.
  */
-export type TabsProps = ComponentProps<typeof Tabs>
+// RAC declares refs on the component types, not in the props, so the
+// `ComponentProps` restatements below lose them — each seam type adds its
+// `RefAttributes` back. The spreads already carry the ref at runtime.
+export type TabsProps = ComponentProps<typeof TabsPrimitive> & RefAttributes<HTMLDivElement>
 /**
  * Generic, unlike the vendored `TabsList` it wraps: that one is typed
  * `ComponentProps<typeof TabList>`, which collapses RAC's item type to
@@ -41,8 +44,9 @@ export type TabsProps = ComponentProps<typeof Tabs>
  */
 export type TabListProps<T extends object = object>
   = RACTabListProps<T> & VariantProps<typeof tabsListVariants>
-export type TabProps = ComponentProps<typeof TabsTrigger>
-export type TabPanelProps = ComponentProps<typeof TabsContent>
+    & RefAttributes<HTMLDivElement>
+export type TabProps = ComponentProps<typeof TabsTrigger> & RefAttributes<HTMLDivElement>
+export type TabPanelProps = ComponentProps<typeof TabsContent> & RefAttributes<HTMLDivElement>
 
 // The vendored list is a value, so its non-generic typing cannot be widened in
 // place — this restates it as the generic component it already is at runtime.
@@ -295,12 +299,15 @@ function TabIndicatorInner({
   )
 }
 
+export const Tabs = TabsPrimitive as (props: TabsProps) => ReactElement
+
+/** RAC's `Tab`, unchanged: `id` pairs it with a `TabPanel`, plus `isDisabled` / `href`. */
+export const Tab = TabsTrigger as (props: TabProps) => ReactElement
+
+export const TabPanel = TabsContent as (props: TabPanelProps) => ReactElement
+
 export {
-  /** RAC's `Tab`, unchanged: `id` pairs it with a `TabPanel`, plus `isDisabled` / `href`. */
-  TabsTrigger as Tab,
   tabsListVariants as tabListVariants,
-  TabsContent as TabPanel,
-  Tabs,
   /**
    * React Aria's prop-providing context. A wrapper can set defaults for a whole
    * subtree (`orientation`, `keyboardActivation`, …) without threading props:

@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { TabsProps } from '../src/components/tabs'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createRef } from 'react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { Tab, TabIndicator, TabList, TabPanel, Tabs, useTabsState } from '../src/components/tabs'
 
@@ -199,6 +200,29 @@ describe('useTabsState', () => {
       </Tabs>,
     )
     expect(screen.getByText('analytics/2')).not.toBeNull()
+  })
+
+  it('forwards ref on the re-exported root — the seam types restate what RAC already does', () => {
+    const ref = createRef<HTMLDivElement>()
+    renderDashboard({ ref })
+    expect(ref.current?.dataset.slot).toBe('tabs')
+  })
+
+  it('resolves a function className on Tab against its render props', () => {
+    // Tab is the component RAC's own docs demo function className on. The
+    // function crosses the vendored TabsTrigger's cn call — composing in cn is
+    // what keeps it alive through that hop.
+    render(
+      <Tabs defaultSelectedKey="analytics">
+        <TabList aria-label="t">
+          <Tab className={({ isSelected }) => isSelected ? 'underline' : 'line-through'} id="overview">概览</Tab>
+          <Tab className={({ isSelected }) => isSelected ? 'underline' : 'line-through'} id="analytics">分析</Tab>
+        </TabList>
+        <TabPanel id="analytics">分析面板</TabPanel>
+      </Tabs>,
+    )
+    expect(screen.getByRole('tab', { name: '分析' }).className).toContain('underline')
+    expect(screen.getByRole('tab', { name: '概览' }).className).toContain('line-through')
   })
 
   it('is null inside a TabPanel — RAC resets the context so nested Tabs stay isolated', () => {

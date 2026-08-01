@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComponentProps, ReactElement, ReactNode } from 'react'
+import type { ComponentProps, ReactElement, ReactNode, RefAttributes } from 'react'
 import type { SearchFieldProps as RACSearchFieldProps } from 'react-aria-components'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconSearch, IconX } from '@tabler/icons-react'
@@ -8,12 +8,14 @@ import { useDebounceFn } from 'ahooks'
 import { useCallback } from 'react'
 import { SearchField as SearchFieldPrimitive } from 'react-aria-components'
 import { cn } from '#lib/utils'
+// The seam versions, not the primitives: their prop types carry the full RAC
+// contract (function className, hover events, ref), so ours inherit it.
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from '#primitives/input-group'
+} from './input-group'
 
 /**
  * The published SearchField family.
@@ -117,6 +119,9 @@ export function useSearchQuery({
 
 export type SearchFieldProps
   = Omit<RACSearchFieldProps, 'value' | 'defaultValue' | 'onChange' | 'children'>
+    // RAC declares the ref on the component type, not in the props — restated
+    // here so `<SearchField ref={…}>` typechecks; the spread already carries it.
+    & RefAttributes<HTMLDivElement>
     & SearchQueryOptions
     & {
       /** Placeholder for the default composition's input. */
