@@ -1,6 +1,6 @@
 'use client'
 
-import type { ComponentProps, ReactElement, ReactNode } from 'react'
+import type { ComponentProps, MouseEvent, ReactElement, ReactNode } from 'react'
 import type { ControllableSelectionProps, InfiniteSelectActions, InfiniteSelectAdapterProps, InfiniteSelectItemRenderParams, InfiniteSelectOption } from './infinite-select'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
@@ -157,6 +157,15 @@ interface InfiniteComboboxCommonProps<T> {
    * combobox state plus the current selection for summary rendering.
    */
   'children': InfiniteComboboxChildren<T>
+  /**
+   * `id` for the trigger, so a `FieldLabel htmlFor` can point at it. React Aria
+   * gives the trigger a generated id otherwise, which no caller can predict.
+   *
+   * Unlike `Select`, no matching `aria-label` is needed: nothing puts an
+   * `aria-labelledby` on this trigger, so the native `<label for>` association
+   * names it outright. An element that carries its own `id` keeps it.
+   */
+  'triggerId'?: string
   'state': InfiniteComboboxState
   'list': InfiniteSelectAdapterProps<T>
   'getOption': (item: T) => InfiniteSelectOption
@@ -237,6 +246,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     closeOnScroll = false,
     selectClassName,
     popoverProps,
+    triggerId,
   } = props
 
   const isMultiple = props.selectionMode === 'multiple'
@@ -356,14 +366,62 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     isDisabled,
   })
 
-  // A disabled combobox must read as disabled at its trigger — the caller's
-  // element — or it looks live and just swallows presses. The documented
-  // trigger contract is a RAC pressable, which takes `isDisabled`; a plain DOM
-  // tag would only warn about the unknown prop, so those are left alone.
-  const wiredTrigger
-    = isDisabled && isValidElement(trigger) && typeof trigger.type !== 'string'
-      ? cloneElement(trigger as ReactElement<{ isDisabled?: boolean }>, { isDisabled: true })
-      : trigger
+  // Three things are wired onto the caller's own element, because that element
+  // is the control as far as the page is concerned:
+  //
+  // - `isDisabled`, or a disabled combobox looks live at its trigger and just
+  //   swallows presses. The documented contract is a RAC pressable, which takes
+  //   it; a plain DOM tag would only warn about an unknown prop, so those are
+  //   left alone. `id` and the click handler are fine on either.
+  // - `triggerId`, so a `FieldLabel htmlFor` has something to point at. An
+  //   element that brought its own `id` keeps it.
+  // - A click that arrived from that label. The browser forwards it as a bare
+  //   `click` with no pointer sequence behind it, so `usePress` never sees a
+  //   press and the popover stays shut — the same gap `SelectTrigger` fills,
+  //   told apart the same way: a forwarded click carries the coordinates of the
+  //   click on the *label*, so it reports a point outside the trigger's own box.
+  //   `detail === 0` marks the virtual clicks `usePress` already handles.
+  // The id a `FieldLabel htmlFor` can aim at: the element's own wins, `triggerId`
+  // fills in. Needed twice — to clone in, and to recognise that label below.
+  const triggerOwnId = isValidElement(trigger) ? (trigger.props as { id?: string }).id : undefined
+  const labelTargetId = triggerOwnId ?? triggerId
+
+  const wiredTrigger = isValidElement(trigger)
+    ? cloneElement(trigger as ReactElement<Record<string, unknown>>, {
+        ...(isDisabled && typeof trigger.type !== 'string' ? { isDisabled: true } : {}),
+        ...(triggerId !== undefined && triggerOwnId === undefined ? { id: triggerId } : {}),
+        onClickCapture: (event: MouseEvent<HTMLElement>) => {
+          const box = event.currentTarget.getBoundingClientRect()
+          const landedOutside = event.clientX < box.left || event.clientX > box.right
+            || event.clientY < box.top || event.clientY > box.bottom
+          if (landedOutside && event.detail !== 0)
+            handleOpenChange(!state.isOpen)
+          ;(trigger.props as { onClickCapture?: (event: MouseEvent<HTMLElement>) => void })
+            .onClickCapture?.(event)
+        },
+      })
+    : trigger
+
+  /**
+   * The associated `<label>` is not "outside".
+   *
+   * The popover is non-modal, so nothing shields the page while it is open and a
+   * second click on the label really does reach it. Left to React Aria that
+   * counts as an outside interaction and dismisses on `pointerdown`, and then the
+   * forwarded `click` reaches the trigger and reopens what was just closed — the
+   * label could open the popover but never close it, with a visible flicker in
+   * between. A `<label for>` points at the trigger; pressing it is pressing the
+   * trigger, so it is excluded here and the toggle above is left to do the work.
+   */
+  const shouldCloseOnInteractOutside = useCallback(
+    (element: Element): boolean => {
+      const label = element.closest('label')
+      if (label !== null && labelTargetId !== undefined && label.htmlFor === labelTargetId)
+        return false
+      return popoverProps?.shouldCloseOnInteractOutside?.(element) ?? true
+    },
+    [labelTargetId, popoverProps],
+  )
 
   // Root gets data + selection wiring; presentation config goes to the parts.
   const shared = {
@@ -397,6 +455,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
       {wiredTrigger}
       <Popover
         {...popoverProps}
+        shouldCloseOnInteractOutside={shouldCloseOnInteractOutside}
         isNonModal={!lockScroll}
         // RAC hard-wires non-modal popovers to dismiss on outside scroll, with
         // one exception: submenus (non-modal, no scroll listener, outside click

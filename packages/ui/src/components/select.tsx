@@ -1,3 +1,5 @@
+'use client'
+
 import type { ComponentProps, ReactElement, ReactNode, RefAttributes } from 'react'
 import type {
   ListBoxProps,
@@ -6,6 +8,8 @@ import type {
   SelectValueProps as RACSelectValueProps,
   SelectValueRenderProps,
 } from 'react-aria-components'
+import { use } from 'react'
+import { SelectStateContext } from 'react-aria-components'
 import {
   SelectContent,
   SelectEmpty,
@@ -16,7 +20,7 @@ import {
   SelectPopover,
   Select as SelectPrimitive,
   SelectSeparator,
-  SelectTrigger,
+  SelectTrigger as SelectTriggerPrimitive,
   SelectValue as SelectValuePrimitive,
 } from '#primitives/select'
 
@@ -62,7 +66,15 @@ import {
  *       …
  *   ```
  *
- *   Keep the two texts in sync: they are read by different audiences.
+ *   Both channels are load-bearing and they carry different halves. `htmlFor`
+ *   is what makes clicking the text focus the trigger and open the menu (see
+ *   `SelectTrigger` — the opening half is this seam's addition; React Aria and
+ *   a native `<select>` both stop at focus). The `aria-label` is what actually
+ *   names the control, and dropping it does not degrade the name, it removes
+ *   it: React Aria
+ *   puts its own `aria-labelledby` on the trigger, and that outranks a native
+ *   `<label for>` in the accessible-name computation, so the label text is
+ *   never consulted. Write the same string twice.
  * - **`SelectLabel` is a group heading**, not the control's label — it is RAC's
  *   `Header`, meant for the title above a `SelectGroup`'s items.
  * - **Dynamic collections live on `SelectGroup` or `SelectList`**, never on the
@@ -116,13 +128,53 @@ export type SelectValueProps<T extends object = object>
       ) => ReactNode
     }
 
-export type SelectTriggerProps = ComponentProps<typeof SelectTrigger>
+export type SelectTriggerProps = ComponentProps<typeof SelectTriggerPrimitive>
 export type SelectContentProps = ComponentProps<typeof SelectContent>
 export type SelectPopoverProps = ComponentProps<typeof SelectPopover>
 export type SelectItemProps = ComponentProps<typeof SelectItem>
 export type SelectLabelProps = ComponentProps<typeof SelectLabel>
 export type SelectSeparatorProps = ComponentProps<typeof SelectSeparator>
 export type SelectEmptyProps = ComponentProps<typeof SelectEmpty>
+
+/**
+ * The trigger, plus the one behaviour this seam adds: a click forwarded from an
+ * associated `<label for>` opens the menu.
+ *
+ * React Aria deliberately stops at focus — `useSelect`'s own `labelProps.onClick`
+ * only calls `focus()`, matching a native `<select>`. And when the label is not
+ * React Aria's own, as in the `Field` anatomy, even that does not apply: the
+ * browser forwards a bare `click` with no pointer sequence behind it, `usePress`
+ * never sees a press, and clicking the text does nothing but focus.
+ *
+ * The forwarded click is told apart by where it landed. It carries the
+ * coordinates of the click on the *label*, so it reports a position outside the
+ * trigger's own box; a press on the trigger reports one inside it. Assistive
+ * tech and `element.click()` land at the origin, which is also outside — those
+ * arrive with `detail === 0` and `usePress` already handles them, so they are
+ * excluded rather than opened twice. Keyboard activation never produces a click
+ * at all (React Aria calls `preventDefault`).
+ *
+ * Deliberately stateless: tracking the pointer sequence instead looks tempting
+ * and does not work, because React Aria's overlay swallows the trigger's own
+ * click once the menu is open, so any flag set on `pointerdown` is never cleared.
+ */
+function SelectTrigger({ onClickCapture, ...props }: SelectTriggerProps): ReactElement {
+  const state = use(SelectStateContext)
+
+  return (
+    <SelectTriggerPrimitive
+      {...props}
+      onClickCapture={(event) => {
+        const box = event.currentTarget.getBoundingClientRect()
+        const landedOutside = event.clientX < box.left || event.clientX > box.right
+          || event.clientY < box.top || event.clientY > box.bottom
+        if (landedOutside && event.detail !== 0)
+          state?.toggle()
+        onClickCapture?.(event)
+      }}
+    />
+  )
+}
 
 // Casts, not wrappers: every prop already reaches the primitive through a plain
 // spread, so only the types need restating. One cast at the seam instead of one

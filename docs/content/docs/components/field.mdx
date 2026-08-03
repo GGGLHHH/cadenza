@@ -19,6 +19,68 @@ Field 先落地，控件才有地方安家。
 
 <ComponentPreview name="field/basic" />
 
+## 配 Select
+
+`Select` 的根元素是个 `div`（不是控件本身，也不可被 `<label>` 关联），触发器
+才是真正的控件 —— 所以 `id` 落在 `SelectTrigger` 上，`FieldLabel htmlFor`
+指过去。
+
+**同时还要给 `Select` 一个 `aria-label`。** 这两条通道各管一半，缺一不可：
+
+| 通道 | 管什么 | 缺了会怎样 |
+| --- | --- | --- |
+| `FieldLabel htmlFor` → `SelectTrigger id` | 点文字**聚焦并展开** | 文字点不动 |
+| `Select` 的 `aria-label` | **无障碍名** | 读屏只报当前值，标签整个丢失 |
+
+反直觉的地方在第二行：原生 `<label for>` 本来是能给按钮命名的，但 React Aria
+在触发器上自己设了 `aria-labelledby`，而它在无障碍名计算里**优先级高于**原生
+label —— 于是 `htmlFor` 提供的那个名字被彻底忽略。两个文本要写成一样的，
+它们服务的是两拨人。
+
+<ComponentPreview name="field/select" />
+
+**点标签会直接展开弹层**，这是本库加的默认行为。平台本身到聚焦为止：原生
+`<select>` 点 label 只聚焦，React Aria 在 `useSelect` 里也只调 `focus()`；而
+`Field` 这套解剖用的不是 React Aria 自己的 label，连那一步都没有，浏览器转发过来
+的是一个没有指针序列的裸 `click`，`usePress` 根本不认。所以 `Select` 的封装层补上了
+这一段 —— 不需要你在调用侧接任何东西。
+
+Checkbox / Radio / Switch 是另一种情况 —— 它们是 **box-only**：根元素就是那个
+16px 方块 / 轨道本身（见开头），文字塞进 children 会被挤进方块里，所以同样得
+走外部 `FieldLabel`。区别只在 `id` 的落点：它们落在隐藏的 `<input>` 上，而且
+通常配 `orientation="horizontal"`。
+
+## 配 InfiniteCombobox
+
+触发器是**你自己传进去的元素**（`children`，必须是 React Aria 可按压的），所以
+`id` 没法像 `Select` 那样由你写在部件上 —— React Aria 会给它派一个没人猜得到的
+生成 id。用 `triggerId` 把 `id` 交给它：
+
+<ComponentPreview name="field/infinite-combobox" />
+
+**这里不需要 `aria-label`。** 和 `Select` 正好相反，原因是触发器上没有
+`aria-labelledby`：
+
+| | 触发器上的 `aria-labelledby` | 结果 |
+| --- | --- | --- |
+| `Select` | React Aria 挂了（指向值 + 自身） | 压过原生 `<label for>`，**必须**另写 `aria-label` |
+| `InfiniteCombobox` | 没有 | 原生 `<label for>` 直接生效，**别**再写 `aria-label` |
+
+顺带一提，`InfiniteCombobox` 那个 `aria-label` prop 命名的是**弹层里的列表**
+（不传则回退到 `searchPlaceholder`），和触发器的名字是两回事，别混。
+
+加上 label 之后，按钮的无障碍名会从「按钮文字」换成「label 文字」，按钮文字降为
+它的内容：
+
+```
+加 label 前 → button "选择作曲家"
+加 label 后 → button "作曲家": 选择作曲家
+```
+
+这正是想要的读法 —— 名字是字段名，按钮文字是当前值。
+
+点标签同样**会展开**弹层，和 `Select` 一样由封装层补上（平台默认只聚焦）。
+
 ## 编组
 
 一批相关字段用 `FieldSet` + `FieldLegend` 命名（语义是原生

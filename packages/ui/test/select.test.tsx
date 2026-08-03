@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { createRef } from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { Field, FieldLabel } from '../src/components/field'
 import {
   Select,
   SelectContent,
@@ -97,6 +98,66 @@ describe('the seam restates the generics the vendored parts collapse', () => {
       </Select>,
     )
     expect(screen.queryByText('占位')).toBeNull()
+  })
+})
+
+describe('the label channel documented on the seam', () => {
+  function renderLabelled(props: { htmlFor?: string, ariaLabel?: string }): void {
+    render(
+      <Field>
+        <FieldLabel htmlFor={props.htmlFor}>水果</FieldLabel>
+        <Select aria-label={props.ariaLabel}>
+          <SelectTrigger id="fruit"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem id="apple">苹果</SelectItem></SelectContent>
+        </Select>
+      </Field>,
+    )
+  }
+
+  it('names the trigger when the label text is on both channels', () => {
+    renderLabelled({ htmlFor: 'fruit', ariaLabel: '水果' })
+    expect(screen.getByRole('button', { name: /水果/ })).not.toBeNull()
+  })
+
+  // The browser forwards a label click to the trigger carrying the coordinates
+  // of the click on the *label*, so it reports a point outside the trigger's own
+  // box. That is what the seam keys off to open the menu. jsdom has no layout —
+  // every rect is 0×0 — so the box is stubbed and the discriminator is what is
+  // under test here; the end-to-end behaviour is verified in a real browser.
+  function clickAt(x: number, y: number): void {
+    const trigger = document.querySelector('[data-slot=select-trigger]')!
+    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+      left: 100,
+      top: 100,
+      right: 200,
+      bottom: 150,
+      x: 100,
+      y: 100,
+      width: 100,
+      height: 50,
+      toJSON: () => ({}),
+    })
+    fireEvent.click(trigger, { clientX: x, clientY: y, detail: 1 })
+  }
+
+  it('opens the menu for a click forwarded from the label', () => {
+    renderLabelled({ htmlFor: 'fruit', ariaLabel: '水果' })
+    clickAt(150, 60) // 落在 trigger 上方 —— 标签所在的位置
+    expect(document.querySelector('[data-slot=select-list]')).not.toBeNull()
+  })
+
+  it('leaves a press on the trigger itself to React Aria', () => {
+    renderLabelled({ htmlFor: 'fruit', ariaLabel: '水果' })
+    clickAt(150, 120) // 落在 trigger 盒子里 —— usePress 的地盘,别插手
+    expect(document.querySelector('[data-slot=select-list]')).toBeNull()
+  })
+
+  it('loses the name when aria-label is dropped — htmlFor alone cannot carry it', () => {
+    // React Aria puts its own `aria-labelledby` on the trigger, and that beats a
+    // native `<label for>` in the accessible-name computation. The htmlFor is
+    // still worth having: it is what makes the text clickable.
+    renderLabelled({ htmlFor: 'fruit' })
+    expect(screen.queryByRole('button', { name: /水果/ })).toBeNull()
   })
 })
 
