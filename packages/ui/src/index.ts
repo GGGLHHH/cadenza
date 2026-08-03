@@ -4,6 +4,7 @@
 export * from './components/button'
 export * from './components/data-pagination'
 export * from './components/data-table'
+export * from './components/field'
 export * from './components/infinite-combobox'
 export * from './components/infinite-select'
 export * from './components/input-group'
