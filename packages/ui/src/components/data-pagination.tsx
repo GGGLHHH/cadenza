@@ -23,7 +23,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '#primitives/select'
+} from './select'
 
 /**
  * Offset pagination bar: summary on the start side, controls on the end side.
