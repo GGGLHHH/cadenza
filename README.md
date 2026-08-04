@@ -74,9 +74,6 @@ variant、收紧 prop、包一层 provider 都不必碰 vendored 代码、不会
 然后到 `docs/content/docs/components/` 加一页（demo 放 `docs/demos/`，在
 `docs/demos/index.tsx` 注册）。
 
-封装的完整约定 —— className 函数契约、ref 类型重述、wiring props 检查单 —— 在仓库
-skill `.claude/skills/wrapping-base-ui-components/SKILL.md`，Claude Code 会自动套用。
-
 拉取新的 primitive：
 
 ```bash
