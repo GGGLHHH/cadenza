@@ -1,0 +1,395 @@
+---
+title: Select
+description: 组合式下拉选择 —— React Aria Select 底座，单选/多选、分组、动态集合，标签走 Field
+---
+
+组合式下拉选择，转正自 shadcn。行为全部由 React Aria 的 `Select` 承担：弹层开合、
+焦点归还、方向键 / Home / End / typeahead、`role="listbox"` 语义。
+
+组合就是它的 API，一共十一个部件，**两条装配线**：
+
+```tsx
+// 捷径:SelectContent = SelectPopover + SelectList 一把组好
+<SelectContent>
+  <SelectGroup items={pieces}>{piece => <SelectItem id={piece.id}>{piece.title}</SelectItem>}</SelectGroup>
+</SelectContent>
+
+// 全写:要用到 SelectList 自己的 props 时降到这条 —— 首先是 renderEmptyState
+<SelectPopover>
+  <SelectList items={pieces} renderEmptyState={() => <SelectEmpty>没有曲目</SelectEmpty>}>
+    {piece => <SelectItem id={piece.id}>{piece.title}</SelectItem>}
+  </SelectList>
+</SelectPopover>
+```
+
+每个 demo 下方都附完整源码（View Code 展开、右上角复制）。
+
+## 基础用法
+
+`Select` 持状态，`SelectTrigger` 才是真正的控件（一个 `button`），`SelectValue`
+回显当前值：
+
+<ComponentPreview name="select/basic" />
+
+三点常见误解，都会静默失效：
+
+- **占位文案是 `Select` 的 `placeholder`**，不是 `SelectValue` 的 children。
+  `SelectValue` 的 children 已被收窄成函数形式，写静态内容直接编译报错 ——
+  不收窄的话它会被基座原样丢掉，屏幕上什么也没有。
+- **`SelectLabel` 是分组标题**（RAC 的 `Header`），不是控件的标签。控件的标签见下节。
+- **动态集合挂在 `SelectGroup` / `SelectList` 上**，不在根组件 —— RAC 的
+  `SelectProps` 里压根没有 `items`。
+- **集合为空时控件默认打不开**，点了没有任何反应。要展开得给 `Select` 加
+  `allowsEmptyCollection`，见「[空状态](#空状态)」。
+
+弹层宽度默认跟随触发器（`w-(--trigger-width)`，`min-w-36` 兜底），所以控件多宽、
+菜单就多宽；改宽度请改 `Select` 的 `className`（根元素是 `w-fit`）。
+
+## 标签
+
+**Select 家族里没有可见标签这个部件。** 触发器是个 `button`，标签是它旁边的
+[`FieldLabel`](/docs/components/field)，用 `htmlFor` 指向 `SelectTrigger` 的 `id`：
+
+<ComponentPreview name="field/select" />
+
+两条通道各管一半，缺一不可：
+
+| 通道 | 管什么 | 缺了会怎样 |
+| --- | --- | --- |
+| `FieldLabel htmlFor` → `SelectTrigger id` | 点文字**聚焦并展开** | 文字点不动 |
+| `Select` 的 `aria-label` | **无障碍名** | 读屏只报当前值，标签整个丢失 |
+
+反直觉的是第二行：原生 `<label for>` 本来就能给按钮命名，但 React Aria 在触发器上
+自己设了 `aria-labelledby`（指向「值 + 自身」），它在无障碍名计算里**优先级高于**
+原生 label —— `htmlFor` 给的那个名字于是从没被读到。两处文本写成一样的。
+
+**点标签会直接展开弹层**，这是封装层加的默认行为，调用侧不用接任何东西。平台本身
+到聚焦为止：原生 `<select>` 点 label 只聚焦，React Aria 的 `useSelect` 也只调
+`focus()`；而 `Field` 这套解剖用的不是 React Aria 自己的 label，浏览器转发过来的是
+一个没有指针序列的裸 `click`，`usePress` 根本不认。详见
+[Field 文档的「配 Select」](/docs/components/field#配-select)。
+
+## 分组与分隔
+
+`SelectGroup` 渲染成 `<section role="group">`，`SelectLabel` 自动成为它的
+`aria-labelledby` —— 读屏会在跨组移动时播报组名。`SelectSeparator` 放在组之间或
+组内条目之间都合法（它是 RAC 的 `Separator`，能进 collection）：
+
+<ComponentPreview name="select/group" />
+
+## 多选
+
+`selectionMode="multiple"` 是**判别式**：它一改，`value` / `defaultValue` /
+`onChange` 整体换型（`Key | null` → `Key[]`），类型层面就不会写串。
+
+<ComponentPreview name="select/multiple" />
+
+选中 **2 项及以上**时，`SelectValue` 显示的不是各项内容而是
+`selectedText` —— React Aria 按当前语言拼好的列表（中文「A和B」、英文「A and B」）。
+选 0 或 1 项时走默认渲染（占位符 / 该项内容）。
+
+语言取自浏览器，上面这个 demo 在英文环境下就会显示 `and`；要钉死语言，在应用外层裹
+RAC 的 `I18nProvider`。要完全自己决定这段文字，给 `SelectValue` 传函数 children。
+
+## 动态集合
+
+`items` + 函数 children，和 RAC 的其它 collection 组件一致。封装层在这里补了泛型
+（vendored 部件把类型参数塌成了 `unknown`），所以 `piece` 有真实类型：
+
+<ComponentPreview name="select/dynamic" />
+
+children 不是纯字符串时**要自己补 `textValue`** —— `SelectItem` 只在 children 是
+字符串时自动取值，typeahead 靠它检索。
+
+## 空状态
+
+要看到空状态，**两件事缺一不可**：
+
+<ComponentPreview name="select/empty" />
+
+**一、`Select` 上要有 `allowsEmptyCollection`。** 默认情况下集合为空的 Select
+**根本打不开** —— 这是 react-stately 的设计，`open()` 和 `toggle()` 开头就挡住了：
+
+```js
+// react-stately/useSelectState
+open(focusStrategy = null) {
+  // Don't open if the collection is empty.
+  if (listState.collection.size !== 0 || props.allowsEmptyCollection) { … }
+}
+```
+
+点触发器、点标签、键盘 `Enter` 全都无声无息，因为它们最终都走这两个方法。所以
+「数据还没来 / 搜完没有结果」这类场景，不开这个开关的话用户只会觉得控件坏了。
+
+**二、`SelectEmpty` 只能由 `SelectList` 的 `renderEmptyState` 渲染。** 这是唯一
+必须走全写装配线的场景 —— `SelectContent` 是捷径，转不了 `SelectList` 自己的
+props。另外两种写法都会静默失败：
+
+| 写法 | 结果 |
+| --- | --- |
+| `<SelectList>` 的直接 children | 被 RAC 的 collection builder 吞掉 |
+| 写在 `SelectPopover` 里、`SelectList` 外 | 匹配不到它的可见性规则所依赖的 `group/select-list` |
+| `SelectList` 的 `renderEmptyState` | ✅ |
+
+## 禁用
+
+`isDisabled` 落在 `Select` 上禁整个控件（弹层打不开），落在 `SelectItem` 上只禁那
+一行（键盘导航会跳过）：
+
+<ComponentPreview name="select/disabled" />
+
+整列文字（标签、描述）跟着变灰是 `Field` 的事 —— 在 `Field` 上挂 `data-disabled`，
+见[状态约定](/docs/components/field#状态约定)。
+
+## 打开这一下不会顺手选中
+
+**封装层加的第二个默认行为**，和标签那条一样，调用侧不用接。
+
+弹层在**按下**的瞬间就展开，落点离触发器底边只有 8px 左右。所以在触发器靠下的位置
+按一下、手指再往下滑十来个像素松开，光标就已经在第一项上了——而 React Aria 的选项
+是「谁在下面松手就选谁」，**根本不要求按下也发生在自己身上**：
+
+```js
+// react-aria/usePress.mjs —— 元素自己的 pointerup 处理器
+if (e.button === 0 && !state.isPressed)
+  triggerPressUpEvent(e, state.pointerType || e.pointerType)
+```
+
+`!state.isPressed` 不是在拦外来的按压，而是**专为它而设**：自己正在按压中的元素会改走
+`onClick`。React Aria 再通过 `useSelect` 给列表写死 `shouldSelectOnPressUp` +
+`shouldFocusOnHover`，两者相与就是 `useOption` 的 `allowsDifferentPressOrigin`，把选中
+接到了这条路上。它要的是原生 `<select>` 的「按住—拖到某项—松手」手势，代价是一次普通
+点击只要手抖就会提交。
+
+封装层的做法是给这一下按压分类，两条轴（照搬 Base UI 的 Select，它比 React Aria
+早一步解了同一个 bug）。在它读起来还不像手势之前，列表是点不中的，松手落在弹层上、
+什么也不提交：
+
+| 判据 | 结论 |
+| --- | --- |
+| 位移超过 24px | 在拖，解锁 |
+| 按住超过 400ms | 蓄意，解锁 |
+| 松手 | 下一拍解锁 |
+
+只管鼠标——上面那个 `onPressUp` 只对 `pointerType === 'mouse'` 提交，触摸和笔本来就
+不受影响。键盘通道完全不经过这里。
+
+上锁的方式是往 `<html>` 挂一个属性，配 `styles.css` 里的一条规则让列表暂时点不中：
+
+```css
+[data-select-press-grace] [data-slot="select-list"] { pointer-events: none }
+```
+
+**不是**在列表元素上写内联样式——按下的那一刻列表还不存在（弹层正是这次按下要打开的
+东西），任何「等一帧再去找它」的写法在提交慢一拍的机器上就会落空，锁形同虚设。写成
+样式表规则则是列表一挂上就生效，不关心是哪一帧。属性名以 `PRESS_GRACE_ATTRIBUTE`
+导出，需要围着它写样式时用这个常量，别抄字符串。
+
+阈值取 24px 而不是 Base UI 的 8px 是几何决定的：Base UI 把选中项摆在光标底下，位移
+意味着离开它；这里弹层开在下方，8px 恰好就是够到第一项的距离。
+
+## 键盘交互
+
+| 按键 | 行为 |
+| --- | --- |
+| `Enter` / `Space` / `↓` / `↑` | 打开弹层（不改变当前值） |
+| 打字（弹层已关） | 直接切换选中项、**不打开弹层**，与原生 `<select>` 一致 |
+| 打字（弹层已开） | 在列表内 typeahead 定位 |
+| `↓` / `↑` | 列表内移动 |
+| `Enter` / `Space` | 选中当前项（单选选完即关） |
+| `Home` / `End` | 首项 / 末项 |
+| `Esc` | 关闭弹层，焦点回到触发器 |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → 类名**。
+
+每张 Props 表后跟一张**状态**表。左列是挂在 DOM 上的 `data-*`，Tailwind 直接当变体
+写（`data-open:rotate-180`）；右列是同一个状态在 render props 里的名字。
+`data-rac` / `data-collection` / `data-key` 是 React Aria 的内部标记，不要依赖。
+
+### Select
+
+根组件，持状态、不渲染任何可见内容（一个 `w-fit` 的 `div`）。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `selectionMode` | `'single' \| 'multiple'` | `'single'` | 判别式：决定下面三个的类型 |
+| `defaultValue` | 单选 `Key \| null`；多选 `readonly Key[]` | — | 非受控初始值 |
+| `value` | 同上 | — | 受控值 |
+| `onChange` | 单选 `(value: Key \| null) => void`；多选 `(value: Key[]) => void` | — | 选择变化回调 |
+| `defaultOpen` | `boolean` | `false` | 非受控初始展开 |
+| `isOpen` | `boolean` | — | 受控展开 |
+| `onOpenChange` | `(isOpen: boolean) => void` | — | 展开变化回调 |
+| `placeholder` | `string` | `'Select an item'`（RAC 本地化） | 未选中时 `SelectValue` 上屏的文字 |
+| `isDisabled` | `boolean` | `false` | 禁用整个控件 |
+| `isInvalid` | `boolean` | `false` | 错误态，触发器画红边红环 |
+| `isRequired` | `boolean` | `false` | 必填标记 |
+| `disabledKeys` | `Iterable<Key>` | — | 批量禁用条目。**只在根组件上有效**，写到 `SelectList` 上类型能过、运行时无声无息 |
+| `allowsEmptyCollection` | `boolean` | `false` | 允许空集合时也能展开。不开则集合一空控件就打不开，见「[空状态](#空状态)」 |
+| `autoFocus` | `boolean` | `false` | 挂载即聚焦触发器 |
+| `name` | `string` | — | 原生表单提交用的隐藏 input 名 |
+| `aria-label` | `string` | — | 控件的无障碍名。**配 `FieldLabel` 时仍然必填**，原因见「[标签](#标签)」 |
+| `className` | `string \| (state) => string` | — | 根元素类名，宽度定在这里 |
+| 其余 | RAC `SelectProps` | — | 透传 |
+
+`selectedKey` / `onSelectionChange` 也还在，但 React Stately 已弃用：它们两种模式下
+都是 `Key | null`，单选/多选的类型判别就丢了。用上面这套。
+
+**状态**（`data-slot="select"`）
+
+| 状态 | 出现时机 | render prop |
+| --- | --- | --- |
+| `data-open` | 弹层展开 | `isOpen` |
+| `data-focused` | 控件持有焦点（鼠标或键盘） | `isFocused` |
+| `data-focus-visible` | 由键盘到达 | `isFocusVisible` |
+| `data-disabled` | `isDisabled` | `isDisabled` |
+| `data-invalid` | `isInvalid` | `isInvalid` |
+| `data-required` | `isRequired` | `isRequired` |
+
+### SelectTrigger
+
+真正的控件，一个 RAC `Button`。**`id` 落在这里**（`FieldLabel htmlFor` 的靶子）。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `id` | `string` | RAC 生成 | 标签关联点 |
+| `size` | `'sm' \| 'default'` | `'default'` | 高度 28 / 32px |
+| `children` | `ReactNode` | — | 通常就一个 `SelectValue`。**不是** render prop —— 部件在 children 之后自己追加箭头图标，RAC 的函数形式在这里永远不会被调用 |
+| `className` | `string \| (state) => string` | — | |
+| 其余 | RAC `Button` 的 props | — | 透传；`ref` 指向 `button` |
+
+**状态**（`data-slot="select-trigger"`）
+
+| 状态 | 出现时机 | render prop |
+| --- | --- | --- |
+| `data-size` | 始终有值：`sm` / `default` | — |
+| `data-hovered` | 指针悬停 | `isHovered` |
+| `data-pressed` | 按住未松开（弹层打开期间保持） | `isPressed` |
+| `data-focus-visible` | 由键盘到达 | `isFocusVisible` |
+| `data-disabled` | 控件被禁用 | `isDisabled` |
+
+### SelectValue
+
+回显当前值的 `span`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `children` | `(values) => ReactNode` | 内置 | **只能是函数**。静态 children 会被基座丢掉，所以类型层面就禁掉了；占位文案用 `Select` 的 `placeholder` |
+| `className` | `string \| (state) => string` | — | |
+
+默认渲染规则：选中 ≥2 项显示 `selectedText`，否则显示 `defaultChildren`（当前项内容，
+或占位符）。函数参数：`isPlaceholder` / `selectedItems` / `selectedText` /
+`state` / `defaultChildren`。
+
+**状态**（`data-slot="select-value"`）
+
+| 状态 | 出现时机 | render prop |
+| --- | --- | --- |
+| `data-placeholder` | 当前没有选中项，显示的是占位文案 | `isPlaceholder` |
+
+### SelectContent
+
+捷径部件 = `SelectPopover` + `SelectList`。props 是 RAC `Popover` 的
+（`placement` 默认 `bottom`、`offset` `4`），`children` 直接进列表。
+
+**转不了 `SelectList` 自己的 props**（`items` / `renderEmptyState` /
+`disabledKeys`）—— 需要它们就拆成全写。`data-slot` 与状态同 `SelectPopover`。
+
+### SelectPopover
+
+弹层定位面，RAC `Popover`。`placement` 默认 `bottom start`、`offset` `4`。宽度由
+`--trigger-width` 跟随触发器。
+
+**状态**（`data-slot="select-content"`）
+
+| 状态 | 出现时机 |
+| --- | --- |
+| `data-placement` | 已定位，值是 `bottom` / `top` / `left` / `right` |
+| `data-entering` / `data-exiting` | 进出场动画期间 |
+| `data-trigger` | 固定是 `Select` |
+
+### SelectList
+
+RAC `ListBox`，`role="listbox"`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `items` | `Iterable<T>` | — | 动态集合，配函数 children |
+| `renderEmptyState` | `(props: ListBoxRenderProps) => ReactNode` | — | 集合为空时渲染，`SelectEmpty` 的唯一入口 |
+| `className` | `string \| (state) => string` | — | 滚动容器的类名，最大高度定在这里 |
+| 其余 | RAC `ListBoxProps<T>` | — | 透传；`ref` 指向 `div` |
+
+`ListBoxProps` 带来的选择类 props（`disabledKeys` / `selectionMode` /
+`selectedKeys` …）在 `Select` 里**全是哑弹**：列表的状态由根组件的
+`useSelectState` 提供，这里写什么都不会被读到，类型却拦不住。批量禁用请写在
+`Select` 上。
+
+**状态**（`data-slot="select-list"`）：`data-layout`（固定 `stack`）、
+`data-orientation`（固定 `vertical`）、`data-empty`（集合为空 —— `SelectEmpty`
+的可见性就挂在它上面）。
+
+### SelectGroup
+
+RAC `ListBoxSection`，渲染成 `<section role="group">`。同样接 `items` + 函数
+children。组内若有 `SelectLabel`，它自动成为本组的 `aria-labelledby`。
+`ref` 指向 `section`。
+
+### SelectLabel
+
+RAC `Header`，渲染成 `<header role="presentation">`。**分组的标题**，不是控件的标签。
+
+### SelectItem
+
+RAC `ListBoxItem`，`role="option"`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `id` | `Key` | — | 选中值。落进 `Select` 的 `value` 的就是它 |
+| `textValue` | `string` | children 是字符串时自动取 | typeahead 检索用；children 带标签时必填 |
+| `isDisabled` | `boolean` | `false` | 禁用该行 |
+| `children` | `ReactNode \| (state) => ReactNode` | — | 行内容；选中标记（对勾）由部件自己补 |
+| `className` | `string \| (state) => string` | — | |
+
+**状态**（`data-slot="select-item"`）
+
+| 状态 | 出现时机 | render prop |
+| --- | --- | --- |
+| `data-selection-mode` | 始终有值：`single` / `multiple` | `selectionMode` |
+| `data-selected` | 该项已选中 | `isSelected` |
+| `data-hovered` | 指针悬停；触摸和键盘都不触发 | `isHovered` |
+| `data-pressed` | 指针按住未松开 | `isPressed` |
+| `data-focused` | 当前活动项 | `isFocused` |
+| `data-focus-visible` | 活动项**且**由键盘到达 | `isFocusVisible` |
+| `data-disabled` | 该项被禁用 | `isDisabled` |
+
+### SelectSeparator
+
+RAC `Separator`，`role="separator"`。组之间、组内条目之间都合法。
+
+### SelectEmpty
+
+一个纯 `div`，只在集合为空时可见（靠 `SelectList` 的 `data-empty` 显隐）。
+必须由 `renderEmptyState` 渲染，见「[空状态](#空状态)」。
+
+## data-slot 里有三个是接线
+
+`data-slot` 一般只是选择器，但这三个是**样式依赖的接线，覆盖它们会静默失效**：
+
+| slot | 谁在依赖 |
+| --- | --- |
+| `select-value` | 触发器的布局规则（`*:data-[slot=select-value]:…`）靠它定位 |
+| `select-item` | 弹层的焦点高亮按后缀匹配（`**:data-[slot$=-item]:data-focused:…`） |
+| `select-list` 上的 `group/select-list` | `SelectEmpty` 的可见性规则 |
+
+要加自己的标记，请用别的属性。
+
+## 导出的类型
+
+| 类型 | 说明 |
+| --- | --- |
+| `SelectProps<T, M>` | 根组件；`M` 是 `'single' \| 'multiple'`，决定 `value` / `onChange` 的形状 |
+| `SelectGroupProps<T>` / `SelectListProps<T>` | 两个带集合泛型的部件 |
+| `SelectValueProps<T>` | children 已收窄为函数形式 |
+| `SelectTriggerProps` / `SelectContentProps` / `SelectPopoverProps` / `SelectItemProps` / `SelectLabelProps` / `SelectSeparatorProps` / `SelectEmptyProps` | 其余部件 |
+| `Key` | React Aria 的键类型，从本库直接导出，业务层不必依赖 `react-aria-components` |
