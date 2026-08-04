@@ -1,18 +1,21 @@
 'use client'
 
+import type { Popover as PopoverPrimitive } from '@base-ui/react/popover'
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
-import type { ControllableSelectionProps, InfiniteSelectActions, InfiniteSelectAdapterProps, InfiniteSelectItemRenderParams, InfiniteSelectOption } from './infinite-select'
+import type { ChangeEventDetails } from '#lib/change-event-details'
+import type { ControllableSelectionProps, InfiniteSelectActions, InfiniteSelectAdapterProps, InfiniteSelectChangeEventDetails, InfiniteSelectChangeEventReason, InfiniteSelectItemRenderParams, InfiniteSelectOption } from './infinite-select'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { useDebounceFn } from 'ahooks'
-import { Children, cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Children, cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createChangeEventDetails } from '#lib/change-event-details'
 import { cn } from '#lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '#primitives/popover'
 import {
   InfiniteSelect,
   InfiniteSelectActionsProvider,
+  InfiniteSelectInputGroup,
   InfiniteSelectList,
-  InfiniteSelectSearch,
 } from './infinite-select'
 
 /**
@@ -21,31 +24,47 @@ import {
  * debounce, and an optional commit-on-close draft mode for multi selection.
  */
 
+/**
+ * Why the popover opened or closed: Base UI's Popover reasons pass through
+ * whole, plus the panel-side reasons a close can carry (an `item-press` under
+ * `closeOnSelect`, a footer `clear-press`/`close-press`) and `'none'` for
+ * programmatic `setOpen`.
+ */
+export type InfiniteComboboxOpenChangeEventReason
+  = PopoverPrimitive.Root.ChangeEventReason | InfiniteSelectChangeEventReason
+
+export type InfiniteComboboxOpenChangeEventDetails = ChangeEventDetails<InfiniteComboboxOpenChangeEventReason>
+
 // `open`/`defaultOpen`/`onOpenChange` for the overlay and
-// `inputValue`/`defaultInputValue`/`onInputChange` for the search text.
+// `inputValue`/`defaultInputValue`/`onInputValueChange` for the search text.
 // `queryValue` — the debounced value meant for the request — is our own.
 export interface InfiniteComboboxStateOptions {
   open?: boolean
   defaultOpen?: boolean
-  onOpenChange?: (open: boolean) => void
+  /** `eventDetails.cancel()` keeps the popover where it is. */
+  onOpenChange?: (open: boolean, eventDetails: InfiniteComboboxOpenChangeEventDetails) => void
   inputValue?: string
   defaultInputValue?: string
-  onInputChange?: (value: string) => void
+  /** `eventDetails.cancel()` rejects the text change (and the query it would arm). */
+  onInputValueChange?: (value: string, eventDetails: InfiniteSelectChangeEventDetails) => void
   /** The debounced value meant for the actual request. */
   queryValue?: string
   defaultQueryValue?: string
-  onQueryValueChange?: (value: string | undefined) => void
+  /** Gets its own details (same reason and event as the raw change); `cancel()` keeps the settled query. */
+  onQueryValueChange?: (value: string | undefined, eventDetails: InfiniteSelectChangeEventDetails) => void
   debounceMs?: number
 }
 
 export interface InfiniteComboboxState<T = unknown> {
   open: boolean
-  setOpen: (open: boolean) => void
+  /** Details default to reason `'none'` (programmatic). */
+  setOpen: (open: boolean, eventDetails?: InfiniteComboboxOpenChangeEventDetails) => void
   inputValue: string
-  setInputValue: (value: string) => void
+  setInputValue: (value: string, eventDetails?: InfiniteSelectChangeEventDetails) => void
   resetSearch: () => void
   queryValue: string | undefined
-  selectedValue?: string | string[] | undefined
+  /** `null` is "cleared" in single mode; `undefined` only means the state hook never saw a selection. */
+  selectedValue?: string | string[] | null | undefined
   selectedItems?: T[]
 }
 
@@ -55,42 +74,57 @@ export function useInfiniteComboboxState({
   onOpenChange,
   inputValue,
   defaultInputValue,
-  onInputChange,
+  onInputValueChange,
   queryValue,
   defaultQueryValue,
   onQueryValueChange,
   debounceMs = 300,
 }: InfiniteComboboxStateOptions = {}): InfiniteComboboxState {
+  // No `onChange` wiring on the state hooks: the cancel protocol needs the
+  // user callback to run before the state write, so they fire explicitly below.
   const [openState, setOpenState] = useControllableState({
     value: open,
     defaultValue: defaultOpen,
-    onChange: onOpenChange,
     fallback: false,
   })
   const [inputState, setInputState] = useControllableState({
     value: inputValue,
     defaultValue: defaultInputValue,
-    onChange: onInputChange,
     fallback: '',
   })
   const [queryState, setQueryState] = useControllableState<string | undefined>({
     value: queryValue,
     defaultValue: defaultQueryValue,
-    ...(onQueryValueChange ? { onChange: onQueryValueChange } : {}),
   })
 
+  const commitQuery = useCallback(
+    (next: string | undefined, eventDetails: InfiniteSelectChangeEventDetails) => {
+      onQueryValueChange?.(next, eventDetails)
+      if (!eventDetails.isCanceled)
+        setQueryState(next)
+    },
+    [onQueryValueChange, setQueryState],
+  )
   // `debounceMs` is read at mount: ahooks builds the debounce once.
   const { run: commitQueryValue, cancel: cancelQueryValue } = useDebounceFn(
-    setQueryState,
+    commitQuery,
     { wait: debounceMs },
   )
 
   const setInputValue = useCallback(
-    (value: string) => {
+    (value: string, eventDetails: InfiniteSelectChangeEventDetails = createChangeEventDetails('none')) => {
+      onInputValueChange?.(value, eventDetails)
+      if (eventDetails.isCanceled)
+        return
       setInputState(value)
-      commitQueryValue(value === '' ? undefined : value)
+      // The query layer gets fresh details (same reason and event): its
+      // cancel() must not read a flag the raw-text layer already consumed.
+      commitQueryValue(
+        value === '' ? undefined : value,
+        createChangeEventDetails(eventDetails.reason, eventDetails.event),
+      )
     },
-    [commitQueryValue, setInputState],
+    [commitQueryValue, onInputValueChange, setInputState],
   )
 
   const resetSearch = useCallback(() => {
@@ -105,7 +139,10 @@ export function useInfiniteComboboxState({
   const prevOpenRef = useRef<boolean | undefined>(undefined)
 
   const setOpen = useCallback(
-    (nextOpen: boolean) => {
+    (nextOpen: boolean, eventDetails: InfiniteComboboxOpenChangeEventDetails = createChangeEventDetails('none')) => {
+      onOpenChange?.(nextOpen, eventDetails)
+      if (eventDetails.isCanceled)
+        return
       if (nextOpen && shouldResetOnNextOpenRef.current) {
         resetSearch()
         shouldResetOnNextOpenRef.current = false
@@ -114,7 +151,7 @@ export function useInfiniteComboboxState({
         shouldResetOnNextOpenRef.current = true
       setOpenState(nextOpen)
     },
-    [resetSearch, setOpenState],
+    [onOpenChange, resetSearch, setOpenState],
   )
 
   // Covers externally-controlled `open` flips that bypass setOpen.
@@ -187,6 +224,13 @@ interface InfiniteComboboxCommonProps<T> {
    */
   'triggerId'?: string
   'state': InfiniteComboboxState
+  /**
+   * Identifies the selection when a form is submitted: with a `name`, hidden
+   * inputs render next to the trigger — outside the popover, which unmounts on
+   * close — one per selected id (a single input in single mode). Under
+   * `commitOnClose` only the committed selection serializes, never the draft.
+   */
+  'name'?: string
   'list': InfiniteSelectAdapterProps<T>
   'getOption': (item: T) => InfiniteSelectOption
   'renderItem'?: (params: InfiniteSelectItemRenderParams<T>) => ReactNode
@@ -207,10 +251,11 @@ interface InfiniteComboboxCommonProps<T> {
   /** Single only: close the popover after picking. Defaults to true. */
   'closeOnSelect'?: boolean
   /**
-   * Lock the page scroll while the popover is open (Base UI's `modal`). Off by
-   * default — the page scrolls freely and the popover follows its anchor.
+   * Base UI's `modal`: lock the page scroll and trap outside interaction while
+   * the popover is open. Off by default — the page scrolls freely and the
+   * popover follows its anchor.
    */
-  'lockScroll'?: boolean
+  'modal'?: boolean
   'selectClassName'?: string
   /**
    * The popover shell's positioning surface — `side`, `sideOffset`, `align`
@@ -241,7 +286,8 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     loadMoreScrollOffset,
     state,
     closeOnSelect = true,
-    lockScroll = false,
+    modal = false,
+    name,
     selectClassName,
     popoverProps,
     triggerId,
@@ -250,12 +296,12 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
   const isMultiple = props.selectionMode === 'multiple'
   const deferredEnabled = isMultiple && commitOnClose
 
-  // Key presence, matching InfiniteSelect: a controlled single select clears with
-  // `value={undefined}`, and `controlled ?? internal` would silently fall back to
-  // the stale internal pick instead.
-  const isValueControlled = 'value' in props
-  const [internalValue, setSelectedValue] = useState<string | string[] | undefined>(
-    props.defaultValue ?? (isMultiple ? [] : undefined),
+  // `value !== undefined` judges controlled-ness, matching InfiniteSelect and
+  // Base UI: `undefined` belongs to "uncontrolled", and a controlled single
+  // select clears with `null`.
+  const isValueControlled = props.value !== undefined
+  const [internalValue, setSelectedValue] = useState<string | string[] | null>(
+    props.defaultValue ?? (isMultiple ? [] : null),
   )
   const selectedValue = isValueControlled ? props.value : internalValue
   const externalMultiValue = (props as { value?: string[] }).value
@@ -272,11 +318,11 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
   const selectedItemsCacheRef = useRef<Map<string, T>>(new Map())
 
   const effectiveSelectedValue = deferredEnabled ? draftIds : selectedValue
-  const selectedIds = isMultiple
-    ? ((effectiveSelectedValue as string[] | undefined) ?? [])
-    : effectiveSelectedValue !== undefined
-      ? [effectiveSelectedValue as string]
-      : []
+  const selectedIds = useMemo(() => isMultiple
+    ? ((effectiveSelectedValue as string[] | null | undefined) ?? [])
+    : typeof effectiveSelectedValue === 'string'
+      ? [effectiveSelectedValue]
+      : [], [effectiveSelectedValue, isMultiple])
 
   for (const item of list.items) {
     const id = getOption(item).id
@@ -284,9 +330,9 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
       selectedItemsCacheRef.current.set(id, item)
   }
 
-  const selectedItems = selectedIds
+  const selectedItems = useMemo(() => selectedIds
     .map(id => selectedItemsCacheRef.current.get(id))
-    .filter((entry): entry is T => entry !== undefined)
+    .filter((entry): entry is T => entry !== undefined), [selectedIds, list.items])
 
   useEffect(() => {
     const wasOpen = prevOpenRef.current
@@ -298,13 +344,18 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     const justCommitted = justClosed && hasChangedRef.current
     if (justCommitted) {
       // draftIdsRef is authoritative (from InfiniteSelect); draftItemsRef only
-      // echoes the loaded ones.
+      // echoes the loaded ones. The commit is programmatic from the callback's
+      // point of view (the closing gesture is long gone), hence reason 'none';
+      // cancel() rejects the commit and keeps the previous applied selection.
       const ids = draftIdsRef.current
-      setSelectedValue(ids)
-      ;(props as { onChange?: (items: T[], ids: string[]) => void }).onChange?.(
+      const eventDetails = createChangeEventDetails<InfiniteSelectChangeEventReason>('none')
+      ;(props as { onChange?: (items: T[], ids: string[], eventDetails: InfiniteSelectChangeEventDetails) => void }).onChange?.(
         draftItemsRef.current,
         ids,
+        eventDetails,
       )
+      if (!eventDetails.isCanceled)
+        setSelectedValue(ids)
       hasChangedRef.current = false
     }
 
@@ -338,10 +389,10 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
    * dismissal and let the forwarded click do the toggling.
    */
   const handleOpenChange = useCallback(
-    (next: boolean, eventDetails?: { reason?: string, event?: Event, cancel: () => void }) => {
+    (next: boolean, eventDetails: PopoverPrimitive.Root.ChangeEventDetails) => {
       if (disabled && next)
         return
-      if (!next && eventDetails?.reason === 'outside-press' && labelTargetIdRef.current !== undefined) {
+      if (!next && eventDetails.reason === 'outside-press' && labelTargetIdRef.current !== undefined) {
         const target = eventDetails.event?.target
         const label = target instanceof Element ? target.closest('label') : null
         if (label !== null && label.htmlFor === labelTargetIdRef.current) {
@@ -349,15 +400,20 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
           return
         }
       }
-      state.setOpen(next)
+      // The same details object rides through: the caller's onOpenChange can
+      // cancel(), and Base UI reads the flag after this handler returns.
+      state.setOpen(next, eventDetails)
     },
     [disabled, state],
   )
 
-  const clearSelection = useCallback(() => {
+  const clearSelection = useCallback((
+    eventDetails: InfiniteSelectChangeEventDetails = createChangeEventDetails('none'),
+  ) => {
     if (deferredEnabled) {
       // Draft path: empty the draft and mark it changed so the close effect
-      // commits the empty set.
+      // commits the empty set. No user callback fires until the commit, so
+      // there is nothing here for cancel() to reject.
       setDraftIds([])
       draftIdsRef.current = []
       draftItemsRef.current = []
@@ -365,21 +421,31 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
       return
     }
     if (props.selectionMode === 'multiple') {
+      props.onChange?.([], [], eventDetails)
+      if (eventDetails.isCanceled)
+        return
       setSelectedValue([])
-      props.onChange?.([], [])
     }
     else {
-      setSelectedValue(undefined)
-      props.onChange?.(undefined)
+      props.onChange?.(null, eventDetails)
+      if (eventDetails.isCanceled)
+        return
+      setSelectedValue(null)
     }
   }, [deferredEnabled, props, setSelectedValue])
 
-  const actions: InfiniteSelectActions<T> = {
+  // Provider value memoised (the house rule) with stable callbacks, so the
+  // footer parts do not re-render with every keystroke in the search field.
+  const close = useCallback(
+    (eventDetails?: InfiniteSelectChangeEventDetails) => state.setOpen(false, eventDetails),
+    [state],
+  )
+  const actions = useMemo<InfiniteSelectActions<T>>(() => ({
     selectedItems,
     selectedIds,
     clear: clearSelection,
-    close: () => state.setOpen(false),
-  }
+    close,
+  }), [clearSelection, close, selectedItems, selectedIds])
 
   // Base UI's Popover.Trigger contract, by position: first child triggers, the
   // rest are the overlay's. A function is the trigger whole — there is no
@@ -429,13 +495,15 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     : trigger
 
   // Root gets data + selection wiring; presentation config goes to the parts.
+  // `setInputValue` receives Base UI's own details through InfiniteSelect and
+  // runs the full protocol on them (caller callback, cancel, query debounce).
   const shared = {
     'aria-label': props['aria-label'] ?? searchPlaceholder,
     ...list,
     getOption,
     'className': cn('rounded-none border-0 shadow-none', selectClassName),
     'inputValue': state.inputValue,
-    'onInputChange': state.setInputValue,
+    'onInputValueChange': state.setInputValue,
     rowHeight,
     virtualized,
   }
@@ -443,7 +511,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
   // The business-convenience layer: monolith props compose the panel parts.
   const panelChildren = (
     <>
-      <InfiniteSelectSearch autoFocus placeholder={searchPlaceholder} />
+      <InfiniteSelectInputGroup autoFocus placeholder={searchPlaceholder} />
       <InfiniteSelectList<T>
         loadMoreScrollOffset={loadMoreScrollOffset}
         maxListHeight={maxListHeight}
@@ -455,13 +523,24 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
   )
 
   return (
-    <Popover modal={lockScroll} open={state.open} onOpenChange={handleOpenChange}>
+    <Popover modal={modal} open={state.open} onOpenChange={handleOpenChange}>
       {/* An element trigger IS the button (Base UI merges its props into the
           caller's element); anything else — a bare string, say — becomes the
           content of Base UI's own button instead. */}
       {isValidElement(wiredTrigger)
         ? <PopoverTrigger disabled={disabled} render={wiredTrigger} />
         : <PopoverTrigger disabled={disabled}>{wiredTrigger}</PopoverTrigger>}
+      {name !== undefined && (isMultiple
+        ? ((selectedValue as string[] | null | undefined) ?? []).map(id => (
+            <input key={id} name={name} type="hidden" value={id} />
+          ))
+        : (
+            <input
+              name={name}
+              type="hidden"
+              value={typeof selectedValue === 'string' ? selectedValue : ''}
+            />
+          ))}
       <PopoverContent
         {...popoverProps}
         className={cn(`
@@ -475,17 +554,21 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
                 <InfiniteSelect<T>
                   {...shared}
                   selectionMode="multiple"
-                  value={deferredEnabled ? draftIds : ((selectedValue as string[] | undefined) ?? [])}
-                  onChange={(items, ids) => {
+                  value={deferredEnabled ? draftIds : ((selectedValue as string[] | null | undefined) ?? [])}
+                  onChange={(items, ids, eventDetails) => {
                     if (deferredEnabled) {
+                      // Draft path: no user callback until the popover closes,
+                      // so nothing here for cancel() to reject.
                       setDraftIds(ids)
                       draftItemsRef.current = items
                       draftIdsRef.current = ids
                       hasChangedRef.current = true
                       return
                     }
+                    props.onChange?.(items, ids, eventDetails)
+                    if (eventDetails.isCanceled)
+                      return
                     setSelectedValue(ids)
-                    props.onChange?.(items, ids)
                   }}
                 >
                   {panelChildren}
@@ -494,12 +577,14 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
             : (
                 <InfiniteSelect<T>
                   {...shared}
-                  value={selectedValue as string | undefined}
-                  onChange={(item) => {
-                    setSelectedValue(item === undefined ? undefined : getOption(item).id)
-                    props.onChange?.(item)
+                  value={(selectedValue as string | null | undefined) ?? null}
+                  onChange={(item, eventDetails) => {
+                    props.onChange?.(item, eventDetails)
+                    if (eventDetails.isCanceled)
+                      return
+                    setSelectedValue(item === null ? null : getOption(item).id)
                     if (closeOnSelect)
-                      state.setOpen(false)
+                      state.setOpen(false, eventDetails)
                   }}
                 >
                   {panelChildren}

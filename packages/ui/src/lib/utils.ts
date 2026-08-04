@@ -39,3 +39,14 @@ export function cn(...inputs: ClassInput[]): string | ((values: unknown) => stri
   // Without a function there is nothing to defer — resolve now, return string.
   return inputs.some(input => typeof input === 'function') ? resolve : resolve()
 }
+
+/**
+ * Boolean state as a data attribute, Base UI's value form: `true` renders the
+ * attribute with an empty value (`data-x=""`), anything else omits it entirely.
+ * (`internals/getStateAttributesProps` writes `''` for `true` and skips falsy —
+ * never `"true"`/`"false"`.) Hand-written `cond || undefined` renders `"true"`
+ * and forks the value form; route every boolean data attribute through here.
+ */
+export function dataAttr(condition: boolean | undefined): '' | undefined {
+  return condition === true ? '' : undefined
+}

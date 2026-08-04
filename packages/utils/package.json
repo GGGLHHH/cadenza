@@ -36,6 +36,7 @@
     "ahooks": "catalog:ui"
   },
   "devDependencies": {
+    "@types/node": "catalog:types",
     "react": "catalog:react",
     "tsdown": "catalog:cli",
     "typescript": "catalog:cli"

@@ -40,6 +40,16 @@ export default antfu(
     ],
   },
 ).append({
+  name: 'cadenza/env-checks',
+  files: ['packages/*/src/**'],
+  rules: {
+    // Dev-only guards gate on `process.env.NODE_ENV` as a GLOBAL — the form
+    // every bundler statically replaces and tree-shakes. Importing
+    // node:process would defeat the replacement and drag a polyfill into
+    // browser bundles.
+    'node/prefer-global/process': ['error', 'always'],
+  },
+}).append({
   name: 'cadenza/react-overrides',
   files: ['**/*.tsx'],
   rules: {

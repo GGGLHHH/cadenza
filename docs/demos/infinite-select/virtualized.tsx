@@ -11,7 +11,7 @@ import { selectSlots } from './slots'
 export default function VirtualizedDemo(): ReactElement {
   const state = useInfiniteComboboxState()
   const list = useFakeInfiniteList(state.queryValue, { pageSize: TOTAL })
-  const [picked, setPicked] = useState<Person | undefined>(undefined)
+  const [picked, setPicked] = useState<Person | null>(null)
 
   return (
     <InfiniteCombobox<Person>

@@ -14,6 +14,8 @@ export * from './components/search-field'
 export * from './components/select'
 export * from './components/spinner'
 export * from './components/tabs'
+// The change-callback protocol every onXxxChange second argument follows.
+export * from './lib/change-event-details'
 // The vocabulary our public props use for collections (sorting, selection).
 export type { Key, Selection, SortDescriptor, SortDirection } from './lib/collections'
 export * from './lib/utils'

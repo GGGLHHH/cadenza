@@ -1,11 +1,13 @@
 'use client'
 
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
+import type { ChangeEventDetails } from '#lib/change-event-details'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { IconSearch, IconX } from '@tabler/icons-react'
 import { useDebounceFn } from 'ahooks'
 import { createContext, use, useCallback } from 'react'
-import { cn } from '#lib/utils'
+import { createChangeEventDetails } from '#lib/change-event-details'
+import { cn, dataAttr } from '#lib/utils'
 // The seam versions, not the primitives: their prop types carry the full Base UI
 // contract (function className on the control, ref), so ours inherit it.
 import {
@@ -37,19 +39,33 @@ import {
  * uses to hide the clear button.
  */
 
+/** Why the text changed. Clearing is a reason, not a separate callback. */
+export type SearchFieldChangeEventReason
+  = 'input-change' | 'clear-press' | 'escape-key' | 'imperative-action' | 'none'
+
+export type SearchFieldChangeEventDetails = ChangeEventDetails<SearchFieldChangeEventReason>
+
 export interface SearchQueryOptions {
   /** Controlled raw text. */
   value?: string
   /** Uncontrolled initial text. */
   defaultValue?: string
-  /** Fires on every keystroke, with the raw text. */
-  onChange?: (value: string) => void
+  /**
+   * Fires on every raw-text change with why it happened (`reason:
+   * 'clear-press'`/`'escape-key'` replaces the old `onClear` callback).
+   * `eventDetails.cancel()` rejects the change entirely.
+   */
+  onValueChange?: (value: string, eventDetails: SearchFieldChangeEventDetails) => void
   /** Controlled debounced query. */
   queryValue?: string
   /** Uncontrolled initial debounced query. */
   defaultQueryValue?: string
-  /** Fires once the typing settles, trimmed, empty string normalised away. */
-  onQueryValueChange?: (value: string | undefined) => void
+  /**
+   * Fires once the typing settles, trimmed, empty string normalised away.
+   * Gets its own `eventDetails` (same reason and event as the raw change);
+   * `cancel()` keeps the settled query from updating.
+   */
+  onQueryValueChange?: (value: string | undefined, eventDetails: SearchFieldChangeEventDetails) => void
   /** Debounce interval in ms. */
   debounceMs?: number
 }
@@ -57,12 +73,12 @@ export interface SearchQueryOptions {
 export interface SearchQueryState {
   /** The raw text, in sync with the input. */
   value: string
-  /** Sets the raw text and (re)arms the debounce. */
-  setValue: (value: string) => void
+  /** Sets the raw text and (re)arms the debounce. Details default to reason `'none'`. */
+  setValue: (value: string, eventDetails?: SearchFieldChangeEventDetails) => void
   /** The settled query: trimmed, `undefined` when blank. */
   queryValue: string | undefined
-  /** Clears both at once, cancelling any pending debounce. */
-  resetSearch: () => void
+  /** Clears both at once, cancelling any pending debounce. Details default to reason `'imperative-action'`. */
+  resetSearch: (eventDetails?: SearchFieldChangeEventDetails) => void
 }
 
 /**
@@ -73,65 +89,96 @@ export interface SearchQueryState {
 export function useSearchQuery({
   value,
   defaultValue,
-  onChange,
+  onValueChange,
   queryValue,
   defaultQueryValue,
   onQueryValueChange,
   debounceMs = 300,
 }: SearchQueryOptions = {}): SearchQueryState {
-  const [text, setText] = useControllableState({
-    value,
-    defaultValue,
-    onChange,
-    fallback: '',
-  })
+  // No `onChange` wiring here: the cancel protocol needs the user callback to
+  // run before the state write, so both hooks below only hold state and the
+  // callbacks fire explicitly in setValue/resetSearch.
+  const [text, setText] = useControllableState({ value, defaultValue, fallback: '' })
   const [query, setQuery] = useControllableState<string | undefined>({
     value: queryValue,
     defaultValue: defaultQueryValue,
-    ...(onQueryValueChange ? { onChange: onQueryValueChange } : {}),
   })
 
+  const commitQuery = useCallback(
+    (next: string | undefined, eventDetails: SearchFieldChangeEventDetails) => {
+      onQueryValueChange?.(next, eventDetails)
+      if (!eventDetails.isCanceled)
+        setQuery(next)
+    },
+    [onQueryValueChange, setQuery],
+  )
   // ahooks builds its debounce once, so `debounceMs` is read at mount and a
   // later change does not take effect — the same contract as `defaultValue`.
-  const { run: commit, cancel } = useDebounceFn(setQuery, { wait: debounceMs })
+  const { run: commit, cancel } = useDebounceFn(commitQuery, { wait: debounceMs })
 
   const setValue = useCallback(
-    (next: string) => {
+    (next: string, eventDetails: SearchFieldChangeEventDetails = createChangeEventDetails('none')) => {
+      onValueChange?.(next, eventDetails)
+      if (eventDetails.isCanceled)
+        return
       setText(next)
       const normalized = next.trim()
-      commit(normalized === '' ? undefined : normalized)
+      // The query layer gets fresh details (same reason and event): its
+      // cancel() must not read a flag the raw-text layer already consumed.
+      commit(
+        normalized === '' ? undefined : normalized,
+        createChangeEventDetails(eventDetails.reason, eventDetails.event),
+      )
     },
-    [commit, setText],
+    [commit, onValueChange, setText],
   )
 
-  const resetSearch = useCallback(() => {
-    // Clearing is an explicit act, so it skips the debounce entirely —
-    // waiting 300ms to drop a filter reads as lag, not as smoothing.
-    cancel()
-    setText('')
-    setQuery(undefined)
-  }, [cancel, setQuery, setText])
+  const resetSearch = useCallback(
+    (eventDetails: SearchFieldChangeEventDetails = createChangeEventDetails('imperative-action')) => {
+      onValueChange?.('', eventDetails)
+      if (eventDetails.isCanceled)
+        return
+      // Clearing is an explicit act, so it skips the debounce entirely —
+      // waiting 300ms to drop a filter reads as lag, not as smoothing.
+      cancel()
+      setText('')
+      const queryDetails = createChangeEventDetails(eventDetails.reason, eventDetails.event)
+      onQueryValueChange?.(undefined, queryDetails)
+      if (!queryDetails.isCanceled)
+        setQuery(undefined)
+    },
+    [cancel, onValueChange, onQueryValueChange, setQuery, setText],
+  )
 
   return { value: text, setValue, queryValue: query, resetSearch }
 }
 
 /** What the field's parts read, and what function children are handed. */
-export interface SearchFieldRenderProps {
+export interface SearchFieldState {
   /** No text in the field. */
   empty: boolean
   disabled: boolean
   readOnly: boolean
 }
 
-interface SearchFieldContextValue extends SearchFieldRenderProps {
+interface SearchFieldContextValue extends SearchFieldState {
   'value': string
-  'setValue': (value: string) => void
-  'clear': () => void
+  'setValue': (value: string, eventDetails?: SearchFieldChangeEventDetails) => void
+  'clear': (eventDetails?: SearchFieldChangeEventDetails) => void
   'submit': () => void
   'aria-label'?: string
 }
 
 const SearchFieldContext = createContext<SearchFieldContextValue | null>(null)
+if (process.env.NODE_ENV !== 'production')
+  SearchFieldContext.displayName = 'SearchFieldContext'
+
+function useSearchFieldContext(): SearchFieldContextValue {
+  const context = use(SearchFieldContext)
+  if (context === null)
+    throw new Error('cadenza-ui: SearchFieldContext is missing. SearchField parts must be placed within <SearchField>.')
+  return context
+}
 
 export type SearchFieldProps
   = Omit<ComponentProps<'div'>, 'children' | 'defaultValue' | 'onChange'>
@@ -141,8 +188,6 @@ export type SearchFieldProps
       readOnly?: boolean
       /** Placeholder for the default composition's input. */
       placeholder?: string
-      /** Fires after the field has been cleared, by button or by Escape. */
-      onClear?: () => void
       /** Fires on Enter, with the current raw text. */
       onSubmit?: (value: string) => void
       /**
@@ -153,7 +198,7 @@ export type SearchFieldProps
        * nothing is injected, but extending beats rebuilding:
        * `{({ defaultChildren }) => …}`.
        */
-      children?: ReactNode | ((state: SearchFieldRenderProps & { defaultChildren: ReactNode }) => ReactNode)
+      children?: ReactNode | ((state: SearchFieldState & { defaultChildren: ReactNode }) => ReactNode)
     }
 
 /**
@@ -174,16 +219,19 @@ export function SearchFieldInput({
   onKeyDown,
   ...props
 }: ComponentProps<typeof InputGroupInput>): ReactElement {
-  const field = use(SearchFieldContext)
+  const field = useSearchFieldContext()
   return (
     <InputGroupInput
-      aria-label={field?.['aria-label']}
+      aria-label={field['aria-label']}
       className={cn('[&::-webkit-search-cancel-button]:appearance-none', className)}
-      disabled={field?.disabled}
-      readOnly={field?.readOnly}
+      disabled={field.disabled}
+      readOnly={field.readOnly}
       type="search"
-      value={field?.value}
-      onChange={event => field?.setValue(event.target.value)}
+      value={field.value}
+      onChange={event => field.setValue(
+        event.target.value,
+        createChangeEventDetails('input-change', event.nativeEvent),
+      )}
       {...props}
       // Chained, not left to the spread: a caller listening for keys must not
       // silently take Escape-to-clear away.
@@ -192,9 +240,9 @@ export function SearchFieldInput({
         if (event.defaultPrevented)
           return
         if (event.key === 'Escape')
-          field?.clear()
+          field.clear(createChangeEventDetails('escape-key', event.nativeEvent))
         if (event.key === 'Enter')
-          field?.submit()
+          field.submit()
       }}
     />
   )
@@ -210,13 +258,13 @@ export function SearchFieldInput({
  * read-only field would render as a disabled one. `hidden` does not help —
  * a display:none element still answers `:has(:disabled)`.
  */
-export function SearchFieldClearButton({
+export function SearchFieldClear({
   className,
   children,
   onClick,
   ...props
 }: ComponentProps<typeof InputGroupButton>): ReactElement {
-  const field = use(SearchFieldContext)
+  const field = useSearchFieldContext()
   return (
     <InputGroupAddon
       align="inline-end"
@@ -229,7 +277,7 @@ export function SearchFieldClearButton({
         aria-label="Clear search"
         className={cn('rounded-full', className)}
         data-slot="search-field-clear"
-        disabled={field?.disabled}
+        disabled={field.disabled}
         // Out of the tab order on purpose: keyboard users clear with Escape,
         // and a stop between the input and the next control is friction.
         tabIndex={-1}
@@ -238,7 +286,7 @@ export function SearchFieldClearButton({
         onClick={(event) => {
           onClick?.(event)
           if (!event.defaultPrevented)
-            field?.clear()
+            field.clear(createChangeEventDetails('clear-press', event.nativeEvent))
         }}
       >
         {children ?? <IconX aria-hidden />}
@@ -255,10 +303,9 @@ export function SearchField({
   defaultQueryValue,
   defaultValue,
   disabled = false,
-  onChange,
-  onClear,
   onQueryValueChange,
   onSubmit,
+  onValueChange,
   placeholder,
   queryValue,
   readOnly = false,
@@ -268,27 +315,22 @@ export function SearchField({
   const search = useSearchQuery({
     value,
     defaultValue,
-    onChange,
+    onValueChange,
     queryValue,
     defaultQueryValue,
     onQueryValueChange,
     debounceMs,
   })
 
-  const { resetSearch, setValue } = search
-  const clear = useCallback(() => {
-    resetSearch()
-    onClear?.()
-  }, [onClear, resetSearch])
-
-  const state: SearchFieldRenderProps = { empty: search.value === '', disabled, readOnly }
+  const state: SearchFieldState = { empty: search.value === '', disabled, readOnly }
   // Not memoised: `value` changes on every keystroke anyway, so a stable
-  // identity would buy nothing and only hide the dependency.
+  // identity would buy nothing and only hide the dependency. (The documented
+  // exception to the provider-value-must-memo rule.)
   const context: SearchFieldContextValue = {
     ...state,
     'value': search.value,
-    setValue,
-    clear,
+    'setValue': search.setValue,
+    'clear': search.resetSearch,
     'submit': () => onSubmit?.(search.value),
     'aria-label': ariaLabel,
   }
@@ -299,7 +341,7 @@ export function SearchField({
         <IconSearch aria-hidden />
       </InputGroupAddon>
       <SearchFieldInput placeholder={placeholder} />
-      {!readOnly && <SearchFieldClearButton />}
+      {!readOnly && <SearchFieldClear />}
     </InputGroup>
   )
 
@@ -307,9 +349,9 @@ export function SearchField({
     <SearchFieldContext value={context}>
       <div
         className={cn('group/search-field inline-full', className)}
-        data-disabled={disabled || undefined}
-        data-empty={state.empty || undefined}
-        data-readonly={readOnly || undefined}
+        data-disabled={dataAttr(disabled)}
+        data-empty={dataAttr(state.empty)}
+        data-readonly={dataAttr(readOnly)}
         data-slot="search-field"
         {...props}
       >

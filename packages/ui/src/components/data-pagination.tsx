@@ -1,6 +1,7 @@
 'use client'
 
-import type { Dispatch, ReactElement, ReactNode, SetStateAction } from 'react'
+import type { ReactElement, ReactNode, SetStateAction } from 'react'
+import type { ChangeEventDetails } from '#lib/change-event-details'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import {
   IconChevronLeft,
@@ -8,7 +9,8 @@ import {
   IconChevronsLeft,
   IconChevronsRight,
 } from '@tabler/icons-react'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
+import { createChangeEventDetails } from '#lib/change-event-details'
 import { cn } from '#lib/utils'
 import { Button } from '#primitives/button'
 import {
@@ -40,21 +42,32 @@ export interface DataPaginationState {
   totalPages: number
 }
 
+/**
+ * Why `page`/`limit` changed: `'item-press'` for any control in the bar
+ * (nav button or limit option), `'missing'` when the overshoot clamp walks an
+ * out-of-range page back, `'none'` for programmatic `setPage`/`setLimit`.
+ */
+export type DataPaginationChangeEventReason = 'item-press' | 'missing' | 'none'
+
+export type DataPaginationChangeEventDetails = ChangeEventDetails<DataPaginationChangeEventReason>
+
 /** Options of the state hook — also the state slice of `DataPaginationProps`. */
 export interface DataPaginationStateOptions {
   /** Total row count across all pages. `0` reads as "not loaded yet" — the clamp effect leaves `page` alone. */
   total: number
   page?: number
   defaultPage?: number
-  onPageChange?: (page: number) => void
+  /** `eventDetails.cancel()` rejects the change — including the overshoot clamp. */
+  onPageChange?: (page: number, eventDetails: DataPaginationChangeEventDetails) => void
   limit?: number
   defaultLimit?: number
-  onLimitChange?: (limit: number) => void
+  onLimitChange?: (limit: number, eventDetails: DataPaginationChangeEventDetails) => void
 }
 
 export interface DataPaginationStateResult extends DataPaginationState {
-  setPage: Dispatch<SetStateAction<number>>
-  setLimit: Dispatch<SetStateAction<number>>
+  /** Details default to reason `'none'` (programmatic). */
+  setPage: (page: SetStateAction<number>, eventDetails?: DataPaginationChangeEventDetails) => void
+  setLimit: (limit: SetStateAction<number>, eventDetails?: DataPaginationChangeEventDetails) => void
   canPrevious: boolean
   canNext: boolean
 }
@@ -66,20 +79,50 @@ export interface DataPaginationStateResult extends DataPaginationState {
  * a custom pagination UI can be driven by it headlessly.
  */
 export function useDataPaginationState(options: DataPaginationStateOptions): DataPaginationStateResult {
-  const { total } = options
+  const { total, onPageChange, onLimitChange } = options
 
-  const [page, setPage] = useControllableState({
+  // No `onChange` wiring on the state hooks: the cancel protocol needs the
+  // user callback to run before the state write, so it fires explicitly below.
+  const [page, setPageState] = useControllableState({
     value: options.page,
     defaultValue: options.defaultPage,
-    onChange: options.onPageChange,
     fallback: 1,
   })
-  const [limit, setLimit] = useControllableState({
+  const [limit, setLimitState] = useControllableState({
     value: options.limit,
     defaultValue: options.defaultLimit,
-    onChange: options.onLimitChange,
     fallback: 20,
   })
+
+  // Refs let the updater form resolve against the latest value even in a
+  // same-tick chain of calls, where render-captured state would be stale.
+  const pageRef = useRef(page)
+  pageRef.current = page
+  const limitRef = useRef(limit)
+  limitRef.current = limit
+
+  const setPage = useCallback(
+    (action: SetStateAction<number>, eventDetails: DataPaginationChangeEventDetails = createChangeEventDetails('none')) => {
+      const next = typeof action === 'function' ? action(pageRef.current) : action
+      onPageChange?.(next, eventDetails)
+      if (eventDetails.isCanceled)
+        return
+      setPageState(next)
+      pageRef.current = next
+    },
+    [onPageChange, setPageState],
+  )
+  const setLimit = useCallback(
+    (action: SetStateAction<number>, eventDetails: DataPaginationChangeEventDetails = createChangeEventDetails('none')) => {
+      const next = typeof action === 'function' ? action(limitRef.current) : action
+      onLimitChange?.(next, eventDetails)
+      if (eventDetails.isCanceled)
+        return
+      setLimitState(next)
+      limitRef.current = next
+    },
+    [onLimitChange, setLimitState],
+  )
 
   // Guard against limit=0/NaN (e.g. parsed from an untrusted URL param):
   // unguarded division yields "page 1 / Infinity" and dead NaN buttons.
@@ -92,7 +135,7 @@ export function useDataPaginationState(options: DataPaginationStateOptions): Dat
   // `page` back then would flash a stale page into a URL-synced caller.
   useEffect(() => {
     if (total > 0 && page > totalPages)
-      setPage(totalPages)
+      setPage(totalPages, createChangeEventDetails('missing'))
   }, [total, totalPages, page, setPage])
 
   return {
@@ -108,8 +151,8 @@ export function useDataPaginationState(options: DataPaginationStateOptions): Dat
 }
 
 export interface DataPaginationProps extends DataPaginationStateOptions {
+  /** Options for the limit select. `[]` removes the select entirely — absence over a show/hide switch. */
   limitOptions?: number[]
-  showLimitChanger?: boolean
   /** Start-side summary (e.g. "共 N 条"). Omitted: the slot collapses. */
   summary?: (state: DataPaginationState) => ReactNode
   /**
@@ -136,7 +179,6 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
   const {
     total,
     limitOptions = DEFAULT_LIMIT_OPTIONS,
-    showLimitChanger = true,
     summary,
     rowsPerPageLabel,
     pageIndicator,
@@ -175,16 +217,16 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
           )
         : <div />}
       <div className="flex items-center gap-6">
-        {showLimitChanger && (
+        {limitOptions.length > 0 && (
           <div className="flex items-center gap-2">
             {rowsPerPageLabel !== undefined && (
               <span className="text-sm whitespace-nowrap">{rowsPerPageLabel}</span>
             )}
             <Select
               value={limit}
-              onValueChange={(value) => {
+              onValueChange={(value, details) => {
                 if (value !== null)
-                  setLimit(Number(value))
+                  setLimit(Number(value), createChangeEventDetails('item-press', details.event))
               }}
             >
               <SelectTrigger
@@ -220,7 +262,7 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
               <Button
                 aria-label={firstPageLabel}
                 disabled={!canPrevious}
-                onClick={() => setPage(1)}
+                onClick={event => setPage(1, createChangeEventDetails('item-press', event.nativeEvent))}
                 size="icon"
                 variant="outline"
               >
@@ -231,7 +273,7 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
               <Button
                 aria-label={previousPageLabel}
                 disabled={!canPrevious}
-                onClick={() => setPage(current => current - 1)}
+                onClick={event => setPage(current => current - 1, createChangeEventDetails('item-press', event.nativeEvent))}
                 size="icon"
                 variant="outline"
               >
@@ -242,7 +284,7 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
               <Button
                 aria-label={nextPageLabel}
                 disabled={!canNext}
-                onClick={() => setPage(current => current + 1)}
+                onClick={event => setPage(current => current + 1, createChangeEventDetails('item-press', event.nativeEvent))}
                 size="icon"
                 variant="outline"
               >
@@ -253,7 +295,7 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
               <Button
                 aria-label={lastPageLabel}
                 disabled={!canNext}
-                onClick={() => setPage(totalPages)}
+                onClick={event => setPage(totalPages, createChangeEventDetails('item-press', event.nativeEvent))}
                 size="icon"
                 variant="outline"
               >

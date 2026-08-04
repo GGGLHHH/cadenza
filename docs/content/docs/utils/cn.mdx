@@ -22,12 +22,12 @@ clsx 会**静默丢弃函数**（不报错、类名整体消失），所以普�
 
 ```tsx
 // 封装组件里照常写,函数契约由 cn 保住:
-<TabListPrimitive className={cn(tabsListVariants({ variant }), className)} />
+<TabsListPrimitive className={cn(tabsListVariants({ variant }), className)} />
 
 // 于是调用方可以传状态函数(状态词汇是 Base UI 的,见各组件页的状态表):
-<Tab value="overview" className={({ active }) => active ? 'underline' : 'opacity-60'}>
+<TabsTab value="overview" className={({ active }) => active ? 'underline' : 'opacity-60'}>
   概览
-</Tab>
+</TabsTab>
 ```
 
 纯字符串调用零变化 —— 没有函数参数时返回的还是字符串。

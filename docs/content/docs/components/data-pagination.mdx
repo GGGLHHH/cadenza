@@ -30,7 +30,7 @@ offset 分页条：左侧摘要、右侧「每页条数选择器 + 页码指示 
 ## 自定义文案
 
 `pageIndicator` 换掉默认页码指示；`summary` 里能算出区间；四个导航按钮的
-aria-label 从业务层传译文；`showLimitChanger={false}` 关掉每页条数选择器：
+aria-label 从业务层传译文；`limitOptions={[]}` 去掉每页条数选择器（用缺席表达，不开渲染开关）：
 
 <ComponentPreview name="data-pagination/labels" align="stretch" />
 
@@ -75,7 +75,7 @@ const { page, setPage, canNext } = useDataPaginationState({
 | `page` / `defaultPage` / `onPageChange` | `number` | `1` | 页码（受控 / 非受控） |
 | `limit` / `defaultLimit` / `onLimitChange` | `number` | `20` | 每页条数（受控 / 非受控） |
 | `limitOptions` | `number[]` | `[10, 20, 50, 100]` | 每页条数选项 |
-| `showLimitChanger` | `boolean` | `true` | 是否渲染每页条数选择器 |
+
 | `summary` | `(state) => ReactNode` | — | 左侧摘要；不传则该槽位收起 |
 | `rowsPerPageLabel` | `string` | — | 选择器前的可见标签（不传则不渲染），同时作为选择器的 aria-label；不传时 aria-label 兜底英文 `'Rows per page'`。是 `string` 不是 `ReactNode`——要富文本的内容走组合通道，一个「每页」标签不属于那种 |
 | `pageIndicator` | `(state) => ReactNode` | `page / totalPages` | 页码指示 |

@@ -14,7 +14,7 @@ export default function ControlledDemo(): ReactElement {
         aria-label="搜索作曲家"
         placeholder="搜索作曲家..."
         value={value}
-        onChange={setValue}
+        onValueChange={setValue}
       />
       <div className="flex flex-wrap items-center gap-2">
         <DemoButton onClick={() => setValue('Debussy')}>填入 Debussy</DemoButton>

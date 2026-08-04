@@ -33,7 +33,7 @@ export default function ArchiveDemo(): ReactElement {
       <DataPagination
         limit={5}
         page={page}
-        showLimitChanger={false}
+        limitOptions={[]}
         summary={({ total: totalCount }) => `共 ${totalCount} 条`}
         total={total}
         onPageChange={setPage}

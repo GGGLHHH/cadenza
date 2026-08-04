@@ -20,7 +20,7 @@ description: 原生 table 语义的数据表格 —— 列定义驱动 + 组合�
 
 两个约定：
 
-- `isRowHeader` 标记「代表这一行」的列（读屏播报行时念它），不标时默认第一列。
+- `rowHeader` 标记「代表这一行」的列（读屏播报行时念它），不标时默认第一列。
 - 行的 key 默认取 `item.id`；数据没有 `id` 字段时传 `getRowId`。
 
 ## 表头固定
@@ -38,7 +38,7 @@ description: 原生 table 语义的数据表格 —— 列定义驱动 + 组合�
 
 ## 排序
 
-列上开 `allowsSorting`，表头变为可按压并显示排序指示。组件只维护**排序意图**
+列上开 `sortable`，表头变为可按压并显示排序指示。组件只维护**排序意图**
 （`sortDescriptor` 受控 + `onSortChange`），真正的排序是数据层的事 ——
 本地数据自己 `sort`，服务端数据把 descriptor 转成请求参数：
 
@@ -155,11 +155,11 @@ i18n 只存在于你的业务层。
 
 #### DataTableLoadingOverlay:定制磨砂
 
-在插槽通道里组合它即可定制上面那层磨砂。它是 TabIndicator 式的**标记部件**——
+在插槽通道里组合它即可定制上面那层磨砂。它是 TabsIndicator 式的**标记部件**——
 写在哪里都不渲染（绝对定位的覆盖层没法住在空态区的文档流里），由卡片提升到
 覆盖层的位置渲染；`children` 替换居中的 Spinner（品牌动画、文案都行），
 `className` 调磨砂浓度，`isLoading` 是基座的接线、不在它的 props 里。直接子级或
-Fragment 内有效，包进自定义组件会找不到（与 TabIndicator 同一限制）：
+Fragment 内有效，包进自定义组件会找不到（与 TabsIndicator 同一限制）：
 
 <ComponentPreview name="data-table/loading-custom" align="stretch" />
 
@@ -275,7 +275,7 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 
 | 类型 | 说明 |
 | --- | --- |
-| `DataTableColumn<T>` | 列定义：`{ id, header, cell, isRowHeader?, allowsSorting?, pinned?, width?, minWidth?, maxWidth?, className? }` |
+| `DataTableColumn<T>` | 列定义：`{ id, header, cell, rowHeader?, sortable?, pinned?, width?, minWidth?, maxWidth?, className? }` |
 | `DataTableColumnWidth` | 列宽：px 数字或百分比字符串（如 `'50%'`） |
 | `DataTableProps<T>` | `DataTable` 完整 props，业务层包一层时直接复用 |
 | `DataTableSelectionProps<T>` | 便利层选择的判别联合（单选 `value?: string` / 多选 `value?: string[]`，`onChange` 签名随之切换） |

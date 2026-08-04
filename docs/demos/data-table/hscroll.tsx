@@ -9,7 +9,7 @@ const LABELS = ['DG', 'Decca', 'EMI', 'Sony Classical', 'Philips']
 
 // 7 列都给了数字宽度,合计 990px,超出容器即横向滚动
 const columns: DataTableColumn<Person>[] = [
-  { id: 'name', header: '姓名', cell: person => person.name, isRowHeader: true, width: 140 },
+  { id: 'name', header: '姓名', cell: person => person.name, rowHeader: true, width: 140 },
   { id: 'role', header: '角色', cell: person => person.role, width: 130 },
   { id: 'born', header: '生年', cell: person => person.born, width: 110 },
   { id: 'era', header: '时期', cell: person => ERAS[person.born % ERAS.length], width: 110 },

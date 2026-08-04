@@ -19,7 +19,7 @@ export default function SortDemo(): ReactElement {
   }, [sort])
 
   const columns = useMemo(
-    () => personColumns.map(column => ({ ...column, allowsSorting: true })),
+    () => personColumns.map(column => ({ ...column, sortable: true })),
     [],
   )
 

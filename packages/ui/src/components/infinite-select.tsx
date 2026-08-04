@@ -1,15 +1,17 @@
 'use client'
 
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
+import type { ChangeEventDetails } from '#lib/change-event-details'
 import type { LoadingOverlayProps } from './loading-overlay'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { Combobox } from '@base-ui/react/combobox'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck, IconSearch } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { createContext, use, useEffect, useRef } from 'react'
+import { createContext, use, useEffect, useMemo, useRef } from 'react'
+import { createChangeEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
-import { cn } from '#lib/utils'
+import { cn, dataAttr } from '#lib/utils'
 import { Button } from '#primitives/button'
 import { Separator } from '#primitives/separator'
 import { LoadingOverlay } from './loading-overlay'
@@ -23,7 +25,7 @@ import { Spinner } from './spinner'
  * input to the list with virtual focus (arrow keys navigate while the input
  * keeps DOM focus) and owns selection semantics. Filtering is *off*
  * (`filter={null}`) because it happens on the server — typing drives
- * `onInputChange`, the caller refetches, and the panel renders whatever comes
+ * `onInputValueChange`, the caller refetches, and the panel renders whatever comes
  * back. Rows can be virtualized with TanStack Virtual, and `onLoadMore` fires
  * from an intersection sentinel that trails the loaded rows. The panel renders
  * zero copy — empty/error messages come in through the slot children
@@ -35,6 +37,14 @@ export interface InfiniteSelectOption {
   label: ReactNode
   disabled?: boolean
 }
+
+/**
+ * Why the selection changed. Base UI's Combobox reasons pass through whole
+ * (`item-press`, `clear-press`, `escape-key`, …); `'none'` is programmatic.
+ */
+export type InfiniteSelectChangeEventReason = Combobox.Root.ChangeEventReason | 'none'
+
+export type InfiniteSelectChangeEventDetails = ChangeEventDetails<InfiniteSelectChangeEventReason>
 
 /**
  * Context handed to a custom item renderer. Unlike the DOM-level version this
@@ -84,9 +94,19 @@ interface InfiniteSelectCommonProps<T> {
 
   // The search text. The root hosts Base UI's Combobox, which context-wires any
   // Input / List descendants — that is what lets the parts compose freely as
-  // children.
+  // children. The callback is Base UI's own, details included — `reason`
+  // distinguishes typing from clearing from an item press backfilling.
   'inputValue'?: string
-  'onInputChange'?: (value: string) => void
+  'onInputValueChange'?: (value: string, eventDetails: Combobox.Root.ChangeEventDetails) => void
+
+  /**
+   * Identifies the selection when a form is submitted: with a `name` the panel
+   * renders `<input type="hidden">` per selected id (one input for single
+   * mode). Plain hidden inputs, not Base UI's focusable visually-hidden one —
+   * that machinery exists for native validation and autofill, neither of which
+   * a server-filtered panel participates in.
+   */
+  'name'?: string
 
   'getOption': (item: T) => InfiniteSelectOption
 
@@ -107,7 +127,7 @@ interface InfiniteSelectCommonProps<T> {
 
   'className'?: string
   /**
-   * The composition channel: parts (`InfiniteSelectSearch` /
+   * The composition channel: parts (`InfiniteSelectInputGroup` /
    * `InfiniteSelectList`), state slots (`InfiniteSelectEmpty` / `Error`) and
    * the footer bar, in caller order. The base renders no copy — and no parts —
    * of its own.
@@ -116,11 +136,12 @@ interface InfiniteSelectCommonProps<T> {
 }
 
 /**
- * Props of the search-field part. `value` / `onChange` are not reopened here:
- * the root owns the query and the input claims it from context, so a second
- * channel would only be a way to sever it.
+ * Props of the input-group part (Base UI's word for an input plus its
+ * adornments — `Combobox.InputGroup` is the native sibling). `value` /
+ * `onValueChange` are not reopened here: the root owns the query and the input
+ * claims it from context, so a second channel would only be a way to sever it.
  */
-export interface InfiniteSelectSearchProps extends Omit<ComponentProps<'div'>, 'children'> {
+export interface InfiniteSelectInputGroupProps extends Omit<ComponentProps<'div'>, 'children'> {
   /**
    * Placeholder for the default input, doubling as the field's accessible
    * name. No default copy: the base renders zero visible text of its own.
@@ -161,8 +182,8 @@ export interface InfiniteSelectListProps<T = unknown> {
   'scrollbars'?: ScrollAreaScrollbars
   /** Class for the scroll container around the list. */
   'className'?: string
-  /** Class for the listbox element itself. */
-  'listClassName'?: string
+  /** Class for the listbox element itself. Function form receives Base UI's list state. */
+  'listClassName'?: ComponentProps<typeof Combobox.List>['className']
   /** Class for every row. Function form receives Base UI's item state. */
   'itemClassName'?: ComponentProps<typeof Combobox.Item>['className']
 }
@@ -180,14 +201,16 @@ export type ControllableSelectionProps<TItem = unknown>
      * `ids` is the authoritative selection (every toggled id), while `items`
      * only holds the objects that were actually loaded — a preselected id from
      * an unloaded page has an id but no item. Persist `ids`, not `items`.
+     * `eventDetails.cancel()` rejects the change.
      */
-    onChange?: (items: TItem[], ids: string[]) => void
+    onChange?: (items: TItem[], ids: string[], eventDetails: InfiniteSelectChangeEventDetails) => void
   }
   | {
     selectionMode?: 'single'
-    value?: string
+    /** Controlled selected id. `null` is the controlled empty value — `undefined` means uncontrolled. */
+    value?: string | null
     defaultValue?: string
-    onChange?: (item: TItem | undefined) => void
+    onChange?: (item: TItem | null, eventDetails: InfiniteSelectChangeEventDetails) => void
   }
 
 export type InfiniteSelectProps<T> = InfiniteSelectCommonProps<T> & ControllableSelectionProps<T>
@@ -200,8 +223,8 @@ export interface InfiniteSelectSelectionState<T> {
   selectedIds: string[]
   /** Selected item objects, loaded pages only (cross-page cache). */
   selectedItems: T[]
-  /** Feed Base UI's `onValueChange` with this. */
-  onValueChange: (value: string | string[] | null) => void
+  /** Feed Base UI's `onValueChange` with this. Details default to reason `'none'`. */
+  onValueChange: (value: string | string[] | null, eventDetails?: InfiniteSelectChangeEventDetails) => void
 }
 
 /**
@@ -218,18 +241,17 @@ export function useInfiniteSelectSelection<T>(
   const { items, getOption } = options
   const isMultiple = options.selectionMode === 'multiple'
 
-  // Controlled-ness is key presence, not `!== undefined` — a controlled single
-  // select passes `value={undefined}` for "nothing selected". Normalizing to
-  // arrays BEFORE the hook turns that undefined into a controlled [], which is
-  // what useControllableState's value-presence convention needs.
-  const normalizeIds = (value: string | string[] | undefined): string[] => {
-    if (value === undefined)
+  // Controlled-ness is `value !== undefined`, Base UI's judgment: `undefined`
+  // belongs to "uncontrolled", and a controlled single select clears with
+  // `null` — never with `undefined`, which would read as handing control back.
+  const normalizeIds = (value: string | string[] | null | undefined): string[] => {
+    if (value === undefined || value === null)
       return []
     return Array.isArray(value) ? value : [value]
   }
   const [selectedIds, setSelectedIds] = useControllableState<string[]>({
-    value: 'value' in options ? normalizeIds(options.value) : undefined,
-    defaultValue: 'defaultValue' in options ? normalizeIds(options.defaultValue) : undefined,
+    value: options.value !== undefined ? normalizeIds(options.value) : undefined,
+    defaultValue: options.defaultValue !== undefined ? normalizeIds(options.defaultValue) : undefined,
     fallback: [],
   })
 
@@ -245,31 +267,47 @@ export function useInfiniteSelectSelection<T>(
     }
   }
 
-  const onValueChange = (value: string | string[] | null): void => {
+  const onValueChange = (
+    value: string | string[] | null,
+    eventDetails: InfiniteSelectChangeEventDetails = createChangeEventDetails('none'),
+  ): void => {
     const ids = value === null ? [] : Array.isArray(value) ? value : [value]
-    // Controlled mode makes this a no-op (the hook only mirrors props there).
-    setSelectedIds(ids)
 
+    // The user callback runs before the state write; cancel() skips it. When
+    // the details came from Base UI, the same flag also stops Base UI's own
+    // post-callback handling — one cancel, every layer.
     if (options.selectionMode === 'multiple') {
+      // Staging additions before the callback so the emitted `items` resolve;
+      // pruning waits for the commit.
       for (const item of items) {
         const id = getOption(item).id
         if (ids.includes(id))
           selectedItemsCacheRef.current.set(id, item)
       }
+      const nextItems = ids
+        .map(id => selectedItemsCacheRef.current.get(id))
+        .filter((entry): entry is T => entry !== undefined)
+      options.onChange?.(nextItems, ids, eventDetails)
+      if (eventDetails.isCanceled)
+        return
       // Map 迭代器允许边遍历边删,无需先拷贝
       for (const id of selectedItemsCacheRef.current.keys()) {
         if (!ids.includes(id))
           selectedItemsCacheRef.current.delete(id)
       }
-      const nextItems = ids
-        .map(id => selectedItemsCacheRef.current.get(id))
-        .filter((entry): entry is T => entry !== undefined)
-      options.onChange?.(nextItems, ids)
+      setSelectedIds(ids)
       return
     }
 
     const id = ids[0]
-    options.onChange?.(id === undefined ? undefined : items.find(item => getOption(item).id === id))
+    options.onChange?.(
+      id === undefined ? null : items.find(item => getOption(item).id === id) ?? null,
+      eventDetails,
+    )
+    if (eventDetails.isCanceled)
+      return
+    // Controlled mode makes this a no-op (the hook only mirrors props there).
+    setSelectedIds(ids)
   }
 
   const selectedItems = selectedIds
@@ -305,12 +343,14 @@ export interface InfiniteSelectContextValue<T = unknown> {
 }
 
 const InfiniteSelectContext = createContext<InfiniteSelectContextValue | null>(null)
+if (process.env.NODE_ENV !== 'production')
+  InfiniteSelectContext.displayName = 'InfiniteSelectContext'
 
 /** Read the panel wiring inside custom parts. Throws outside `InfiniteSelect`. */
 export function useInfiniteSelectContext<T = unknown>(): InfiniteSelectContextValue<T> {
   const ctx = use(InfiniteSelectContext)
-  if (!ctx)
-    throw new Error('useInfiniteSelectContext must be used inside InfiniteSelect')
+  if (ctx === null)
+    throw new Error('cadenza-ui: InfiniteSelectContext is missing. InfiniteSelect parts must be placed within <InfiniteSelect>.')
   return ctx as InfiniteSelectContextValue<T>
 }
 
@@ -337,11 +377,13 @@ interface InfiniteSelectState {
 }
 
 const InfiniteSelectStateContext = createContext<InfiniteSelectState | null>(null)
+if (process.env.NODE_ENV !== 'production')
+  InfiniteSelectStateContext.displayName = 'InfiniteSelectStateContext'
 
 function useInfiniteSelectState(): InfiniteSelectState {
   const ctx = use(InfiniteSelectStateContext)
-  if (!ctx)
-    throw new Error('InfiniteSelect state slots must be used inside InfiniteSelect children')
+  if (ctx === null)
+    throw new Error('cadenza-ui: InfiniteSelectStateContext is missing. InfiniteSelect parts must be placed within <InfiniteSelect>.')
   return ctx
 }
 
@@ -357,7 +399,7 @@ export type InfiniteSelectLoadingOverlayProps = Omit<LoadingOverlayProps, 'isLoa
  * Slotted customization for the built-in loading overlay: compose it anywhere
  * in the panel's children and the List part renders your props over the list
  * region — `children` replace the centred spinner, `className` tunes the
- * frost. A marker like TabIndicator: it renders nothing where written (an
+ * frost. A marker like TabsIndicator: it renders nothing where written (an
  * absolute overlay cannot live in the panel's flow), and `isLoading` stays
  * the base's wiring. Direct child or inside a Fragment only — a custom
  * wrapper hides it.
@@ -456,8 +498,9 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     onLoadMore,
     onRetry,
     inputValue,
-    onInputChange,
+    onInputValueChange,
     getOption,
+    name,
     virtualized = false,
     rowHeight = 32,
     'aria-label': ariaLabel,
@@ -476,7 +519,11 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
   const isEmpty = !isLoading && !isError && items.length === 0
   const hasItems = !isError && items.length > 0
 
-  const contextValue: InfiniteSelectContextValue<T> = {
+  // Provider value memoised (the house rule): the wiring context feeds every
+  // part, and an unstable object would re-render them all per keystroke of
+  // unrelated state. The marker-part lookups live inside so `children` is
+  // their honest dependency.
+  const contextValue = useMemo<InfiniteSelectContextValue<T>>(() => ({
     items,
     getOption,
     selectionMode,
@@ -491,7 +538,25 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     'loadingOverlayProps': findComposedPart(children, InfiniteSelectLoadingOverlay),
     'noMoreProps': findComposedPart(children, InfiniteSelectNoMore),
     'loadingMoreProps': findComposedPart(children, InfiniteSelectLoadingMore),
-  }
+  }), [
+    items,
+    getOption,
+    selectionMode,
+    selectedIds,
+    hasItems,
+    hasNextPage,
+    isFetchingNextPage,
+    onLoadMore,
+    virtualized,
+    rowHeight,
+    ariaLabel,
+    children,
+  ])
+
+  const stateContextValue = useMemo<InfiniteSelectState>(
+    () => ({ isLoading, isError, isEmpty, isFetchingNextPage, onRetry }),
+    [isLoading, isError, isEmpty, isFetchingNextPage, onRetry],
+  )
 
   return (
     <div
@@ -502,11 +567,12 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
         `,
         className,
       )}
+      data-empty={dataAttr(isEmpty)}
+      data-error={dataAttr(isError)}
+      data-loading={dataAttr(isLoading)}
       data-slot="infinite-select"
     >
-      <InfiniteSelectStateContext
-        value={{ isLoading, isError, isEmpty, isFetchingNextPage, onRetry }}
-      >
+      <InfiniteSelectStateContext value={stateContextValue}>
         <InfiniteSelectContext value={contextValue as InfiniteSelectContextValue}>
           <Combobox.Root
             // `inline` + a pinned `open`: no popup of its own, the list is just
@@ -514,7 +580,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
             // overlay around the whole thing instead.
             inline
             open
-            // Our filtering is the server's: typing drives onInputChange, the
+            // Our filtering is the server's: typing drives onInputValueChange, the
             // caller refetches, and `items` is already the answer. Leaving Base
             // UI's client filter on would filter the results a second time.
             filter={null}
@@ -523,36 +589,41 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
             multiple={isMultiple}
             value={isMultiple ? selectedIds : (selectedIds[0] ?? null)}
             virtualized={virtualized}
-            onInputValueChange={onInputChange}
+            onInputValueChange={onInputValueChange}
             onValueChange={onValueChange}
           >
             {children}
           </Combobox.Root>
         </InfiniteSelectContext>
       </InfiniteSelectStateContext>
+      {name !== undefined && (isMultiple
+        ? selectedIds.map(id => (
+            <input key={id} name={name} type="hidden" value={id} />
+          ))
+        : <input name={name} type="hidden" value={selectedIds[0] ?? ''} />)}
     </div>
   )
 }
 
-/** The search-field part: Base UI's `Combobox.Input`, wired by the root. */
-export function InfiniteSelectSearch({
+/** The input-group part: Base UI's `Combobox.Input` plus the icon, wired by the root. */
+export function InfiniteSelectInputGroup({
   placeholder,
   autoFocus = false,
   className,
   children,
   ...props
-}: InfiniteSelectSearchProps): ReactElement {
+}: InfiniteSelectInputGroupProps): ReactElement {
   return (
     <div
       className={cn('flex items-center gap-2 border-be border-border px-3', className)}
-      data-slot="infinite-select-search"
+      data-slot="infinite-select-input-group"
       {...props}
     >
       {children ?? (
         <>
           <IconSearch
             className="shrink-0 text-muted-foreground block-4 inline-4"
-            data-slot="infinite-select-search-icon"
+            data-slot="infinite-select-input-group-icon"
           />
           <Combobox.Input
             aria-label={placeholder ?? 'Search'}
@@ -563,7 +634,7 @@ export function InfiniteSelectSearch({
               placeholder:text-muted-foreground
               [&::-webkit-search-cancel-button]:appearance-none
             "
-            data-slot="infinite-select-search-input"
+            data-slot="infinite-select-input"
             placeholder={placeholder}
             type="search"
           />
@@ -669,9 +740,9 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
         key={option.id}
         className={cn(
           `
-            flex cursor-default items-center gap-2 rounded-lg px-2 py-1.5
-            text-sm/5 text-popover-foreground transition-colors outline-none
-            select-none
+            group/option flex cursor-default items-center gap-2 rounded-lg px-2
+            py-1.5 text-sm/5 text-popover-foreground transition-colors
+            outline-none select-none
           `,
           `
             data-highlighted:bg-muted
@@ -696,26 +767,35 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
             })
           : (
               <>
+                {/* State lives on the row's data-selected (Base UI writes it);
+                    the visuals read it through CSS — no JS re-render needed to
+                    restyle, and a custom itemClassName sees the same channel.
+                    The check inherits currentColor, so text-transparent IS the
+                    unchecked state. */}
                 {isMultiple && (
                   <span
                     aria-hidden
                     data-slot="infinite-select-checkbox"
-                    className={cn(
-                      `
-                        flex shrink-0 items-center justify-center rounded-[4px]
-                        border transition-colors block-4 inline-4
-                      `,
-                      isSelected
-                        ? `border-primary bg-primary text-primary-foreground`
-                        : `border-input bg-background text-transparent`,
-                    )}
+                    className="
+                      flex shrink-0 items-center justify-center rounded-[4px]
+                      border border-input bg-background text-transparent
+                      transition-colors block-4 inline-4
+                      group-data-selected/option:border-primary
+                      group-data-selected/option:bg-primary
+                      group-data-selected/option:text-primary-foreground
+                    "
                   >
-                    {isSelected && <IconCheck className="block-3 inline-3" />}
+                    <IconCheck className="block-3 inline-3" />
                   </span>
                 )}
                 <span className="flex-1 truncate min-inline-0">{option.label}</span>
-                {!isMultiple && isSelected && (
-                  <IconCheck className="shrink-0 text-primary block-4 inline-4" />
+                {!isMultiple && (
+                  <IconCheck
+                    className="
+                      hidden shrink-0 text-primary block-4 inline-4
+                      group-data-selected/option:block
+                    "
+                  />
                 )}
               </>
             )}
@@ -849,14 +929,23 @@ export interface InfiniteSelectActions<T = unknown> {
   selectedItems: T[]
   /** Authoritative selected ids. */
   selectedIds: string[]
-  /** Clear the selection. */
-  clear: () => void
+  /** Clear the selection. Details default to reason `'none'`. */
+  clear: (eventDetails?: InfiniteSelectChangeEventDetails) => void
   /** Close the popover host, if there is one. */
-  close: () => void
+  close: (eventDetails?: InfiniteSelectChangeEventDetails) => void
 }
 
 const InfiniteSelectActionsContext = createContext<InfiniteSelectActions | null>(null)
+if (process.env.NODE_ENV !== 'production')
+  InfiniteSelectActionsContext.displayName = 'InfiniteSelectActionsContext'
 
+/**
+ * Wiring between `InfiniteCombobox` and the footer parts. It lives here only
+ * because hosting it up there would make an import cycle. Not public API:
+ * compose the exported footer parts instead.
+ *
+ * @internal
+ */
 export function InfiniteSelectActionsProvider<T>({ value, children }: {
   value: InfiniteSelectActions<T>
   children: ReactNode
@@ -870,8 +959,8 @@ export function InfiniteSelectActionsProvider<T>({ value, children }: {
 
 export function useInfiniteSelectActions<T = unknown>(): InfiniteSelectActions<T> {
   const ctx = use(InfiniteSelectActionsContext)
-  if (!ctx)
-    throw new Error('Footer actions must be used inside an InfiniteCombobox')
+  if (ctx === null)
+    throw new Error('cadenza-ui: InfiniteSelectActionsContext is missing. Footer action parts must be placed within <InfiniteCombobox>.')
   return ctx as InfiniteSelectActions<T>
 }
 
@@ -898,16 +987,20 @@ export function InfiniteSelectFooterSeparator({ className, ...props }: Component
   )
 }
 
-/** Clears the selection and closes the popover. Label via children. */
-export function InfiniteSelectClearButton({ className, onClick, ...props }: ComponentProps<typeof Button>): ReactElement {
+/**
+ * Clears the selection and closes the popover. Label via children. `Clear` is
+ * the vocabulary word for this role (`Combobox.Clear`), never `ClearButton` —
+ * named action parts carry the role, not the element.
+ */
+export function InfiniteSelectClear({ className, onClick, ...props }: ComponentProps<typeof Button>): ReactElement {
   const { clear, close } = useInfiniteSelectActions()
   return (
     <Button
       className={cn('flex-1 rounded-none rounded-es-lg', className)}
       data-slot="infinite-select-clear"
       onClick={(event) => {
-        clear()
-        close()
+        clear(createChangeEventDetails('clear-press', event.nativeEvent))
+        close(createChangeEventDetails('close-press', event.nativeEvent))
         onClick?.(event)
       }}
       size="sm"
@@ -918,15 +1011,19 @@ export function InfiniteSelectClearButton({ className, onClick, ...props }: Comp
   )
 }
 
-/** Closes the popover (which commits the draft under commitOnClose). */
-export function InfiniteSelectConfirmButton({ className, onClick, ...props }: ComponentProps<typeof Button>): ReactElement {
+/**
+ * Closes the popover, which commits the draft under `commitOnClose` — "close
+ * and submit" is exactly the vocabulary's `Close` (`Dialog.Close`), so no
+ * `Confirm` coinage.
+ */
+export function InfiniteSelectClose({ className, onClick, ...props }: ComponentProps<typeof Button>): ReactElement {
   const { close } = useInfiniteSelectActions()
   return (
     <Button
       className={cn('flex-1 rounded-none rounded-ee-lg', className)}
-      data-slot="infinite-select-confirm"
+      data-slot="infinite-select-close"
       onClick={(event) => {
-        close()
+        close(createChangeEventDetails('close-press', event.nativeEvent))
         onClick?.(event)
       }}
       size="sm"

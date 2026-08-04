@@ -6,7 +6,7 @@ import { PEOPLE } from '../lib/people'
 import { personColumns } from './columns'
 
 export default function SingleSelectionDemo(): ReactElement {
-  const [picked, setPicked] = useState<Person | undefined>(undefined)
+  const [picked, setPicked] = useState<Person | null>(null)
 
   return (
     <div className="flex flex-col gap-2">
@@ -17,7 +17,7 @@ export default function SingleSelectionDemo(): ReactElement {
         onChange={setPicked}
         selectionColumn
         selectionMode="single"
-        value={picked?.id}
+        value={picked?.id ?? null}
       />
       <p className="text-sm text-muted-foreground">
         {picked ? `当前选中:${picked.name}` : '未选择'}

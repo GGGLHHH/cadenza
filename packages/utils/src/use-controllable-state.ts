@@ -1,8 +1,9 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { useControllableValue } from 'ahooks'
+import { useEffect, useRef } from 'react'
 
 export interface ControllableStateOptions<T> {
-  /** The controlled value. Present (non-undefined) means controlled: state mirrors it. */
+  /** The controlled value. Non-undefined at first render means controlled for the component's lifetime. */
   value?: T
   /** Initial value for the uncontrolled case. */
   defaultValue?: T
@@ -11,14 +12,20 @@ export interface ControllableStateOptions<T> {
 }
 
 /**
- * `useControllableValue` reshaped to the `useState` contract.
+ * `useControllableValue` reshaped to the `useState` contract, with Base UI's
+ * controlled-ness semantics (`@base-ui/utils/useControlled`):
  *
  * - Returns `[state, setState]`; `setState` is a `Dispatch<SetStateAction<T>>` —
  *   it takes a value or an `(prev) => next` updater, and its identity is stable
  *   across renders, so it is safe in dependency arrays.
- * - A present `value` means controlled (state follows the prop, `setState` only
- *   fires `onChange`); otherwise the hook owns the state. This matches React's
- *   controlled/uncontrolled input convention.
+ * - Controlled-ness is decided at FIRST render by `value !== undefined` and
+ *   never re-judged: `undefined` belongs to "uncontrolled" — a controlled
+ *   empty value is `null`, not `undefined`. Switching direction mid-life
+ *   warns in dev and is ignored at runtime (a locked-controlled component
+ *   whose `value` later turns `undefined` renders `undefined`, it does not
+ *   fall back to internal state).
+ * - Changing `defaultValue` after mount while uncontrolled also warns — it
+ *   never takes effect, matching React's native-input behaviour.
  * - `fallback` seeds the uncontrolled-without-`defaultValue` case so the return
  *   type narrows to `T` instead of `T | undefined`.
  *
@@ -38,11 +45,34 @@ export function useControllableState<T>({
   onChange,
   fallback,
 }: ControllableStateOptions<T> & { fallback?: T }): [T, Dispatch<SetStateAction<T>>] {
-  // Attach keys only when set: ahooks decides controlled-ness by
-  // hasOwnProperty('value'), so stuffing undefined in would read as "controlled,
-  // value undefined" and pin the state to undefined forever.
+  // Locked at first render, never re-judged (Base UI useControlled semantics).
+  const isControlled = useRef(value !== undefined).current
+
+  const initialDefaultRef = useRef(defaultValue)
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      if (isControlled !== (value !== undefined)) {
+        console.error(
+          `cadenza-ui: a component is changing from ${isControlled ? 'controlled' : 'uncontrolled'} to ${isControlled ? 'uncontrolled' : 'controlled'}. `
+          + 'Controlled-ness is decided at first render by `value !== undefined` and cannot change; '
+          + 'use `null` (not `undefined`) as the controlled empty value.',
+        )
+      }
+      if (!isControlled && initialDefaultRef.current !== defaultValue) {
+        console.error(
+          'cadenza-ui: a component is changing the defaultValue of an uncontrolled state after mount. '
+          + 'It never takes effect — switch to a controlled `value` instead.',
+        )
+      }
+    }
+  }, [isControlled, value, defaultValue])
+
+  // ahooks decides controlled-ness by hasOwnProperty('value') per render; feed
+  // it the locked verdict instead — a locked-controlled component keeps its
+  // `value` key even when the prop momentarily turns undefined, and a
+  // locked-uncontrolled one never gains it.
   const props: ControllableStateOptions<T> = {}
-  if (value !== undefined)
+  if (isControlled)
     props.value = value
   if (defaultValue !== undefined)
     props.defaultValue = defaultValue

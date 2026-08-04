@@ -45,7 +45,7 @@ const people: Person[] = [
 ]
 
 const columns: DataTableColumn<Person>[] = [
-  { id: 'name', header: 'Name', cell: person => person.name, isRowHeader: true },
+  { id: 'name', header: 'Name', cell: person => person.name, rowHeader: true },
   { id: 'role', header: 'Role', cell: person => person.role },
 ]
 
@@ -109,7 +109,7 @@ describe('dataTable rendering', () => {
 
   it('hands the row index to cell renderers', () => {
     const indexColumns: DataTableColumn<Person>[] = [
-      { id: 'rank', header: '#', cell: (_person, index) => `#${index}`, isRowHeader: true },
+      { id: 'rank', header: '#', cell: (_person, index) => `#${index}`, rowHeader: true },
     ]
     render(<DataTable aria-label="People" columns={indexColumns} items={people} />)
     expect(screen.getByText('#0')).not.toBeNull()
@@ -139,7 +139,7 @@ describe('dataTable state slots', () => {
     expect(card?.className).toContain('min-block-32')
     expect(
       card?.querySelector('[data-slot="loading-overlay"]')?.getAttribute('data-loading'),
-    ).toBe('true')
+    ).toBe('')
   })
 
   it('keeps loaded rows under a frosted overlay on refresh — never the loading slot', () => {
@@ -152,7 +152,7 @@ describe('dataTable state slots', () => {
     )
     expect(screen.getByText('Bach')).not.toBeNull()
     const overlay = document.querySelector('[data-slot="loading-overlay"]')
-    expect(overlay?.getAttribute('data-loading')).toBe('true')
+    expect(overlay?.getAttribute('data-loading')).toBe('')
   })
 
   it('lifts a composed LoadingOverlay part onto the card, keeping the z order', () => {
@@ -198,7 +198,7 @@ describe('dataTable interactions', () => {
   it('fires onSortChange when a sortable header is pressed', async () => {
     const onSortChange = vi.fn()
     const sortable: DataTableColumn<Person>[] = [
-      { ...columns[0], allowsSorting: true },
+      { ...columns[0], sortable: true },
       columns[1],
     ]
     render(
@@ -212,7 +212,10 @@ describe('dataTable interactions', () => {
     // The sort affordance is a real button inside the header cell — reachable
     // by Tab and announceable, with aria-sort on the cell saying which way.
     await userEvent.click(screen.getByRole('button', { name: 'Name' }))
-    expect(onSortChange).toHaveBeenCalledWith({ column: 'name', direction: 'ascending' })
+    expect(onSortChange).toHaveBeenCalledWith(
+      { column: 'name', direction: 'ascending' },
+      expect.objectContaining({ reason: 'sort-press' }),
+    )
     expect(screen.getByRole('columnheader', { name: 'Name' }).getAttribute('aria-sort')).toBe('none')
   })
 
@@ -246,7 +249,7 @@ describe('dataTable interactions', () => {
 
   it('pinned columns: sticky offsets accumulate from each edge', () => {
     const pinnedColumns: DataTableColumn<Person>[] = [
-      { id: 'a', header: 'A', cell: person => person.name, isRowHeader: true, width: 100, pinned: 'start' },
+      { id: 'a', header: 'A', cell: person => person.name, rowHeader: true, width: 100, pinned: 'start' },
       { id: 'b', header: 'B', cell: person => person.role, width: 120, pinned: 'start' },
       { id: 'c', header: 'C', cell: person => person.id },
       { id: 'd', header: 'D', cell: person => person.id, width: 90, pinned: 'end' },
@@ -386,7 +389,11 @@ describe('dataTable interactions', () => {
       />,
     )
     await userEvent.click(screen.getAllByRole('checkbox')[1])
-    expect(onChange).toHaveBeenCalledWith([people[0]], ['p1'])
+    expect(onChange).toHaveBeenCalledWith(
+      [people[0]],
+      ['p1'],
+      expect.objectContaining({ reason: 'item-press' }),
+    )
   })
 
   it('cross-page archive: select-all unions loaded rows, keeps unloaded ids', async () => {
@@ -462,7 +469,9 @@ describe('dataTable interactions', () => {
     expect(latest.items).toEqual([pageOne[0], pageTwo[0]])
   })
 
-  it('single mode value/onChange: reports the item, then undefined on toggle-off', async () => {
+  it('single mode value/onChange: reports the item, then null on toggle-off', async () => {
+    // `null`, not `undefined`: undefined belongs to "uncontrolled", so the
+    // emitted empty value is null — same convention as Base UI's Select.
     const onChange = vi.fn()
     render(
       <DataTable
@@ -475,9 +484,9 @@ describe('dataTable interactions', () => {
       />,
     )
     await userEvent.click(screen.getAllByRole('checkbox')[0])
-    expect(onChange).toHaveBeenCalledWith(people[0])
+    expect(onChange).toHaveBeenCalledWith(people[0], expect.objectContaining({ reason: 'item-press' }))
     await userEvent.click(screen.getAllByRole('checkbox')[0])
-    expect(onChange).toHaveBeenLastCalledWith(undefined)
+    expect(onChange).toHaveBeenLastCalledWith(null, expect.anything())
   })
 
   it('renders the loading-more indicator at the tail while fetching the next page', () => {

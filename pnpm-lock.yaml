@@ -403,6 +403,9 @@ importers:
         specifier: catalog:ui
         version: 3.9.7(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     devDependencies:
+      '@types/node':
+        specifier: catalog:types
+        version: 26.1.2
       react:
         specifier: catalog:react
         version: 19.2.8

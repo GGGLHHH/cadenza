@@ -9,7 +9,7 @@ describe('dataPagination', () => {
     render(<DataPagination onPageChange={onPageChange} total={100} />)
     expect(screen.getByText('1 / 5')).not.toBeNull()
     await userEvent.click(screen.getByRole('button', { name: 'Next page' }))
-    expect(onPageChange).toHaveBeenCalledWith(2)
+    expect(onPageChange).toHaveBeenCalledWith(2, expect.objectContaining({ reason: 'item-press' }))
     expect(screen.getByText('2 / 5')).not.toBeNull()
   })
 
@@ -26,7 +26,7 @@ describe('dataPagination', () => {
     const onPageChange = vi.fn()
     render(<DataPagination onPageChange={onPageChange} page={3} total={100} />)
     await userEvent.click(screen.getByRole('button', { name: 'Next page' }))
-    expect(onPageChange).toHaveBeenCalledWith(4)
+    expect(onPageChange).toHaveBeenCalledWith(4, expect.objectContaining({ reason: 'item-press' }))
     expect(screen.getByText('3 / 5')).not.toBeNull()
   })
 
@@ -39,7 +39,9 @@ describe('dataPagination', () => {
     rerender(<DataPagination defaultPage={5} onPageChange={onPageChange} total={0} />)
     expect(onPageChange).not.toHaveBeenCalled()
     rerender(<DataPagination defaultPage={5} onPageChange={onPageChange} total={40} />)
-    expect(onPageChange).toHaveBeenCalledWith(2)
+    // The clamp is not a press: the page vanished, same semantics as Base UI's
+    // Tabs falling back when the selected tab is gone — reason 'missing'.
+    expect(onPageChange).toHaveBeenCalledWith(2, expect.objectContaining({ reason: 'missing' }))
   })
 
   it('guards against limit=0 instead of dividing into Infinity', () => {
@@ -66,6 +68,6 @@ describe('dataPagination', () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole('combobox', { name: /Rows per page/ }))
     await user.click(await screen.findByRole('option', { name: '50' }))
-    expect(onLimitChange).toHaveBeenCalledWith(50)
+    expect(onLimitChange).toHaveBeenCalledWith(50, expect.objectContaining({ reason: 'item-press' }))
   })
 })

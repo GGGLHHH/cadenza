@@ -12,7 +12,7 @@ export default function LabelsDemo(): ReactElement {
       nextPageLabel="下一页"
       pageIndicator={({ page, totalPages }) => `第 ${page} 页,共 ${totalPages} 页`}
       previousPageLabel="上一页"
-      showLimitChanger={false}
+      limitOptions={[]}
       summary={({ page, limit, total }) => {
         const start = (page - 1) * limit + 1
         const end = Math.min(page * limit, total)

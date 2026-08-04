@@ -6,7 +6,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '#lib/utils'
 import {
   TabsContent,
-  TabsList,
+  TabsList as TabsListPrimitive,
   tabsListVariants,
   Tabs as TabsPrimitive,
   TabsTrigger,
@@ -16,33 +16,34 @@ import {
  * The published Tabs family.
  *
  * The seam renames the vendored parts: shadcn ships Radix-flavoured aliases
- * (`TabsList` / `TabsTrigger` / `TabsContent`) over what are really Base UI
- * components, and our public surface follows the parts they actually are —
- * `Tabs` / `TabList` / `Tab` / `TabPanel`. The props are Base UI's, passed
- * straight through: `value` / `defaultValue` / `onValueChange` on the root,
- * `orientation`, `activateOnFocus` on the list, `value` pairing a `Tab` with its
- * `TabPanel`.
+ * (`TabsTrigger` / `TabsContent`) over what are really Base UI components, and
+ * our public surface follows Base UI's own flat naming, `<Family><Part>` —
+ * `Tabs` / `TabsList` / `TabsTab` / `TabsPanel` (Base UI's flat exports are
+ * `TabsTab`, not `Tab`: the family prefix is not ours to drop). The props are
+ * Base UI's, passed straight through: `value` / `defaultValue` /
+ * `onValueChange` on the root, `orientation`, `activateOnFocus` on the list,
+ * `value` pairing a `TabsTab` with its `TabsPanel`.
  *
  * Composition is the whole API: the root takes no `items` and no config object,
- * `Tab` and `TabPanel` pair up by `value`, and Base UI owns roving focus,
+ * `TabsTab` and `TabsPanel` pair up by `value`, and Base UI owns roving focus,
  * arrow-key navigation and `aria-controls` wiring. A tab set computed from data
  * is an ordinary `.map()`.
  */
 export type TabsProps = ComponentProps<typeof TabsPrimitive>
-export type TabListProps = ComponentProps<typeof TabsList> & VariantProps<typeof tabsListVariants>
-export type TabProps = ComponentProps<typeof TabsTrigger>
-export type TabPanelProps = ComponentProps<typeof TabsContent>
+export type TabsListProps = ComponentProps<typeof TabsListPrimitive> & VariantProps<typeof tabsListVariants>
+export type TabsTabProps = ComponentProps<typeof TabsTrigger>
+export type TabsPanelProps = ComponentProps<typeof TabsContent>
 
 /**
- * The tab strip. Adds nothing but the positioning context `TabIndicator` needs
+ * The tab strip. Adds nothing but the positioning context `TabsIndicator` needs
  * — the vendored list already carries `group/tabs-list` and mirrors its variant
  * as `data-variant`, which is what the indicator styles itself off.
  */
-export function TabList({ className, ...props }: TabListProps): ReactElement {
-  return <TabsList className={cn('relative', className)} {...props} />
+export function TabsList({ className, ...props }: TabsListProps): ReactElement {
+  return <TabsListPrimitive className={cn('relative', className)} {...props} />
 }
 
-export interface TabIndicatorProps {
+export interface TabsIndicatorProps {
   className?: string
 }
 
@@ -86,7 +87,7 @@ const TAB_SELECTOR = '[data-slot="tabs-trigger"]'
  * changing the selection, and an indicator pinned to the active tab would show
  * nothing at all while you navigate.
  *
- * Write it inside `TabList`, in any position. The tabs' own selected background
+ * Write it inside `TabsList`, in any position. The tabs' own selected background
  * is suppressed as soon as it is present (a `:has()` rule in styles.css).
  *
  * Everything it needs it reads off the DOM — `[data-active]`, `:focus-visible`,
@@ -94,7 +95,7 @@ const TAB_SELECTOR = '[data-slot="tabs-trigger"]'
  * siblings in the same element, so measuring them is a lookup, and this stays
  * one file with no wiring to keep in sync.
  */
-export function TabIndicator({ className }: TabIndicatorProps): ReactElement {
+export function TabsIndicator({ className }: TabsIndicatorProps): ReactElement {
   const ref = useRef<HTMLSpanElement>(null)
   const [box, setBox] = useState<{ x: number, y: number, width: number, height: number } | null>(null)
   const [hasPlaced, setHasPlaced] = useState(false)
@@ -207,7 +208,7 @@ export function TabIndicator({ className }: TabIndicatorProps): ReactElement {
   return (
     <span
       aria-hidden
-      data-slot="tab-indicator"
+      data-slot="tabs-indicator"
       ref={ref}
       style={style}
       className={cn(
@@ -225,9 +226,9 @@ export function TabIndicator({ className }: TabIndicatorProps): ReactElement {
 
 export const Tabs = TabsPrimitive
 
-/** Base UI's `Tab`, unchanged: `value` pairs it with a `TabPanel`, plus `disabled`. */
-export const Tab = TabsTrigger
+/** Base UI's `Tabs.Tab`, unchanged: `value` pairs it with a `TabsPanel`, plus `disabled`. */
+export const TabsTab = TabsTrigger
 
-export const TabPanel = TabsContent
+export const TabsPanel = TabsContent
 
-export { tabsListVariants as tabListVariants }
+export { tabsListVariants }

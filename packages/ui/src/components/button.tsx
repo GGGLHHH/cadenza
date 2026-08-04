@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
-import { cn } from '#lib/utils'
+import { cn, dataAttr } from '#lib/utils'
 import { Button as ButtonPrimitive } from '#primitives/button'
 import { LoadingOverlay } from './loading-overlay'
 import { Spinner } from './spinner'
@@ -21,8 +21,6 @@ export type ButtonProps = Omit<ComponentProps<typeof ButtonPrimitive>, 'classNam
    * responding, and its label is veiled by a spinner.
    */
   pending?: boolean
-  /** Alias of `pending` — either being true marks the action as in flight. */
-  loading?: boolean
   /**
    * The vendored button funnels this through `cva`, which drops a function
    * instead of resolving it. Narrowed to a string here so the type does not
@@ -42,9 +40,9 @@ export type ButtonProps = Omit<ComponentProps<typeof ButtonPrimitive>, 'classNam
  * operation should not flash. The wait cursor comes from styles.css, where
  * `data-pending` outranks the disabled rule.
  *
- * The overlay mounts only while `pending`/`loading` is *passed* (even as false —
- * that is what keeps the exit fade alive); buttons that never use the feature
- * render bare children.
+ * The overlay mounts only while `pending` is *passed* (even as false — that is
+ * what keeps the exit fade alive); buttons that never use the feature render
+ * bare children.
  *
  * The three things a pending button must do, none of which Base UI has a prop
  * for — React Aria's `isPending` bundled them, so the seam reassembles it:
@@ -65,29 +63,27 @@ export function Button({
   children,
   className,
   disabled,
-  loading,
   pending,
   type,
   ...props
 }: ButtonProps): ReactElement {
-  const isPending = pending ?? loading
   return (
     <ButtonPrimitive
       // overflow-hidden shapes the flat scrim to the button's rounded padding
       // box — the same clip that shapes the background, so they coincide to
       // the pixel. Focus ring and outline are box-shadow/outline, which
       // clipping never touches.
-      className={cn(isPending !== undefined && 'relative overflow-hidden', className)}
-      disabled={disabled || isPending}
-      focusableWhenDisabled={isPending === true && disabled !== true}
-      type={type === 'submit' && isPending === true ? 'button' : type}
+      className={cn(pending !== undefined && 'relative overflow-hidden', className)}
+      disabled={disabled || pending}
+      focusableWhenDisabled={pending === true && disabled !== true}
+      type={type === 'submit' && pending === true ? 'button' : type}
       {...props}
       // Derived from `pending`, so after the spread: a caller cannot half-set
       // the state by passing one of these on its own.
-      aria-busy={isPending === true || undefined}
-      data-pending={isPending === true || undefined}
+      aria-busy={pending === true || undefined}
+      data-pending={dataAttr(pending)}
     >
-      {isPending === undefined
+      {pending === undefined
         ? children
         : (
             <>
@@ -112,7 +108,7 @@ export function Button({
               {/* rounded-none + backdrop-blur-none: the flat scrim is shaped
                   entirely by the host's overflow clip — the same geometry
                   that shapes the background, so they coincide to the pixel. */}
-              <LoadingOverlay className="rounded-none backdrop-blur-none" isLoading={isPending}>
+              <LoadingOverlay className="rounded-none backdrop-blur-none" isLoading={pending}>
                 {/* text-foreground, not currentColor: inside the button the
                     inherited colour is the label's own, which camouflages the
                     spinner against the veiled label — foreground pairs with

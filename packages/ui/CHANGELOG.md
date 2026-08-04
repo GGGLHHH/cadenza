@@ -24,12 +24,57 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 | `id`（集合条目的 key） | `value` |
 | 状态 render props `{ isSelected }` | `{ selected }` |
 
-两个**故意没改**的例外，都在 `DataTableColumn` 上：`isRowHeader` 和 `allowsSorting`。
-它们是列描述符的字段，名字如实描述行为，改名换不来正确性——只换来一致性。
-上面那张表只管控件的 props。
-
 `Key` / `Selection` / `SortDescriptor` 现在是本库自己的类型（结构不变），
 不再从 `react-aria-components` 再导出。
+
+### 全面对齐 Base UI 习惯（第二批，同版发布）
+
+对 `@base-ui/react@1.7.0` 源码逐条实证调查后，行为、命名、context 习惯全面对齐
+（规范固化在仓库 skill `base-ui-conventions`）：
+
+**协议**
+
+- **change 回调统一 `(value, eventDetails)`**：第二参永远存在，形状与 Base UI 同构
+  （`reason` / `event` / `cancel()` / `allowPropagation()`）。`cancel()` 是真协议——
+  内部状态写入前检查，取消即跳过。reason 复用 Base UI 词表（`input-change` /
+  `clear-press` / `escape-key` / `item-press`…），表格自造 `sort-press` /
+  `select-all-press` 两词。通知型不带 cancel（`onSortChange` 是 generic details——
+  排序全受控，没有可取消的内部状态）。`createChangeEventDetails` /
+  `ChangeEventDetails` 从包根导出
+- **受控空值改用 `null`**：`undefined` 专属「非受控」，受控性首渲染锁定
+  （切换在 DEV 下 `console.error`）。`InfiniteSelect` / `InfiniteCombobox` /
+  `DataTable` 单选清空从 `value={undefined}` 改为 `value={null}`，
+  单选 `onChange` 的空参数从 `undefined` 改为 `null`
+- **data-\* 布尔一律空串**（`data-pending=""`，Base UI 值形），不再写 `"true"`。
+  自建组件根新增 `data-loading` / `data-empty` / `data-error`（DataTable、InfiniteSelect）
+- **表单序列化**：`InfiniteSelect` / `InfiniteCombobox` 新增 `name`——有 name 才渲染
+  隐藏 input（多选每值一个；combobox 渲染在触发器旁、弹层外，草稿不序列化）
+- **context 缺失统一抛** `cadenza-ui: XxxContext is missing. …`；
+  `SearchFieldInput` 等部件在 provider 外从「静默死件」改为抛错
+
+**改名（第二批）**
+
+| 0.3.0-pre | 0.3.0 |
+| --- | --- |
+| `SearchField.onChange` / `onClear` | `onValueChange`（清除并入 `reason: 'clear-press' \| 'escape-key'`） |
+| `SearchFieldClearButton` | `SearchFieldClear` |
+| `SearchFieldRenderProps` | `SearchFieldState` |
+| `InfiniteSelect.onInputChange` | `onInputValueChange`（透传 Base UI details） |
+| `InfiniteSelectSearch` | `InfiniteSelectInputGroup`（词表词：icon+input 的输入组） |
+| `InfiniteSelectClearButton` / `ConfirmButton` | `InfiniteSelectClear` / `InfiniteSelectClose`（具名动作不带 Button 后缀；「关闭并提交」= Close） |
+| `InfiniteCombobox.lockScroll` | `modal` |
+| `Tab` / `TabList` / `TabPanel` / `TabIndicator` | `TabsTab` / `TabsList` / `TabsPanel` / `TabsIndicator`（Base UI 平铺名 `<Family><Part>`；`tabListVariants` → `tabsListVariants`） |
+| `DataTableColumn.isRowHeader` / `allowsSorting` | `rowHeader` / `sortable`（0.2 里最后两个 React Aria 词形） |
+| `DataPagination.showLimitChanger` | 移除——`limitOptions={[]}` 用缺席表达（全库无 `show*` 布尔） |
+| `Button.loading` | 移除，只留 `pending`（单词单义，无别名对） |
+
+**其他**
+
+- `SelectProps` 改为泛型别名 `SelectProps<Value, Multiple>`——之前经
+  `ComponentProps` 实例化，`onValueChange` 的值类型退化
+- 保留不动（有意）：react-query 适配面的 `isLoading` / `isFetchingNextPage` /
+  `hasNextPage` / `isError`（换取 `{...list}` 整体 spread，成文豁免）；
+  `SelectLabel` 的词义冲突（shadcn 继承，注释已澄清）
 
 ### Button
 

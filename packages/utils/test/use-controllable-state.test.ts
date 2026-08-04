@@ -40,3 +40,30 @@ it('setState identity is stable across renders', () => {
   rerender()
   expect(result.current[1]).toBe(first)
 })
+
+it('controlled-ness locks at first render: turning value undefined warns and does not fall back to internal state', () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const initialProps: { value?: string } = { value: 'a' }
+  const { result, rerender } = renderHook(
+    ({ value }: { value?: string }) => useControllableState({ value, fallback: 'x' }),
+    { initialProps },
+  )
+  act(() => result.current[1]('internal'))
+  rerender({ value: undefined })
+  // Still controlled: renders the (undefined) prop, not the internal write.
+  expect(result.current[0]).toBeUndefined()
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('controlled'))
+  error.mockRestore()
+})
+
+it('uncontrolled: changing defaultValue after mount warns and never takes effect', () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const { result, rerender } = renderHook(
+    ({ defaultValue }) => useControllableState({ defaultValue, fallback: 0 }),
+    { initialProps: { defaultValue: 1 } },
+  )
+  rerender({ defaultValue: 2 })
+  expect(result.current[0]).toBe(1)
+  expect(error).toHaveBeenCalledWith(expect.stringContaining('defaultValue'))
+  error.mockRestore()
+})

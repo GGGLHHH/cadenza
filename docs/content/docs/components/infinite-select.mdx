@@ -7,7 +7,7 @@ description: 可搜索、无限滚动的选择器与 InfiniteCombobox 弹层便�
 它以 `inline` 模式渲染（不用自己的弹层），用虚拟焦点把搜索框和列表接起来
 （输入框保持 DOM 焦点，方向键在列表里移动），并提供选择语义。
 **客户端过滤是关掉的**（`filter={null}`）—— 过滤在服务端：打字驱动
-`onInputChange`，调用方重新取数，面板渲染回来的结果。大数据集可用 `virtualized`
+`onInputValueChange`，调用方重新取数，面板渲染回来的结果。大数据集可用 `virtualized`
 开启行虚拟化，见下文。
 
 分层：底下是 **hooks 层**（状态与行为），中间是
@@ -110,11 +110,11 @@ TanStack Virtual：**任何时刻只有视口内可见的那一小段行存在�
 
 #### InfiniteSelectLoadingOverlay:定制磨砂
 
-在组合通道里放它即可定制上面那层磨砂。它是 TabIndicator 式的**标记部件**——
+在组合通道里放它即可定制上面那层磨砂。它是 TabsIndicator 式的**标记部件**——
 写在哪里都不渲染（绝对定位的覆盖层没法住在面板的文档流里），由 List 部件
 提升到列表壳的位置渲染；`children` 替换居中的 Spinner，`className` 调磨砂浓度，
 `isLoading` 是基座的接线、不在它的 props 里。直接子级或 Fragment 内有效，
-包进自定义组件会找不到（与 TabIndicator 同一限制）。用 `InfiniteCombobox` 时
+包进自定义组件会找不到（与 TabsIndicator 同一限制）。用 `InfiniteCombobox` 时
 写在触发器后面即可：
 
 <ComponentPreview name="infinite-select/loading-custom" />
@@ -130,8 +130,8 @@ TanStack Virtual：**任何时刻只有视口内可见的那一小段行存在�
 
 ### Footer 一族:清空 / 分隔 / 确定 / 自定义部件
 
-`InfiniteSelectFooter` 是底部动作条；`InfiniteSelectClearButton` /
-`InfiniteSelectConfirmButton` 通过 context 拿到 `clear` / `close`，不需要你
+`InfiniteSelectFooter` 是底部动作条；`InfiniteSelectClear` /
+`InfiniteSelectClose` 通过 context 拿到 `clear` / `close`，不需要你
 穿线。注意**清空按钮清空后会顺带关闭弹层** —— `commitOnClose` 下这等于提交
 空选择；`InfiniteSelectFooterSeparator` 是竖向分隔。自定义部件用
 `useInfiniteSelectActions()` 同样能拿到 `selectedIds` / `selectedItems` /
@@ -187,12 +187,12 @@ TanStack Virtual：**任何时刻只有视口内可见的那一小段行存在�
 
 不写 → 渲染默认细线。写了 → `children` 顶掉细线，`className` 叠加在终止行上。
 
-（`InfiniteCombobox` 自己就渲染 `InfiniteSelectSearch` 和 `InfiniteSelectList`，
+（`InfiniteCombobox` 自己就渲染 `InfiniteSelectInputGroup` 和 `InfiniteSelectList`，
 触发器之后只放状态插槽和标记部件 —— 再写一个 `InfiniteSelectList` 会得到两个列表。）
 
 和 `InfiniteSelectLoadingOverlay` 同款的**标记部件**：写在组合通道里任意位置、
 原地不渲染，由 List 提升到只有它知道的位置（滚动流末尾）。直接子级或 Fragment
-内有效，包进自定义组件会找不到 —— 与 TabIndicator 同一限制。
+内有效，包进自定义组件会找不到 —— 与 TabsIndicator 同一限制。
 
 #### 何时不渲染
 
@@ -231,7 +231,7 @@ footer 部件之所以不需要穿线，是因为面板内有一个**动作上�
 | `clear()` | 清空选择 |
 | `close()` | 关闭弹层（`commitOnClose` 下即提交草稿） |
 
-`InfiniteSelectClearButton` / `InfiniteSelectConfirmButton` 内部就是调它；
+`InfiniteSelectClear` / `InfiniteSelectClose` 内部就是调它；
 「插槽」一节 Footer demo 里的「已选 N」自定义部件也是。两个注意点：
 
 - 在 provider 之外调用会**直接抛错**（fail loud），所以它只能出现在组合通道
@@ -348,7 +348,7 @@ interface InfiniteSelectItemRenderParams<T> {
 挂行上的 `data-highlighted`（`itemClassName` 的函数形式或 Tailwind 变体都行）。
 
 `label` 不是纯字符串也不用补什么：这里没有客户端 typeahead，过滤全在服务端 ——
-打字驱动 `onInputChange`，调用方重新取数。
+打字驱动 `onInputValueChange`，调用方重新取数。
 
 ## 组合式架构与 hooks
 
@@ -360,7 +360,7 @@ interface InfiniteSelectItemRenderParams<T> {
    管弹层开合与搜索/防抖；`useDataPaginationState` 是同一模式在分页器上的应用。
    全部导出，可脱离组件 headless 使用。
 2. **Parts 层（组合式组件 + context 接线）**——根组件 `InfiniteSelect` 只提供
-   数据与选择的 context 和 Base UI `Combobox.Root` 外壳；`InfiniteSelectSearch`
+   数据与选择的 context 和 Base UI `Combobox.Root` 外壳；`InfiniteSelectInputGroup`
    （搜索框）、`InfiniteSelectList`（列表，含虚拟化与预取）、状态插槽、footer
    一族都是普通 children，**按书写顺序渲染**，各自带自己的 props：
 
@@ -372,10 +372,10 @@ interface InfiniteSelectItemRenderParams<T> {
      value={ids}
      onChange={(items, nextIds) => setIds(nextIds)}
      inputValue={state.inputValue}
-     onInputChange={state.setInputValue}
+     onInputValueChange={state.setInputValue}
      virtualized
    >
-     <InfiniteSelectSearch placeholder="搜索…" />
+     <InfiniteSelectInputGroup placeholder="搜索…" />
      <InfiniteSelectList />
      <InfiniteSelectEmpty>没有结果</InfiniteSelectEmpty>
    </InfiniteSelect>
@@ -401,7 +401,7 @@ interface InfiniteSelectItemRenderParams<T> {
 | `InfiniteSelectAdapterProps<T>` | `list` prop 的契约——数据适配器要实现的形状，见「数据适配器」 |
 | `ControllableSelectionProps<T>` | 选择相关 props 的判别联合，判别键是 `selectionMode`（单选 `value?: string` / 多选 `value?: string[]`，`onChange` 签名随之切换） |
 | `InfiniteSelectProps<T>` / `InfiniteComboboxProps<T>` | 根组件与便利层的完整 props，业务层包一层时直接复用 |
-| `InfiniteSelectSearchProps` / `InfiniteSelectListProps<T>` | 两个 parts 的 props |
+| `InfiniteSelectInputGroupProps` / `InfiniteSelectListProps<T>` | 两个 parts 的 props |
 | `InfiniteSelectLoadingOverlayProps` / `InfiniteSelectNoMoreProps` / `InfiniteSelectLoadingMoreProps` | 三个标记部件的 props——第一个是去掉 `isLoading` 的 `LoadingOverlayProps`，后两个是 `ComponentProps<'div'>` |
 | `InfiniteSelectContextValue<T>` | `useInfiniteSelectContext()` 的返回——自定义 part 可读的接线 |
 | `InfiniteSelectSelectionState<T>` | `useInfiniteSelectSelection()` 的返回：`selectedIds` / `selectedItems` / `onValueChange`（喂给 Base UI 的 `Combobox.Root`） |
@@ -431,7 +431,7 @@ interface InfiniteSelectItemRenderParams<T> {
 ### InfiniteCombobox
 
 便利层：一个 props 面，内部拆开路由到根组件和各个 part。改用组合式写法时，
-`searchPlaceholder` 去 `InfiniteSelectSearch` 上找 `placeholder`，
+`searchPlaceholder` 去 `InfiniteSelectInputGroup` 上找 `placeholder`，
 `renderItem` / `maxListHeight` / `scrollbars` / `loadMoreScrollOffset` 在
 `InfiniteSelectList` 上，`virtualized` / `rowHeight` 在**根组件** `InfiniteSelect`
 上（底座和虚拟化器都要知道，见「[虚拟化](#虚拟化)」）；加载更多的文案走
@@ -445,12 +445,13 @@ interface InfiniteSelectItemRenderParams<T> {
 | `children` | `ReactElement` \| `(state) => ReactElement` | — | **必填**。触发器，任何元素都行（Base UI 的 `Popover.Trigger` 把它接成触发按钮）；函数形式可拿到整个 `state`（含 `open`）加上 `selectedItems` / `selectedValue` / `disabled` |
 | `selectionMode` | `'single' \| 'multiple'` | `'single'` | 判别式：决定下面三个的类型（与 DataTable 同名） |
 | `defaultValue` | `string` \| `string[]` | — | 非受控初始选择 |
-| `value` | `string` \| `string[]` | — | 受控选择 |
-| `onChange` | 单选 `(item?: T) => void`；多选 `(items: T[], ids: string[]) => void` | — | 多选时 `ids` 才是权威值，`items` 只含已加载页的对象 |
+| `value` | 单选 `string \| null`；多选 `string[]` | — | 受控选择。单选清空传 `null`（`undefined` 表示非受控） |
+| `onChange` | 单选 `(item: T \| null, eventDetails) => void`；多选 `(items: T[], ids: string[], eventDetails) => void` | — | 多选时 `ids` 才是权威值，`items` 只含已加载页的对象。`eventDetails.reason` 说明来源，`cancel()` 拒绝这次变更 |
 | `disabled` | `boolean` | `false` | 禁用整个选择器：触发器元素会被注入 `disabled`，弹层不可打开 |
 | `commitOnClose` | `boolean` | `false` | 多选草稿模式，关弹层才提交 |
+| `name` | `string` | — | 表单序列化：有 name 才渲染隐藏 input（多选每值一个），渲染在触发器旁、弹层外；草稿不序列化 |
 | `closeOnSelect` | `boolean` | `true` | 单选选中后自动关闭 |
-| `lockScroll` | `boolean` | `false` | 锁定页面滚动（模态感） |
+| `modal` | `boolean` | `false` | 锁定页面滚动（模态感） |
 | `searchPlaceholder` | `string` | — | 搜索框占位符，同时兼作它的无障碍名 |
 | `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | 替换行内容（`Combobox.Item` 外壳保留），参数见「自定义行内容」 |
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
@@ -485,10 +486,10 @@ interface InfiniteSelectItemRenderParams<T> {
 | `getOption` | `(item: T) => InfiniteSelectOption` | — | **必填**，提取 id / label / disabled |
 | `selectionMode` | `'single' \| 'multiple'` | `'single'` | 判别式，同上 |
 | `defaultValue` | `string` \| `string[]` | — | 非受控初始选择 |
-| `value` | `string` \| `string[]` | — | 受控选择 |
+| `value` | 单选 `string \| null`；多选 `string[]` | — | 受控选择。单选清空传 `null`（`undefined` 表示非受控） |
 | `onChange` | 同 `InfiniteCombobox` | — | 选择变化回调 |
 | `inputValue` | `string` | — | 受控搜索词 |
-| `onInputChange` | `(value: string) => void` | — | 搜索词变化回调 |
+| `onInputValueChange` | `(value, eventDetails) => void` | — | 搜索词变化回调，details 是 Base UI Combobox 的原物（`reason` / `cancel()`） |
 | `isLoading` | `boolean` | `false` | 首屏加载中 |
 | `isFetchingNextPage` | `boolean` | `false` | 正在取下一页 |
 | `hasNextPage` | `boolean` | `false` | 还有下一页 |
@@ -502,7 +503,7 @@ interface InfiniteSelectItemRenderParams<T> {
 **状态** —— 根元素上没有状态属性，它只是 Base UI `Combobox.Root` 的容器。状态都在下面的
 part 上。
 
-### InfiniteSelectSearch
+### InfiniteSelectInputGroup
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
@@ -572,8 +573,8 @@ part 上。
 | `InfiniteSelectLoadingOverlay` | 标记部件：原地不渲染，props 被提升到列表壳的覆盖层上 | 提升后为 `loading-overlay` |
 | `InfiniteSelectNoMore` | 标记部件：原地不渲染，props 被提升到滚动流末尾的终止行上（不写也有默认线） | 提升后为 `infinite-select-no-more` |
 | `InfiniteSelectLoadingMore` | 标记部件：同一位置的另一分支，翻页时渲染（不写也有默认 Spinner） | 提升后为 `infinite-select-load-more` |
-| `InfiniteSelectClearButton` | 总是 | `infinite-select-clear` |
-| `InfiniteSelectConfirmButton` | 总是 | `infinite-select-confirm` |
+| `InfiniteSelectClear` | 总是 | `infinite-select-clear` |
+| `InfiniteSelectClose` | 总是 | `infinite-select-confirm` |
 
 三个状态插槽共用一个 `role="status"` 的容器，所以变化会被读屏播报一次，而不是三种
 写法各播一次。

@@ -3,38 +3,38 @@ title: Tabs
 description: Base UI Tabs 的封装 —— 组合式的标签页家族，行为与无障碍语义全部由 Base UI 承担，外加一块会跟着悬停与焦点滑动的指示器
 ---
 
-标签页家族。行为全部由 Base UI 承担：TabList 内是一个 roving focus
+标签页家族。行为全部由 Base UI 承担：TabsList 内是一个 roving focus
 （整组只占一个 Tab 停留点），方向键在标签间移动并随 `orientation` 换轴，
-`Tab` 与 `TabPanel` 的 `aria-controls` / `aria-labelledby` 互指按 `value` 自动接线。
+`TabsTab` 与 `TabsPanel` 的 `aria-controls` / `aria-labelledby` 互指按 `value` 自动接线。
 组合就是全部 API —— 根组件 `Tabs` 上没有 `items`，也没有配置对象。
 标签集合由数据算出来时就是一次普通的 `.map()`。
 
-公开名对齐这些部件真正的身份：**`Tabs` / `TabList` / `Tab` / `TabPanel`**。
+公开名对齐这些部件真正的身份：**`Tabs` / `TabsList` / `TabsTab` / `TabsPanel`**。
 shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留下的别名 ——
 底下明明是 Base UI 组件，名字却是另一个库的。接缝层刻意把它改回来，
 这样 props（`value` / `onValueChange` / `activateOnFocus`）和组件名说的是同一门方言。
 
-结构永远是：`Tabs` 里放一个 `TabList`（内含若干 `Tab`），后面跟若干 `TabPanel`。
+结构永远是：`Tabs` 里放一个 `TabsList`（内含若干 `TabsTab`），后面跟若干 `TabsPanel`。
 
 ## 基础用法
 
-`Tab` 的 `value` 就是它的 key，同名 `value` 的 `TabPanel` 自动配对；
+`TabsTab` 的 `value` 就是它的 key，同名 `value` 的 `TabsPanel` 自动配对；
 `defaultValue` 指定初始选中（不给则选第一个**未禁用**的标签）。
-`TabList` 的 `aria-label` 必给 —— 它是这组标签页的无障碍名。
-`TabIndicator` 是那块会滑动的选中标记，见[下一节](#滑动指示器)：
+`TabsList` 的 `aria-label` 必给 —— 它是这组标签页的无障碍名。
+`TabsIndicator` 是那块会滑动的选中标记，见[下一节](#滑动指示器)：
 
 <ComponentPreview name="tabs/basic" />
 
 ## 样式变体
 
-`TabList` 的 `variant` 只换外观，不改行为：`default`（默认）是胶囊底色，
+`TabsList` 的 `variant` 只换外观，不改行为：`default`（默认）是胶囊底色，
 `line` 去掉底色、改成标签下方一条 2px 指示线：
 
 <ComponentPreview name="tabs/line" />
 
 ## 滑动指示器
 
-`TabIndicator` 把选中标记从「每个标签各画各的」换成**一个会滑动的元素**：
+`TabsIndicator` 把选中标记从「每个标签各画各的」换成**一个会滑动的元素**：
 切换标签时它补间过去（200ms ease-out），而不是 A 灭 B 亮。
 
 它跟随的顺序是 **悬停 → 聚焦 → 选中**：鼠标移到别的标签上它就滑过去，
@@ -45,25 +45,25 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 > Base UI 自己也有 `Tabs.Indicator`，但它只跟随**已选中**的标签。这块是本库另写的，
 > 多出来的就是悬停与焦点那两档。
 
-写在 `TabList` 里即可，位置随意；放进去之后标签自身就不再画选中底色，
+写在 `TabsList` 里即可，位置随意；放进去之后标签自身就不再画选中底色，
 两个 `variant` 都支持（`default` 是滑动的胶囊，`line` 是滑动的下划线）：
 
 ```tsx
-<TabList aria-label="项目仪表盘">
-  <TabIndicator />
-  <Tab value="overview">概览</Tab>
-  <Tab value="analytics">分析</Tab>
-</TabList>
+<TabsList aria-label="项目仪表盘">
+  <TabsIndicator />
+  <TabsTab value="overview">概览</TabsTab>
+  <TabsTab value="analytics">分析</TabsTab>
+</TabsList>
 ```
 
 `prefers-reduced-motion` 下自动降级为瞬时移动；首次渲染直接就位，不做滑入动画。
 标签宽度变化（字体加载完、角标数字变了）会自动重新测量。
 
-不写 `TabIndicator` 也完全可用 —— 那就是每个标签各画各的选中态，没有过渡。
+不写 `TabsIndicator` 也完全可用 —— 那就是每个标签各画各的选中态，没有过渡。
 
 ## 垂直排列
 
-`orientation="vertical"` 时 `TabList` 竖排，方向键也跟着换轴（上下键切换）——
+`orientation="vertical"` 时 `TabsList` 竖排，方向键也跟着换轴（上下键切换）——
 换轴是 Base UI 读 `orientation` 自己做的，不用另外配。指示器同样换轴：
 改成上下滑动、高度补间（`line` 变体下指示线也随之转到侧边）：
 
@@ -78,7 +78,7 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 
 ## 禁用
 
-`<Tab disabled>` 逐个声明。禁用集合由数据算出来时就在 `.map()` 里写
+`<TabsTab disabled>` 逐个声明。禁用集合由数据算出来时就在 `.map()` 里写
 `disabled={disabledIds.has(id)}` —— Base UI 没有根上的禁用集合。
 禁用的标签会被键盘导航跳过，指示器也不会跟到它上面：
 
@@ -88,7 +88,7 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 
 **默认是手动激活**：方向键只移动焦点，按 Enter / Space 才切换面板。
 面板加载昂贵（发请求、渲染大图表）时，键盘路过不会白白触发一次。
-面板内容便宜、想少按一次 Enter 时，在 `TabList` 上开 `activateOnFocus`：
+面板内容便宜、想少按一次 Enter 时，在 `TabsList` 上开 `activateOnFocus`：
 
 <ComponentPreview name="tabs/keyboard-activation" />
 
@@ -102,7 +102,7 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 | `→` / `←` | 横向（默认）时移动到相邻标签，到头循环 |
 | `↓` / `↑` | `orientation="vertical"` 时移动到相邻标签 |
 | `Home` / `End` | 跳到第一个 / 最后一个标签 |
-| `Tab` | 进入时落在选中的标签上（整组只占一个停留点），再按一次离开 TabList 进入面板 |
+| `Tab` | 进入时落在选中的标签上（整组只占一个停留点），再按一次离开 TabsList 进入面板 |
 | `Enter` / `Space` | 确认当前焦点所在的标签（`activateOnFocus` 下方向键已经切过了） |
 
 禁用的标签在以上所有导航中都会被跳过。
@@ -116,7 +116,7 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 状态在函数 `className` 里的名字 —— 同一组状态的两个出口，按手头顺手的用。
 
 `className` 一律双形态：字符串，或 `(state) => string` 的函数（参数就是状态表右列）。
-`TabIndicator` 除外 —— 它是纯 span，只收字符串。
+`TabsIndicator` 除外 —— 它是纯 span，只收字符串。
 
 `children` 都是普通 ReactNode。Base UI 没有集合 API，也没有状态 render props ——
 按状态换内容就自己拿 `value` 判断。
@@ -139,7 +139,7 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 | `data-orientation` | 始终有值：`horizontal` / `vertical` | `orientation` |
 | `data-activation-direction` | 相对上一个选中项的方向：`left` / `right` / `up` / `down` / `none` | `tabActivationDirection` |
 
-### TabList
+### TabsList
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
@@ -156,23 +156,23 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 | `data-activation-direction` | 同根组件 | `tabActivationDirection` |
 | `data-variant` | 始终有值：`default` / `line`（我们加的，不是 Base UI 的） | — |
 
-接缝层只往上加了一个 `relative` —— `TabIndicator` 绝对定位在它里面，需要这个定位上下文。
+接缝层只往上加了一个 `relative` —— `TabsIndicator` 绝对定位在它里面，需要这个定位上下文。
 
-### TabIndicator
+### TabsIndicator
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `className` | `string` | — | 类名（改颜色、圆角、过渡时长都从这里来） |
 
-写在 `TabList` 里，位置随意 —— Base UI 的 List 原样渲染 children，所以它渲染在你
+写在 `TabsList` 里，位置随意 —— Base UI 的 List 原样渲染 children，所以它渲染在你
 写的地方，测量的正是它自己的父元素。它没有状态：跟随哪个标签是从 DOM 上读出来的
 （`[data-active]`、`:focus-visible`、一个指针监听），外部读不到，也不该读。
 
-### Tab
+### TabsTab
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `value` | `string \| number` | 它在 List 中的序号 | 这个标签的 key，与对应 `TabPanel` 的 `value` 相同 |
+| `value` | `string \| number` | 它在 List 中的序号 | 这个标签的 key，与对应 `TabsPanel` 的 `value` 相同 |
 | `disabled` | `boolean` | `false` | 禁用这一个标签 |
 | `nativeButton` | `boolean` | `true` | 关掉它才能用 `render` 换成 `<a>`（路由驱动的标签页） |
 | `render` | `ReactElement \| (props, state) => ReactElement` | — | 元素替换。优先函数形态 |
@@ -187,14 +187,14 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 | `data-orientation` | 跟随根组件 | `orientation` |
 | `data-activation-direction` | 同根组件 | `tabActivationDirection` |
 
-悬停、按下、焦点没有 data 属性 —— `Tab` 是原生 `<button>`，直接用 `hover:` /
+悬停、按下、焦点没有 data 属性 —— `TabsTab` 是原生 `<button>`，直接用 `hover:` /
 `active:` / `focus-visible:` 伪类，覆盖全部输入模态。
 
-### TabPanel
+### TabsPanel
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `value` | `string \| number` | 它在文档中的序号 | 与对应 `Tab` 的 `value` 相同即自动配对 |
+| `value` | `string \| number` | 它在文档中的序号 | 与对应 `TabsTab` 的 `value` 相同即自动配对 |
 | `keepMounted` | `boolean` | `false` | 未选中时也保留在 DOM（默认只渲染选中的那个） |
 | `className` | `string \| (state) => string` | — | 类名 |
 
@@ -206,5 +206,5 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 | `data-activation-direction` | 同根组件 | `tabActivationDirection` |
 | `data-hidden` | `keepMounted` 保留下来、但当前未选中的面板 | `hidden` |
 
-`TabsProps` / `TabListProps` / `TabProps` / `TabPanelProps` / `TabIndicatorProps`
+`TabsProps` / `TabsListProps` / `TabsTabProps` / `TabsPanelProps` / `TabsIndicatorProps`
 五个类型也一并导出，业务层再包一层时直接复用。

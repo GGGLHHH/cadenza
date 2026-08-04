@@ -13,7 +13,7 @@ export default function BasicDemo(): ReactElement {
       <SearchField
         aria-label="搜索作曲家"
         placeholder="搜索作曲家..."
-        onChange={setText}
+        onValueChange={setText}
         onQueryValueChange={setQuery}
       />
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">

@@ -17,7 +17,7 @@ it('stays mounted but invisible at rest, so the exit can animate', () => {
 it('shows the centred spinner and the wait cursor while loading', () => {
   render(<LoadingOverlay isLoading />)
   const overlay = document.querySelector('[data-slot="loading-overlay"]')
-  expect(overlay?.getAttribute('data-loading')).toBe('true')
+  expect(overlay?.getAttribute('data-loading')).toBe('')
   expect(overlay?.className).toContain('cursor-wait')
   expect(overlay?.className).not.toContain('invisible')
   // Load-bearing, not cosmetic: Chromium only clips backdrop-filter by the

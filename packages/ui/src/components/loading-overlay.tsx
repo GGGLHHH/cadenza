@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
-import { cn } from '#lib/utils'
+import { cn, dataAttr } from '#lib/utils'
 import { Spinner } from './spinner'
 
 export interface LoadingOverlayProps extends ComponentProps<'div'> {
@@ -36,7 +36,7 @@ export function LoadingOverlay({
   return (
     <div
       data-slot="loading-overlay"
-      data-loading={isLoading || undefined}
+      data-loading={dataAttr(isLoading)}
       className={cn(
         // rounded-[inherit] is load-bearing: Chromium does not clip
         // backdrop-filter by an ancestor's rounded overflow — only the

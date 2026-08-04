@@ -6,12 +6,12 @@ import {
   InfiniteSelect,
   InfiniteSelectEmpty,
   InfiniteSelectError,
+  InfiniteSelectInputGroup,
   InfiniteSelectList,
   InfiniteSelectLoadingMore,
   InfiniteSelectLoadingOverlay,
   InfiniteSelectNoMore,
   InfiniteSelectRetry,
-  InfiniteSelectSearch,
 } from '../src/components/infinite-select'
 
 beforeAll(() => {
@@ -77,7 +77,7 @@ describe('infiniteSelect state slots', () => {
     expect(shell?.className).toContain('min-block-24')
     expect(
       shell?.querySelector('[data-slot="loading-overlay"]')?.getAttribute('data-loading'),
-    ).toBe('true')
+    ).toBe('')
   })
 
   it('keeps the list under a frosted overlay on refresh — never the loading slot', () => {
@@ -90,7 +90,7 @@ describe('infiniteSelect state slots', () => {
     )
     expect(screen.getByText('Alice')).not.toBeNull()
     const overlay = document.querySelector('[data-slot="loading-overlay"]')
-    expect(overlay?.getAttribute('data-loading')).toBe('true')
+    expect(overlay?.getAttribute('data-loading')).toBe('')
   })
 
   it('lifts a composed LoadingOverlay part into the list shell — fragment included', () => {
@@ -178,14 +178,14 @@ describe('infiniteSelect selection', () => {
     )
 
     await user.click(screen.getByRole('option', { name: 'Alice' }))
-    expect(onChange).toHaveBeenLastCalledWith(items[0])
+    expect(onChange).toHaveBeenLastCalledWith(items[0], expect.objectContaining({ reason: 'item-press' }))
 
     // Base UI does not toggle a single selection off by re-clicking it — once
     // a value is picked the control has one, the way a native <select> does.
     // Clearing goes through the footer's clear action. (React Aria toggled it
     // back to undefined here.)
     await user.click(screen.getByRole('option', { name: 'Alice' }))
-    expect(onChange).toHaveBeenLastCalledWith(items[0])
+    expect(onChange).toHaveBeenLastCalledWith(items[0], expect.anything())
     expect(screen.getByRole('option', { name: 'Alice', selected: true })).not.toBeNull()
   })
 
@@ -213,7 +213,7 @@ describe('infiniteSelect selection', () => {
     expect(loadedItems).toEqual([items[0]])
   })
 
-  it('single: a controlled value can be cleared back to undefined', () => {
+  it('single: a controlled value clears with null — undefined belongs to "uncontrolled"', () => {
     const { rerender } = render(
       <InfiniteSelect getOption={getOption} items={items} value="a">
         <InfiniteSelectList />
@@ -222,7 +222,7 @@ describe('infiniteSelect selection', () => {
     expect(screen.getByRole('option', { name: 'Alice', selected: true })).not.toBeNull()
 
     rerender(
-      <InfiniteSelect getOption={getOption} items={items} value={undefined}>
+      <InfiniteSelect getOption={getOption} items={items} value={null}>
         <InfiniteSelectList />
       </InfiniteSelect>,
     )
@@ -359,7 +359,7 @@ describe('infiniteSelect selection', () => {
   it('names the search input from its placeholder', () => {
     render(
       <InfiniteSelect getOption={getOption} items={items}>
-        <InfiniteSelectSearch />
+        <InfiniteSelectInputGroup />
         <InfiniteSelectList />
       </InfiniteSelect>,
     )
@@ -369,9 +369,9 @@ describe('infiniteSelect selection', () => {
   it('lets children replace the search composition', () => {
     render(
       <InfiniteSelect getOption={getOption} items={items}>
-        <InfiniteSelectSearch>
+        <InfiniteSelectInputGroup>
           <span data-testid="custom-search">自定义搜索</span>
-        </InfiniteSelectSearch>
+        </InfiniteSelectInputGroup>
         <InfiniteSelectList />
       </InfiniteSelect>,
     )
@@ -382,7 +382,7 @@ describe('infiniteSelect selection', () => {
   it('renders no placeholder copy by default — the aria fallback never shows', () => {
     render(
       <InfiniteSelect getOption={getOption} items={items}>
-        <InfiniteSelectSearch />
+        <InfiniteSelectInputGroup />
         <InfiniteSelectList />
       </InfiniteSelect>,
     )
@@ -422,5 +422,39 @@ describe('infiniteSelect selection', () => {
     expect(document.querySelector('[data-slot="infinite-select-list"]')?.className).toContain('tracking-widest')
     expect(screen.getByRole('option', { name: 'Bob' }).className).toContain('opacity-25')
     expect(screen.getByRole('option', { name: 'Alice' }).className).toContain('opacity-75')
+  })
+
+  it('serializes into a form through name — one hidden input per selected id', () => {
+    const { rerender } = render(
+      <InfiniteSelect getOption={getOption} items={items} name="composer" selectionMode="multiple" value={['a', 'x']}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    const hidden = [...document.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="composer"]')]
+    // Every selected id serializes — the unloaded 'x' included, ids are authoritative.
+    expect(hidden.map(input => input.value)).toEqual(['a', 'x'])
+
+    rerender(
+      <InfiniteSelect getOption={getOption} items={items} selectionMode="multiple" value={['a']}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    // No name, no inputs: absence is the decision, not a leak.
+    expect(document.querySelector('input[type="hidden"]')).toBeNull()
+  })
+
+  it('single mode serializes the one value, empty string when cleared', () => {
+    const { rerender } = render(
+      <InfiniteSelect getOption={getOption} items={items} name="composer" value="a">
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    expect(document.querySelector<HTMLInputElement>('input[name="composer"]')?.value).toBe('a')
+    rerender(
+      <InfiniteSelect getOption={getOption} items={items} name="composer" value={null}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    expect(document.querySelector<HTMLInputElement>('input[name="composer"]')?.value).toBe('')
   })
 })

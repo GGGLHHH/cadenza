@@ -1,4 +1,9 @@
 {
   "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    // process.env.NODE_ENV gates the dev-only controlled-ness warnings; ambient
+    // @types discovery does not reach node's under pnpm's isolated layout.
+    "types": ["node"]
+  },
   "include": ["src", "test", "tsdown.config.ts"]
 }

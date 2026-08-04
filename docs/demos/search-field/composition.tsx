@@ -3,7 +3,7 @@ import {
   InputGroup,
   InputGroupAddon,
   SearchField,
-  SearchFieldClearButton,
+  SearchFieldClear,
   SearchFieldInput,
 } from '@gedatou/cadenza-ui'
 import { IconSearch } from '@tabler/icons-react'
@@ -19,7 +19,7 @@ export default function CompositionDemo(): ReactElement {
             <IconSearch aria-hidden />
           </InputGroupAddon>
           <SearchFieldInput placeholder="搜索文档..." />
-          <SearchFieldClearButton />
+          <SearchFieldClear />
           <kbd className="
             order-last me-2 hidden rounded-sm border bg-muted px-1.5 font-mono
             text-[10px] text-muted-foreground

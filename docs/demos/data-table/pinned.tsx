@@ -9,7 +9,7 @@ const LABELS = ['DG', 'Decca', 'EMI', 'Sony Classical', 'Philips']
 
 // 同侧多列固定:姓名 + 角色都钉在左侧,sticky 偏移按数组顺序累加;操作列钉右
 const columns: DataTableColumn<Person>[] = [
-  { id: 'name', header: '姓名', cell: person => person.name, isRowHeader: true, width: 140, pinned: 'start' },
+  { id: 'name', header: '姓名', cell: person => person.name, rowHeader: true, width: 140, pinned: 'start' },
   { id: 'role', header: '角色', cell: person => person.role, width: 130, pinned: 'start' },
   { id: 'born', header: '生年', cell: person => person.born, width: 110 },
   { id: 'era', header: '时期', cell: person => ERAS[person.born % ERAS.length], width: 110 },

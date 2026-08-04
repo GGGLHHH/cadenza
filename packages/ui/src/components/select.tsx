@@ -1,3 +1,4 @@
+import type { Select as SelectPrimitive } from '@base-ui/react/select'
 import type { ComponentProps } from 'react'
 import {
   Select,
@@ -82,7 +83,13 @@ import {
  * `select-item` is what the focus highlight matches. Add your own marker under a
  * different attribute.
  */
-export type SelectProps = ComponentProps<typeof Select>
+/**
+ * A generic alias, not `ComponentProps<typeof Select>`: the root is generic
+ * over `<Value, Multiple>`, and `ComponentProps` would instantiate that away —
+ * `onValueChange`'s value would degrade to non-generic.
+ */
+export type SelectProps<Value = string, Multiple extends boolean | undefined = false>
+  = SelectPrimitive.Root.Props<Value, Multiple>
 export type SelectContentProps = ComponentProps<typeof SelectContent>
 export type SelectGroupProps = ComponentProps<typeof SelectGroup>
 export type SelectItemProps = ComponentProps<typeof SelectItem>

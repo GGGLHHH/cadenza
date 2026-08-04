@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { InputGroup, InputGroupAddon } from '../src/components/input-group'
 import {
   SearchField,
-  SearchFieldClearButton,
+  SearchFieldClear,
   SearchFieldInput,
 } from '../src/components/search-field'
 
@@ -25,22 +25,43 @@ describe('searchField', () => {
 
   it('reports raw text on every keystroke and the query only once typing settles', async () => {
     const user = userEvent.setup()
-    const onChange = vi.fn()
+    const onValueChange = vi.fn()
     const onQueryValueChange = vi.fn()
     render(
       <SearchField
         aria-label="搜索"
         debounceMs={SETTLES}
-        onChange={onChange}
         onQueryValueChange={onQueryValueChange}
+        onValueChange={onValueChange}
       />,
     )
 
     await user.type(screen.getByRole('searchbox'), 'rav')
-    expect(onChange).toHaveBeenCalledTimes(3)
-    await waitFor(() => expect(onQueryValueChange).toHaveBeenCalledWith('rav'))
+    expect(onValueChange).toHaveBeenCalledTimes(3)
+    // The protocol: every change callback carries eventDetails with the reason.
+    expect(onValueChange).toHaveBeenLastCalledWith(
+      'rav',
+      expect.objectContaining({ reason: 'input-change' }),
+    )
+    await waitFor(() => expect(onQueryValueChange).toHaveBeenCalledWith(
+      'rav',
+      expect.objectContaining({ reason: 'input-change' }),
+    ))
     // Three keystrokes, one query: the intermediate values were debounced away.
     expect(onQueryValueChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancel() on the details rejects the change — the input never updates', async () => {
+    const user = userEvent.setup()
+    render(
+      <SearchField
+        aria-label="搜索"
+        onValueChange={(_value, details) => details.cancel()}
+      />,
+    )
+
+    await user.type(screen.getByRole('searchbox'), 'r')
+    expect(screen.getByRole('searchbox')).toHaveProperty('value', '')
   })
 
   it('holds the query back while typing continues', async () => {
@@ -78,11 +99,11 @@ describe('searchField', () => {
     )
 
     await user.type(screen.getByRole('searchbox'), '  ravel  ')
-    await waitFor(() => expect(onQueryValueChange).toHaveBeenLastCalledWith('ravel'))
+    await waitFor(() => expect(onQueryValueChange).toHaveBeenLastCalledWith('ravel', expect.anything()))
 
     await user.clear(screen.getByRole('searchbox'))
     await user.type(screen.getByRole('searchbox'), '   ')
-    await waitFor(() => expect(onQueryValueChange).toHaveBeenLastCalledWith(undefined))
+    await waitFor(() => expect(onQueryValueChange).toHaveBeenLastCalledWith(undefined, expect.anything()))
   })
 
   it('clears through the button without waiting for the debounce', async () => {
@@ -101,7 +122,10 @@ describe('searchField', () => {
     expect(screen.getByRole('searchbox')).toHaveProperty('value', '')
     // debounceMs is 10s here, so this can only have come from the immediate
     // path: dropping a filter must not lag behind the click.
-    expect(onQueryValueChange).toHaveBeenCalledExactlyOnceWith(undefined)
+    expect(onQueryValueChange).toHaveBeenCalledExactlyOnceWith(
+      undefined,
+      expect.objectContaining({ reason: 'clear-press' }),
+    )
   })
 
   it('clears on Escape', async () => {
@@ -143,25 +167,24 @@ describe('searchField', () => {
     expect(screen.getByRole('button', { name: 'Clear search' })).toHaveProperty('disabled', true)
   })
 
-  it('chains a caller onClear after the immediate reset instead of being replaced by it', async () => {
+  it('reports clearing as a reason, not a separate callback — Escape and the button tell apart', async () => {
     const user = userEvent.setup()
-    const onClear = vi.fn()
-    const onQueryValueChange = vi.fn()
+    const onValueChange = vi.fn()
     render(
       <SearchField
         aria-label="搜索"
         debounceMs={NEVER}
         defaultValue="ravel"
-        onClear={onClear}
-        onQueryValueChange={onQueryValueChange}
+        onValueChange={onValueChange}
       />,
     )
 
     await user.click(screen.getByRole('button', { name: 'Clear search' }))
-    expect(onClear).toHaveBeenCalledTimes(1)
-    // Still the immediate path: listening to onClear must not silently turn
-    // clearing back into a debounced act.
-    expect(onQueryValueChange).toHaveBeenCalledExactlyOnceWith(undefined)
+    expect(onValueChange).toHaveBeenLastCalledWith('', expect.objectContaining({ reason: 'clear-press' }))
+
+    await user.type(screen.getByRole('searchbox'), 'x')
+    await user.keyboard('{Escape}')
+    expect(onValueChange).toHaveBeenLastCalledWith('', expect.objectContaining({ reason: 'escape-key' }))
   })
 
   it('publishes its state as data attributes — the root is a plain div', () => {
@@ -171,9 +194,11 @@ describe('searchField', () => {
     // default composition uses to hide the clear button.
     render(<SearchField aria-label="搜索" className="opacity-25" disabled readOnly />)
     const field = document.querySelector('[data-slot="search-field"]')
-    expect(field?.getAttribute('data-disabled')).toBe('true')
-    expect(field?.getAttribute('data-readonly')).toBe('true')
-    expect(field?.getAttribute('data-empty')).toBe('true')
+    // Empty string, not "true": Base UI's boolean value form, so a consumer's
+    // [data-disabled] CSS matches ours and the library's alike.
+    expect(field?.getAttribute('data-disabled')).toBe('')
+    expect(field?.getAttribute('data-readonly')).toBe('')
+    expect(field?.getAttribute('data-empty')).toBe('')
     expect(field?.className).toContain('opacity-25')
     expect(field?.className).toContain('group/search-field')
   })
@@ -184,7 +209,7 @@ describe('searchField', () => {
         <InputGroup>
           <InputGroupAddon>搜</InputGroupAddon>
           <SearchFieldInput placeholder="自定义" />
-          <SearchFieldClearButton />
+          <SearchFieldClear />
           <span data-testid="extra">额外部件</span>
         </InputGroup>
       </SearchField>,

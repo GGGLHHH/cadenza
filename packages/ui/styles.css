@@ -923,7 +923,7 @@
    (the indicator leaves, the tab's own background stays behind). Deliberately
    unlayered: `data-active:bg-background` lives in Tailwind's utilities layer,
    which outranks @layer components no matter how specific the selector is. */
-[data-slot="tabs-list"]:has([data-slot="tab-indicator"])
+[data-slot="tabs-list"]:has([data-slot="tabs-indicator"])
   [data-slot="tabs-trigger"] {
   z-index: 10;
   border-color: transparent;
@@ -931,7 +931,7 @@
   box-shadow: none;
 }
 
-[data-slot="tabs-list"]:has([data-slot="tab-indicator"])
+[data-slot="tabs-list"]:has([data-slot="tabs-indicator"])
   [data-slot="tabs-trigger"]::after {
   opacity: 0;
 }

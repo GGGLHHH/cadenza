@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Tab, TabIndicator, TabList, TabPanel, Tabs } from '@gedatou/cadenza-ui'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 import { DemoButton } from '../lib/demo-button'
 
@@ -14,21 +14,21 @@ export default function ControlledDemo(): ReactElement {
   return (
     <div className="flex flex-col gap-4">
       <Tabs value={value} onValueChange={setValue}>
-        <TabList aria-label="项目仪表盘">
-          <TabIndicator />
-          <Tab value="overview">概览</Tab>
-          <Tab value="analytics">分析</Tab>
-          <Tab value="reports">报告</Tab>
-        </TabList>
-        <TabPanel value="overview">
+        <TabsList aria-label="项目仪表盘">
+          <TabsIndicator />
+          <TabsTab value="overview">概览</TabsTab>
+          <TabsTab value="analytics">分析</TabsTab>
+          <TabsTab value="reports">报告</TabsTab>
+        </TabsList>
+        <TabsPanel value="overview">
           <p className="text-sm text-muted-foreground">项目整体进度与本周关键指标。</p>
-        </TabPanel>
-        <TabPanel value="analytics">
+        </TabsPanel>
+        <TabsPanel value="analytics">
           <p className="text-sm text-muted-foreground">访问趋势、转化漏斗与来源分布。</p>
-        </TabPanel>
-        <TabPanel value="reports">
+        </TabsPanel>
+        <TabsPanel value="reports">
           <p className="text-sm text-muted-foreground">已生成的周报与月报归档。</p>
-        </TabPanel>
+        </TabsPanel>
       </Tabs>
       <div className="flex items-center gap-3">
         <DemoButton

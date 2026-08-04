@@ -36,26 +36,15 @@ const [state, setState] = useControllableState({ value, defaultValue, onChange, 
 `useControllableValue` 本身能干这活，但它的 API 是「props 对象 + 字符串
 propName 配置 + setter 带变长参数」，和 `useState` 长得完全不一样。这层封装
 把它压回 `useState` 的形状，调用处零学习成本、可直接替换既有的 `useState`。
-另有一个实现细节：ahooks 用 `hasOwnProperty('value')` 判定受控，所以封装内
-只在值非 `undefined` 时才挂载对应 key——否则「传了 undefined」会被误判成
-「受控且值为 undefined」，状态被永久钉死。
 
-## 一个进阶技巧：key 存在性受控
+## 受控性在首渲染锁定（Base UI 语义）
 
-`value !== undefined` 的判定有一个边界：受控组件想表达「清空」时传
-`value={undefined}`，会被误判为切换到非受控。库内组件（DataTable /
-InfiniteSelect 的选择）的处理是**先归一化、再交给 hook**——用 key 存在性
-判定受控，把 `undefined` 归一成空数组这类非 `undefined` 值：
-
-```ts
-const [selectedIds, setSelectedIds] = useControllableState<string[]>({
-  value: 'value' in props ? normalizeIds(props.value) : undefined,
-  defaultValue: 'defaultValue' in props ? normalizeIds(props.defaultValue) : undefined,
-  fallback: [],
-})
-```
-
-业务层包装组件遇到同样的边界时，可以复用这个模式。
+受控性由**首渲染**的 `value !== undefined` 判定，此后不再改判——`undefined`
+专属「非受控」，受控的空值用 **`null`**（库内 DataTable / InfiniteSelect 的
+单选清空都传 `null`）。中途切换受控性、或非受控中途改 `defaultValue`，
+开发环境会 `console.error` 警告，运行时忽略：锁定为受控的组件在 `value`
+变回 `undefined` 时渲染 `undefined`，不会退回内部状态。这与
+`@base-ui/utils/useControlled` 同语义，也是原生受控 input 的行为。
 
 ## 库内的使用点
 

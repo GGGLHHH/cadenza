@@ -2,8 +2,8 @@ import type { ReactElement } from 'react'
 import type { Person } from '../lib/people'
 import {
   InfiniteCombobox,
-  InfiniteSelectClearButton,
-  InfiniteSelectConfirmButton,
+  InfiniteSelectClear,
+  InfiniteSelectClose,
   InfiniteSelectFooter,
   InfiniteSelectFooterSeparator,
   useInfiniteComboboxState,
@@ -48,11 +48,11 @@ export default function FooterDemo(): ReactElement {
       </DemoButton>
       {selectSlots}
       <InfiniteSelectFooter>
-        <InfiniteSelectClearButton>清空</InfiniteSelectClearButton>
+        <InfiniteSelectClear>清空</InfiniteSelectClear>
         <InfiniteSelectFooterSeparator />
         <FooterSelectedCount />
         <InfiniteSelectFooterSeparator />
-        <InfiniteSelectConfirmButton>确定</InfiniteSelectConfirmButton>
+        <InfiniteSelectClose>确定</InfiniteSelectClose>
       </InfiniteSelectFooter>
     </InfiniteCombobox>
   )

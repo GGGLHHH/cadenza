@@ -1,6 +1,7 @@
 'use client'
 
-import type { ComponentProps, CSSProperties, ReactElement, ReactNode } from 'react'
+import type { ComponentProps, CSSProperties, ReactElement, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
+import type { ChangeEventDetails, GenericEventDetails } from '#lib/change-event-details'
 import type { Key, Selection, SortDescriptor } from '#lib/collections'
 import type { LoadingOverlayProps } from './loading-overlay'
 import type { ScrollAreaScrollbars } from './scroll-area'
@@ -8,8 +9,9 @@ import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconChevronDown, IconChevronUp, IconSelector } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { createContext, use, useEffect, useMemo, useRef } from 'react'
+import { createChangeEventDetails, createGenericEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
-import { cn } from '#lib/utils'
+import { cn, dataAttr } from '#lib/utils'
 import { Button } from '#primitives/button'
 import { Checkbox } from '#primitives/checkbox'
 import {
@@ -45,9 +47,9 @@ export interface DataTableColumn<T> {
    * Marks the cell that labels its row for screen readers. Exactly one column
    * should be the row header; when none opts in, the first column is used.
    */
-  isRowHeader?: boolean
+  rowHeader?: boolean
   /** Lets the header toggle `sortDescriptor`. Sorting itself is the data layer's job. */
-  allowsSorting?: boolean
+  sortable?: boolean
   /**
    * Column sizing, applied to the header and body cells. Sized columns also
    * keep virtualized windows from jittering as content scrolls in.
@@ -65,6 +67,23 @@ export interface DataTableColumn<T> {
   /** Extra classes for both the header and body cells of this column. */
   className?: string
 }
+
+/**
+ * Why the selection changed. `'item-press'` covers a row click and a row
+ * checkbox; `'select-all-press'` is the header checkbox (coined — the shared
+ * reason vocabulary has no table words, so this follows its `<part>-press`
+ * morphology); `'none'` is programmatic.
+ */
+export type DataTableChangeEventReason = 'item-press' | 'select-all-press' | 'none'
+
+export type DataTableChangeEventDetails = ChangeEventDetails<DataTableChangeEventReason>
+
+/**
+ * `onSortChange` details. Generic, not cancelable: `sortDescriptor` is fully
+ * controlled — there is no internal sort state a `cancel()` could skip, so
+ * none is exposed. `'sort-press'` is coined on the `<part>-press` morphology.
+ */
+export type DataTableSortEventDetails = GenericEventDetails<'sort-press'>
 
 /**
  * The convenience selection layer, mirroring InfiniteSelect's contract. It
@@ -85,17 +104,18 @@ export type DataTableSelectionProps<T>
   }
   | {
     selectionMode: 'single'
-    /** Controlled selected row id; `undefined` while controlled means none. */
-    value?: string
+    /** Controlled selected row id. `null` is the controlled empty value — `undefined` means uncontrolled. */
+    value?: string | null
     defaultValue?: string
-    onChange?: (item: T | undefined) => void
+    /** `eventDetails.cancel()` rejects the change. */
+    onChange?: (item: T | null, eventDetails: DataTableChangeEventDetails) => void
   }
   | {
     selectionMode: 'multiple'
     /** Controlled selected row ids — the cross-page archive. */
     value?: string[]
     defaultValue?: string[]
-    onChange?: (items: T[], ids: string[]) => void
+    onChange?: (items: T[], ids: string[], eventDetails: DataTableChangeEventDetails) => void
   }
 
 export interface DataTableBaseProps<T> {
@@ -127,9 +147,10 @@ export interface DataTableBaseProps<T> {
   // DataTableSelectionProps) is in use, except that onSelectionChange still
   // observes the raw selection.
   'selectedKeys'?: Iterable<Key> | 'all'
-  'onSelectionChange'?: (keys: Selection) => void
+  /** `eventDetails.cancel()` also stops the convenience layer from applying the change. */
+  'onSelectionChange'?: (keys: Selection, eventDetails: DataTableChangeEventDetails) => void
   'sortDescriptor'?: SortDescriptor
-  'onSortChange'?: (descriptor: SortDescriptor) => void
+  'onSortChange'?: (descriptor: SortDescriptor, eventDetails: DataTableSortEventDetails) => void
   /**
    * Prepend a synthesized checkbox column wired to row selection: each row
    * cell is a Checkbox bound to that row's id, the header checkbox selects all
@@ -217,11 +238,13 @@ interface DataTableState {
 }
 
 const DataTableStateContext = createContext<DataTableState | null>(null)
+if (process.env.NODE_ENV !== 'production')
+  DataTableStateContext.displayName = 'DataTableStateContext'
 
 function useDataTableState(): DataTableState {
   const ctx = use(DataTableStateContext)
-  if (!ctx)
-    throw new Error('DataTable state slots must be used inside DataTable children')
+  if (ctx === null)
+    throw new Error('cadenza-ui: DataTableStateContext is missing. DataTable parts must be placed within <DataTable>.')
   return ctx
 }
 
@@ -491,7 +514,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
   // The row header defaults against the caller's columns, before the
   // synthesized selection column is prepended — a checkbox must never be what
   // a screen reader announces as the row's name.
-  const rowHeaderId = columns.find(column => column.isRowHeader)?.id ?? columns[0]?.id
+  const rowHeaderId = columns.find(column => column.rowHeader)?.id ?? columns[0]?.id
 
   const hasSelectionColumn = selectionColumn && selectionMode !== undefined && selectionMode !== 'none'
   const allColumns = useMemo<DataTableColumn<T>[]>(() => {
@@ -528,20 +551,20 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
   // ── Convenience selection layer (cross-page archive). Active only when the
   //    caller opted into value/defaultValue/onChange; otherwise the raw
   //    `selectedKeys` passthrough below is what drives the rows. Controlled-ness
-  //    is key presence, not `!== undefined` — a controlled single select clears with
-  //    value={undefined} — so the ids are normalized to arrays BEFORE the
-  //    hook, which turns that undefined into a controlled []. ──
-  const usesSelectionValue = 'value' in props || 'defaultValue' in props || props.onChange !== undefined
+  //    is `value !== undefined`, Base UI's judgment — `undefined` belongs to
+  //    "uncontrolled", and a controlled single select clears with `null`. ──
+  const usesSelectionValue = props.value !== undefined || props.defaultValue !== undefined
+    || props.onChange !== undefined
 
-  const normalizeIds = (value: string | string[] | undefined): string[] => {
-    if (value === undefined)
+  const normalizeIds = (value: string | string[] | null | undefined): string[] => {
+    if (value === undefined || value === null)
       return []
     return Array.isArray(value) ? value : [value]
   }
 
   const [selectedIds, setSelectedIds] = useControllableState<string[]>({
-    value: 'value' in props ? normalizeIds(props.value) : undefined,
-    defaultValue: 'defaultValue' in props ? normalizeIds(props.defaultValue) : undefined,
+    value: props.value !== undefined ? normalizeIds(props.value) : undefined,
+    defaultValue: props.defaultValue !== undefined ? normalizeIds(props.defaultValue) : undefined,
     fallback: [],
   })
 
@@ -556,7 +579,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     }
   }
 
-  const handleSelectionValueChange = (selection: Selection): void => {
+  const handleSelectionValueChange = (selection: Selection, eventDetails: DataTableChangeEventDetails): void => {
     const loadedIds = rows.map(row => row.id)
     let ids: string[]
     if (selection === 'all') {
@@ -574,30 +597,47 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
       ids = [...selection].map(String)
     }
 
+    // Staging additions before the callbacks so the emitted `items` resolve;
+    // a superset cache is harmless if the change is then canceled — pruning
+    // only happens on commit.
     const cache = selectedItemsCacheRef.current
     for (const row of rows) {
       if (ids.includes(row.id))
         cache.set(row.id, row.item)
     }
-    for (const id of [...cache.keys()]) {
-      if (!ids.includes(id))
-        cache.delete(id)
-    }
 
-    // Controlled mode makes this a no-op (the hook only mirrors props there).
-    setSelectedIds(ids)
-
+    // The same details object flows through every layer (raw
+    // `onSelectionChange` already ran): each callback runs before the state
+    // write, and a cancel() from any of them skips it — Base UI's
+    // checkbox-to-group layering.
     if (props.selectionMode === 'multiple') {
       const selectedItems = ids
         .map(id => cache.get(id))
         .filter((entry): entry is T => entry !== undefined)
-      props.onChange?.(selectedItems, ids)
+      props.onChange?.(selectedItems, ids, eventDetails)
     }
     else if (props.selectionMode === 'single') {
       const id = ids[0]
-      props.onChange?.(id === undefined ? undefined : cache.get(id))
+      props.onChange?.(id === undefined ? null : cache.get(id) ?? null, eventDetails)
     }
+    if (eventDetails.isCanceled)
+      return
+
+    for (const id of [...cache.keys()]) {
+      if (!ids.includes(id))
+        cache.delete(id)
+    }
+    // Controlled mode makes this a no-op (the hook only mirrors props there).
+    setSelectedIds(ids)
   }
+
+  // Provider value memoised (the house rule): the five fields change rarely,
+  // and an unstable object would re-render every slot on every keystroke of
+  // unrelated state.
+  const stateContextValue = useMemo<DataTableState>(
+    () => ({ isLoading, isError, isEmpty, isFetchingNextPage, onRetry }),
+    [isLoading, isError, isEmpty, isFetchingNextPage, onRetry],
+  )
 
   // A bounded height is what gives the sticky header a scrollport, and what
   // lets a virtualizer viewport exist at all. Infinity is the opt-out: no cap,
@@ -662,25 +702,29 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
   const effectiveSelected = usesSelectionValue
     ? selectedIds
     : [...(selectedKeys === 'all' ? rows.map(row => row.id) : (selectedKeys ?? []))].map(String)
-  const emitSelection = (selection: Selection): void => {
+  const emitSelection = (selection: Selection, eventDetails: DataTableChangeEventDetails): void => {
+    // User callbacks run before any state write; the raw observer first, then
+    // the convenience layer — a cancel() at either level stops the commit.
+    onSelectionChange?.(selection, eventDetails)
+    if (eventDetails.isCanceled)
+      return
     if (usesSelectionValue)
-      handleSelectionValueChange(selection)
-    onSelectionChange?.(selection)
+      handleSelectionValueChange(selection, eventDetails)
   }
   const loadedIds = rows.map(row => row.id)
   const allLoadedSelected = loadedIds.length > 0 && loadedIds.every(id => effectiveSelected.includes(id))
   const someLoadedSelected = loadedIds.some(id => effectiveSelected.includes(id))
 
-  const toggleRow = (id: string, next: boolean): void => {
+  const toggleRow = (id: string, next: boolean, eventDetails: DataTableChangeEventDetails): void => {
     if (selectionMode === 'single') {
-      emitSelection(next ? new Set([id]) : new Set())
+      emitSelection(next ? new Set([id]) : new Set(), eventDetails)
       return
     }
     const ids = new Set(effectiveSelected)
     if (next)
       ids.add(id)
     else ids.delete(id)
-    emitSelection(ids)
+    emitSelection(ids, eventDetails)
   }
 
   // Row click selects only when there is no other gesture for it: with a
@@ -689,12 +733,15 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
   const rowClickSelects = selectionMode !== undefined && selectionMode !== 'none'
     && !hasSelectionColumn && onRowAction === undefined
 
-  const sortToggle = (columnId: string): void => {
+  const sortToggle = (columnId: string, event: Event): void => {
     const isCurrent = sortDescriptor?.column === columnId
-    onSortChange?.({
-      column: columnId,
-      direction: isCurrent && sortDescriptor.direction === 'ascending' ? 'descending' : 'ascending',
-    })
+    onSortChange?.(
+      {
+        column: columnId,
+        direction: isCurrent && sortDescriptor.direction === 'ascending' ? 'descending' : 'ascending',
+      },
+      createGenericEventDetails('sort-press', event),
+    )
   }
 
   const renderCell = (column: DataTableColumn<T>, row: DataTableRowEntry<T>): ReactNode => {
@@ -703,7 +750,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
         <Checkbox
           aria-label={selectRowLabel}
           checked={effectiveSelected.includes(row.id)}
-          onCheckedChange={next => toggleRow(row.id, next)}
+          onCheckedChange={(next, details) => toggleRow(row.id, next, createChangeEventDetails('item-press', details.event))}
         />
       )
     }
@@ -719,15 +766,16 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
           aria-label={selectAllLabel}
           checked={allLoadedSelected}
           indeterminate={!allLoadedSelected && someLoadedSelected}
-          onCheckedChange={next => emitSelection(
+          onCheckedChange={(next, details) => emitSelection(
             next ? 'all' : new Set(effectiveSelected.filter(id => !loadedIds.includes(id))),
+            createChangeEventDetails('select-all-press', details.event),
           )}
         />
       )
     }
     const direction = sortDescriptor?.column === column.id ? sortDescriptor.direction : undefined
     const label = <span className="flex items-center gap-1">{column.header}</span>
-    if (!column.allowsSorting)
+    if (!column.sortable)
       return label
     // A button, not a click handler on the <th>: sorting has to be reachable
     // and announceable, and `aria-sort` on the header is what says which way.
@@ -739,7 +787,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
         "
         data-slot="data-table-sort-button"
         type="button"
-        onClick={() => sortToggle(column.id)}
+        onClick={event => sortToggle(column.id, event.nativeEvent)}
       >
         {column.header}
         <SortIndicator direction={direction} />
@@ -769,7 +817,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
         <TableRow>
           {allColumns.map(column => (
             <TableHead
-              aria-sort={column.allowsSorting
+              aria-sort={column.sortable
                 ? (sortDescriptor?.column === column.id ? sortDescriptor.direction : 'none')
                 : undefined}
               key={column.id}
@@ -801,14 +849,18 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
                     // row carries `data-selected` (what the rest of the library
                     // and Base UI speak) and the class that actually reads it.
                     className="data-selected:bg-muted"
-                    data-selected={effectiveSelected.includes(row.id) || undefined}
+                    data-selected={dataAttr(effectiveSelected.includes(row.id))}
                     data-slot="data-table-row"
                     key={row.id}
                     style={virtualized && !dynamicRowHeight ? { blockSize: rowHeight } : undefined}
                     onClick={onRowAction !== undefined
                       ? () => onRowAction(row.item)
                       : rowClickSelects
-                        ? () => toggleRow(row.id, !effectiveSelected.includes(row.id))
+                        ? (event: ReactMouseEvent) => toggleRow(
+                            row.id,
+                            !effectiveSelected.includes(row.id),
+                            createChangeEventDetails('item-press', event.nativeEvent),
+                          )
                         : undefined}
                     // TanStack's measureElement maps the node back to its item
                     // via the data-index attribute; the ref feeds it the <tr>.
@@ -889,11 +941,12 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
         isLoading && rows.length === 0 && 'min-block-32',
         className,
       )}
+      data-empty={dataAttr(isEmpty)}
+      data-error={dataAttr(isError)}
+      data-loading={dataAttr(isLoading)}
       data-slot="data-table"
     >
-      <DataTableStateContext
-        value={{ isLoading, isError, isEmpty, isFetchingNextPage, onRetry }}
-      >
+      <DataTableStateContext value={stateContextValue}>
         <ScrollArea
           orientation="both"
           scrollbars={scrollbars}

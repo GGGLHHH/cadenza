@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { PEOPLE } from '../lib/people'
 
 const columns: DataTableColumn<Person>[] = [
-  { id: 'name', header: '姓名', cell: person => person.name, isRowHeader: true },
+  { id: 'name', header: '姓名', cell: person => person.name, rowHeader: true },
   { id: 'role', header: '角色', cell: person => person.role },
 ]
 

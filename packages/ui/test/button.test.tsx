@@ -32,17 +32,10 @@ it('shows the pending spinner and swallows clicks while pending', async () => {
   expect(button.getAttribute('aria-disabled')).toBe('true')
   expect(button.hasAttribute('disabled')).toBe(false)
   expect(button.getAttribute('aria-busy')).toBe('true')
-  expect(button.getAttribute('data-pending')).toBe('true')
+  expect(button.getAttribute('data-pending')).toBe('')
   expect(button.querySelector('[data-slot="spinner"]')).not.toBeNull()
   await userEvent.click(button)
   expect(onClick).not.toHaveBeenCalled()
-})
-
-it('treats loading as an alias of pending', () => {
-  render(<Button loading>保存</Button>)
-  const button = screen.getByRole('button')
-  expect(button.getAttribute('aria-disabled')).toBe('true')
-  expect(button.querySelector('[data-slot="spinner"]')).not.toBeNull()
 })
 
 it('a pending submit button stops submitting', () => {
@@ -63,7 +56,7 @@ it('frosts the label in place — covered and melted, never replaced', () => {
   render(<Button pending>保存</Button>)
   const button = screen.getByRole('button', { name: '保存' })
   const overlay = button.querySelector('[data-slot="loading-overlay"]')
-  expect(overlay?.getAttribute('data-loading')).toBe('true')
+  expect(overlay?.getAttribute('data-loading')).toBe('')
   // The frost is a CONTENT blur on the label wrapper, not a backdrop blur:
   // the label stays in the tree (width, accessible name) and melts softly.
   const label = button.querySelector('[data-slot="button-label"]')

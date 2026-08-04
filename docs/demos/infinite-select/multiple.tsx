@@ -2,8 +2,8 @@ import type { ReactElement } from 'react'
 import type { Person } from '../lib/people'
 import {
   InfiniteCombobox,
-  InfiniteSelectClearButton,
-  InfiniteSelectConfirmButton,
+  InfiniteSelectClear,
+  InfiniteSelectClose,
   InfiniteSelectFooter,
   InfiniteSelectFooterSeparator,
   InfiniteSelectLoadingMore,
@@ -37,9 +37,9 @@ export default function MultiDemo(): ReactElement {
       </DemoButton>
       {selectSlots}
       <InfiniteSelectFooter>
-        <InfiniteSelectClearButton>清空</InfiniteSelectClearButton>
+        <InfiniteSelectClear>清空</InfiniteSelectClear>
         <InfiniteSelectFooterSeparator />
-        <InfiniteSelectConfirmButton>确定</InfiniteSelectConfirmButton>
+        <InfiniteSelectClose>确定</InfiniteSelectClose>
       </InfiniteSelectFooter>
       <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
     </InfiniteCombobox>

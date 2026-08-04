@@ -26,7 +26,7 @@ description: 带去抖查询的搜索字段 —— 输入框、清除按钮、Es
 
 ## 受控
 
-`value` + `onChange` 把文本交给外部 state，组件只负责渲染 ——
+`value` + `onValueChange` 把文本交给外部 state，组件只负责渲染 ——
 从字段之外填入或清空就靠这个：
 
 <ComponentPreview name="search-field/controlled" />
@@ -43,7 +43,7 @@ description: 带去抖查询的搜索字段 —— 输入框、清除按钮、Es
 <ComponentPreview name="search-field/composition" />
 
 各 part 靠 context 自己接上根组件，不需要往下传任何 props —— `SearchFieldInput`
-从 context 拿文本、handler 和无障碍名，`SearchFieldClearButton` 从 context 拿清除动作
+从 context 拿文本、handler 和无障碍名，`SearchFieldClear` 从 context 拿清除动作
 和禁用态。摆放顺序随你，接线不受影响。
 
 ## 禁用与只读
@@ -101,12 +101,12 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | `aria-label` | `string` | — | 这个字段的无障碍名，没有可见 `Label` 时**必给** |
 | `defaultValue` | `string` | `''` | 非受控初始文本 |
 | `value` | `string` | — | 受控文本 |
-| `onChange` | `(value: string) => void` | — | 每次按键触发，参数是原始文本 |
+| `onValueChange` | `(value, eventDetails) => void` | — | 每次文本变化触发。`eventDetails.reason` 说明来源（`input-change` / `clear-press` / `escape-key`），`cancel()` 拒绝这次变更 |
 | `defaultQueryValue` | `string` | — | 非受控初始查询值 |
 | `queryValue` | `string` | — | 受控查询值 |
 | `onQueryValueChange` | `(value: string \| undefined) => void` | — | 去抖后触发，已 trim、空白归一为 `undefined` |
 | `onSubmit` | `(value: string) => void` | — | 按 Enter 时触发，参数是当前原始文本 |
-| `onClear` | `() => void` | — | 清除时触发（Esc 或清除按钮）。内部的 `resetSearch` 先执行、你传的随后执行 —— 传入**不会**顶掉「清除跳过防抖立即生效」 |
+
 | `debounceMs` | `number` | `300` | 去抖间隔。**挂载时读取一次**，之后改动不生效（同 `defaultValue` 的约定）|
 | `placeholder` | `string` | — | 默认组合里输入框的占位符 |
 | `disabled` | `boolean` | `false` | 禁用整个字段 |
@@ -163,7 +163,7 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | `className` | `string \| (state) => string` | — | 类名 |
 | 其余 | Base UI `Input` 的 props | — | 透传 |
 
-不需要 `value` / `onChange` / `aria-label` —— 三者都从字段的 context 拿。
+不需要 `value` / `onValueChange` / `aria-label` —— 三者都从字段的 context 拿。
 `type="search"`、Escape 清空、Enter 提交也都在这里接好。原生的
 `::-webkit-search-cancel-button` 已经隐掉，免得和我们的清除按钮重复。
 
@@ -172,7 +172,7 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 画出来的。而 `InputGroupInput` 是先写属性、后展开 props，所以外面传一个同名属性会把
 契约值顶掉，焦点环就此静默消失：不报错，只是不再出现。
 
-### SearchFieldClearButton
+### SearchFieldClear
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
@@ -189,7 +189,7 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 而 `display: none` 的元素仍然会被 `:has(:disabled)` 命中，藏起来没用，得不渲染。
 
 `SearchField` 自己只导出两个 part，因为只有这两个真的加了东西：`SearchFieldInput`
-盖掉浏览器原生的搜索清除按钮，`SearchFieldClearButton` 接了「空时隐藏」。
+盖掉浏览器原生的搜索清除按钮，`SearchFieldClear` 接了「空时隐藏」。
 其余结构直接用 `InputGroup` 一族。
 
 `SearchFieldProps` / `SearchQueryOptions` / `SearchQueryState` 三个类型也一并导出。

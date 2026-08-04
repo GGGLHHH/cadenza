@@ -20,7 +20,7 @@ import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 export default function FieldInfiniteComboboxDemo(): ReactElement {
   const state = useInfiniteComboboxState()
   const list = useFakeInfiniteList(state.queryValue)
-  const [picked, setPicked] = useState<Person | undefined>(undefined)
+  const [picked, setPicked] = useState<Person | null>(null)
 
   return (
     <Field className="max-inline-sm">

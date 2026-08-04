@@ -22,7 +22,7 @@ const people: PersonWithBio[] = PEOPLE.map((person, index) => ({
 }))
 
 const columns: DataTableColumn<PersonWithBio>[] = [
-  { id: 'name', header: '姓名', cell: person => person.name, isRowHeader: true, width: 140 },
+  { id: 'name', header: '姓名', cell: person => person.name, rowHeader: true, width: 140 },
   // 单元格默认 nowrap,需要换行的列自己开
   { id: 'bio', header: '简介', cell: person => person.bio, className: 'whitespace-normal' },
 ]
