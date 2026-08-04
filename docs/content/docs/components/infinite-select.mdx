@@ -1,14 +1,16 @@
 ---
 title: InfiniteSelect
-description: 可搜索、无限滚动的选择器与 InfiniteCombobox 弹层便利层 —— React Aria 行为 + 组合式插槽
+description: 可搜索、无限滚动的选择器与 InfiniteCombobox 弹层便利层 —— Base UI Combobox 行为 + 组合式插槽
 ---
 
-可搜索、游标分页无限滚动的选择器家族。行为全部由 React Aria 承担：`Autocomplete`
-用虚拟焦点把搜索框和列表接起来（输入框保持 DOM 焦点，方向键在列表里移动），
-`ListBox` 提供选择语义、方向键 / Home / End / typeahead。大数据集可用
-`virtualized` 开启行虚拟化，见下文。
+可搜索、游标分页无限滚动的选择器家族。行为全部由 Base UI 的 `Combobox` 承担：
+它以 `inline` 模式渲染（不用自己的弹层），用虚拟焦点把搜索框和列表接起来
+（输入框保持 DOM 焦点，方向键在列表里移动），并提供选择语义。
+**客户端过滤是关掉的**（`filter={null}`）—— 过滤在服务端：打字驱动
+`onInputChange`，调用方重新取数，面板渲染回来的结果。大数据集可用 `virtualized`
+开启行虚拟化，见下文。
 
-分层也照 React Aria 的方式：底下是 **hooks 层**（状态与行为），中间是
+分层：底下是 **hooks 层**（状态与行为），中间是
 **组合式 parts**（context 接线、按书写顺序渲染），`InfiniteCombobox`
 是把这些一把组好的**便利层**。日常用便利层就够；要改结构时降到 parts
 层自由组合，见「[组合式架构与 hooks](#组合式架构与-hooks)」。
@@ -22,7 +24,7 @@ description: 可搜索、无限滚动的选择器与 InfiniteCombobox 弹层便�
 
 <ComponentPreview name="infinite-select/single" />
 
-组合方式照搬 React Aria 的 `DialogTrigger` 契约，**按位置**：**第一个 child 是触发器，
+组合方式**按位置**：**第一个 child 是触发器，
 它之后的每个 child 都进面板的组合通道**。
 
 ```tsx
@@ -33,8 +35,9 @@ description: 可搜索、无限滚动的选择器与 InfiniteCombobox 弹层便�
 </InfiniteCombobox>
 ```
 
-触发器必须是 React Aria 意义上可按压的元素（库里的 `Button` 即可）—— 弹层开合、
-焦点归还、Esc 关闭都由 `DialogTrigger` 接管。`Search` 和 `List` 两个 part 由便利层
+触发器可以是任何元素（库里的 `Button` 即可）—— Base UI 的 `Popover.Trigger` 把
+它变成触发按钮，弹层开合、
+焦点归还、Esc 关闭都由 Base UI 的 `Popover` 接管。`Search` 和 `List` 两个 part 由便利层
 自己渲染，**不要**再写进来。
 
 `children` 传函数时，整个 children 就是触发器（能拿到当前状态做摘要展示），此时没有
@@ -54,8 +57,9 @@ description: 可搜索、无限滚动的选择器与 InfiniteCombobox 弹层便�
 ## 虚拟化
 
 默认情况下，加载了多少行就渲染多少行。开启 `virtualized` 后行渲染交给
-React Aria 自己的 `Virtualizer`：**任何时刻只有视口内可见的那一小段行存在于
-DOM**——加载一万行，DOM 里也始终只有十几个节点。
+TanStack Virtual：**任何时刻只有视口内可见的那一小段行存在于 DOM**——
+实测加载一万行时 DOM 里只有 16 个节点，滚动高度照样是完整的 320000px。
+（虚拟化统一到了 TanStack 一家，`DataTable` 用的也是它。）
 下面的 demo 一次拉满 10000 条（无翻页）：
 
 <ComponentPreview name="infinite-select/virtualized" />
@@ -69,9 +73,11 @@ DOM**——加载一万行，DOM 里也始终只有十几个节点。
 **行高固定**为 `rowHeight`（默认 32px）——虚拟化靠固定行高换取零测量、零跳动；
 自定义 `renderItem` 比默认行高时必须同步调大它。
 
-键盘和读屏**不受影响**：React Aria 的 collection 与 DOM 解耦，虚拟化只裁剪 DOM，
-collection 里始终是加载过的全部行。所以打字定位（typeahead）、Home / End 和
-读屏播报的列表总数（`aria-setsize`）在开启后依然是全量的。
+键盘导航**不受影响**：`virtualized` 会同时告诉 Base UI「行不全在 DOM 里」，
+它于是按值列表而不是按 DOM 顺序导航。这也是为什么这个开关在**根组件**上而不是在
+`InfiniteSelectList` 上 —— 底座和虚拟化器都要知道。
+
+读屏的列表总数（`aria-setsize`）只覆盖 DOM 里的那一段，这是外部虚拟化的固有代价。
 
 加载下一页的触发时机与非虚拟模式一致（提前约 1 个视口预取，由
 `loadMoreScrollOffset` 控制），无需关心。
@@ -147,7 +153,7 @@ collection 里始终是加载过的全部行。所以打字定位（typeahead）
 <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
 ```
 
-和 `InfiniteSelectNoMore` 同款的**标记部件**，也是同一个 `LoaderNode` 位置 ——
+和 `InfiniteSelectNoMore` 同款的**标记部件**，也占同一个位置（滚动流末尾）——
 两者是同一位置的两个分支（还有下一页 / 没有了），不会同时出现。同样是**定制入口
 不是开关**：不写也会渲染那个 Spinner。
 
@@ -199,22 +205,18 @@ collection 里始终是加载过的全部行。所以打字定位（typeahead）
 
 终止行和加载更多指示是**同一个位置的两个分支**，不会同时出现。
 
-#### 底层与代价
+#### 底层
 
-终止行落在 React Aria 的 `ListBoxLoadMoreItem` 上，也就是 `LoaderNode` ——
-collection 里唯一一个「跟着内容滚、虚拟化时由 `ListLayout` 分到一行、但不算进
-`aria-setsize`」的位置。普通 `<div>` 塞不进 `ListBox` 的 children，会被
-collection builder 丢掉。
+终止行、加载指示和翻页哨兵都渲染在 **listbox 元素之外**、滚动容器之内。
+所以它们不是 option，不进 `aria-setsize`，`getAllByRole('option')` 数到的就是真实行。
 
-两个代价：
+翻页由一个 `IntersectionObserver` 哨兵触发（`loadMoreScrollOffset` 是它提前多少个
+视口高度开火）—— 用观察器而不是滚动监听，因为要紧的是哨兵的位置而不是滚动偏移：
+虚拟化之后偏移根本说明不了还剩多少行。
 
-1. React Aria 把 loader 行渲染成**不可选中的 `role="option"`**（`role="listbox"`
-   的合法子节点只有 option 和分组），所以 DOM 上会多出一个 option 元素。
-   键盘导航**不会**停在它上面（导航走 collection，`LoaderNode` 不是 item），
-   `aria-setsize` 也不受影响 —— 只有 `getAllByRole('option')` 这类 DOM 查询会数到它。
-   写测试时用 `[data-slot="infinite-select-item"]` 数真实行。
-2. 没有下一页时仍会装一个 `IntersectionObserver`（回调是空函数）。`LoaderNode`
-   只有这一个入口，无从避免。
+> React Aria 那版这里有笔债：loader 行必须是**不可选中的 `role="option"`**
+> （`role="listbox"` 的合法子节点只有 option），DOM 上因此多出一个 option 元素，
+> 测试里数行得绕开它。现在没有了。
 
 ## 动作上下文
 
@@ -285,13 +287,13 @@ function usePersonList(query: string | undefined): InfiniteSelectAdapterProps<Pe
 }
 ```
 
-搜索的分工：`inputValue` 是输入框的即时值（React Aria ComboBox 的同名概念），
+搜索的分工：`inputValue` 是输入框的即时值，
 `queryValue` 是防抖 300ms 后的请求值（可用 `debounceMs` 调）。把
 `state.queryValue` 传给适配器即可；关闭弹层后再次打开会自动清空搜索。
 
 ## 自定义行内容
 
-`renderItem` 替换的是行**内容**，不是行本身 —— `ListBoxItem` 外壳保留，
+`renderItem` 替换的是行**内容**，不是行本身 —— `Combobox.Item` 外壳保留，
 键盘导航和选中语义不受影响。签名：
 
 ```ts
@@ -300,39 +302,33 @@ renderItem?: (params: InfiniteSelectItemRenderParams<T>) => ReactNode
 interface InfiniteSelectItemRenderParams<T> {
   /** 这一行对应的原始数据对象。 */
   item: T
-  /** getOption(item) 的结果:id / label / textValue / isDisabled。 */
+  /** getOption(item) 的结果:id / label / disabled。 */
   option: InfiniteSelectOption
   /** 行在当前已加载列表中的位置,从 0 开始。语义见下方说明。 */
   index: number
-  // React Aria 的 render-prop 状态词汇,整包透传 —— 与「选项行」状态表逐行对应
-  isSelected: boolean
-  isHovered: boolean
-  isPressed: boolean
-  isFocused: boolean
-  isFocusVisible: boolean
-  isDisabled: boolean
+  // Base UI 的条目状态词汇
+  selected: boolean
+  disabled: boolean
   /** 面板的选择模式(用于决定要不要自绘勾选框)。 */
   selectionMode: 'single' | 'multiple'
-  /** React Aria 的选择行为。 */
-  selectionBehavior: 'toggle' | 'replace'
 }
 ```
 
 提供 `renderItem` 后默认行内容整体不再渲染——包括多选的勾选框和单选的对勾，
-需要这些视觉时用 `isSelected` / `selectionMode` 自行绘制：
+需要这些视觉时用 `selected` / `selectionMode` 自行绘制：
 
 <ComponentPreview name="infinite-select/render-item" />
 
 ```tsx
 <InfiniteCombobox<Person>
-  renderItem={({ item, index, isSelected }) => (
+  renderItem={({ item, index, selected }) => (
     <>
       <span className="w-8 text-right text-xs tabular-nums text-muted-foreground">
         {index + 1}.
       </span>
       <span className="flex-1 truncate">{item.name}</span>
       <span className="text-xs text-muted-foreground">{item.role}</span>
-      {isSelected && <span className="text-xs text-primary">✓</span>}
+      {selected && <span className="text-xs text-primary">✓</span>}
     </>
   )}
   {/* … */}
@@ -348,19 +344,23 @@ interface InfiniteSelectItemRenderParams<T> {
   滚动位置附近的几十行，`nth-child` 数的是这几十行的相对位置，一滚动奇偶就错乱；
   `index` 数的是完整列表的位置，不受滚动影响。
 
-`label` 不是纯字符串时，请在 `getOption` 里补 `textValue`，typeahead 靠它检索。
+**键盘/指针高亮不在参数里**：它归 Base UI 所有，渲染期间读不到。要跟着高亮换样式，
+挂行上的 `data-highlighted`（`itemClassName` 的函数形式或 Tailwind 变体都行）。
+
+`label` 不是纯字符串也不用补什么：这里没有客户端 typeahead，过滤全在服务端 ——
+打字驱动 `onInputChange`，调用方重新取数。
 
 ## 组合式架构与 hooks
 
-严格对齐 React Aria 的三层结构：
+三层结构：
 
 1. **Hooks 层**（`useXxxState` 语义）——
    `useInfiniteSelectSelection` 管选择：受控/非受控 ids、跨页对象缓存、
-   RAC `Selection` → 业务 `onChange` 的翻译；`useInfiniteComboboxState`
+   Base UI 的值 → 业务 `onChange` 的翻译；`useInfiniteComboboxState`
    管弹层开合与搜索/防抖；`useDataPaginationState` 是同一模式在分页器上的应用。
    全部导出，可脱离组件 headless 使用。
 2. **Parts 层（组合式组件 + context 接线）**——根组件 `InfiniteSelect` 只提供
-   数据与选择的 context 和 RAC `Autocomplete` 外壳；`InfiniteSelectSearch`
+   数据与选择的 context 和 Base UI `Combobox.Root` 外壳；`InfiniteSelectSearch`
    （搜索框）、`InfiniteSelectList`（列表，含虚拟化与预取）、状态插槽、footer
    一族都是普通 children，**按书写顺序渲染**，各自带自己的 props：
 
@@ -373,17 +373,20 @@ interface InfiniteSelectItemRenderParams<T> {
      onChange={(items, nextIds) => setIds(nextIds)}
      inputValue={state.inputValue}
      onInputChange={state.setInputValue}
+     virtualized
    >
      <InfiniteSelectSearch placeholder="搜索…" />
-     <InfiniteSelectList virtualized />
+     <InfiniteSelectList />
      <InfiniteSelectEmpty>没有结果</InfiniteSelectEmpty>
    </InfiniteSelect>
    ```
 
-   搜索框与列表之间不用手动接线——根组件的 `Autocomplete` 会通过 RAC 自己的
-   context 把任意深度的 `SearchField` / `ListBox` 后代配对（虚拟焦点、过滤）。
-   自定义 part 用 `useInfiniteSelectContext()` 读根组件提供的接线
-   （items / getOption / selectionMode / selectedIds / onSelectionChange …）。
+   搜索框与列表之间不用手动接线——根组件的 `Combobox.Root` 会通过 Base UI 自己的
+   context 把任意深度的 `Combobox.Input` / `Combobox.List` 后代配对（虚拟焦点、
+   选择语义）。自定义 part 用 `useInfiniteSelectContext()` 读根组件提供的接线
+   （items / getOption / selectionMode / selectedIds / hasItems / hasNextPage /
+   isFetchingNextPage / onLoadMore / virtualized / rowHeight，以及从组合通道提升
+   上来的 `loadingOverlayProps` / `noMoreProps` / `loadingMoreProps`）。
 3. **便利层** —— `InfiniteCombobox` 用一组扁平 props 把弹层 + parts + 插槽
    组好，是业务代码的默认入口；它内部就是上面那段组合代码。
 
@@ -393,7 +396,7 @@ interface InfiniteSelectItemRenderParams<T> {
 
 | 类型 | 说明 |
 | --- | --- |
-| `InfiniteSelectOption` | `getOption` 的返回形状：`{ id, label, textValue?, isDisabled? }` |
+| `InfiniteSelectOption` | `getOption` 的返回形状：`{ id, label, disabled? }` |
 | `InfiniteSelectItemRenderParams<T>` | `renderItem` 的参数，见上节 |
 | `InfiniteSelectAdapterProps<T>` | `list` prop 的契约——数据适配器要实现的形状，见「数据适配器」 |
 | `ControllableSelectionProps<T>` | 选择相关 props 的判别联合，判别键是 `selectionMode`（单选 `value?: string` / 多选 `value?: string[]`，`onChange` 签名随之切换） |
@@ -401,7 +404,7 @@ interface InfiniteSelectItemRenderParams<T> {
 | `InfiniteSelectSearchProps` / `InfiniteSelectListProps<T>` | 两个 parts 的 props |
 | `InfiniteSelectLoadingOverlayProps` / `InfiniteSelectNoMoreProps` / `InfiniteSelectLoadingMoreProps` | 三个标记部件的 props——第一个是去掉 `isLoading` 的 `LoadingOverlayProps`，后两个是 `ComponentProps<'div'>` |
 | `InfiniteSelectContextValue<T>` | `useInfiniteSelectContext()` 的返回——自定义 part 可读的接线 |
-| `InfiniteSelectSelectionState<T>` | `useInfiniteSelectSelection()` 的返回：`selectedIds` / `selectedItems` / `onSelectionChange` |
+| `InfiniteSelectSelectionState<T>` | `useInfiniteSelectSelection()` 的返回：`selectedIds` / `selectedItems` / `onValueChange`（喂给 Base UI 的 `Combobox.Root`） |
 | `InfiniteSelectActions<T>` | 动作上下文的值形状（`useInfiniteSelectActions()` 的返回 / `InfiniteSelectActionsProvider` 的入参），见「动作上下文」 |
 | `InfiniteComboboxState<T>` / `InfiniteComboboxStateOptions` | `useInfiniteComboboxState` 的返回值与入参 |
 | `InfiniteComboboxChildren<T>` | trigger 的类型：`ReactElement` 或接收状态的函数 |
@@ -420,43 +423,45 @@ interface InfiniteSelectItemRenderParams<T> {
 顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → 类名**。
 
 每个部件的 Props 表后面跟一张**状态**表。左列是挂在 DOM 上的 `data-*`，Tailwind 直接
-当变体写（`data-selected:bg-accent`）；右列是同一个状态在 render props / `renderItem`
-参数里的名字。`data-rac` / `data-collection` / `data-key` 是 React Aria 的内部标记，
-不要依赖。
+当变体写（`data-selected:bg-accent`）；右列是同一个状态在 `renderItem` 参数 / 函数
+形式 `itemClassName` 里的名字。注意 Base UI 的布尔状态写的是**空字符串**
+（`data-selected=""`），不是 `"true"`。表里没列出来的 `data-*` 是 Base UI 自己的
+内部标记，不要依赖。
 
 ### InfiniteCombobox
 
 便利层：一个 props 面，内部拆开路由到根组件和各个 part。改用组合式写法时，
 `searchPlaceholder` 去 `InfiniteSelectSearch` 上找 `placeholder`，
-`renderItem` / `virtualized` / `rowHeight` / `maxListHeight` / `scrollbars` /
-`loadMoreScrollOffset` 在 `InfiniteSelectList` 上；加载更多的文案走 `InfiniteSelectLoadingMore` 部件。
+`renderItem` / `maxListHeight` / `scrollbars` / `loadMoreScrollOffset` 在
+`InfiniteSelectList` 上，`virtualized` / `rowHeight` 在**根组件** `InfiniteSelect`
+上（底座和虚拟化器都要知道，见「[虚拟化](#虚拟化)」）；加载更多的文案走
+`InfiniteSelectLoadingMore` 部件。
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `state` | `InfiniteComboboxState` | — | **必填**，来自 `useInfiniteComboboxState()` |
 | `list` | `InfiniteSelectAdapterProps<T>` | — | **必填**，数据适配器 |
-| `getOption` | `(item: T) => InfiniteSelectOption` | — | **必填**，提取 id / label / textValue / isDisabled |
-| `children` | `ReactElement` \| `(state) => ReactElement` | — | **必填**。触发器，必须是可按压元素（RAC pressable）；函数形式可拿到 `isOpen` / `selectedItems` / `selectedValue` / `isDisabled` |
-| `selectionMode` | `'single' \| 'multiple'` | `'single'` | 判别式：决定下面三个的类型（React Aria 的枚举，与 DataTable 同名） |
+| `getOption` | `(item: T) => InfiniteSelectOption` | — | **必填**，提取 id / label / disabled |
+| `children` | `ReactElement` \| `(state) => ReactElement` | — | **必填**。触发器，任何元素都行（Base UI 的 `Popover.Trigger` 把它接成触发按钮）；函数形式可拿到整个 `state`（含 `open`）加上 `selectedItems` / `selectedValue` / `disabled` |
+| `selectionMode` | `'single' \| 'multiple'` | `'single'` | 判别式：决定下面三个的类型（与 DataTable 同名） |
 | `defaultValue` | `string` \| `string[]` | — | 非受控初始选择 |
 | `value` | `string` \| `string[]` | — | 受控选择 |
 | `onChange` | 单选 `(item?: T) => void`；多选 `(items: T[], ids: string[]) => void` | — | 多选时 `ids` 才是权威值，`items` 只含已加载页的对象 |
-| `isDisabled` | `boolean` | `false` | 禁用整个选择器：触发器元素会被注入 `isDisabled`（RAC pressable 契约），弹层不可打开 |
+| `disabled` | `boolean` | `false` | 禁用整个选择器：触发器元素会被注入 `disabled`，弹层不可打开 |
 | `commitOnClose` | `boolean` | `false` | 多选草稿模式，关弹层才提交 |
 | `closeOnSelect` | `boolean` | `true` | 单选选中后自动关闭 |
 | `lockScroll` | `boolean` | `false` | 锁定页面滚动（模态感） |
-| `closeOnScroll` | `boolean` | `false` | 页面滚动时关闭弹层（原生 select 感）；默认弹层随锚点滚动、保持打开 |
 | `searchPlaceholder` | `string` | — | 搜索框占位符，同时兼作它的无障碍名 |
-| `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | 替换行内容（`ListBoxItem` 外壳保留），参数见「自定义行内容」 |
+| `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | 替换行内容（`Combobox.Item` 外壳保留），参数见「自定义行内容」 |
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
-| `virtualized` | `boolean` | `false` | React Aria `Virtualizer` 行虚拟化，大数据集用 |
+| `virtualized` | `boolean` | `false` | TanStack Virtual 行虚拟化，大数据集用 |
 | `rowHeight` | `number` | `32` | 虚拟化行的固定高度；自定义 `renderItem` 更高时需同步调整 |
 | `maxListHeight` | `number` | `256` | 列表最大高度 |
 | `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | 滚动条可见性：常显 / hover 与滚动时显示 / 常隐 |
 | `aria-label` | `string` | 取 `searchPlaceholder` | 面板的无障碍名 |
 | `selectClassName` | `string` | — | 弹层内根组件的类名 |
 | `contentClassName` | `string` | — | 弹层本身的类名 |
-| `popoverProps` | `Omit<PopoverProps, 接线项>` | — | 弹层定位面：`placement` / `offset` / `shouldFlip`…… 接线项（`trigger` / `isNonModal` / 开合三件套 / `className`）已从类型里排除，接线写在展开之后、始终占上风 |
+| `popoverProps` | `Omit<PopoverContentProps, 'children' \| 'className'>` | — | 弹层定位面：`side` / `sideOffset` / `align`…… 接线写在展开之后、始终占上风；`contentClassName` 是类名出口 |
 
 防抖不在这张表上 —— `debounceMs`（默认 `300`）是 `useInfiniteComboboxState()` 的选项。
 
@@ -464,11 +469,11 @@ interface InfiniteSelectItemRenderParams<T> {
 
 | 状态 | 出现时机 | 说明 |
 | --- | --- | --- |
-| `data-placement` | 弹层已定位，值是 `bottom` / `top` / … | 出场动画按方向分岔时挂这个 |
-| `data-trigger` | 默认是 `SubmenuTrigger`（借该分支换取「弹层随锚点滚动」，不是真的子菜单）；`lockScroll` / `closeOnScroll` 下回落为 `DialogTrigger` | 出场动画等选择器谨慎依赖此值 |
+| `data-side` | 弹层实际贴的那一边，值是 `bottom` / `top` / … | 出场动画按方向分岔时挂这个 |
 
 触发器是你自己传的 `children`，状态取决于你用什么渲染。用我们的 `Button` 的话，
-它带 `data-hovered` / `data-pressed` / `data-focus-visible` / `data-disabled`。
+它只有 `data-disabled` / `data-pending`——交互态没有 data 属性，直接用
+`hover:` / `active:` / `focus-visible:` 伪类。
 
 ### InfiniteSelect
 
@@ -477,12 +482,12 @@ interface InfiniteSelectItemRenderParams<T> {
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `items` | `T[]` | — | **必填**，当前已加载（服务端过滤后）的数据 |
-| `getOption` | `(item: T) => InfiniteSelectOption` | — | **必填**，提取 id / label / textValue / isDisabled |
+| `getOption` | `(item: T) => InfiniteSelectOption` | — | **必填**，提取 id / label / disabled |
 | `selectionMode` | `'single' \| 'multiple'` | `'single'` | 判别式，同上 |
 | `defaultValue` | `string` \| `string[]` | — | 非受控初始选择 |
 | `value` | `string` \| `string[]` | — | 受控选择 |
 | `onChange` | 同 `InfiniteCombobox` | — | 选择变化回调 |
-| `inputValue` | `string` | — | 受控搜索词（RAC ComboBox 的词汇） |
+| `inputValue` | `string` | — | 受控搜索词 |
 | `onInputChange` | `(value: string) => void` | — | 搜索词变化回调 |
 | `isLoading` | `boolean` | `false` | 首屏加载中 |
 | `isFetchingNextPage` | `boolean` | `false` | 正在取下一页 |
@@ -494,7 +499,7 @@ interface InfiniteSelectItemRenderParams<T> {
 | `children` | `ReactNode` | — | part / 状态插槽 / footer，按调用方书写顺序渲染 |
 | `className` | `string` | — | 根元素类名 |
 
-**状态** —— 根元素上没有状态属性，它只是 RAC `Autocomplete` 的容器。状态都在下面的
+**状态** —— 根元素上没有状态属性，它只是 Base UI `Combobox.Root` 的容器。状态都在下面的
 part 上。
 
 ### InfiniteSelectSearch
@@ -503,42 +508,34 @@ part 上。
 | --- | --- | --- | --- |
 | `placeholder` | `string` | — | 默认组合里输入框的占位符，同时兼作无障碍名。**没有默认文案**——基座零可见文案；两者都没传时无障碍名兜底为 `'Search'`（只进 aria，不上屏） |
 | `autoFocus` | `boolean` | `false` | 挂载即聚焦。默认关闭（内联面板不该抢页面焦点）；`InfiniteCombobox` 会传 `true`，弹层一开就能打字 |
-| `children` | `ReactNode` | 图标 + 输入框 | 传了就完全接管内部结构；里面的 RAC `Input` 由字段 context 自动接线，`placeholder` / `autoFocus` 只作用于默认组合 |
-| `className` | `string \| (state) => string` | — | 类名，函数形式收到下表的 render props |
-| 其余 | RAC `SearchField` 的 props | — | 透传（`onSubmit`、`isDisabled`、`isReadOnly`……）。**除** `value` / `defaultValue` / `onChange` —— 那是根组件 `Autocomplete` 的过滤接线，已保留不放开 |
+| `children` | `ReactNode` | 图标 + 输入框 | 传了就完全接管内部结构；里面的 `Combobox.Input` 由根组件的 context 自动接线，`placeholder` / `autoFocus` 只作用于默认组合 |
+| `className` | `string` | — | 类名。这个 part 就是一个普通 `<div>`，不是 Base UI 部件，只收字符串 |
+| 其余 | 原生 `<div>` 的 props | — | 透传到搜索行的容器。`value` / `onChange` 不放开 —— 那是根组件的接线 |
 
-**状态**
-
-| 状态 | 出现时机 | render prop |
-| --- | --- | --- |
-| `data-empty` | 搜索框没有内容（RAC `SearchField`，清除按钮靠它显隐） | `isEmpty` |
-| `data-disabled` | 透传 `isDisabled` 时 | `isDisabled` |
+**状态** —— 没有。这一层是普通 `<div>`，状态都在里面的 `Combobox.Input` 上。
 
 ### InfiniteSelectList
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `aria-label` | `string` | 回退到根组件的 | 列表的无障碍名 |
-| `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | 替换行内容，`ListBoxItem` 外壳保留 |
+| `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | 替换行内容，`Combobox.Item` 外壳保留 |
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离，单位是视口高度 |
-| `virtualized` | `boolean` | `false` | 行虚拟化 |
-| `rowHeight` | `number` | `32` | 虚拟化行的固定高度 |
 | `maxListHeight` | `number` | `256` | 最大高度 |
 | `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | 滚动条可见性 |
 | `className` | `string` | — | 外层滚动容器的类名（尺寸约束定在这里） |
-| `listClassName` | `string \| (state) => string` | — | RAC `ListBox` 本体的类名，函数形式收到它的 render props |
-| `itemClassName` | `string \| (state) => string` | — | 每一行的类名，函数形式收到该行的 render props（见「选项行」状态表） |
+| `listClassName` | `string` | — | listbox 元素本体的类名 |
+| `itemClassName` | `string \| (state) => string` | — | 每一行的类名，函数形式收到 Base UI 的条目状态（见「选项行」状态表） |
 
 **状态**
 
-| 状态 | 出现时机 | render prop |
+| 状态 | 出现时机 | 说明 |
 | --- | --- | --- |
-| `data-layout` | 固定是 `stack`（RAC `ListBox` 的布局模式） | `layout` |
-| `data-orientation` | 固定是 `vertical` | `orientation` |
+| `data-empty` | Base UI 在列表没有条目时写上 | 实际见不到：没有行时 `InfiniteSelectList` 整个不渲染，由 `InfiniteSelectEmpty` 接手 |
 
 ### 选项行
 
-不是一个可写的组件 —— 由 `InfiniteSelectList` 渲染的 RAC `ListBoxItem`，
+不是一个可写的组件 —— 由 `InfiniteSelectList` 渲染的 Base UI `Combobox.Item`，
 `data-slot="infinite-select-item"`。`renderItem` 换掉的是它的**内容**，外壳、
 键盘导航和选择接线都还在，所以下面这些状态照常可用。
 
@@ -546,21 +543,19 @@ part 上。
 
 | 状态 | 出现时机 | renderItem 参数 |
 | --- | --- | --- |
-| `data-selection-mode` | 始终有值：`single` / `multiple` | `selectionMode` |
-| `data-selected` | 该项已选中 | `isSelected` |
-| `data-hovered` | 指针悬停其上；触摸和键盘都不触发 | `isHovered` |
-| `data-pressed` | 指针按住未松开 | `isPressed` |
-| `data-focused` | 是当前的活动项（虚拟焦点，真实焦点留在搜索框） | `isFocused` |
-| `data-focus-visible` | 活动项**且**由键盘导航到达 | `isFocusVisible` |
-| `data-disabled` | `getOption` 返回了 `isDisabled: true` | `isDisabled` |
+| `data-selected` | 该项已选中 | `selected` |
+| `data-highlighted` | 是当前高亮项（虚拟焦点，真实焦点留在搜索框），键盘和指针都会给 | 无——渲染期读不到，见下 |
+| `data-disabled` | `getOption` 返回了 `disabled: true` | `disabled` |
 
-`renderItem` 的参数是 `item` / `option` / `index` 加上表里的全套 RAC 状态词汇
-（另有 `selectionBehavior`）。参数带全不增加渲染成本 —— 行为了更新 `data-*`
-属性本来就会在这些状态变化时重渲染；样式仍然优先走 CSS 变体，参数是给
-需要按状态换内容（不只换样式）的渲染器用的。
+`renderItem` 的参数是 `item` / `option` / `index` / `selected` / `disabled` /
+`selectionMode`。`selectionMode` 只在参数里、DOM 上没有对应属性（自绘勾选框时用
+它判断单选还是多选）；反过来 **`data-highlighted` 只在 DOM 上、参数里没有** ——
+高亮归 Base UI 所有，渲染期间读不到，所以要跟着高亮换样子只能走 CSS：Tailwind 变体
+`data-highlighted:` 或函数形式的 `itemClassName`。
 
-搜索框保持真实焦点、列表项拿虚拟焦点，是 RAC `Autocomplete` 的设计：这样打字和
-上下键可以同时工作。所以焦点样式要挂在 `data-focused` 上，别挂 `:focus`。
+搜索框保持真实焦点、列表项拿虚拟焦点，是 Base UI `Combobox.Root` 在 `inline`
+模式下的设计：这样打字和上下键可以同时工作。所以高亮样式要挂在
+`data-highlighted` 上，别挂 `:focus`。
 
 ### 状态插槽与 footer
 

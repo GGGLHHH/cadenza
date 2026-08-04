@@ -1,4 +1,3 @@
-import type { Key } from '@gedatou/cadenza-ui'
 import type { ReactElement } from 'react'
 import {
   Select,
@@ -10,29 +9,29 @@ import {
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// selectionMode="multiple" 之后 value / onChange 整体换型:Key[] 而不是 Key | null。
-// 选中两项及以上时 SelectValue 显示的是 React Aria 按语言拼好的 selectedText
+const INSTRUMENTS = {
+  violin: '小提琴',
+  viola: '中提琴',
+  cello: '大提琴',
+  bass: '低音提琴',
+}
+
+// multiple 之后 value / onValueChange 整体换型:string[] 而不是 string | null。
+// 触发器上多选的显示由 SelectValue 拼:默认逗号分隔,想换写法就传函数 children
 export default function MultipleDemo(): ReactElement {
-  const [value, setValue] = useState<Key[]>(['violin'])
+  const [value, setValue] = useState<string[]>(['violin'])
 
   return (
     <div className="flex flex-col gap-4 inline-full max-inline-sm">
-      <Select
-        aria-label="乐器"
-        placeholder="可多选"
-        selectionMode="multiple"
-        value={value}
-        onChange={setValue}
-      >
-        <SelectTrigger>
-          <SelectValue />
+      <Select items={INSTRUMENTS} multiple value={value} onValueChange={setValue}>
+        <SelectTrigger aria-label="乐器">
+          <SelectValue placeholder="可多选" />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            <SelectItem id="violin">小提琴</SelectItem>
-            <SelectItem id="viola">中提琴</SelectItem>
-            <SelectItem id="cello">大提琴</SelectItem>
-            <SelectItem id="bass">低音提琴</SelectItem>
+            {Object.entries(INSTRUMENTS).map(([id, label]) => (
+              <SelectItem key={id} value={id}>{label}</SelectItem>
+            ))}
           </SelectGroup>
         </SelectContent>
       </Select>

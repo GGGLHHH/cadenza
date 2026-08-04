@@ -21,7 +21,7 @@ export default function BasicDemo(): ReactElement {
         </p>
         <LoadingOverlay isLoading={isLoading} />
       </div>
-      <Button size="sm" variant="outline" onPress={() => setIsLoading(v => !v)}>
+      <Button size="sm" variant="outline" onClick={() => setIsLoading(v => !v)}>
         {isLoading ? '停止加载' : '开始加载'}
       </Button>
     </div>

@@ -1,8 +1,8 @@
 {
   "name": "@gedatou/cadenza-ui",
   "type": "module",
-  "version": "0.2.1",
-  "description": "Accessible React components — React Aria behaviour, shadcn aria-nova styling",
+  "version": "0.3.0",
+  "description": "Accessible React components — Base UI behaviour, shadcn base-nova styling",
   "license": "MIT",
   "homepage": "https://cadenza-ui-docs.vercel.app",
   "repository": {
@@ -13,7 +13,7 @@
   "bugs": "https://github.com/GGGLHHH/cadenza/issues",
   "keywords": [
     "react",
-    "react-aria",
+    "base-ui",
     "shadcn",
     "tailwindcss",
     "component-library",
@@ -35,6 +35,7 @@
   },
   "types": "./dist/index.d.mts",
   "files": [
+    "CHANGELOG.md",
     "README.md",
     "dist",
     "styles.css"
@@ -59,18 +60,19 @@
     "ahooks": "catalog:ui",
     "class-variance-authority": "catalog:ui",
     "clsx": "catalog:ui",
-    "react-aria-components": "catalog:ui",
     "tailwind-merge": "catalog:ui"
   },
   "devDependencies": {
-    "@react-types/shared": "catalog:ui",
     "@shadcn/react": "catalog:ui",
     "@types/lodash": "catalog:types",
     "@types/node": "catalog:types",
+    "cmdk": "catalog:ui",
+    "date-fns": "catalog:ui",
     "embla-carousel-react": "catalog:ui",
     "input-otp": "catalog:ui",
     "next-themes": "catalog:ui",
     "react": "catalog:react",
+    "react-day-picker": "catalog:ui",
     "react-dom": "catalog:react",
     "react-resizable-panels": "catalog:ui",
     "recharts": "catalog:ui",

@@ -1,12 +1,12 @@
+import type { Input as BaseInput } from '@base-ui/react/input'
 import type { ComponentProps, ReactElement, RefAttributes } from 'react'
-import type { InputProps, TextAreaProps } from 'react-aria-components'
 import {
+  InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput as InputGroupInputPrimitive,
-  InputGroup as InputGroupPrimitive,
   InputGroupText,
-  InputGroupTextarea as InputGroupTextareaPrimitive,
+  InputGroupTextarea,
 } from '#primitives/input-group'
 
 /**
@@ -18,28 +18,23 @@ import {
  * anything else that needs an adorned input should use them directly rather
  * than grow its own renamed copies.
  *
- * The controls are React Aria's `Input` / `Button` / `TextArea` underneath, so
- * dropping them inside a RAC field (a `SearchField`, a `TextField`) wires them
- * up by context alone.
+ * The row and the textarea are plain DOM, so their props are the element's own
+ * and `className` is honestly a string. The input is Base UI's `Input`, which
+ * pairs itself with an enclosing `Field.Root` by context alone — no props to
+ * thread — and the button is Base UI's `Button`.
  */
-export type InputGroupProps = ComponentProps<typeof InputGroupPrimitive> & RefAttributes<HTMLDivElement>
+export type InputGroupProps = ComponentProps<typeof InputGroup>
 export type InputGroupAddonProps = ComponentProps<typeof InputGroupAddon>
 export type InputGroupButtonProps = ComponentProps<typeof InputGroupButton>
-export type InputGroupInputProps = InputProps & RefAttributes<HTMLInputElement>
 export type InputGroupTextProps = ComponentProps<typeof InputGroupText>
-export type InputGroupTextareaProps = TextAreaProps & RefAttributes<HTMLTextAreaElement>
+export type InputGroupTextareaProps = ComponentProps<typeof InputGroupTextarea>
+export type InputGroupInputProps = BaseInput.Props & RefAttributes<HTMLInputElement>
 
-// The primitive types itself with bare `GroupProps`, which drops the ref half
-// of RAC's public Group type. The ref itself already flows through the spread
-// (React 19) — only the type needs restating, so this is a cast, not a wrapper.
-const InputGroup = InputGroupPrimitive as (props: InputGroupProps) => ReactElement
-
-// The primitive flattens both controls to ComponentProps<'input' | 'textarea'>,
-// dropping the function className/style and the hover events that the RAC
-// Input/TextArea underneath still honour — every prop reaches them through
-// plain spreads, so only the types need widening. Casts, not wrappers.
+// The primitive flattens the control to ComponentProps<'input'>, dropping the
+// function className and the `onValueChange` / `defaultValue` that the Base UI
+// Input underneath still honours. Every prop reaches it through plain spreads,
+// so only the type needs widening — a cast, not a wrapper.
 const InputGroupInput = InputGroupInputPrimitive as (props: InputGroupInputProps) => ReactElement
-const InputGroupTextarea = InputGroupTextareaPrimitive as (props: InputGroupTextareaProps) => ReactElement
 
 export {
   InputGroup,

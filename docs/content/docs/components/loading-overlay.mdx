@@ -24,7 +24,7 @@ transform / isolation 都救不了）。宿主的 `overflow-hidden` 负责另一
 
 它就是库内加载态的**默认视觉**：[DataTable](/docs/components/data-table) 和
 [InfiniteSelect](/docs/components/infinite-select) 的一切 `isLoading`、
-[Button](/docs/components/button) 的 `isPending`，渲染的都是这同一层
+[Button](/docs/components/button) 的 `pending`（别名 `loading`），渲染的都是这同一层
 （Button 的实例传 `rounded-none backdrop-blur-none`、磨砂改由标签的**内容滤镜**
 承担——按钮尺度下 backdrop 模糊核会沿边角涂出晕染，模糊内容本身观感相同而边缘
 像素级干净，这是真机放大验证过的结论）——
@@ -32,7 +32,8 @@ transform / isolation 都救不了）。宿主的 `overflow-hidden` 负责另一
 `placeholderData` 保住旧数据即可触发）。内嵌实例的定制：表格和下拉走各自的
 slotted 标记部件 `DataTableLoadingOverlay` / `InfiniteSelectLoadingOverlay`
 （props 就是本组件的，`isLoading` 除外——那是基座的接线），样例见两个组件页的
-「加载中」小节；Button 走函数 children 整体接管。
+「加载中」小节；Button 的定制走「不传 `pending`、children 自己画」这条路，
+见 [Button](/docs/components/button) 页。
 
 ## 自定义内容
 
@@ -46,9 +47,9 @@ slotted 标记部件 `DataTableLoadingOverlay` / `InfiniteSelectLoadingOverlay`
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `isLoading` | `boolean` | `false` | 显示覆盖层。**内容面词汇**——和数据适配器的 `isLoading` 同义；动作面的「在途」用 Button 的 `isPending` |
+| `isLoading` | `boolean` | `false` | 显示覆盖层。**内容面词汇**——和数据适配器的 `isLoading` 同义；动作面的「在途」用 Button 的 `pending` |
 | `children` | `ReactNode` | 居中 Spinner | 传了就完全替换默认内容 |
-| `className` | `string` | — | 类名。纯 div（无 RAC 底座），只收字符串；改磨砂程度（`backdrop-blur-*`）、背景浓度（`bg-background/*`）、`z-*` 都从这里 |
+| `className` | `string` | — | 类名。纯 div，不是 Base UI 部件，只收字符串；改磨砂程度（`backdrop-blur-*`）、背景浓度（`bg-background/*`）、`z-*` 都从这里 |
 | 其余 | 原生 `div` 属性 | — | 透传（含 `ref`） |
 
 **状态**

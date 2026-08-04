@@ -3,9 +3,9 @@ import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
 /**
- * A render-props className. React Aria types it
- * `(values & { defaultClassName }) => string`, Base UI `(state) => string` —
- * `never` in parameter position accepts both (and any other state shape).
+ * A state-function className. Base UI types it `(state) => string`, with a
+ * different state shape per component — `never` in parameter position accepts
+ * any of them (and any other shape a wrapper declares).
  */
 type ClassFunction = (values: never) => string | undefined
 
@@ -19,8 +19,8 @@ type CnResult<Inputs extends readonly ClassInput[]>
 /**
  * Merge conditional class names, last-wins on conflicting Tailwind utilities.
  *
- * React Aria and Base UI accept `className` as a *function of state* — their
- * documented styling contract. clsx silently drops functions, so a plain
+ * Base UI accepts `className` as a *function of state* — its documented
+ * styling contract. clsx silently drops functions, so a plain
  * `cn(base, className)` in a wrapper would swallow a caller's function without
  * an error, while the props type keeps promising it works. Every wrapper in
  * this library funnels className through here, so this is the one place that

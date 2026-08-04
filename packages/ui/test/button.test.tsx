@@ -23,30 +23,35 @@ it('className overrides the variant class', () => {
   expect(classes).toContain('hover:bg-primary/80')
 })
 
-it('exposes variant and size as data attributes', () => {
-  render(<Button variant="outline" size="sm">Save</Button>)
+it('shows the pending spinner and swallows clicks while pending', async () => {
+  const onClick = vi.fn()
+  render(<Button pending onClick={onClick}>保存</Button>)
   const button = screen.getByRole('button')
-  expect(button.dataset.variant).toBe('outline')
-  expect(button.dataset.size).toBe('sm')
-})
-
-it('shows the pending spinner and swallows presses while isPending', async () => {
-  const onPress = vi.fn()
-  render(<Button isPending onPress={onPress}>保存</Button>)
-  const button = screen.getByRole('button')
-  // RAC keeps the button focusable (aria-disabled, not disabled) so focus
-  // does not evaporate mid-interaction; presses stop firing regardless.
+  // Focusable but inert: aria-disabled rather than the disabled attribute, so
+  // focus does not evaporate mid-action. Clicks stop firing either way.
   expect(button.getAttribute('aria-disabled')).toBe('true')
+  expect(button.hasAttribute('disabled')).toBe(false)
+  expect(button.getAttribute('aria-busy')).toBe('true')
+  expect(button.getAttribute('data-pending')).toBe('true')
   expect(button.querySelector('[data-slot="spinner"]')).not.toBeNull()
   await userEvent.click(button)
-  expect(onPress).not.toHaveBeenCalled()
+  expect(onClick).not.toHaveBeenCalled()
 })
 
-it('treats isLoading as an alias of isPending', () => {
-  render(<Button isLoading>保存</Button>)
+it('treats loading as an alias of pending', () => {
+  render(<Button loading>保存</Button>)
   const button = screen.getByRole('button')
   expect(button.getAttribute('aria-disabled')).toBe('true')
   expect(button.querySelector('[data-slot="spinner"]')).not.toBeNull()
+})
+
+it('a pending submit button stops submitting', () => {
+  const { rerender } = render(<Button type="submit">保存</Button>)
+  expect(screen.getByRole('button').getAttribute('type')).toBe('submit')
+  // Not `type="submit"` while pending, or Enter in a sibling input would submit
+  // the form this button is already busy submitting.
+  rerender(<Button pending type="submit">保存</Button>)
+  expect(screen.getByRole('button').getAttribute('type')).toBe('button')
 })
 
 it('renders no spinner at rest', () => {
@@ -55,7 +60,7 @@ it('renders no spinner at rest', () => {
 })
 
 it('frosts the label in place — covered and melted, never replaced', () => {
-  render(<Button isPending>保存</Button>)
+  render(<Button pending>保存</Button>)
   const button = screen.getByRole('button', { name: '保存' })
   const overlay = button.querySelector('[data-slot="loading-overlay"]')
   expect(overlay?.getAttribute('data-loading')).toBe('true')
@@ -77,41 +82,38 @@ it('frosts the label in place — covered and melted, never replaced', () => {
 })
 
 it('keeps the machinery mounted while the prop is in play, so the exit can animate', () => {
-  const { rerender } = render(<Button isPending>保存</Button>)
-  rerender(<Button isPending={false}>保存</Button>)
+  const { rerender } = render(<Button pending>保存</Button>)
+  rerender(<Button pending={false}>保存</Button>)
   // Still in the DOM (hidden by the overlay's own CSS) — unmounting would cut
   // the fade-out short, since React removes nodes synchronously.
   expect(document.querySelector('[data-slot="loading-overlay"]')).not.toBeNull()
   expect(screen.getByRole('button').getAttribute('aria-disabled')).toBeNull()
 })
 
-it('leaves function children alone — the caller owns the pending rendering', () => {
-  render(
-    <Button isPending>
-      {({ isPending }) => <span data-testid="custom">{isPending ? '忙' : '闲'}</span>}
-    </Button>,
-  )
-  expect(screen.getByTestId('custom').textContent).toBe('忙')
-  expect(document.querySelector('[data-slot="spinner"]')).toBeNull()
-})
-
-it('dims a disabled LinkButton — :disabled never fires on a link', () => {
-  render(<LinkButton href="https://example.com" isDisabled>文档</LinkButton>)
-  // RAC renders a disabled link as a <span data-disabled>, so the variants'
-  // `disabled:` styles can never match; the dimming rides the data attribute.
+it('strips href from a disabled LinkButton and dims it — :disabled never fires on a link', () => {
+  render(<LinkButton disabled href="https://example.com">文档</LinkButton>)
   const link = screen.getByText('文档')
-  expect(link.tagName).toBe('SPAN')
-  expect(link.getAttribute('data-disabled')).toBe('true')
+  expect(link.tagName).toBe('A')
+  // No href: aria-disabled alone still leaves a link openable from the context
+  // menu, and an anchor without href is not focusable either.
+  expect(link.hasAttribute('href')).toBe(false)
+  expect(link.getAttribute('aria-disabled')).toBe('true')
+  expect(link.getAttribute('data-disabled')).toBe('')
   expect(link.className).toContain('data-disabled:opacity-50')
 })
 
-it('fires onPress and stays silent when disabled', async () => {
-  const onPress = vi.fn()
-  const { rerender } = render(<Button onPress={onPress}>Save</Button>)
-  await userEvent.click(screen.getByRole('button'))
-  expect(onPress).toHaveBeenCalledTimes(1)
+it('keeps href on a live LinkButton', () => {
+  render(<LinkButton href="https://example.com">文档</LinkButton>)
+  expect(screen.getByText('文档').getAttribute('href')).toBe('https://example.com')
+})
 
-  rerender(<Button isDisabled onPress={onPress}>Save</Button>)
+it('fires onClick and stays silent when disabled', async () => {
+  const onClick = vi.fn()
+  const { rerender } = render(<Button onClick={onClick}>Save</Button>)
   await userEvent.click(screen.getByRole('button'))
-  expect(onPress).toHaveBeenCalledTimes(1)
+  expect(onClick).toHaveBeenCalledTimes(1)
+
+  rerender(<Button disabled onClick={onClick}>Save</Button>)
+  await userEvent.click(screen.getByRole('button'))
+  expect(onClick).toHaveBeenCalledTimes(1)
 })

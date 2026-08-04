@@ -15,11 +15,11 @@ function Stepper({ value, defaultValue, onChange }: StepperProps): ReactElement 
 
   return (
     <div className="flex items-center gap-2">
-      <DemoButton onPress={() => setCount(current => current - 1)} size="sm" variant="outline">
+      <DemoButton onClick={() => setCount(current => current - 1)} size="sm" variant="outline">
         −
       </DemoButton>
       <span className="text-center text-sm tabular-nums inline-8">{count}</span>
-      <DemoButton onPress={() => setCount(current => current + 1)} size="sm" variant="outline">
+      <DemoButton onClick={() => setCount(current => current + 1)} size="sm" variant="outline">
         +
       </DemoButton>
     </div>
@@ -42,7 +42,7 @@ export default function ControllableDemo(): ReactElement {
           ),状态在父级:
         </span>
         <Stepper onChange={setVolume} value={volume} />
-        <DemoButton onPress={() => setVolume(0)} size="sm" variant="outline">
+        <DemoButton onClick={() => setVolume(0)} size="sm" variant="outline">
           外部归零
         </DemoButton>
       </div>

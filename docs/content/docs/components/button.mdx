@@ -1,11 +1,11 @@
 ---
 title: Button
-description: React Aria Button 的封装 —— cva 变体与尺寸，按压语义、键盘与禁用态全部由 React Aria 承担
+description: Base UI Button 的封装 —— cva 变体与尺寸，加上一套 Base UI 没有的 pending 契约
 ---
 
-按钮。底下是 React Aria 的 `Button`，所以事件是 **`onPress`** 而不是 `onClick` ——
-它把鼠标、触摸、键盘（空格/回车）统一成一个语义，长按拖出按钮再松开不会误触发。
-外观是 shadcn 的 `buttonVariants`（cva）：六个变体、四档尺寸加四档纯图标尺寸。
+按钮。底下是 Base UI 的 `Button`，就是一个原生 `<button>`：事件是 `onClick`，
+禁用是 `disabled`，键盘激活由浏览器负责。外观是 shadcn 的 `buttonVariants`（cva）：
+六个变体、四档尺寸加四档纯图标尺寸。封装层自己加的只有 `pending` 那一套（见下）。
 
 ## 变体
 
@@ -17,61 +17,67 @@ description: React Aria Button 的封装 —— cva 变体与尺寸，按压语�
 
 <ComponentPreview name="button/sizes" />
 
-## 按状态渲染:children 的 render props
+## 按状态渲染
 
-`children` 是双形态的：普通 ReactNode，或 **`(state) => ReactNode` 的函数**——参数
-就是下方状态表右列那套 render props（`isHovered` / `isPressed` / `isFocused` /
-`isFocusVisible` / `isDisabled` / `isPending`，外加 `defaultChildren`），内容跟着
-交互状态走，不用自己监听任何事件：
+按钮的交互状态走 **CSS 伪类**：`hover:` / `active:` / `focus-visible:` / `:disabled`，
+`buttonVariants` 自己就是这么写的。原生 `<button>` 上这些伪类覆盖了全部输入模态，
+不需要 render props 那一层。要按状态换**内容**（不只是样式）就自己拿 state 判断，
+下文「自定义 pending」就是这个形态。
 
-<ComponentPreview name="button/render-props" />
-
-这是 React Aria 的原生契约。同一组状态由此有两条平行的路：**改样式**挂状态表左列的
-`data-*`（纯 CSS 变体）；**改内容**用右列的 render props（要换的不只是样式时）。
-下文「自定义 pending」正是这个机制的应用；`LinkButton` 同样支持（状态多一个
-`isCurrent`）。注意 `className` 在 Button 上是全库少数例外——只收字符串、没有函数
-形态（vendored 层的诚实收窄，见 Props 表）。
+`className` 只收字符串，没有函数形态 —— vendored 层把它灌进 `cva`，函数会被丢掉，
+所以类型上就把这条路封了（见 Props 表）。
 
 ## 进行中
 
-`isPending` 表示**这个按钮触发的动作还在途中**（对齐 React 的 `useTransition` /
-`useFormStatus` 词汇；`isLoading` 是它的别名，任一为真即进行中）。React Aria 负责行为：
-按压被吞掉（天然防双击）、按钮**保持可聚焦**（`aria-disabled` 而非原生 `disabled`，
-焦点不会凭空丢失）、向辅助技术播报。
+`pending` 表示**这个按钮触发的动作还在途中**（对齐 React 的 `useTransition` /
+`useFormStatus` 词汇；`loading` 是它的别名，任一为真即进行中）。Base UI 没有这个概念，
+所以三件事由封装层自己接上：
+
+| 做什么 | 怎么做的 | 不做会怎样 |
+| --- | --- | --- |
+| 保持可聚焦 | `disabled` + `focusableWhenDisabled`，Base UI 于是写 `aria-disabled` 而不是原生 `disabled` | 焦点在动作中途凭空丢失 |
+| 停止提交 | pending 期间 `type="submit"` 改写成 `"button"` | 在兄弟输入框里按回车会重复提交同一张表单 |
+| 说出来 | `aria-busy` | 辅助技术只知道它禁用了，不知道是在忙 |
+
+按压和键盘激活由 Base UI 的 `disabled` 一并吞掉（天然防双击）。
+
+比 React Aria 那版少一件事：**状态切换时不再有 assertive 补播报**。它需要一个
+live-region 单例，而且没有新内容可播——本库的 Spinner 是装饰性的，基座也不往 DOM 里
+塞任何语言的文案。
 
 默认视觉就是全库同一个 [LoadingOverlay](/docs/components/loading-overlay)：
 **真正的覆盖层**——标签留在原地被磨砂融开、隐约可见、继续撑宽度、仍是无障碍名，
 什么都不替换；[Spinner](/docs/components/spinner) 用 `foreground` 色浮在纱上
-（装饰性 `aria-hidden`，RAC 自己播报 pending；不用 currentColor 是因为会和纱下
+（装饰性 `aria-hidden`；不用 currentColor 是因为会和纱下
 的标签同色伪装）。按钮的磨砂是**内容滤镜**而非 backdrop：在 32px 高的小亮元素上，
 backdrop 模糊核会沿边角涂出晕染（真机放大验证过的物理事实），改为模糊标签本身 +
 平面暗纱由宿主裁切成形，磨砂观感相同、边缘与背景像素级贴合；暗纱浓度、过渡、
 `wait` 光标、`data-loading` 钩子与表格/下拉完全同源。宽度全程不变，邻居不位移；
 150ms 交叉淡入进出两向生效（`motion-reduce` 下豁免）。没有内建防闪延迟——快操作
-（比如 200ms 就返回的请求）该不该出 spinner 由你决定，需要就延迟置起 `isPending`：
+（比如 200ms 就返回的请求）该不该出 spinner 由你决定，需要就延迟置起 `pending`：
 
 <ComponentPreview name="button/pending" />
 
-这套结构只在**传了** `isPending` / `isLoading` 时挂载（传 `false` 也算——机制留在
+这套结构只在**传了** `pending` / `loading` 时挂载（传 `false` 也算——机制留在
 DOM 里退出动画才放得完）；没用这个特性的按钮渲染裸 children，零开销。
 想让宽度真正纹丝不动，pending 期间别换文案——spinner 已经在说话了。
 
-#### 自定义 pending:函数 children 接管
+#### 自定义 pending:传 disabled,别传 pending
 
-传**函数 children** 就拿到整个渲染权——暗纱、Spinner 一概不注入，`isPending`
-从 render props 里取，想画什么画什么。下例是经典的「spinner 排在文案旁 +
+不传 `pending` 就什么都不注入，children 完全归你。下例是经典的「spinner 排在文案旁 +
 换文案」形态；注意内容变化会改变宽度，这是接管的代价（默认组合的宽度恒定
-靠的正是覆盖而不替换）。行为保护不受影响：按压吞没、`wait` 光标、hover
-豁免都跟着 `data-pending` 走，与渲染方式无关：
+靠的正是覆盖而不替换）。代价还有一条：`wait` 光标和 hover 豁免跟着 `data-pending` 走，
+这条路上没有它，拿到的是禁用态的 `not-allowed`：
 
 <ComponentPreview name="button/pending-custom" />
 
 ## 链接按钮
 
 `LinkButton` 是穿着按钮衣服的 `<a>`：有 `href`、支持 `target`，变体和尺寸同 `Button`。
-禁用时 React Aria 渲染**没有 `href` 的 `<span>`** —— 链接没有原生禁用语义，这是它
-阻断导航的方式。因此 `:disabled` 在它身上永远不会命中，置灰靠 `data-disabled`
-（封装已接好，无需关心）：
+底下是 Base UI 的 Button 走 `nativeButton={false}`，所以禁用时该有的都有：
+`aria-disabled`、`tabIndex={-1}`、激活被吞掉。**`href` 还会被整个摘掉** —— 光有
+`aria-disabled` 的链接仍然能从右键菜单打开，而没有 `href` 的 `<a>` 既不可聚焦也
+不可导航。`:disabled` 在锚元素上永远不会命中，置灰靠 `data-disabled`（封装已接好）：
 
 <ComponentPreview name="button/link" />
 
@@ -83,30 +89,30 @@ DOM 里退出动画才放得完）；没用这个特性的按钮渲染裸 childr
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `onPress` | `(e: PressEvent) => void` | — | **不是 `onClick`** —— 统一鼠标 / 触摸 / 键盘的按压语义 |
-| `isDisabled` | `boolean` | `false` | 禁用（渲染原生 `disabled` 属性） |
-| `isPending` | `boolean` | `false` | 进行中：阻断按压但保持可聚焦、打 `data-pending`。默认视觉是同一个 LoadingOverlay（真覆盖：标签留在暗纱下，Spinner 浮在纱上；按钮尺度不模糊）；函数 children 视为接管渲染、不注入 |
-| `isLoading` | `boolean` | `false` | `isPending` 的别名，任一为真即进行中（给习惯 `loading` 词汇的业务层） |
-| `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | 表单里需要提交时改它 |
-| `variant` | `'default' \| 'secondary' \| 'outline' \| 'ghost' \| 'destructive' \| 'link'` | `'default'` | 变体，同时回显为 `data-variant` |
-| `size` | `'xs' \| 'sm' \| 'default' \| 'lg' \| 'icon-xs' \| 'icon-sm' \| 'icon' \| 'icon-lg'` | `'default'` | 尺寸，同时回显为 `data-size` |
-| `children` | `ReactNode \| (state) => ReactNode` | — | 内容。函数形态收到状态表右列的 render props（含 `defaultChildren`），见「按状态渲染」 |
-| `className` | `string` | — | 类名。**只收字符串** —— 这是全库少数收窄掉函数形式的部件（vendored 层的类型收窄，诚实且无静默丢失） |
-| 其余 | RAC `Button` 的 props | — | 透传（`autoFocus`、`onPressStart` 一族、`excludeFromTabOrder`……） |
+| `onClick` | `(e: MouseEvent) => void` | — | 原生点击；`disabled`（含 `pending`）时不触发 |
+| `disabled` | `boolean` | `false` | 禁用（渲染原生 `disabled` 属性） |
+| `pending` | `boolean` | `false` | 进行中：阻断激活但保持可聚焦、打 `data-pending` / `aria-busy`。默认视觉是同一个 LoadingOverlay（真覆盖：标签留在暗纱下，Spinner 浮在纱上；按钮尺度不模糊） |
+| `loading` | `boolean` | `false` | `pending` 的别名，任一为真即进行中（给习惯 `loading` 词汇的业务层） |
+| `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | 表单里需要提交时改它；`pending` 期间 `'submit'` 被改写成 `'button'` |
+| `variant` | `'default' \| 'secondary' \| 'outline' \| 'ghost' \| 'destructive' \| 'link'` | `'default'` | 变体 |
+| `size` | `'xs' \| 'sm' \| 'default' \| 'lg' \| 'icon-xs' \| 'icon-sm' \| 'icon' \| 'icon-lg'` | `'default'` | 尺寸 |
+| `focusableWhenDisabled` | `boolean` | `false` | 禁用时仍可聚焦（改用 `aria-disabled`）。`pending` 自己就是这么实现的 |
+| `nativeButton` | `boolean` | `true` | 关掉它才能用 `render` 换成非 `<button>` 元素（`LinkButton` 就是这么做的） |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | Base UI 的元素替换。**优先函数形态**：给元素形态时 Base UI 用字符串拼接合并 className，函数 className 会被 stringify 掉 |
+| `children` | `ReactNode` | — | 内容 |
+| `className` | `string` | — | 类名。**只收字符串** —— vendored 层把它灌进 `cva`，函数会被静默丢掉，所以类型上把这条路封了 |
+| 其余 | Base UI `Button` 的 props | — | 透传 |
 
 **状态**
 
-| 状态 | 出现时机 | render prop |
-| --- | --- | --- |
-| `data-hovered` | 指针悬停；触摸不触发 | `isHovered` |
-| `data-pressed` | 按住未松开（指针或空格/回车） | `isPressed` |
-| `data-focused` | 拿到焦点，不分来源 | `isFocused` |
-| `data-focus-visible` | 焦点且应当显示焦点环（键盘来的） | `isFocusVisible` |
-| `data-disabled` | `isDisabled` | `isDisabled` |
-| `data-pending` | `isPending` | `isPending` |
+| 状态 | 出现时机 |
+| --- | --- |
+| `data-disabled` | `disabled` |
+| `data-pending` | `pending` / `loading` |
 
-默认样式走 CSS 伪类（`hover:` / `:disabled`），对原生 `<button>` 两者基本等价；
-自定义样式建议挂 data 属性，跨输入模态更一致。光标是全库统一的约定：可点时
+交互态没有 data 属性：Base UI 的 Button 只暴露 `disabled`，hover / active /
+focus-visible 直接用 CSS 伪类（`buttonVariants` 自己就是这么写的），在原生
+`<button>` 上它们覆盖了全部输入模态。光标是全库统一的约定：可点时
 `pointer`、禁用时 `not-allowed`、**进行中是 `wait`**——pending 是「在忙」不是
 「禁止」，虽然它也带 `aria-disabled`，styles.css 里 `data-pending` 的规则排在
 禁用规则之后、专门胜出（全局规则，无需自己写）。
@@ -120,13 +126,13 @@ DOM 里退出动画才放得完）；没用这个特性的按钮渲染裸 childr
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `href` | `string` | — | 目标地址；禁用时整个属性不渲染 |
+| `href` | `string` | — | 目标地址；`disabled` 时整个属性不渲染 |
 | `target` / `rel` 等 | 原生 `<a>` 属性 | — | 透传 |
-| `isDisabled` | `boolean` | `false` | 禁用：渲染 `<span data-disabled>`，导航被阻断、视觉置灰 |
+| `disabled` | `boolean` | `false` | 禁用：摘掉 `href`、挂 `aria-disabled` 与 `tabIndex={-1}`、吞掉激活、视觉置灰 |
 | `variant` / `size` | 同 `Button` | `'default'` | 同一套 `buttonVariants` |
 | `className` | `string` | — | 类名（同上，只收字符串） |
 
-**状态**：同 `Button`，外加 `data-current`（`aria-current` 场景）；没有 `data-pending`。
+**状态**：只有 `data-disabled`；没有 `data-pending`。
 
 `buttonVariants` 也单独导出 —— 需要把别的元素画成按钮的样子（比如 fumadocs 的卡片链接）
 时直接调用：`buttonVariants({ variant: 'outline', size: 'sm', className: '...' })`。

@@ -1,12 +1,12 @@
 ---
 title: resolveRenderChildren
-description: React Aria 内部 useRenderProps 的 children 分支 —— 双形态 children 的统一解析
+description: 双形态 children 的统一解析 —— ReactNode 或 (state) => ReactNode
 ---
 
-React Aria 的 children 是双形态的：普通 ReactNode，或 `(values) => ReactNode`
-的函数。RAC 内部用 `useRenderProps` 统一解析（1.19 起主入口公开导出，但它是
-**hook**，见下文）。`resolveRenderChildren` 就是它 children 分支的纯函数版，
-语义逐条对齐：
+本库有几处 children 是双形态的：普通 ReactNode，或 `(values) => ReactNode`
+的函数。`resolveRenderChildren` 是这个契约的唯一解析器 —— 封装层算好状态和默认
+组合，把两种形态收敛成一个 ReactNode。语义（连同下面那条 nullish 回落）沿用当年
+RAC `useRenderProps` 的收尾行为：
 
 ```ts
 import { resolveRenderChildren } from '@gedatou/cadenza-utils'
@@ -16,30 +16,18 @@ resolveRenderChildren(children, values, defaultChildren?)
 
 - **函数 children**：以 `values` 外加 `defaultChildren` 为参数调用；
 - **节点 children**：原样使用；
-- **两条路的 nullish 结果都回落到 `defaultChildren`** —— 对齐 RAC 源码收尾的
-  `computedChildren ?? defaultChildren`，函数返回 `null` 拿到的是默认组合而不是
-  空白。「渲染空」靠不给 `defaultChildren` 表达，不靠在它头上返回 `null`。
+- **两条路的 nullish 结果都回落到 `defaultChildren`** —— 收尾是
+  `computedChildren ?? defaultChildren`，所以函数返回 `null` 拿到的是默认组合
+  而不是空白。「渲染空」靠不给 `defaultChildren` 表达，不靠在它头上返回 `null`。
 
-## 为什么是纯函数，不是 hook
-
-RAC 的 `useRenderProps` 是 hook（内部一整个 `useMemo`），而这里的主要调用
-场景在 **RAC 函数 child 的回调内部** —— 封装层往往先接住 RAC 的 render props、
-再决定怎么解析调用方的 children（本库的 `SearchField` 正是如此），rules of
-hooks 禁止在回调里调 hook。RAC 自己的另一个公开工具 `composeRenderProps`
-是纯函数，同一个原因。
+行为的规格书是 `packages/utils/test/resolve-render-children.test.ts`。
 
 ## 库内用法
 
-- `SearchField`：在 RAC 的函数 child 里解析调用方 children，默认组合作为
-  `defaultChildren` 传入 —— 函数 children 可以「在默认组合基础上加」而不必重造；
-- `InfiniteCombobox`：解析 trigger 的双形态 children（自家契约，同一形状）。
+- `SearchField`：在自己的 render 体里解析调用方 children，把默认组合
+  （`InputGroup` + 搜索图标 + 输入框 + 清除按钮）作为 `defaultChildren` 传入 ——
+  函数 children 于是可以「在默认组合基础上加」而不必重造；
+- `InfiniteCombobox`：解析 trigger 的双形态 children，不给 `defaultChildren`
+  —— 触发器没有默认长相，必须由调用方给。
 
 业务层给组件再包一层、需要同款「传 ReactNode 或按状态渲染」契约时，直接用它。
-
-## 什么时候不用
-
-- **RAC 自己会解析的 seam 不要抢**：函数 children 原样透传给 RAC 即可
-  （本库 `Button` 就是透传，pending 机制只在非函数 children 时注入）；
-- **集合组件的函数 children 不是这回事**：`TabList` / `ListBox` 的函数是
-  条目渲染器 `(item) => …`，由 RAC 的集合构建器按条目缓存调用，
-  与状态 render props 是两套机器。

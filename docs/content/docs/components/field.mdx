@@ -21,29 +21,22 @@ Field 先落地，控件才有地方安家。
 
 ## 配 Select
 
-`Select` 的根元素是个 `div`（不是控件本身，也不可被 `<label>` 关联），触发器
-才是真正的控件 —— 所以 `id` 落在 `SelectTrigger` 上，`FieldLabel htmlFor`
-指过去。
+`Select` 的根元素不渲染 DOM，触发器才是真正的控件 —— 所以 `id` 落在
+`SelectTrigger` 上，`FieldLabel htmlFor` 指过去。
 
-**同时还要给 `Select` 一个 `aria-label`。** 这两条通道各管一半，缺一不可：
+**一条通道全包了。** 触发器是个真 `<button>`，所以原生 `<label for>` 既给它命名，
+又由浏览器把点击转发过去把弹层打开：
 
-| 通道 | 管什么 | 缺了会怎样 |
-| --- | --- | --- |
-| `FieldLabel htmlFor` → `SelectTrigger id` | 点文字**聚焦并展开** | 文字点不动 |
-| `Select` 的 `aria-label` | **无障碍名** | 读屏只报当前值，标签整个丢失 |
-
-反直觉的地方在第二行：原生 `<label for>` 本来是能给按钮命名的，但 React Aria
-在触发器上自己设了 `aria-labelledby`，而它在无障碍名计算里**优先级高于**原生
-label —— 于是 `htmlFor` 提供的那个名字被彻底忽略。两个文本要写成一样的，
-它们服务的是两拨人。
+| 通道 | 管什么 |
+| --- | --- |
+| `FieldLabel htmlFor` → `SelectTrigger id` | 无障碍名 **+** 点文字展开弹层 |
 
 <ComponentPreview name="field/select" />
 
-**点标签会直接展开弹层**，这是本库加的默认行为。平台本身到聚焦为止：原生
-`<select>` 点 label 只聚焦，React Aria 在 `useSelect` 里也只调 `focus()`；而
-`Field` 这套解剖用的不是 React Aria 自己的 label，连那一步都没有，浏览器转发过来
-的是一个没有指针序列的裸 `click`，`usePress` 根本不认。所以 `Select` 的封装层补上了
-这一段 —— 不需要你在调用侧接任何东西。
+> 0.2（React Aria 底座）这里要写两遍文案：它在触发器上挂了自己的 `aria-labelledby`，
+> 在无障碍名计算里压过原生 `<label for>`，所以必须另给一个 `aria-label`；而且
+> `usePress` 不认没有指针序列的裸 click，「点标签展开」还得封装层自己补。
+> 升级时把那个多余的 `aria-label` 删掉即可。
 
 Checkbox / Radio / Switch 是另一种情况 —— 它们是 **box-only**：根元素就是那个
 16px 方块 / 轨道本身（见开头），文字塞进 children 会被挤进方块里，所以同样得
@@ -52,21 +45,14 @@ Checkbox / Radio / Switch 是另一种情况 —— 它们是 **box-only**：根
 
 ## 配 InfiniteCombobox
 
-触发器是**你自己传进去的元素**（`children`，必须是 React Aria 可按压的），所以
-`id` 没法像 `Select` 那样由你写在部件上 —— React Aria 会给它派一个没人猜得到的
-生成 id。用 `triggerId` 把 `id` 交给它：
+触发器是**你自己传进去的元素**（`children`），所以 `id` 没法像 `Select` 那样由你
+写在部件上 —— Base UI 会给它派一个没人猜得到的生成 id。用 `triggerId` 把 `id`
+交给它：
 
 <ComponentPreview name="field/infinite-combobox" />
 
-**这里不需要 `aria-label`。** 和 `Select` 正好相反，原因是触发器上没有
-`aria-labelledby`：
-
-| | 触发器上的 `aria-labelledby` | 结果 |
-| --- | --- | --- |
-| `Select` | React Aria 挂了（指向值 + 自身） | 压过原生 `<label for>`，**必须**另写 `aria-label` |
-| `InfiniteCombobox` | 没有 | 原生 `<label for>` 直接生效，**别**再写 `aria-label` |
-
-顺带一提，`InfiniteCombobox` 那个 `aria-label` prop 命名的是**弹层里的列表**
+**这里同样不需要额外的 `aria-label`** —— 原生 `<label for>` 直接生效，和 `Select`
+一样。顺带一提，`InfiniteCombobox` 那个 `aria-label` prop 命名的是**弹层里的列表**
 （不传则回退到 `searchPlaceholder`），和触发器的名字是两回事，别混。
 
 加上 label 之后，按钮的无障碍名会从「按钮文字」换成「label 文字」，按钮文字降为
@@ -79,7 +65,7 @@ Checkbox / Radio / Switch 是另一种情况 —— 它们是 **box-only**：根
 
 这正是想要的读法 —— 名字是字段名，按钮文字是当前值。
 
-点标签同样**会展开**弹层，和 `Select` 一样由封装层补上（平台默认只聚焦）。
+点标签同样**会展开**弹层，和 `Select` 一样：触发器是真按钮，浏览器把点击转发过去。
 
 ## 编组
 
@@ -124,13 +110,13 @@ Checkbox / Radio / Switch 是另一种情况 —— 它们是 **box-only**：根
 
 - **`aria-describedby` 手动接**：给 `FieldError` 一个 `id`，控件的
   `aria-describedby` 指过去。这条通道没有 context 替你接线 —— 换来的是
-  它在任何解剖里都能用，不依赖 RAC 字段组件。
+  它在任何解剖里都能用，不绑定任何一个字段组件。
 - **nullish 条目先过滤**：`undefined` 在去重时也占一个槽位，一条真消息
   加一个 `undefined` 会渲染成单项列表而不是平铺文本。
 
 ## 状态约定
 
-控件自身的 `isDisabled` / `isInvalid` 只管控件的视觉。要让整列文字跟着
+控件自身的 `disabled` / `invalid` 只管控件的视觉。要让整列文字跟着
 变灰 / 变红，在 `Field` 上手动挂 data 属性：
 
 | Field 上的属性 | 效果 |
@@ -146,7 +132,7 @@ Checkbox / Radio / Switch 是另一种情况 —— 它们是 **box-only**：根
 | --- | --- | --- |
 | `Field` | `div`（`role="group"`） | `orientation`：`'vertical' \| 'horizontal' \| 'responsive'`，默认 `vertical` |
 | `FieldGroup` | `div` | — |
-| `FieldLabel` | RAC `Label`（`label`） | `htmlFor`（关联通道）；`ref` 指向 `label` 元素 |
+| `FieldLabel` | 原生 `label` | `htmlFor`（关联通道）；`ref` 指向 `label` 元素 |
 | `FieldContent` | `div` | 横排时容纳标签 + 描述的列容器 |
 | `FieldTitle` | `div` | 非 `label` 场景的标题（无关联语义） |
 | `FieldDescription` | `p` | — |

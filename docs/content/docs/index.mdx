@@ -1,15 +1,15 @@
 ---
 title: 介绍
-description: React Aria 负责行为与无障碍，Tailwind + cva 负责外观。
+description: Base UI 负责行为与无障碍，Tailwind + cva 负责外观。
 ---
 
-Cadenza 是基于 React Aria Components 的组件库：行为、键盘交互与无障碍语义全部
-交给 React Aria，外观沿用 shadcn（aria-nova 预设）的 Tailwind + cva 体系。
+Cadenza 是基于 [Base UI](https://base-ui.com) 的组件库：行为、键盘交互与无障碍语义
+全部交给 Base UI，外观沿用 shadcn（`base-nova` 预设）的 Tailwind + cva 体系。
 
 ## 安装
 
 ```bash
-pnpm add @gedatou/cadenza-ui react-aria-components
+pnpm add @gedatou/cadenza-ui
 ```
 
 在你的入口 CSS 里：
@@ -23,7 +23,7 @@ pnpm add @gedatou/cadenza-ui react-aria-components
 
 ## 从哪里开始
 
-- [Button](/docs/components/button) —— `onPress` 语义的按钮与链接按钮，cva 变体 / 尺寸体系，`isPending` 自带 Spinner
+- [Button](/docs/components/button) —— 按钮与链接按钮，cva 变体 / 尺寸体系，`pending` 自带 Spinner
 - [Spinner](/docs/components/spinner) —— `role="status"` 的加载指示，尺寸颜色全走 className
 - [LoadingOverlay](/docs/components/loading-overlay) —— 区域级磨砂加载覆盖层，铺满最近的 `relative` 父容器
 - [DataTable](/docs/components/data-table) —— 列定义驱动的数据表格：排序、行选择、固定列、分页、无限滚动、虚拟化
@@ -34,8 +34,9 @@ pnpm add @gedatou/cadenza-ui react-aria-components
 - [Field](/docs/components/field) —— 表单字段的布局家族：标签、描述、错误、编组、分隔，纯 DOM、控件无关
 - [InputGroup](/docs/components/input-group) —— 图标、文本、按钮与输入框共处一个边框，焦点环画在整组上
 - [ScrollArea](/docs/components/scroll-area) —— 覆盖式滚动条的滚动容器，与 scroll-fade 渐隐天然兼容
-- [Tabs](/docs/components/tabs) —— React Aria Tabs 家族：组合式 Tab / TabPanel，键盘导航与配对全托管
+- [Tabs](/docs/components/tabs) —— 组合式 Tab / TabPanel，键盘导航与配对全托管，外加会跟着悬停与焦点滑动的指示器
 - [useControllableState](/docs/utils/use-controllable-state) —— 受控/非受控双模的统一实现
 
-落在 React Aria / Base UI 槽位上的 `className` 全库支持双形态 —— 字符串，或
+落在 Base UI 槽位上的 `className` 全库支持双形态 —— 字符串，或
 `(state) => string` 的状态函数；各组件页的状态表就是函数参数的字典。
+落到纯 DOM 元素上的则老实收窄成字符串，那些地方走 `data-*` 属性改样式。

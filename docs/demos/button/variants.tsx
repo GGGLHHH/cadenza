@@ -11,7 +11,7 @@ export default function VariantsDemo(): ReactElement {
       <Button variant="ghost">幽灵</Button>
       <Button variant="destructive">危险</Button>
       <Button variant="link">链接样式</Button>
-      <Button isDisabled>禁用</Button>
+      <Button disabled>禁用</Button>
     </div>
   )
 }

@@ -8,15 +8,15 @@ import {
   SearchFieldInput,
 } from '../src/components/search-field'
 
-// Real timers throughout: faking them deadlocks React Aria's press and focus
-// machinery, which schedules its own. Timing is made deterministic by the
+// Real timers throughout: faking them deadlocks the press and focus machinery
+// under userEvent, which schedules its own. Timing is made deterministic by the
 // debounce interval instead — a few ms when the query should arrive, a few
 // seconds when the point is that it has not arrived yet.
 const SETTLES = 20
 const NEVER = 10_000
 
 describe('searchField', () => {
-  it('renders a searchbox — RAC gives the field its type and semantics', () => {
+  it('renders a searchbox — type=search is what gives it the role', () => {
     render(<SearchField aria-label="搜索作曲家" placeholder="搜索..." />)
     const input = screen.getByRole('searchbox', { name: '搜索作曲家' })
     expect(input).not.toBeNull()
@@ -104,7 +104,7 @@ describe('searchField', () => {
     expect(onQueryValueChange).toHaveBeenCalledExactlyOnceWith(undefined)
   })
 
-  it('clears on Escape — RAC behaviour, not ours', async () => {
+  it('clears on Escape', async () => {
     const user = userEvent.setup()
     render(<SearchField aria-label="搜索" defaultValue="ravel" />)
 
@@ -129,17 +129,17 @@ describe('searchField', () => {
   })
 
   it('leaves the clear button out when read only', () => {
-    // Not cosmetic: RAC disables that button in read-only mode, and InputGroup
+    // Not cosmetic: a read-only field's clear button is disabled, and InputGroup
     // dims itself for any disabled descendant — so leaving it in the DOM makes
     // a read-only field render as a disabled one. `hidden` would not help,
     // since a display:none element still answers `:has(:disabled)`.
-    render(<SearchField aria-label="搜索" defaultValue="ravel" isReadOnly />)
+    render(<SearchField aria-label="搜索" defaultValue="ravel" readOnly />)
     expect(screen.queryByRole('button', { name: 'Clear search' })).toBeNull()
     expect(document.querySelector('[data-slot="input-group"] :disabled')).toBeNull()
   })
 
   it('keeps the clear button on a disabled field, dimmed with the rest', () => {
-    render(<SearchField aria-label="搜索" defaultValue="ravel" isDisabled />)
+    render(<SearchField aria-label="搜索" defaultValue="ravel" disabled />)
     expect(screen.getByRole('button', { name: 'Clear search' })).toHaveProperty('disabled', true)
   })
 
@@ -164,15 +164,16 @@ describe('searchField', () => {
     expect(onQueryValueChange).toHaveBeenCalledExactlyOnceWith(undefined)
   })
 
-  it('resolves a function className against the field state', () => {
-    render(
-      <SearchField
-        aria-label="搜索"
-        className={({ isDisabled }) => isDisabled ? 'opacity-25' : 'opacity-75'}
-        isDisabled
-      />,
-    )
+  it('publishes its state as data attributes — the root is a plain div', () => {
+    // No function className here: the root bottoms out in a <div>, not a Base UI
+    // slot, so the type says string and means it. State styling goes through
+    // these attributes (`data-disabled:opacity-50`), which is also what the
+    // default composition uses to hide the clear button.
+    render(<SearchField aria-label="搜索" className="opacity-25" disabled readOnly />)
     const field = document.querySelector('[data-slot="search-field"]')
+    expect(field?.getAttribute('data-disabled')).toBe('true')
+    expect(field?.getAttribute('data-readonly')).toBe('true')
+    expect(field?.getAttribute('data-empty')).toBe('true')
     expect(field?.className).toContain('opacity-25')
     expect(field?.className).toContain('group/search-field')
   })
@@ -192,16 +193,16 @@ describe('searchField', () => {
     expect(screen.getByRole('searchbox').getAttribute('placeholder')).toBe('自定义')
   })
 
-  it('hands function children the field render props — RAC\'s dual-form contract', () => {
+  it('hands function children the field render props — the dual-form children contract', () => {
     // A takeover, like Button's: the default composition is not injected, and
     // the caller reads the same states the default composition itself uses
-    // (it hides the clear button off isReadOnly).
+    // (it hides the clear button off readOnly).
     render(
       <SearchField aria-label="搜索" defaultValue="ravel">
-        {({ isEmpty }) => (
+        {({ empty }) => (
           <InputGroup>
             <SearchFieldInput />
-            <span data-testid="state">{isEmpty ? '空' : '有值'}</span>
+            <span data-testid="state">{empty ? '空' : '有值'}</span>
           </InputGroup>
         )}
       </SearchField>,
@@ -211,7 +212,7 @@ describe('searchField', () => {
   })
 
   it('hands function children the default composition as defaultChildren — extend, not rebuild', () => {
-    // RAC's own defaultChildren semantics: nothing is injected, but the
+    // The defaultChildren contract: nothing is injected, but the
     // function can render the default composition and add around it.
     render(
       <SearchField aria-label="搜索" placeholder="搜索...">
@@ -227,11 +228,27 @@ describe('searchField', () => {
     expect(screen.getByTestId('extra')).not.toBeNull()
   })
 
-  it('passes RAC state props straight through', () => {
-    render(<SearchField aria-label="搜索" defaultValue="ravel" isDisabled />)
+  it('pushes disabled down to the control and out as a data attribute', () => {
+    render(<SearchField aria-label="搜索" defaultValue="ravel" disabled />)
     expect(screen.getByRole('searchbox')).toHaveProperty('disabled', true)
     expect(
       document.querySelector('[data-slot="search-field"]')?.getAttribute('data-disabled'),
     ).not.toBeNull()
+  })
+  it('submits the raw text on Enter', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn()
+    render(<SearchField aria-label="搜索" defaultValue="ravel" onSubmit={onSubmit} />)
+
+    await user.click(screen.getByRole('searchbox'))
+    await user.keyboard('{Enter}')
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith('ravel')
+  })
+
+  it('keeps the clear button out of the tab order', () => {
+    // Keyboard users clear with Escape; a stop between the input and the next
+    // control is friction, not an affordance.
+    render(<SearchField aria-label="搜索" defaultValue="ravel" />)
+    expect(screen.getByRole('button', { name: 'Clear search' }).tabIndex).toBe(-1)
   })
 })

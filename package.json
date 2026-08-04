@@ -1,10 +1,10 @@
 {
   "name": "cadenza",
   "type": "module",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "packageManager": "pnpm@11.15.1",
-  "description": "shadcn-flavoured component library built on React Aria Components",
+  "description": "shadcn-flavoured component library built on Base UI",
   "license": "MIT",
   "scripts": {
     "build": "pnpm -r run build",

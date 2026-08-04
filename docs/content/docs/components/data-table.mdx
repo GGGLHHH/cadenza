@@ -1,10 +1,11 @@
 ---
 title: DataTable
-description: React Aria Table 语义的数据表格 —— 列定义驱动 + 组合式插槽 + 分页 / 无限滚动 / 虚拟化
+description: 原生 table 语义的数据表格 —— 列定义驱动 + 组合式插槽 + 分页 / 无限滚动 / 虚拟化
 ---
 
-数据表格家族。行为全部由 React Aria 的 `Table` 承担：网格键盘导航（方向键在单元格间移动）、
-行选择、列排序都是 RAC 原生语义。你只提供一个**列定义数组**和数据，不写 JSX 表格结构。
+数据表格家族。底下是**原生 `<table>`**：排序按钮、行复选框都是可聚焦的原生控件，
+`aria-sort` 说明当前排序方向，`<th scope="row">` 让读屏按行名播报。你只提供一个
+**列定义数组**和数据，不写 JSX 表格结构。
 配套的 `DataPagination` 负责 offset 分页；游标分页走无限滚动；大数据集可用
 `virtualized` 开启 TanStack Virtual 行虚拟化，见下文。
 
@@ -22,6 +23,19 @@ description: React Aria Table 语义的数据表格 —— 列定义驱动 + 组
 - `isRowHeader` 标记「代表这一行」的列（读屏播报行时念它），不标时默认第一列。
 - 行的 key 默认取 `item.id`；数据没有 `id` 字段时传 `getRowId`。
 
+## 表头固定
+
+表头默认是 sticky 的，滚动行区时它留在原地。这需要行区**自己是个会滚动的容器**，
+所以 `maxHeight` 默认就是 `480` —— 它是**上限不是高度**：比它矮的表格照常按内容
+高度渲染，不会被撑出空白，也不会多出滚动条。
+
+要让整张表跟着页面滚（表头也一起滚走），传 `maxHeight={Infinity}`。
+
+> 这里有个容易踩的坑，本库替你踩过了：`position: sticky` 认的是**最近的**滚动祖先。
+> shadcn 的 `Table` 会自己套一层 `overflow-x-auto` 的容器，如果表格渲染在那里面，
+> 表头就粘在那个永远不滚动的容器上 —— 看起来一切正常，实际完全失效。所以这里直接
+> 渲染裸 `<table>`，横向滚动和纵向滚动都归同一个 ScrollArea。
+
 ## 排序
 
 列上开 `allowsSorting`，表头变为可按压并显示排序指示。组件只维护**排序意图**
@@ -30,20 +44,19 @@ description: React Aria Table 语义的数据表格 —— 列定义驱动 + 组
 
 <ComponentPreview name="data-table/sort" align="stretch" />
 
-`SortDescriptor` 类型（`{ column, direction }`）从 `@gedatou/cadenza-ui` 导出，
-业务层不需要直接依赖 react-aria-components。
+`SortDescriptor` 类型（`{ column, direction }`）从 `@gedatou/cadenza-ui` 导出 ——
+是本库自己的词汇，不来自任何底座。表头的排序入口是一个真 `<button>`，
+所在的 `<th>` 带 `aria-sort`。
 
 ## 行选择与行动作
 
 选择推荐走**便利层**：`selectionMode`（`single` / `multiple`）+
 `value` / `defaultValue` / `onChange`，与 InfiniteSelect 同一套契约。
-开 `selectionColumn` 会在最前面合成一列复选框（RAC 的 `slot="selection"` 协议）：
-行内勾选、表头全选/半选全部自动接线，文案来自 react-aria 内置多语言；
-键盘上 Space 切换、Shift 范围选择随之生效。需要 RAC 原始语义
-（`selectedKeys` / `onSelectionChange` / `'all'` 哨兵）的高级场景仍可用
-透传层。两层的关系：便利层激活时 `selectedKeys` / `defaultSelectedKeys`
-被忽略，但 `onSelectionChange` 仍会收到原始 RAC `Selection`（含 `'all'`
-哨兵），可以当观察钩子用。
+开 `selectionColumn` 会在最前面合成一列复选框：行内勾选、表头全选/半选全部自动接线。
+复选框的无障碍名走 `selectAllLabel` / `selectRowLabel`（英文兜底，业务层传译文）。
+需要原始语义（`selectedKeys` / `onSelectionChange` / `'all'` 哨兵）的高级场景仍可用
+透传层。两层的关系：便利层激活时 `selectedKeys` 被忽略，但 `onSelectionChange`
+仍会收到原始 `Selection`（含 `'all'` 哨兵），可以当观察钩子用。
 
 ### 单选
 
@@ -59,13 +72,16 @@ description: React Aria Table 语义的数据表格 —— 列定义驱动 + 组
 
 <ComponentPreview name="data-table/selection-multiple" align="stretch" />
 
-`onRowAction` 是行激活，回调直接拿到行对象而不是 key。与选择同时开启时，
-React Aria 的路由规则（demo 就是这个组合，可以亲手验证）：
+`onRowAction` 是行激活，回调直接拿到行对象而不是 key。点击行这一个手势
+只能属于一件事，所以路由规则是**一条**：
 
-- **选择集为空**时：点击行 / Enter 触发动作，`Space` 或 checkbox 开始选择；
-- **选择集非空**时：点击行切换选择（方便连续勾选，Files 应用式交互），
-  动作只剩 Enter；
-- checkbox 永远是明确的选择入口——这正是 `selectionColumn` 的用武之地。
+| 情形 | 点击行做什么 |
+| --- | --- |
+| 有 `onRowAction` | 触发动作。选择走复选框 |
+| 无 `onRowAction`、无 `selectionColumn`、开了 `selectionMode` | 切换该行的选中 |
+| 其余 | 什么都不做 |
+
+复选框永远是明确的选择入口 —— 这正是 `selectionColumn` 的用武之地。
 
 两个细节：
 
@@ -161,8 +177,8 @@ Fragment 内有效，包进自定义组件会找不到（与 TabIndicator 同一
 ```
 
 同样是 `DataTableLoadingOverlay` 那种**标记部件**：原地不渲染，由基座提升到滚动流
-末尾；**定制入口不是开关**，不写也会渲染那个 Spinner。它落在 React Aria 的
-`TableLoadMoreItem` 上，所以 props 是 `ComponentProps<'tr'>` 而不是 `'div'`。
+末尾；**定制入口不是开关**，不写也会渲染那个 Spinner。它落在一个 `<tr>` 上
+（`<tbody>` 里只能放行），所以 props 是 `ComponentProps<'tr'>` 而不是 `'div'`。
 
 ### DataTableError / DataTableRetry:错误与重试
 
@@ -190,13 +206,13 @@ props、内建守卫（`total=0` 不钳位、`limit` 非法兜底）与自定义
 ## 无限滚动
 
 游标分页不用 `DataPagination`，用列表状态 props：滚动到底部附近自动触发
-`onLoadMore`（React Aria 的哨兵行，提前预取）。这组 props 的形状与
+`onLoadMore`（一个 `IntersectionObserver` 哨兵行，提前预取）。这组 props 的形状与
 `InfiniteSelectAdapterProps` 完全一致，适配器对象直接展开 `{...list}`：
 
 <ComponentPreview name="data-table/infinite" align="stretch" />
 
-`maxHeight` 限定行区高度、表头 sticky —— 无限滚动需要一个会滚动的容器，
-所以这里必须传。加载更多的指示渲染在滚动流末尾（默认一个 Spinner，用
+行区默认就有 480px 的高度上限（见「表头固定」），无限滚动需要的那个会滚动的容器
+因此天然存在；要更高更矮就传 `maxHeight`。加载更多的指示渲染在滚动流末尾（默认一个 Spinner，用
 `DataTableLoadingMore` 换成自己的文案）：预取提前触发，
 停在顶部的用户根本看不到它。
 
@@ -228,15 +244,13 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 1. **行高固定**为 `rowHeight`（默认 40px）——虚拟化靠固定行高换取零测量、零跳动；
    单元格内容更高时必须同步调大它。内容真正不定高时开 `dynamicRowHeight`，
    见「动态行高」。
-2. **键盘和读屏的作用域变窄**：React Aria 只认识 DOM 里的那几十行，typeahead、
-   Home / End、读屏播报的行数都以窗口为准。
-3. 因此**几百行以内不建议开**——不开时 React Aria 认识完整列表，上面这些能力
-   都是全量的，而几百行的 DOM 根本不构成性能问题。
+2. **读屏的作用域变窄**：DOM 里只有那几十行，读屏播报的行数以窗口为准。
+3. 因此**几百行以内不建议开**——不开时整张表都在 DOM 里，而几百行根本不构成
+   性能问题。
 
-> 这一点和 [InfiniteSelect](/docs/components/infinite-select#虚拟化) 不同：那边用的是
-> React Aria 自己的 `Virtualizer`，collection 与 DOM 解耦，虚拟化后键盘和读屏仍是全量的。
-> DataTable 换不过去——`Virtualizer` 会把行改成绝对定位，原生 `<table>` 的 sticky 表头、
-> 列固定和边框全部失效，所以这里保留 TanStack Virtual 并接受作用域变窄。
+虚拟化用的是 TanStack Virtual，和 [InfiniteSelect](/docs/components/infinite-select#虚拟化)
+同一个引擎；行不改绝对定位，靠上下两条 filler `<tr>` 撑起滚动高度，所以原生
+`<table>` 的 sticky 表头、列固定和边框全部照常。
 
 给列设置 `width` 可以避免滚动时列宽随窗口内容轻微抖动（自动布局的表格列宽
 由可见内容决定）。
@@ -266,16 +280,20 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | `DataTableProps<T>` | `DataTable` 完整 props，业务层包一层时直接复用 |
 | `DataTableSelectionProps<T>` | 便利层选择的判别联合（单选 `value?: string` / 多选 `value?: string[]`，`onChange` 签名随之切换） |
 | `DataPaginationProps` / `DataPaginationState` | 分页器 props 与 `summary` / `pageIndicator` 收到的状态 |
-| `SortDescriptor` / `Selection` / `Key` | React Aria 词汇的再导出，排序与选择回调的类型 |
+| `SortDescriptor` / `Selection` / `Key` | 本库自己的集合词汇，排序与选择回调的类型 |
 
 ## 键盘交互
 
+表格是原生 `<table>`，键盘走的是 Tab 遍历里面的可聚焦控件：
+
 | 按键 | 行为 |
 | --- | --- |
-| `↓` / `↑` / `←` / `→` | 在行 / 单元格间移动焦点 |
-| `Space` | 切换当前行选中（选择模式下） |
-| `Enter` | 触发行动作（有 `onRowAction` 时） |
-| `Home` / `End` | 跳到首行 / 末行 |
+| `Tab` | 依次落到排序按钮、行复选框，以及单元格里你自己放的按钮/链接 |
+| `Space` / `Enter` | 激活当前聚焦的那个控件 |
+
+> 0.2（React Aria 底座）这里有方向键在单元格间移动的网格导航和 `role="grid"`。
+> 换到原生 `<table>` 之后没有了 —— 这是这次迁移里唯一一处明确的无障碍退步，
+> 换来的是和 shadcn / Radix 生态一致的表格语义。
 
 ## Props
 
@@ -283,7 +301,7 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `aria-label` | `string` | — | 网格的可访问名（必填） |
+| `aria-label` | `string` | — | 表格的可访问名（必填） |
 | `columns` | `DataTableColumn<T>[]` | — | 列定义 |
 | `items` | `T[]` | — | 行数据 |
 | `getRowId` | `(item: T) => string` | 取 `item.id` | 行 key 提取 |
@@ -292,11 +310,12 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
 | `selectionMode` | `'none' \| 'single' \| 'multiple'` | `'none'` | 行选择模式 |
 | `value` / `defaultValue` / `onChange` | `string` \| `string[]` | — | 便利层选择（跨页存档），签名随 `selectionMode` 切换，见「行选择与行动作」 |
-| `selectedKeys` / `defaultSelectedKeys` / `onSelectionChange` | — | — | React Aria 选择透传。便利层激活时前两者被忽略；`onSelectionChange` 仍触发，仅作观察 |
+| `selectedKeys` / `onSelectionChange` | — | — | 原始选择透传。便利层激活时前者被忽略；`onSelectionChange` 仍触发，仅作观察 |
 | `selectionColumn` | `boolean` | `false` | 合成复选框列（行勾选 + 表头全选），见「行选择与行动作」 |
+| `selectAllLabel` / `selectRowLabel` | `string` | `'Select all rows'` / `'Select row'` | 复选框的无障碍名，英文兜底，业务层传译文 |
 | `sortDescriptor` / `onSortChange` | `SortDescriptor` | — | 排序意图（受控） |
 | `onRowAction` | `(item: T) => void` | — | 行激活，回调收行对象 |
-| `maxHeight` | `number` | — | 行区最大高度；无限滚动 / 虚拟化需要（虚拟化未传时兜 480） |
+| `maxHeight` | `number` | `480` | 行区高度**上限**（不是高度）。见「表头固定」；传 `Infinity` 取消上限 |
 | `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | 滚动条可见性：常显 / hover 与滚动时显示 / 常隐 |
 | `virtualized` | `boolean` | `false` | TanStack Virtual 行虚拟化，大数据集用 |
 | `rowHeight` | `number` | `40` | 虚拟化行的固定高度；`dynamicRowHeight` 下为初始估算 |

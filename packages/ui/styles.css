@@ -1,5 +1,5 @@
 /**
- * @gedatou/cadenza-ui — shadcn aria-nova tokens.
+ * @gedatou/cadenza-ui — shadcn base-nova tokens.
  *
  * Consumers:
  *   @import "tailwindcss";
@@ -68,8 +68,15 @@
   }
 }
 
+/* Two arms, like every sibling above. The `="true"` arm is what cmdk and
+   react-day-picker write; the bare-attribute arm is what Base UI writes — it
+   emits boolean state attributes as the EMPTY string (see its
+   internals/getStateAttributesProps). This variant used to have the first arm
+   only, which meant `data-selected:` utilities on a Base UI Select/Combobox
+   item were dead CSS and selected rows lost their tint with no error anywhere. */
 @custom-variant data-selected {
-  &:where([data-selected="true"]) {
+  &:where([data-selected="true"]),
+  &:where([data-selected]:not([data-selected="false"])) {
     @slot;
   }
 }
@@ -826,9 +833,13 @@
 
    The two are mutually exclusive, so unifying means dropping one. Dropped:
    `pointer-events: none`. It was never what blocks interaction — the browser
-   ignores clicks on a disabled control, and React Aria blocks press on an
-   aria-disabled one in JS. Its only effect here was killing the cursor, and
-   with it any tooltip explaining why the control is disabled.
+   ignores clicks on a natively disabled control, and Base UI suppresses
+   activation on an aria-disabled one in JS (`useButton` preventDefaults the
+   click and pointerdown and returns early from the key handlers;
+   `useFocusableWhenDisabled` is what writes aria-disabled in place of the
+   native attribute — Button asks for that while pending). Its only effect here
+   was killing the cursor, and with it any tooltip explaining why the control
+   is disabled.
 
    Unlayered on purpose: `disabled:pointer-events-none` is a utility, and no
    @layer rule can outrank the utilities layer. */
@@ -856,28 +867,10 @@
   cursor: not-allowed;
 }
 
-/* A Select's menu opens on press START, a few pixels under the trigger, and
-   React Aria commits an option on any mouse release over it — the press does
-   not have to have begun there (see SelectTrigger's JSDoc). So an ordinary
-   click near the trigger's lower edge can pick the first option by accident.
-   SelectTrigger marks the document for as long as the press could still be
-   that, and the list is untargetable meanwhile: the release lands on the
-   popover and commits nothing.
-
-   A stylesheet rule rather than an inline style on the list, because the list
-   is what the press is busy creating — there is no element to reach for when
-   the press starts, and any guess about which frame it arrives on is wrong on
-   a machine slower than the one it was guessed on. Unlayered for the same
-   reason as the cursor rules above: `pointer-events-none` is a utility, and no
-   @layer rule can outrank the utilities layer. */
-[data-select-press-grace] [data-slot="select-list"] {
-  pointer-events: none;
-}
-
-/* An action in flight is busy, not forbidden. React Aria marks a pending
-   button with BOTH aria-disabled (matching the not-allowed rules above) and
-   data-pending — these come later at the same zero specificity, so the wait
-   cursor wins for the pending case only. */
+/* An action in flight is busy, not forbidden. A pending button carries BOTH
+   aria-disabled (matching the not-allowed rules above) and data-pending —
+   these come later at the same zero specificity, so the wait cursor wins for
+   the pending case only. */
 :where([data-pending]:not([data-pending="false"])) {
   cursor: wait;
   pointer-events: auto;
@@ -913,11 +906,13 @@
   }
 }
 
-/* Not every disabled element is disabled *to the user*. DataTable's virtualized
-   filler rows carry `isDisabled` only to stay out of selection and keyboard
-   navigation — they are empty padding holding the scroll height, often hundreds
-   of thousands of pixels tall. A blocked cursor over that expanse would be
-   nonsense. */
+/* Not every not-allowed element is forbidden *to the user*. DataTable's
+   virtualized filler rows are empty `aria-hidden` padding holding the scroll
+   height, often hundreds of thousands of pixels tall — a blocked cursor over
+   that expanse would be nonsense. They carry no disabled marker themselves,
+   but the descendant rule above is zero-specificity and paints everything
+   inside a disabled container, so one such container around the table would
+   hand the whole scroll height a blocked cursor. Hence the guard. */
 [data-slot="data-table-spacer"],
 [data-slot="data-table-spacer"] * {
   cursor: default;
@@ -926,9 +921,9 @@
 /* A TabIndicator takes over painting the selection, so the tabs must stop
    painting their own — otherwise both are visible mid-slide, and again on hover
    (the indicator leaves, the tab's own background stays behind). Deliberately
-   unlayered: `data-selected:bg-background` lives in Tailwind's utilities layer,
+   unlayered: `data-active:bg-background` lives in Tailwind's utilities layer,
    which outranks @layer components no matter how specific the selector is. */
-[data-slot="tab-list-container"]:has([data-slot="tab-indicator"])
+[data-slot="tabs-list"]:has([data-slot="tab-indicator"])
   [data-slot="tabs-trigger"] {
   z-index: 10;
   border-color: transparent;
@@ -936,7 +931,7 @@
   box-shadow: none;
 }
 
-[data-slot="tab-list-container"]:has([data-slot="tab-indicator"])
+[data-slot="tabs-list"]:has([data-slot="tab-indicator"])
   [data-slot="tabs-trigger"]::after {
   opacity: 0;
 }

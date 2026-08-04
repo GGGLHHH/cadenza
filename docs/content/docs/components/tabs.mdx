@@ -1,27 +1,25 @@
 ---
 title: Tabs
-description: React Aria Tabs 的封装 —— 组合式的标签页家族，行为与无障碍语义全部由 React Aria 承担
+description: Base UI Tabs 的封装 —— 组合式的标签页家族，行为与无障碍语义全部由 Base UI 承担，外加一块会跟着悬停与焦点滑动的指示器
 ---
 
-标签页家族。行为全部由 React Aria 承担：TabList 内是一个 roving focus
+标签页家族。行为全部由 Base UI 承担：TabList 内是一个 roving focus
 （整组只占一个 Tab 停留点），方向键在标签间移动并随 `orientation` 换轴，
-`Tab` 与 `TabPanel` 的 `aria-controls` / `aria-labelledby` 互指由 RAC 按 `id` 自动接线。
+`Tab` 与 `TabPanel` 的 `aria-controls` / `aria-labelledby` 互指按 `value` 自动接线。
 组合就是全部 API —— 根组件 `Tabs` 上没有 `items`，也没有配置对象。
-（标签集合由数据算出来时，用 RAC 的动态集合写法：
-`<TabList items={tabs}>{item => <Tab id={item.id}>{item.title}</Tab>}</TabList>`。）
+标签集合由数据算出来时就是一次普通的 `.map()`。
 
-公开名严格对齐 React Aria：**`Tabs` / `TabList` / `Tab` / `TabPanel`**。
+公开名对齐这些部件真正的身份：**`Tabs` / `TabList` / `Tab` / `TabPanel`**。
 shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留下的别名 ——
-底下明明是 React Aria 组件，名字却是另一个库的。接缝层刻意把它改回来，
-这样 props（`selectedKey` / `onSelectionChange` / `keyboardActivation` / `disabledKeys`）
-和组件名说的是同一门方言，查文档时直接对得上 React Aria。
+底下明明是 Base UI 组件，名字却是另一个库的。接缝层刻意把它改回来，
+这样 props（`value` / `onValueChange` / `activateOnFocus`）和组件名说的是同一门方言。
 
 结构永远是：`Tabs` 里放一个 `TabList`（内含若干 `Tab`），后面跟若干 `TabPanel`。
 
 ## 基础用法
 
-`Tab` 的 `id` 就是它的 key，同名 `id` 的 `TabPanel` 自动配对；
-`defaultSelectedKey` 指定初始选中（不给则选第一个**未禁用**的标签）。
+`Tab` 的 `value` 就是它的 key，同名 `value` 的 `TabPanel` 自动配对；
+`defaultValue` 指定初始选中（不给则选第一个**未禁用**的标签）。
 `TabList` 的 `aria-label` 必给 —— 它是这组标签页的无障碍名。
 `TabIndicator` 是那块会滑动的选中标记，见[下一节](#滑动指示器)：
 
@@ -41,8 +39,11 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 
 它跟随的顺序是 **悬停 → 聚焦 → 选中**：鼠标移到别的标签上它就滑过去，
 移开再滑回真正选中的那个，所以它表达的是「你即将选中的那个」。
-中间那档「聚焦」是给 `keyboardActivation="manual"` 用的 ——
-那时方向键只移焦点不改选中，指示器跟着焦点走才看得出来将要选中谁。
+中间那档「聚焦」正是它存在的理由 —— Base UI 默认手动激活，方向键只移焦点不改选中，
+指示器跟着焦点走才看得出来将要选中谁。
+
+> Base UI 自己也有 `Tabs.Indicator`，但它只跟随**已选中**的标签。这块是本库另写的，
+> 多出来的就是悬停与焦点那两档。
 
 写在 `TabList` 里即可，位置随意；放进去之后标签自身就不再画选中底色，
 两个 `variant` 都支持（`default` 是滑动的胶囊，`line` 是滑动的下划线）：
@@ -50,8 +51,8 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 ```tsx
 <TabList aria-label="项目仪表盘">
   <TabIndicator />
-  <Tab id="overview">概览</Tab>
-  <Tab id="analytics">分析</Tab>
+  <Tab value="overview">概览</Tab>
+  <Tab value="analytics">分析</Tab>
 </TabList>
 ```
 
@@ -63,104 +64,46 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 ## 垂直排列
 
 `orientation="vertical"` 时 `TabList` 竖排，方向键也跟着换轴（上下键切换）——
-换轴是 RAC 读 `orientation` 自己做的，不用另外配。指示器同样换轴：
+换轴是 Base UI 读 `orientation` 自己做的，不用另外配。指示器同样换轴：
 改成上下滑动、高度补间（`line` 变体下指示线也随之转到侧边）：
 
 <ComponentPreview name="tabs/vertical" />
 
 ## 受控
 
-`selectedKey` + `onSelectionChange` 把选中态交给外部 state，
+`value` + `onValueChange` 把选中态交给外部 state，
 组件只负责渲染 —— 从 Tabs 之外切换标签页（下面的「下一个」按钮）就靠这个：
 
 <ComponentPreview name="tabs/controlled" />
 
 ## 禁用
 
-两种写法等价：`<Tab isDisabled>` 就近声明，或根上的 `disabledKeys` 传一组 key ——
-后者适合禁用集合由数据算出来的场景。禁用的标签会被键盘导航跳过。
-整组禁用用根上的 `isDisabled`：
+`<Tab disabled>` 逐个声明。禁用集合由数据算出来时就在 `.map()` 里写
+`disabled={disabledIds.has(id)}` —— Base UI 没有根上的禁用集合。
+禁用的标签会被键盘导航跳过，指示器也不会跟到它上面：
 
 <ComponentPreview name="tabs/disabled" />
 
 ## 键盘激活方式
 
-默认 `keyboardActivation="automatic"`：焦点走到哪，面板就切到哪。
-面板加载昂贵（发请求、渲染大图表）时，键盘路过就会白白触发一次 ——
-改成 `manual`，方向键只移动焦点，按 Enter / Space 才切换：
+**默认是手动激活**：方向键只移动焦点，按 Enter / Space 才切换面板。
+面板加载昂贵（发请求、渲染大图表）时，键盘路过不会白白触发一次。
+面板内容便宜、想少按一次 Enter 时，在 `TabList` 上开 `activateOnFocus`：
 
 <ComponentPreview name="tabs/keyboard-activation" />
 
-## 状态 hook
-
-`useTabsState()` 读取 React Aria 的 `TabListState` —— 这是 RAC 自己的 state 层
-（经 `TabListStateContext`），不是我们另建的一套。自定义部件直接取用，
-不必把选中态当 props 一层层穿下来：
-
-```tsx
-import type { ReactElement } from 'react'
-import { Tab, TabList, TabPanel, Tabs, useTabsState } from '@gedatou/cadenza-ui'
-
-// 自定义部件:显示「第几项 / 共几项」。写成 Tabs 的直接子节点,
-// 并在拿到 null 时返回 null —— 原因见下方两条规则
-function TabPosition(): ReactElement | null {
-  const state = useTabsState()
-  if (state === null)
-    return null
-
-  const { selectedKey, collection } = state
-  const index = [...collection].findIndex(node => node.key === selectedKey)
-
-  return (
-    <span className="text-xs text-muted-foreground">
-      {`第 ${index + 1} 项 / 共 ${collection.size} 项`}
-    </span>
-  )
-}
-
-export default function TabsPositionDemo(): ReactElement {
-  return (
-    <Tabs defaultSelectedKey="overview">
-      <TabList aria-label="项目仪表盘">
-        <Tab id="overview">概览</Tab>
-        <Tab id="analytics">分析</Tab>
-      </TabList>
-      <TabPosition />
-      <TabPanel id="overview">…</TabPanel>
-      <TabPanel id="analytics">…</TabPanel>
-    </Tabs>
-  )
-}
-```
-
-| 字段 | 说明 |
-| --- | --- |
-| `selectedKey` | 当前选中的 key（即那个 `Tab` 的 `id`） |
-| `setSelectedKey(key)` | 切换选中；非受控时直接改，受控时会走你的 `onSelectionChange` |
-| `collection` | 标签集合，可迭代拿到每个 `Tab` 节点（`key` / `textValue` …），`size` 是总数 |
-| `isDisabled` | 整组是否禁用 |
-
-返回值是 `TabListState | null`，两种情况下为 `null`，都得处理：
-
-- **RAC 的集合收集遍。** `Tabs` 会把 children 先在一个隐藏的 `<template>` 里
-  渲染一遍，用来构建标签集合；那一遍还没有 state。返回 `null` 即可，
-  RAC 自己的组件也是这么判断的。
-- **在 `TabPanel` 内部。** RAC 在面板里**故意**把 tabs 的 context 重置为 `null`，
-  这样面板里再嵌一组 `Tabs` 不会串到外层的状态上。要在面板里拿状态，
-  用 `TabPanel` 的 render props：`<TabPanel id="a">{({ state }) => …}</TabPanel>`。
-
-`TabList` 里也放不了自定义部件 —— 它只渲染标签集合本身，别的子节点会被丢弃
-（这正是 `TabIndicator` 要由 `TabList` 提到集合之外去渲染的原因）。
+> 这一条和 React Aria 的默认相反（那边默认焦点走到哪就切到哪）。从 0.2 升上来时
+> 依赖旧默认的地方要显式加 `activateOnFocus`。
 
 ## 键盘交互
 
 | 按键 | 行为 |
 | --- | --- |
-| `→` / `←` | 横向（默认）时切换到相邻标签，到头循环 |
-| `↓` / `↑` | `orientation="vertical"` 时切换到相邻标签 |
+| `→` / `←` | 横向（默认）时移动到相邻标签，到头循环 |
+| `↓` / `↑` | `orientation="vertical"` 时移动到相邻标签 |
 | `Home` / `End` | 跳到第一个 / 最后一个标签 |
 | `Tab` | 进入时落在选中的标签上（整组只占一个停留点），再按一次离开 TabList 进入面板 |
-| `Enter` / `Space` | 仅 `keyboardActivation="manual"`：确认当前焦点所在的标签 |
+| `Enter` / `Space` | 确认当前焦点所在的标签（`activateOnFocus` 下方向键已经切过了） |
 
 禁用的标签在以上所有导航中都会被跳过。
 
@@ -168,63 +111,52 @@ export default function TabsPositionDemo(): ReactElement {
 
 属性顺序统一是：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
 
-每个部件的 Props 表后面跟一张**状态**表。左列是 React Aria 挂在 DOM 上的
-`data-*`，Tailwind 直接当变体写（`data-selected:bg-background`）；右列是同一个
-状态在 render props 里的名字，写 `{({ isSelected }) => …}` 时取用 —— 同一组状态的
-两个出口，按手头顺手的用。表里没有的 `data-rac` / `data-collection` / `data-key`
-是 RAC 的内部标记，不要依赖。
+每个部件的 Props 表后面跟一张**状态**表。左列是 Base UI 挂在 DOM 上的
+`data-*`，Tailwind 直接当变体写（`data-active:bg-background`）；右列是同一个
+状态在函数 `className` 里的名字 —— 同一组状态的两个出口，按手头顺手的用。
 
-`className` 一律双形态：字符串，或 `(state) => string` 的函数（参数就是状态表右列的
-render props）。`TabIndicator` 除外 —— 它是纯 span，只收字符串。
+`className` 一律双形态：字符串，或 `(state) => string` 的函数（参数就是状态表右列）。
+`TabIndicator` 除外 —— 它是纯 span，只收字符串。
 
-`children` 同样双形态，但**两种函数不是一回事**，按部件分：`Tabs` / `Tab` /
-`TabPanel` 的函数 children 是**状态 render props** —— 参数即各自状态表右列
-（外加 `defaultChildren`），交互状态一变就重新求值，机制与
-[Button 的介绍](/docs/components/button#按状态渲染children-的-render-props)相同；
-`TabList` 的函数 children 则是**条目渲染器** `(item) => <Tab>`，配合 `items`
-构建动态集合，每个条目求值一次并按条目缓存 —— 它不收状态函数，状态出口只有
-`className` / `style` 的函数形态。
+`children` 都是普通 ReactNode。Base UI 没有集合 API，也没有状态 render props ——
+按状态换内容就自己拿 `value` 判断。
 
 ### Tabs
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `defaultSelectedKey` | `Key` | 第一个未禁用的标签 | 非受控初始选中 |
-| `selectedKey` | `Key` | — | 受控选中的标签 id；RAC 的标签页始终有一个选中项，不接受 `null` |
-| `onSelectionChange` | `(key: Key) => void` | — | 选中变化回调 |
+| `defaultValue` | `string \| number \| null` | 第一个未禁用的标签 | 非受控初始选中 |
+| `value` | `string \| number \| null` | — | 受控选中的标签值；`null` 表示一个都不选 |
+| `onValueChange` | `(value, eventDetails) => void` | — | 选中变化回调 |
 | `orientation` | `'horizontal' \| 'vertical'` | `'horizontal'` | 排列方向，同时决定方向键的轴 |
-| `keyboardActivation` | `'automatic' \| 'manual'` | `'automatic'` | 方向键是否顺带切换面板 |
-| `disabledKeys` | `Iterable<Key>` | — | 按 key 批量禁用标签 |
-| `isDisabled` | `boolean` | `false` | 整组禁用 |
-| `children` | `ReactNode \| (state) => ReactNode` | — | `TabList` + `TabPanel` 们。函数形态收到 `orientation`（状态 render props） |
 | `className` | `string \| (state) => string` | — | 根元素类名 |
+| 其余 | Base UI `Tabs.Root` 的 props | — | 透传 |
 
 **状态**
 
-| 状态 | 出现时机 | render prop |
+| 状态 | 出现时机 | 函数 className 里的名字 |
 | --- | --- | --- |
 | `data-orientation` | 始终有值：`horizontal` / `vertical` | `orientation` |
+| `data-activation-direction` | 相对上一个选中项的方向：`left` / `right` / `up` / `down` / `none` | `tabActivationDirection` |
 
 ### TabList
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `aria-label` | `string` | — | 这组标签页的无障碍名，**必给** |
-| `items` | `Iterable<T>` | — | 动态集合数据源，配函数 children 使用 |
+| `activateOnFocus` | `boolean` | `false` | 方向键是否顺带切换面板 |
 | `variant` | `'default' \| 'line'` | `'default'` | 胶囊底色 / 底部指示线 |
-| `children` | `Tab 们 \| (item: T) => ReactNode` | — | 静态写法直接放 `Tab`；函数形态是**条目渲染器**（配 `items`），不是状态函数 |
 | `className` | `string \| (state) => string` | — | 类名 |
 
 **状态**
 
-| 状态 | 出现时机 | render prop |
+| 状态 | 出现时机 | 函数 className 里的名字 |
 | --- | --- | --- |
 | `data-orientation` | 始终有值，跟随根组件 | `orientation` |
-| `data-variant` | 始终有值：`default` / `line`（我们加的，不是 RAC 的） | — |
+| `data-activation-direction` | 同根组件 | `tabActivationDirection` |
+| `data-variant` | 始终有值：`default` / `line`（我们加的，不是 Base UI 的） | — |
 
-`TabList` 的**函数 `className` / `style`** 收到的 render props 里还有 `state`，
-就是 [`useTabsState()`](#状态-hook) 拿到的那个 `TabListState`。children 不在此列 ——
-它的函数形态是条目渲染器，见上文。
+接缝层只往上加了一个 `relative` —— `TabIndicator` 绝对定位在它里面，需要这个定位上下文。
 
 ### TabIndicator
 
@@ -232,60 +164,47 @@ render props）。`TabIndicator` 除外 —— 它是纯 span，只收字符串�
 | --- | --- | --- | --- |
 | `className` | `string` | — | 类名（改颜色、圆角、过渡时长都从这里来） |
 
-写在 `TabList` 的子节点里，直接子节点或 Fragment 内都有效，包进自定义组件会
-找不到（与 `DataTableLoadingOverlay` 等标记部件同一限制）；它本身不渲染，由
-`TabList` 提到标签集合之外去渲染
-（RAC 的 `TabList` 只渲染集合，别的子节点会被丢弃）。它自己没有状态 ——
-跟随哪个标签是内部算出来的，外部读不到，也不该读。
-
-**动态集合写法（`items` + 函数 children）下用不了它** —— 那时 children 是条目
-渲染函数，没有位置放标记元素。需要指示器就用静态 children 写法。
+写在 `TabList` 里，位置随意 —— Base UI 的 List 原样渲染 children，所以它渲染在你
+写的地方，测量的正是它自己的父元素。它没有状态：跟随哪个标签是从 DOM 上读出来的
+（`[data-active]`、`:focus-visible`、一个指针监听），外部读不到，也不该读。
 
 ### Tab
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `id` | `Key` | — | 这个标签的 key，与对应 `TabPanel` 的 `id` 相同 |
-| `isDisabled` | `boolean` | `false` | 禁用这一个标签 |
-| `href` | `string` | — | 链接型标签，渲染成 `<a>`（路由驱动的标签页用它） |
-| `children` | `ReactNode \| (state) => ReactNode` | — | 标签内容。函数形态收到状态表右列的 render props |
+| `value` | `string \| number` | 它在 List 中的序号 | 这个标签的 key，与对应 `TabPanel` 的 `value` 相同 |
+| `disabled` | `boolean` | `false` | 禁用这一个标签 |
+| `nativeButton` | `boolean` | `true` | 关掉它才能用 `render` 换成 `<a>`（路由驱动的标签页） |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 元素替换。优先函数形态 |
 | `className` | `string \| (state) => string` | — | 类名 |
 
 **状态**
 
-| 状态 | 出现时机 | render prop |
+| 状态 | 出现时机 | 函数 className 里的名字 |
 | --- | --- | --- |
-| `data-selected` | 是当前选中的标签 | `isSelected` |
-| `data-hovered` | 指针悬停其上；触摸不触发，键盘也不触发 | `isHovered` |
-| `data-pressed` | 指针按住未松开，或空格/回车按住 | `isPressed` |
-| `data-focused` | 拿到焦点，不分来源 | `isFocused` |
-| `data-focus-visible` | 拿到焦点**且**应当显示焦点环（键盘来的） | `isFocusVisible` |
-| `data-disabled` | 被自身 `isDisabled` 或根上的 `disabledKeys` 禁用 | `isDisabled` |
+| `data-active` | 是当前选中的标签 | `active` |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-orientation` | 跟随根组件 | `orientation` |
+| `data-activation-direction` | 同根组件 | `tabActivationDirection` |
 
-`data-focused` 和 `data-focus-visible` 的区别就是焦点环该不该出现：鼠标点上去两者
-只有前者，键盘走过去两者都有。样式挂 `data-focus-visible` 才不会在点击时闪一下框。
+悬停、按下、焦点没有 data 属性 —— `Tab` 是原生 `<button>`，直接用 `hover:` /
+`active:` / `focus-visible:` 伪类，覆盖全部输入模态。
 
 ### TabPanel
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `id` | `Key` | — | 与对应 `Tab` 的 `id` 相同即自动配对 |
-| `shouldForceMount` | `boolean` | `false` | 未选中时也保留在 DOM（默认只渲染选中的那个） |
-| `children` | `ReactNode \| (state) => ReactNode` | — | 面板内容。函数形态收到状态表右列的 render props（含 `state`） |
+| `value` | `string \| number` | 它在文档中的序号 | 与对应 `Tab` 的 `value` 相同即自动配对 |
+| `keepMounted` | `boolean` | `false` | 未选中时也保留在 DOM（默认只渲染选中的那个） |
 | `className` | `string \| (state) => string` | — | 类名 |
 
 **状态**
 
-| 状态 | 出现时机 | render prop |
+| 状态 | 出现时机 | 函数 className 里的名字 |
 | --- | --- | --- |
-| `data-focused` | 面板拿到焦点（它自身可聚焦，Tab 键从标签走进来） | `isFocused` |
-| `data-focus-visible` | 焦点且应当显示焦点环 | `isFocusVisible` |
-| `data-inert` | `shouldForceMount` 保留下来、但当前未选中的面板 | `isInert` |
-| `data-entering` / `data-exiting` | 面板带进出场动画时，动画运行期间 | `isEntering` / `isExiting` |
-
-面板的 render props 里同样带 `state`。这是在面板内部读标签页状态的**唯一**入口 ——
-`useTabsState()` 在这里返回 `null`，原因见[上一节](#状态-hook)。
+| `data-orientation` | 跟随根组件 | `orientation` |
+| `data-activation-direction` | 同根组件 | `tabActivationDirection` |
+| `data-hidden` | `keepMounted` 保留下来、但当前未选中的面板 | `hidden` |
 
 `TabsProps` / `TabListProps` / `TabProps` / `TabPanelProps` / `TabIndicatorProps`
-五个类型也一并导出，业务层再包一层时直接复用；`TabsContext` 也导出 ——
-需要从上层给整个子树设默认值（`orientation`、`keyboardActivation`）时用它。
+五个类型也一并导出，业务层再包一层时直接复用。

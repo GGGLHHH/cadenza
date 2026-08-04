@@ -14,7 +14,6 @@ export * from './components/search-field'
 export * from './components/select'
 export * from './components/spinner'
 export * from './components/tabs'
+// The vocabulary our public props use for collections (sorting, selection).
+export type { Key, Selection, SortDescriptor, SortDirection } from './lib/collections'
 export * from './lib/utils'
-// React Aria vocabulary used in our public props (sorting, selection): re-export
-// the types so business layers never need react-aria-components as a direct dep.
-export type { Key, Selection, SortDescriptor } from 'react-aria-components'

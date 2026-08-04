@@ -17,23 +17,24 @@ const PIECES: Piece[] = [
   { id: 'sonatine', title: '小奏鸣曲', opus: 'M. 40' },
 ]
 
-// 动态集合挂在 SelectGroup(或 SelectList)上,不是根组件 —— RAC 的 SelectProps
-// 里根本没有 items。piece 的类型由 items 推出来,不是 unknown。
-// children 不是纯字符串时要自己补 textValue,打字定位靠它检索
+// 数据驱动的选项就是一次 map,没有集合 API。
+// 两处要分开看:
+//   items —— 只喂 SelectValue,决定触发器上印什么(这里印标题,不印作品号)
+//   label —— 喂键盘打字定位;children 不是纯字符串时必须自己给
 export default function DynamicDemo(): ReactElement {
   return (
-    <Select aria-label="曲目" className="inline-72" placeholder="选一首">
-      <SelectTrigger>
-        <SelectValue />
+    <Select items={PIECES.map(piece => ({ value: piece.id, label: piece.title }))}>
+      <SelectTrigger aria-label="曲目" className="inline-72">
+        <SelectValue placeholder="选一首" />
       </SelectTrigger>
       <SelectContent>
-        <SelectGroup items={PIECES}>
-          {piece => (
-            <SelectItem id={piece.id} textValue={piece.title}>
+        <SelectGroup>
+          {PIECES.map(piece => (
+            <SelectItem key={piece.id} label={piece.title} value={piece.id}>
               <span className="flex-1">{piece.title}</span>
               <span className="text-xs text-muted-foreground">{piece.opus}</span>
             </SelectItem>
-          )}
+          ))}
         </SelectGroup>
       </SelectContent>
     </Select>

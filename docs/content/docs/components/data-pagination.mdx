@@ -46,13 +46,13 @@ aria-label 从业务层传译文；`showLimitChanger={false}` 关掉每页条数
 
 ## 键盘交互
 
-控件全部是 React Aria 语义：导航按钮 <kbd>Tab</kbd> 聚焦、<kbd>Enter</kbd> /
-<kbd>Space</kbd> 触发，不可用时真实 `disabled`；每页条数是 RAC Select，
+控件都是原生语义：导航按钮 <kbd>Tab</kbd> 聚焦、<kbd>Enter</kbd> /
+<kbd>Space</kbd> 触发，不可用时真实 `disabled`；每页条数是本库的 Select，
 <kbd>方向键</kbd> 选择、<kbd>Enter</kbd> 确认、<kbd>Esc</kbd> 关闭。
 
 ## Headless：useDataPaginationState
 
-分页状态本身单独导出（React Aria 的 `useXxxState` 风格）。入参就是 Props 表里的
+分页状态本身单独导出（`useXxxState` 风格）。入参就是 Props 表里的
 状态切片（`DataPaginationStateOptions`），返回 `DataPaginationStateResult`：
 `page` / `limit` / `totalPages` / `setPage` / `setLimit` / `canPrevious` /
 `canNext` —— 零与 `NaN` 守卫、越界钳位同样生效。不渲染我们这个分页条、

@@ -4,11 +4,12 @@ import { Spinner } from '#primitives/spinner'
 /**
  * The published Spinner: a spinning `IconLoader` with `role="status"`.
  *
- * Plain svg underneath — no RAC base — so `className` is a string
- * (`ComponentProps<'svg'>`, ref included). Size rides the baked `size-4`;
- * override with the logical utilities (`block-6 inline-6`, or `[1em]` values
- * to track the ambient font) — they sort after the physical ones in the built
- * stylesheet, which is what makes the override stick at equal specificity.
+ * Plain svg underneath, no Base UI state to be a function of, so `className`
+ * is a plain string (`ComponentProps<'svg'>`, ref included). Size rides the
+ * baked `size-4`; override with the logical utilities (`block-6 inline-6`, or
+ * `[1em]` values to track the ambient font) — they sort after the physical
+ * ones in the built stylesheet, which is what makes the override stick at
+ * equal specificity.
  *
  * The vendored `aria-label` defaults to English `'Loading'` — an aria-only
  * fallback in the house pattern ('Search', 'Rows per page'); it never renders

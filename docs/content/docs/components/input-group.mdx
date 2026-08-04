@@ -7,8 +7,8 @@ description: 带前后缀的输入框 —— 图标、文本、按钮和输入�
 画在整组而不是输入框上。shadcn 的组合，原样收录 —— [SearchField](/docs/components/search-field)
 就是拿它搭的。
 
-控件底下是 React Aria 的 `Input` / `TextArea` / `Button`，所以把它放进 RAC 的字段里
-（`SearchField`、`TextField`）就自动接线，不用往下传 props。
+输入框底下是 Base UI 的 `Input`，把它放进 Base UI 的 `Field.Root` 里就自动接线，
+不用往下传 props；按钮是 Base UI 的 `Button`，行与文本域是纯 DOM。
 
 ## 图标
 
@@ -24,8 +24,7 @@ description: 带前后缀的输入框 —— 图标、文本、按钮和输入�
 
 ## 按钮
 
-`InputGroupButton` 底下是 React Aria 的 `Button`，所以用 **`onPress`** 而不是
-`onClick`。`size` 默认 `xs`，纯图标按钮用 `icon-xs`：
+`InputGroupButton` 底下是 Base UI 的 `Button`，`size` 默认 `xs`，纯图标按钮用 `icon-xs`：
 
 <ComponentPreview name="input-group/button" />
 
@@ -65,40 +64,29 @@ has-[[data-slot=input-group-control]:focus-visible]:ring-3
 ## Props
 
 顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
-每个部件的 Props 表后面跟一张**状态**表，左列是挂在 DOM 上的 `data-*`，右列是同一状态
-在 render props 里的名字。
 
-`InputGroup` / `InputGroupInput` / `InputGroupTextarea` 的 `className` 是双形态：
-字符串，或 `(state) => string` 的函数（参数就是各自状态表的 render props）。
-`InputGroupAddon` 和 `InputGroupText` 是纯元素、`InputGroupButton` 收窄为字符串。
+只有 `InputGroupInput` 的 `className` 是双形态（字符串，或 `(state) => string`）——
+它底下是 Base UI 的 `Input`。其余部件都是纯 DOM 元素，`className` 就是字符串，
+类型上不会假装有函数形态。
 
 ### InputGroup
 
-底下是 React Aria 的 `Group`。边框、圆角、高度和焦点环都在它身上。
+一个 `role="group"` 的 `<div>`。边框、圆角、高度和焦点环都在它身上，没有自己的状态
+props —— 它靠 `:has()` 观察后代：
 
-| Prop | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `isDisabled` | `boolean` | `false` | 整组禁用；放进 RAC 字段里时会自动从字段继承 |
-| `isInvalid` | `boolean` | `false` | 校验失败态 |
-| `isReadOnly` | `boolean` | `false` | 只读 |
-| `className` | `string \| (state) => string` | — | 类名 |
+| 选择器 | 效果 |
+| --- | --- |
+| `has-[[data-slot=input-group-control]:focus-visible]` | 画焦点环 |
+| `has-disabled` | 整组置灰 + 变底色 |
+| `has-[[data-slot][aria-invalid=true]]` | 校验失败环 |
+| `has-[>[data-align=block-start\|block-end]]` | 从一行变竖排 |
 
-**状态**
+要整组禁用就禁用里面的控件（或者把整组放进禁用的 `Field.Root`，Base UI 的 `Input`
+会自己继承）。
 
-| 状态 | 出现时机 | render prop |
-| --- | --- | --- |
-| `data-hovered` | 指针悬停在组内 | `isHovered` |
-| `data-focus-within` | 组内某个元素持有焦点 | `isFocusWithin` |
-| `data-focus-visible` | 焦点且应当显示焦点环 | `isFocusVisible` |
-| `data-disabled` | `isDisabled`，或所在的 RAC 字段被禁用 | `isDisabled` |
-| `data-invalid` | `isInvalid` | `isInvalid` |
-| `data-readonly` | `isReadOnly`，或所在 RAC 字段只读 | —（Group 的 render props 不含它，只有 DOM 属性可选） |
-
-除此之外它还会对**后代**的原生 disabled 作出反应（`has-disabled:opacity-50`）——
-组里只要有任何一个 `:disabled` 元素，整组就按禁用渲染。这一条是坑：React Aria 在只读
-模式下会禁用字段的清除按钮，于是一个只读字段会长得跟禁用的一样。`SearchField`
-的做法是只读时**不渲染**那个按钮；`hidden` 没用，`display: none` 的元素仍然会被
-`:has(:disabled)` 命中。
+`has-disabled` 这条是坑：组里只要有**任何一个** `:disabled` 元素，整组就按禁用渲染。
+`SearchField` 因此在只读时**不渲染**清除按钮；`hidden` 没用，`display: none` 的元素
+仍然会被 `:has(:disabled)` 命中。
 
 ### InputGroupAddon
 
@@ -115,19 +103,20 @@ has-[[data-slot=input-group-control]:focus-visible]:ring-3
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `placeholder` | `string` | — | 占位符 |
-| `className` | `string \| (state) => string` | — | 类名 |
-| 其余 | RAC `Input` 的 props | — | 透传（含 `onHoverStart` 一族与函数形式 `style`） |
+| `onValueChange` | `(value, details) => void` | — | Base UI 的受控回调，拿到的是字符串而不是事件 |
+| `className` | `string \| (state) => string` | — | 类名，参数是 Base UI 的字段控件状态（`disabled` / `valid` / `dirty` / `touched`…） |
+| 其余 | Base UI `Input` 的 props | — | 透传 |
 
 自带 `data-slot="input-group-control"`（见[上文](#焦点环怎么来的)），去掉了自己的边框和
-环，交给外层的组来画。没有可见 `Label` 时记得给 `aria-label`。
+环，交给外层的组来画。没有可见 label 时记得给 `aria-label`。
 
 ### InputGroupTextarea
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `rows` | `number` | — | 初始行数 |
-| `className` | `string \| (state) => string` | — | 类名 |
-| 其余 | RAC `TextArea` 的 props | — | 透传（含 `onHoverStart` 一族与函数形式 `style`） |
+| `className` | `string` | — | 类名 |
+| 其余 | 原生 `<textarea>` 的 props | — | 透传 |
 
 同样带 `input-group-control`。组里有它时高度自动放开，不再固定成一行。
 
@@ -135,10 +124,10 @@ has-[[data-slot=input-group-control]:focus-visible]:ring-3
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `onPress` | `(event) => void` | — | **不是 `onClick`** —— 底下是 React Aria 的 `Button` |
+| `onClick` | `(event) => void` | — | 点击 |
 | `size` | `'xs' \| 'sm' \| 'icon-xs' \| 'icon-sm'` | `'xs'` | 纯图标用 `icon-*` |
 | `variant` | `Button` 的变体 | `'ghost'` | 默认是幽灵按钮，融进输入框 |
-| `isDisabled` | `boolean` | `false` | 禁用 |
+| `disabled` | `boolean` | `false` | 禁用 |
 | `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | 表单里需要提交时改它 |
 | `className` | `string` | — | 类名 |
 

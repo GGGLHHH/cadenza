@@ -1,32 +1,14 @@
-"use client"
-
 import * as React from "react"
-import {
-  Cell as CellPrimitive,
-  Column as ColumnPrimitive,
-  Row as RowPrimitive,
-  TableBody as TableBodyPrimitive,
-  TableFooter as TableFooterPrimitive,
-  TableHeader as TableHeaderPrimitive,
-  Table as TablePrimitive,
-  type CellProps,
-  type ColumnProps,
-  type RowProps,
-  type TableBodyProps,
-  type TableFooterProps,
-  type TableHeaderProps,
-  type TableProps,
-} from "react-aria-components"
 
 import { cn } from "#lib/utils"
 
-function Table({ className, ...props }: TableProps) {
+function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
       className="relative w-full overflow-x-auto"
     >
-      <TablePrimitive
+      <table
         data-slot="table"
         className={cn("w-full caption-bottom text-sm", className)}
         {...props}
@@ -35,9 +17,9 @@ function Table({ className, ...props }: TableProps) {
   )
 }
 
-function TableHeader<T>({ className, ...props }: TableHeaderProps<T>) {
+function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
-    <TableHeaderPrimitive
+    <thead
       data-slot="table-header"
       className={cn("[&_tr]:border-b", className)}
       {...props}
@@ -45,22 +27,19 @@ function TableHeader<T>({ className, ...props }: TableHeaderProps<T>) {
   )
 }
 
-function TableBody<T>({ className, ...props }: TableBodyProps<T>) {
+function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   return (
-    <TableBodyPrimitive
+    <tbody
       data-slot="table-body"
-      className={cn(
-        "data-empty:h-24 data-empty:text-center [&_tr:last-child]:border-0",
-        className
-      )}
+      className={cn("[&_tr:last-child]:border-0", className)}
       {...props}
     />
   )
 }
 
-function TableFooter<T>({ className, ...props }: TableFooterProps<T>) {
+function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   return (
-    <TableFooterPrimitive
+    <tfoot
       data-slot="table-footer"
       className={cn(
         "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
@@ -71,12 +50,12 @@ function TableFooter<T>({ className, ...props }: TableFooterProps<T>) {
   )
 }
 
-function TableRow<T>({ className, ...props }: RowProps<T>) {
+function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
-    <RowPrimitive
+    <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted data-selected:bg-muted",
+        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
         className
       )}
       {...props}
@@ -84,12 +63,12 @@ function TableRow<T>({ className, ...props }: RowProps<T>) {
   )
 }
 
-function TableHead({ className, ...props }: ColumnProps) {
+function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
-    <ColumnPrimitive
+    <th
       data-slot="table-head"
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([data-slot=checkbox])]:pr-0 [&:has([role=checkbox])]:pr-0",
+        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -97,12 +76,12 @@ function TableHead({ className, ...props }: ColumnProps) {
   )
 }
 
-function TableCell({ className, ...props }: CellProps) {
+function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
-    <CellPrimitive
+    <td
       data-slot="table-cell"
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([data-slot=checkbox])]:pr-0 [&:has([role=checkbox])]:pr-0",
+        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -113,14 +92,11 @@ function TableCell({ className, ...props }: CellProps) {
 function TableCaption({
   className,
   ...props
-}: React.ComponentProps<"figcaption">) {
+}: React.ComponentProps<"caption">) {
   return (
-    <figcaption
+    <caption
       data-slot="table-caption"
-      className={cn(
-        "mt-4 text-center text-sm text-muted-foreground",
-        className
-      )}
+      className={cn("mt-4 text-sm text-muted-foreground", className)}
       {...props}
     />
   )

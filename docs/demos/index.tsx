@@ -7,7 +7,6 @@ import { lazy, Suspense } from 'react'
 const registry: Record<string, ComponentType> = {
   'button/variants': lazy(async () => import('./button/variants')),
   'button/sizes': lazy(async () => import('./button/sizes')),
-  'button/render-props': lazy(async () => import('./button/render-props')),
   'button/pending': lazy(async () => import('./button/pending')),
   'button/pending-custom': lazy(async () => import('./button/pending-custom')),
   'button/link': lazy(async () => import('./button/link')),

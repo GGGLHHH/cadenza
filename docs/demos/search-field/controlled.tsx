@@ -17,8 +17,8 @@ export default function ControlledDemo(): ReactElement {
         onChange={setValue}
       />
       <div className="flex flex-wrap items-center gap-2">
-        <DemoButton onPress={() => setValue('Debussy')}>填入 Debussy</DemoButton>
-        <DemoButton onPress={() => setValue('')}>清空</DemoButton>
+        <DemoButton onClick={() => setValue('Debussy')}>填入 Debussy</DemoButton>
+        <DemoButton onClick={() => setValue('')}>清空</DemoButton>
         <span className="text-sm text-muted-foreground">
           value:
           {value === '' ? ' —' : ` ${value}`}

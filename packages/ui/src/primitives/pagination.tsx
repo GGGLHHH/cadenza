@@ -1,7 +1,7 @@
 import * as React from "react"
 
 import { cn } from "#lib/utils"
-import { LinkButton } from "#primitives/button"
+import { Button } from "#primitives/button"
 import { IconChevronLeft, IconChevronRight, IconDots } from "@tabler/icons-react"
 
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
@@ -35,7 +35,8 @@ function PaginationItem({ ...props }: React.ComponentProps<"li">) {
 
 type PaginationLinkProps = {
   isActive?: boolean
-} & Omit<React.ComponentProps<typeof LinkButton>, "variant">
+} & Pick<React.ComponentProps<typeof Button>, "size"> &
+  React.ComponentProps<"a">
 
 function PaginationLink({
   className,
@@ -44,14 +45,19 @@ function PaginationLink({
   ...props
 }: PaginationLinkProps) {
   return (
-    <LinkButton
+    <Button
       variant={isActive ? "outline" : "ghost"}
       size={size}
       className={cn(className)}
-      aria-current={isActive ? "page" : undefined}
-      data-slot="pagination-link"
-      data-active={isActive}
-      {...props}
+      nativeButton={false}
+      render={
+        <a
+          aria-current={isActive ? "page" : undefined}
+          data-slot="pagination-link"
+          data-active={isActive}
+          {...props}
+        />
+      }
     />
   )
 }

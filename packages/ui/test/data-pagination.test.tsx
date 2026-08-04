@@ -1,16 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { DataPagination } from '../src/components/data-pagination'
-
-beforeAll(() => {
-  vi.stubGlobal('ResizeObserver', class {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-  })
-  Element.prototype.scrollIntoView = vi.fn()
-})
 
 describe('dataPagination', () => {
   it('renders the neutral page indicator and pages uncontrolled', async () => {
@@ -72,8 +63,9 @@ describe('dataPagination', () => {
   it('reports a limit change from the rows-per-page select', async () => {
     const onLimitChange = vi.fn()
     render(<DataPagination onLimitChange={onLimitChange} total={100} />)
-    await userEvent.click(screen.getByRole('button', { name: /Rows per page/ }))
-    await userEvent.click(await screen.findByRole('option', { name: '50' }))
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('combobox', { name: /Rows per page/ }))
+    await user.click(await screen.findByRole('option', { name: '50' }))
     expect(onLimitChange).toHaveBeenCalledWith(50)
   })
 })

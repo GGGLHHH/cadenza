@@ -1,13 +1,13 @@
 'use client'
 
-import type { ComponentProps, MouseEvent, ReactElement, ReactNode } from 'react'
+import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import type { ControllableSelectionProps, InfiniteSelectActions, InfiniteSelectAdapterProps, InfiniteSelectItemRenderParams, InfiniteSelectOption } from './infinite-select'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { useDebounceFn } from 'ahooks'
 import { Children, cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { cn } from '#lib/utils'
-import { Popover, PopoverTrigger } from '#primitives/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '#primitives/popover'
 import {
   InfiniteSelect,
   InfiniteSelectActionsProvider,
@@ -16,20 +16,18 @@ import {
 } from './infinite-select'
 
 /**
- * Popover wrapper for `InfiniteSelect`: React Aria's `DialogTrigger` (via the
- * popover primitive) owns open state, focus restore and dismissal; this layer
- * adds the search/query split with debounce, and an optional commit-on-close
- * draft mode for multi selection.
+ * Popover wrapper for `InfiniteSelect`: Base UI's `Popover` owns open state,
+ * focus restore and dismissal; this layer adds the search/query split with
+ * debounce, and an optional commit-on-close draft mode for multi selection.
  */
 
-// Naming follows React Aria: `isOpen`/`defaultOpen`/`onOpenChange` (overlay
-// trio) and `inputValue`/`defaultInputValue`/`onInputChange` (ComboBox trio).
-// `queryValue` — the debounced value meant for the request — is our own
-// concept with no RA counterpart.
+// `open`/`defaultOpen`/`onOpenChange` for the overlay and
+// `inputValue`/`defaultInputValue`/`onInputChange` for the search text.
+// `queryValue` — the debounced value meant for the request — is our own.
 export interface InfiniteComboboxStateOptions {
-  isOpen?: boolean
+  open?: boolean
   defaultOpen?: boolean
-  onOpenChange?: (isOpen: boolean) => void
+  onOpenChange?: (open: boolean) => void
   inputValue?: string
   defaultInputValue?: string
   onInputChange?: (value: string) => void
@@ -41,8 +39,8 @@ export interface InfiniteComboboxStateOptions {
 }
 
 export interface InfiniteComboboxState<T = unknown> {
-  isOpen: boolean
-  setOpen: (isOpen: boolean) => void
+  open: boolean
+  setOpen: (open: boolean) => void
   inputValue: string
   setInputValue: (value: string) => void
   resetSearch: () => void
@@ -52,7 +50,7 @@ export interface InfiniteComboboxState<T = unknown> {
 }
 
 export function useInfiniteComboboxState({
-  isOpen,
+  open,
   defaultOpen,
   onOpenChange,
   inputValue,
@@ -64,7 +62,7 @@ export function useInfiniteComboboxState({
   debounceMs = 300,
 }: InfiniteComboboxStateOptions = {}): InfiniteComboboxState {
   const [openState, setOpenState] = useControllableState({
-    value: isOpen,
+    value: open,
     defaultValue: defaultOpen,
     onChange: onOpenChange,
     fallback: false,
@@ -135,7 +133,7 @@ export function useInfiniteComboboxState({
   }, [openState, resetSearch])
 
   return {
-    isOpen: openState,
+    open: openState,
     queryValue: queryState,
     resetSearch,
     inputValue: inputState,
@@ -150,13 +148,13 @@ export function useInfiniteComboboxState({
 export type InfiniteComboboxChildren<T>
   = | ReactNode
     | ReactNode[]
-    | ((params: InfiniteComboboxState<T> & { isDisabled: boolean }) => ReactElement)
+    | ((params: InfiniteComboboxState<T> & { disabled: boolean }) => ReactElement)
 
 interface InfiniteComboboxCommonProps<T> {
   /** Accessible name for the option list. Falls back to `searchPlaceholder`. */
   'aria-label'?: string
   /**
-   * React Aria's `DialogTrigger` contract, by position: **the first child is
+   * Base UI's `Popover.Trigger` contract, by position: **the first child is
    * the trigger, every child after it is the panel's composition channel**
    * (state slots, marker parts, footer) — the same children `InfiniteSelect`
    * takes, minus the Search and List parts this layer already renders.
@@ -169,16 +167,19 @@ interface InfiniteComboboxCommonProps<T> {
    * </InfiniteCombobox>
    * ```
    *
-   * The trigger must be pressable in React Aria terms (our `Button`, or any RAC
-   * pressable) — `DialogTrigger` wires it up. Passing a function instead makes
-   * the whole of `children` the trigger (it receives the combobox state plus
-   * the current selection, for summary rendering) and leaves no panel channel;
-   * read `state` directly in your JSX when you need both.
+   * The trigger can be any element: it reaches `Popover.Trigger` as `render`,
+   * which merges the trigger's props (id, `aria-expanded`, the click handler)
+   * into it. Anything that is not an element — a bare string, say — becomes
+   * the content of Base UI's own button instead. Passing a function instead
+   * makes the whole of `children` the trigger (it receives the combobox state
+   * plus the current selection, for summary rendering) and leaves no panel
+   * channel; read `state` directly in your JSX when you need both.
    */
   'children': InfiniteComboboxChildren<T>
   /**
-   * `id` for the trigger, so a `FieldLabel htmlFor` can point at it. React Aria
-   * gives the trigger a generated id otherwise, which no caller can predict.
+   * `id` for the trigger, so a `FieldLabel htmlFor` can point at it. Base UI's
+   * `Popover.Trigger` gives it a generated `base-ui-…` id otherwise, which no
+   * caller can predict.
    *
    * Unlike `Select`, no matching `aria-label` is needed: nothing puts an
    * `aria-labelledby` on this trigger, so the native `<label for>` association
@@ -189,7 +190,7 @@ interface InfiniteComboboxCommonProps<T> {
   'list': InfiniteSelectAdapterProps<T>
   'getOption': (item: T) => InfiniteSelectOption
   'renderItem'?: (params: InfiniteSelectItemRenderParams<T>) => ReactNode
-  'isDisabled'?: boolean
+  'disabled'?: boolean
   'contentClassName'?: string
   /** Multi only: hold toggles as a draft and commit once, when the popover closes. */
   'commitOnClose'?: boolean
@@ -206,30 +207,18 @@ interface InfiniteComboboxCommonProps<T> {
   /** Single only: close the popover after picking. Defaults to true. */
   'closeOnSelect'?: boolean
   /**
-   * Lock the page scroll while the popover is open. Off by default — the
-   * popover is non-modal and the page scrolls freely. Turn on for the
-   * RAC/Radix-style modal feel. When on, `closeOnScroll` is moot.
+   * Lock the page scroll while the popover is open (Base UI's `modal`). Off by
+   * default — the page scrolls freely and the popover follows its anchor.
    */
   'lockScroll'?: boolean
-  /**
-   * Dismiss the popover when the page scrolls (React Aria's native non-modal
-   * behavior, like a native select). Off by default: the popover stays open and
-   * repositions with its anchor, matching Ant/Base UI. Ignored under
-   * `lockScroll`, where the page cannot scroll at all.
-   */
-  'closeOnScroll'?: boolean
   'selectClassName'?: string
   /**
-   * The popover shell's positioning surface — `placement`, `offset`,
-   * `shouldFlip` and the rest. An object on purpose, not flattened into this
-   * panel: the wired props (`trigger` / `isNonModal` / the open-state trio)
-   * are excluded from the type, and the wiring is written after the spread so
-   * it stays in charge. `contentClassName` remains the class outlet.
+   * The popover shell's positioning surface — `side`, `sideOffset`, `align`
+   * and the rest. An object on purpose, not flattened into this panel, and the
+   * wiring is written after the spread so it stays in charge.
+   * `contentClassName` remains the class outlet.
    */
-  'popoverProps'?: Omit<
-    ComponentProps<typeof Popover>,
-    'children' | 'className' | 'trigger' | 'isNonModal' | 'isOpen' | 'defaultOpen' | 'onOpenChange'
-  >
+  'popoverProps'?: Omit<ComponentProps<typeof PopoverContent>, 'children' | 'className'>
 }
 
 export type InfiniteComboboxProps<T> = InfiniteComboboxCommonProps<T>
@@ -240,7 +229,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     children,
     commitOnClose = false,
     contentClassName,
-    isDisabled = false,
+    disabled = false,
     getOption,
     list,
     maxListHeight,
@@ -253,7 +242,6 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     state,
     closeOnSelect = true,
     lockScroll = false,
-    closeOnScroll = false,
     selectClassName,
     popoverProps,
     triggerId,
@@ -302,11 +290,11 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
 
   useEffect(() => {
     const wasOpen = prevOpenRef.current
-    prevOpenRef.current = state.isOpen
+    prevOpenRef.current = state.open
     if (!deferredEnabled)
       return
 
-    const justClosed = wasOpen === true && !state.isOpen
+    const justClosed = wasOpen === true && !state.open
     const justCommitted = justClosed && hasChangedRef.current
     if (justCommitted) {
       // draftIdsRef is authoritative (from InfiniteSelect); draftItemsRef only
@@ -331,15 +319,39 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
           hasChangedRef.current = false
       }
     }
-  }, [deferredEnabled, props, setSelectedValue, state.isOpen])
+  }, [deferredEnabled, props, setSelectedValue, state.open])
 
+  // Set below, where the trigger's id is resolved — a ref because the handler
+  // is created before that and must still see the current value.
+  const labelTargetIdRef = useRef<string | undefined>(undefined)
+
+  /**
+   * Open/close, with one exception written in: **the associated `<label>` is
+   * not "outside".**
+   *
+   * A non-modal popover shields nothing, so a second click on the label really
+   * does reach the page. Base UI counts that as an outside press and dismisses
+   * on `pointerdown`; the browser then forwards the `click` to the trigger,
+   * which reopens what was just closed — the label could open the popover but
+   * never close it, with a visible flicker in between. A `<label for>` points
+   * at the trigger, so pressing it *is* pressing the trigger: cancel the
+   * dismissal and let the forwarded click do the toggling.
+   */
   const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (isDisabled && next)
+    (next: boolean, eventDetails?: { reason?: string, event?: Event, cancel: () => void }) => {
+      if (disabled && next)
         return
+      if (!next && eventDetails?.reason === 'outside-press' && labelTargetIdRef.current !== undefined) {
+        const target = eventDetails.event?.target
+        const label = target instanceof Element ? target.closest('label') : null
+        if (label !== null && label.htmlFor === labelTargetIdRef.current) {
+          eventDetails.cancel()
+          return
+        }
+      }
       state.setOpen(next)
     },
-    [isDisabled, state],
+    [disabled, state],
   )
 
   const clearSelection = useCallback(() => {
@@ -369,7 +381,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     close: () => state.setOpen(false),
   }
 
-  // React Aria's DialogTrigger contract, by position: first child triggers, the
+  // Base UI's Popover.Trigger contract, by position: first child triggers, the
   // rest are the overlay's. A function is the trigger whole — there is no
   // "rest" to split off, and the caller owns `state` anyway.
   const [triggerChild, panelSlots] = typeof children === 'function'
@@ -383,65 +395,38 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     ...state,
     selectedItems,
     selectedValue: effectiveSelectedValue,
-    isDisabled,
+    disabled,
   })
 
-  // Three things are wired onto the caller's own element, because that element
+  // Two things are wired onto the caller's own element, because that element
   // is the control as far as the page is concerned:
   //
-  // - `isDisabled`, or a disabled combobox looks live at its trigger and just
-  //   swallows presses. The documented contract is a RAC pressable, which takes
-  //   it; a plain DOM tag would only warn about an unknown prop, so those are
-  //   left alone. `id` and the click handler are fine on either.
+  // - `disabled`, or a disabled combobox looks live at its trigger. It is a
+  //   plain HTML attribute, so it takes on our `Button` and on any native
+  //   control; on anything else it is inert, which is why the guard at the top
+  //   of `handleOpenChange` is what actually keeps the popover shut.
   // - `triggerId`, so a `FieldLabel htmlFor` has something to point at. An
-  //   element that brought its own `id` keeps it.
-  // - A click that arrived from that label. The browser forwards it as a bare
-  //   `click` with no pointer sequence behind it, so `usePress` never sees a
-  //   press and the popover stays shut — the same gap `SelectTrigger` fills,
-  //   told apart the same way: a forwarded click carries the coordinates of the
-  //   click on the *label*, so it reports a point outside the trigger's own box.
-  //   `detail === 0` marks the virtual clicks `usePress` already handles.
+  //   element that brought its own `id` keeps it — Base UI merges the render
+  //   element's props last, so what is cloned in here outranks the id
+  //   `Popover.Trigger` would otherwise generate.
+  //
+  // Nothing has to be wired for the click the label forwards: the trigger is a
+  // real button, so the browser delivers that click to it and Base UI toggles.
+  // The one exception is the second such click; see `handleOpenChange`.
   // The id a `FieldLabel htmlFor` can aim at: the element's own wins, `triggerId`
   // fills in. Needed twice — to clone in, and to recognise that label below.
   const triggerOwnId = isValidElement(trigger) ? (trigger.props as { id?: string }).id : undefined
   const labelTargetId = triggerOwnId ?? triggerId
+  labelTargetIdRef.current = labelTargetId
 
-  const wiredTrigger = isValidElement(trigger)
-    ? cloneElement(trigger as ReactElement<Record<string, unknown>>, {
-        ...(isDisabled && typeof trigger.type !== 'string' ? { isDisabled: true } : {}),
-        ...(triggerId !== undefined && triggerOwnId === undefined ? { id: triggerId } : {}),
-        onClickCapture: (event: MouseEvent<HTMLElement>) => {
-          const box = event.currentTarget.getBoundingClientRect()
-          const landedOutside = event.clientX < box.left || event.clientX > box.right
-            || event.clientY < box.top || event.clientY > box.bottom
-          if (landedOutside && event.detail !== 0)
-            handleOpenChange(!state.isOpen)
-          ;(trigger.props as { onClickCapture?: (event: MouseEvent<HTMLElement>) => void })
-            .onClickCapture?.(event)
-        },
-      })
+  // Only the id is cloned in. `disabled` goes to `Popover.Trigger` instead, so
+  // Base UI's own button machinery owns it: it suppresses activation, writes the
+  // right attribute for the element it actually rendered, and — unlike a cloned
+  // `disabled` — puts nothing on a trigger that is a plain `<div>`, where the
+  // attribute would be inert but present.
+  const wiredTrigger = isValidElement(trigger) && triggerId !== undefined && triggerOwnId === undefined
+    ? cloneElement(trigger as ReactElement<Record<string, unknown>>, { id: triggerId })
     : trigger
-
-  /**
-   * The associated `<label>` is not "outside".
-   *
-   * The popover is non-modal, so nothing shields the page while it is open and a
-   * second click on the label really does reach it. Left to React Aria that
-   * counts as an outside interaction and dismisses on `pointerdown`, and then the
-   * forwarded `click` reaches the trigger and reopens what was just closed — the
-   * label could open the popover but never close it, with a visible flicker in
-   * between. A `<label for>` points at the trigger; pressing it is pressing the
-   * trigger, so it is excluded here and the toggle above is left to do the work.
-   */
-  const shouldCloseOnInteractOutside = useCallback(
-    (element: Element): boolean => {
-      const label = element.closest('label')
-      if (label !== null && labelTargetId !== undefined && label.htmlFor === labelTargetId)
-        return false
-      return popoverProps?.shouldCloseOnInteractOutside?.(element) ?? true
-    },
-    [labelTargetId, popoverProps],
-  )
 
   // Root gets data + selection wiring; presentation config goes to the parts.
   const shared = {
@@ -451,9 +436,11 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     'className': cn('rounded-none border-0 shadow-none', selectClassName),
     'inputValue': state.inputValue,
     'onInputChange': state.setInputValue,
+    rowHeight,
+    virtualized,
   }
 
-  // The business-convenience layer: monolith props compose the RA-style parts.
+  // The business-convenience layer: monolith props compose the panel parts.
   const panelChildren = (
     <>
       <InfiniteSelectSearch autoFocus placeholder={searchPlaceholder} />
@@ -461,29 +448,24 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
         loadMoreScrollOffset={loadMoreScrollOffset}
         maxListHeight={maxListHeight}
         renderItem={renderItem}
-        rowHeight={rowHeight}
         scrollbars={scrollbars}
-        virtualized={virtualized}
       />
       {panelSlots}
     </>
   )
 
   return (
-    <PopoverTrigger isOpen={state.isOpen} onOpenChange={handleOpenChange}>
-      {wiredTrigger}
-      <Popover
+    <Popover modal={lockScroll} open={state.open} onOpenChange={handleOpenChange}>
+      {/* An element trigger IS the button (Base UI merges its props into the
+          caller's element); anything else — a bare string, say — becomes the
+          content of Base UI's own button instead. */}
+      {isValidElement(wiredTrigger)
+        ? <PopoverTrigger disabled={disabled} render={wiredTrigger} />
+        : <PopoverTrigger disabled={disabled}>{wiredTrigger}</PopoverTrigger>}
+      <PopoverContent
         {...popoverProps}
-        shouldCloseOnInteractOutside={shouldCloseOnInteractOutside}
-        isNonModal={!lockScroll}
-        // RAC hard-wires non-modal popovers to dismiss on outside scroll, with
-        // one exception: submenus (non-modal, no scroll listener, outside click
-        // still dismisses). `trigger` is a public prop, and naming it
-        // SubmenuTrigger opts into that branch — the only non-patch way to get
-        // scroll-follows-anchor. Revisit if RAC ever ships shouldCloseOnScroll.
-        trigger={!lockScroll && !closeOnScroll ? 'SubmenuTrigger' : undefined}
         className={cn(`
-          gap-0 overflow-hidden p-0 inline-(--trigger-width) min-inline-72
+          gap-0 overflow-hidden p-0 inline-(--anchor-width) min-inline-72
         `, contentClassName)}
         data-slot="infinite-combobox-content"
       >
@@ -524,7 +506,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
                 </InfiniteSelect>
               )}
         </InfiniteSelectActionsProvider>
-      </Popover>
-    </PopoverTrigger>
+      </PopoverContent>
+    </Popover>
   )
 }

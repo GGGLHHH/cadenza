@@ -1,18 +1,13 @@
 'use client'
 
 import type { ComponentProps, CSSProperties, ReactElement, ReactNode } from 'react'
-import type { Key, Selection, SortDescriptor } from 'react-aria-components'
+import type { Key, Selection, SortDescriptor } from '#lib/collections'
 import type { LoadingOverlayProps } from './loading-overlay'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconChevronDown, IconChevronUp, IconSelector } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { createContext, use, useMemo, useRef } from 'react'
-import {
-  Collection,
-  Table,
-  TableLoadMoreItem,
-} from 'react-aria-components'
+import { createContext, use, useEffect, useMemo, useRef } from 'react'
 import { findComposedPart } from '#lib/find-part'
 import { cn } from '#lib/utils'
 import { Button } from '#primitives/button'
@@ -29,10 +24,12 @@ import { ScrollArea } from './scroll-area'
 import { Spinner } from './spinner'
 
 /**
- * Data table on React Aria's `Table`: grid keyboard navigation, row selection
- * and column sorting are all RAC semantics, driven by a plain column-def
- * array instead of JSX composition. The chrome is a card with a sticky
- * header inside its own scroll container. Like the rest of the library the
+ * Data table on a native `<table>`, driven by a plain column-def array instead
+ * of JSX composition. The chrome is a card with a sticky header inside its own
+ * ScrollArea. Every interactive part is a real control: sorting is a `<button>`
+ * in a `<th aria-sort>`, selection is real checkboxes, the row header is a
+ * `<th scope="row">` — so the keyboard model is Tab traversal of those
+ * controls, not arrow-key cell navigation. Like the rest of the library the
  * base renders zero copy — empty / loading / error come in through slot
  * children, infinite scroll and virtualization are opt-in.
  */
@@ -72,7 +69,7 @@ export interface DataTableColumn<T> {
 /**
  * The convenience selection layer, mirroring InfiniteSelect's contract. It
  * owns the cross-page archive: ids survive page flips, `'all'` from the
- * header expands to "union the loaded rows in", deselect-all (and Esc)
+ * header expands to "union the loaded rows in", deselect-all
  * expands to "remove the loaded rows", and item objects are cached across
  * pages — `ids` is the authoritative set, `items` only echoes objects whose
  * page was actually loaded. Persist `ids`. Server-side select-all ("all
@@ -119,37 +116,48 @@ export interface DataTableBaseProps<T> {
   'onRetry'?: () => void
   /**
    * How far ahead of the visible bottom the next page starts loading, in
-   * viewport heights (the RAC sentinel's `scrollOffset` semantics). Larger
-   * values make the loading state rarer at the cost of eager requests.
+   * viewport heights. Larger values make the loading state rarer at the cost
+   * of eager requests.
    */
   'loadMoreScrollOffset'?: number
 
-  // Raw React Aria selection passthrough — RAC semantics verbatim, no
-  // cross-page bookkeeping. Ignored while the value/onChange convenience
-  // layer (see DataTableSelectionProps) is in use, except that
-  // onSelectionChange still observes the raw selection.
+  // Raw selection passthrough: `selectedKeys` is the controlled set verbatim
+  // (`'all'` reads as "every loaded row"), with no cross-page bookkeeping.
+  // Ignored while the value/onChange convenience layer (see
+  // DataTableSelectionProps) is in use, except that onSelectionChange still
+  // observes the raw selection.
   'selectedKeys'?: Iterable<Key> | 'all'
-  'defaultSelectedKeys'?: Iterable<Key> | 'all'
   'onSelectionChange'?: (keys: Selection) => void
   'sortDescriptor'?: SortDescriptor
   'onSortChange'?: (descriptor: SortDescriptor) => void
   /**
-   * Prepend a checkbox column wired to row selection (React Aria's
-   * `slot="selection"` protocol): row checkboxes toggle, the header checkbox
-   * selects all (multiple mode only; the header stays empty in single mode).
+   * Prepend a synthesized checkbox column wired to row selection: each row
+   * cell is a Checkbox bound to that row's id, the header checkbox selects all
+   * (multiple mode only; the header stays empty in single mode).
    * The column pins itself when the leading data columns are pinned, and is
    * never the row header. Ignored while `selectionMode` is off. Essential
    * together with `onRowAction`, which hands row clicks to the action and
    * leaves checkboxes as the selection gesture.
    */
   'selectionColumn'?: boolean
-  /** Row activation (click / Enter). With selection on, RAC moves selection to the checkbox/long-press gestures. */
+  /** Row activation (click). Selection stays the checkboxes' job. */
   'onRowAction'?: (item: T) => void
+  // Accessible names for the checkbox column. English defaults, the house
+  // pattern: they never render visibly, and a translation belongs to the
+  // business layer.
+  'selectAllLabel'?: string
+  'selectRowLabel'?: string
 
   /**
    * Height cap for the scrollable row area; overflow scrolls under the sticky
-   * header. Required in practice for infinite scroll and virtualization
-   * (virtualized falls back to 480 when unset).
+   * header. A cap, not a height — a table shorter than it renders at its
+   * natural height with no scrollbar.
+   *
+   * Defaults to {@link DEFAULT_MAX_HEIGHT}, because **that is what makes the
+   * sticky header stick**: `position: sticky` needs a scrollport, and without a
+   * cap the row area never scrolls — the whole table just scrolls away with the
+   * page. Pass `Number.POSITIVE_INFINITY` for a table that grows without bound
+   * and lets the page do the scrolling.
    */
   'maxHeight'?: number
   /** Scrollbar visibility: always shown, shown on hover, or none. */
@@ -159,8 +167,8 @@ export interface DataTableBaseProps<T> {
    * overscan reaches the DOM, padded by two inert filler rows so the native
    * `<table>` keeps its full scroll height. Off by default — a few hundred
    * rows don't need it. Trade-offs while on: rows are fixed-height
-   * (`rowHeight`), and React Aria only knows the rendered window (typeahead /
-   * Home / End / aria row counts are window-scoped).
+   * (`rowHeight`, unless `dynamicRowHeight`), and only the window is in the
+   * DOM — browser find-in-page and select-all reach the visible rows only.
    */
   'virtualized'?: boolean
   /**
@@ -237,16 +245,16 @@ export function DataTableError({ className, ...props }: ComponentProps<'div'>): 
 }
 
 /** Retry button: wired to the table's `onRetry`; renders nothing without one. */
-export function DataTableRetry({ onPress, ...props }: ComponentProps<typeof Button>): ReactElement | null {
+export function DataTableRetry({ onClick, ...props }: ComponentProps<typeof Button>): ReactElement | null {
   const { onRetry } = useDataTableState()
   if (!onRetry)
     return null
   return (
     <Button
       data-slot="data-table-retry"
-      onPress={(event) => {
+      onClick={(event) => {
         onRetry()
-        onPress?.(event)
+        onClick?.(event)
       }}
       size="sm"
       type="button"
@@ -261,17 +269,18 @@ export type DataTableLoadingOverlayProps = Omit<LoadingOverlayProps, 'isLoading'
 /**
  * Slotted customization for the built-in loading overlay: compose it in the
  * slot channel and the card renders your props over the table — `children`
- * replace the centred spinner, `className` tunes the frost. A marker like
- * TabIndicator: it renders nothing where written (an absolute overlay cannot
- * live in the empty-state flow), and `isLoading` stays the base's wiring.
+ * replace the centred spinner, `className` tunes the frost. A marker part: it
+ * renders nothing where written (an absolute overlay cannot live in the
+ * empty-state flow) — the card lifts its props out of the slot channel and
+ * renders the overlay itself, so `isLoading` stays the base's wiring.
  * Direct child or inside a Fragment only — a custom wrapper hides it.
  */
 export function DataTableLoadingOverlay(_props: DataTableLoadingOverlayProps): null {
   return null
 }
 
-// `tr`, not `div`: React Aria renders the loader as a table row, so a div's
-// ref type would clash with the row's on spread.
+// `tr`, not `div`: these props are spread onto `LoadMoreRow`, which renders a
+// `<tr>` (a `<tbody>` may only contain rows), so a div's ref type would clash.
 export type DataTableLoadingMoreProps = ComponentProps<'tr'>
 
 /**
@@ -285,9 +294,9 @@ export type DataTableLoadingMoreProps = ComponentProps<'tr'>
  * ```
  *
  * A marker like `DataTableLoadingOverlay`: composing it is customization, not a
- * switch. Leave it out and the Spinner still renders — React Aria only renders
- * this row when it has children, so an empty one would mean the next page lands
- * with no feedback at all.
+ * switch. Leave it out and the Spinner still renders — the row mounts whenever
+ * there is a next page, and its children fall back to the Spinner, so the next
+ * page never lands without feedback.
  */
 export function DataTableLoadingMore(_props: DataTableLoadingMoreProps): null {
   return null
@@ -371,6 +380,65 @@ function SortIndicator({ direction }: { direction: 'ascending' | 'descending' | 
 
 const HEADER_HEIGHT = 40
 
+/**
+ * The default height cap for the row area. Its job is to give the sticky header
+ * a scrollport — see `maxHeight`. Chosen to match what virtualization already
+ * fell back to, so turning `virtualized` on never changes the table's size.
+ */
+const DEFAULT_MAX_HEIGHT = 480
+
+/** The synthesized checkbox column's id — never a caller's. */
+const SELECTION_COLUMN_ID = '__cadenza-selection'
+
+/**
+ * Fires `onLoadMore` when the tail of the table scrolls into view, a viewport
+ * early by default. A `<tr>` because a `<tbody>` may only contain rows; it is
+ * `aria-hidden` and holds nothing, so it never reads as a data row.
+ */
+function LoadMoreRow({
+  onLoadMore,
+  isFetchingNextPage,
+  scrollOffset,
+  colSpan,
+  children,
+  className,
+  ...props
+}: ComponentProps<'tr'> & {
+  onLoadMore: (() => void) | undefined
+  isFetchingNextPage: boolean
+  scrollOffset: number
+  colSpan: number
+}): ReactElement {
+  const ref = useRef<HTMLTableRowElement>(null)
+  // Read at fire time so a re-render never has to re-arm the observer.
+  const latestRef = useRef({ onLoadMore, isFetchingNextPage })
+  latestRef.current = { onLoadMore, isFetchingNextPage }
+
+  useEffect(() => {
+    const node = ref.current
+    const viewport = node?.closest<HTMLElement>('[data-slot="scroll-area-viewport"]')
+    if (!node || !viewport)
+      return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting && !latestRef.current.isFetchingNextPage)
+          latestRef.current.onLoadMore?.()
+      },
+      { root: viewport, rootMargin: `0px 0px ${scrollOffset * 100}% 0px` },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [scrollOffset])
+
+  return (
+    <tr className={cn('hover:bg-transparent', className)} ref={ref} {...props}>
+      <td className={isFetchingNextPage ? 'py-1.5 text-center' : 'block-px'} colSpan={colSpan}>
+        {isFetchingNextPage ? children : null}
+      </td>
+    </tr>
+  )
+}
+
 export function DataTable<T>(props: DataTableProps<T>): ReactElement {
   const {
     'aria-label': ariaLabel,
@@ -387,7 +455,6 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     selectionMode,
     selectionColumn = false,
     selectedKeys,
-    defaultSelectedKeys,
     onSelectionChange,
     sortDescriptor,
     onSortChange,
@@ -399,6 +466,8 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     dynamicRowHeight = false,
     className,
     children,
+    selectAllLabel = 'Select all rows',
+    selectRowLabel = 'Select row',
   } = props
 
   const rows = useMemo<DataTableRowEntry<T>[]>(
@@ -410,7 +479,8 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
   // LoadingOverlay — over the rows when a reload keeps them on screen
   // (react-query's placeholderData), over a min-height blank when the first
   // page is still coming. Only errors clear the rows; empty/error copy still
-  // lands through renderEmptyState, which fires on an empty collection.
+  // lands through the `children` slot, rendered in the empty body row whenever
+  // `hasRows` is false.
   const showRows = !isError
   const displayRows = showRows ? rows : []
   const isEmpty = !isLoading && !isError && rows.length === 0
@@ -428,15 +498,17 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     if (!hasSelectionColumn)
       return columns
     const selection: DataTableColumn<T> = {
-      id: '__cadenza-selection',
-      header: selectionMode === 'multiple' ? <Checkbox slot="selection" /> : null,
-      cell: () => <Checkbox slot="selection" />,
+      id: SELECTION_COLUMN_ID,
+      // Filled in at render time — both cells need the selection state, which
+      // is not in scope where the column list is built.
+      header: null,
+      cell: () => null,
       width: 44,
       // Keep the pinned block contiguous when the leading data columns pin.
       pinned: columns.some(column => column.pinned === 'start') ? 'start' : undefined,
     }
     return [selection, ...columns]
-  }, [hasSelectionColumn, selectionMode, columns])
+  }, [hasSelectionColumn, columns])
 
   const pinnedLayout = useMemo(() => computePinnedLayout(allColumns), [allColumns])
 
@@ -453,18 +525,10 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     }
   }
 
-  const handleRowAction = onRowAction === undefined
-    ? undefined
-    : (key: Key): void => {
-        const row = rows.find(entry => entry.id === String(key))
-        if (row)
-          onRowAction(row.item)
-      }
-
   // ── Convenience selection layer (cross-page archive). Active only when the
-  //    caller opted into value/defaultValue/onChange; otherwise the raw RAC
-  //    passthrough below behaves exactly as before. Controlled-ness is key
-  //    presence, not `!== undefined` — a controlled single select clears with
+  //    caller opted into value/defaultValue/onChange; otherwise the raw
+  //    `selectedKeys` passthrough below is what drives the rows. Controlled-ness
+  //    is key presence, not `!== undefined` — a controlled single select clears with
   //    value={undefined} — so the ids are normalized to arrays BEFORE the
   //    hook, which turns that undefined into a controlled []. ──
   const usesSelectionValue = 'value' in props || 'defaultValue' in props || props.onChange !== undefined
@@ -500,13 +564,13 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
       ids = [...new Set([...selectedIds, ...loadedIds])]
     }
     else if (selection.size === 0) {
-      // RAC clears to an empty set on header deselect-all (and Esc); the
-      // archive interpretation is "remove the loaded rows", never "wipe".
+      // An empty set is what header deselect-all (and a single-mode deselect)
+      // emits; the archive reading is "remove the loaded rows", never "wipe".
       ids = selectedIds.filter(id => !loadedIds.includes(id))
     }
     else {
-      // Per-row toggles: RAC preserves keys outside the current collection,
-      // so the enumerated set already is the full archive.
+      // Per-row toggles: `toggleRow` builds the set from `effectiveSelected`,
+      // which already is the archive, so nothing outside the page is dropped.
       ids = [...selection].map(String)
     }
 
@@ -535,9 +599,11 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     }
   }
 
-  // Height must be bounded for a virtualizer viewport to exist at all, hence
-  // the fallback.
-  const effectiveMaxHeight = maxHeight ?? (virtualized ? 480 : undefined)
+  // A bounded height is what gives the sticky header a scrollport, and what
+  // lets a virtualizer viewport exist at all. Infinity is the opt-out: no cap,
+  // the page scrolls the table, and the header goes with it.
+  const cappedHeight = maxHeight ?? DEFAULT_MAX_HEIGHT
+  const effectiveMaxHeight = Number.isFinite(cappedHeight) ? cappedHeight : undefined
 
   // TanStack Virtual owns windowing (same engine as InfiniteSelect) while the
   // table stays a native <table>: only the window's rows render, and two inert
@@ -552,7 +618,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     estimateSize: () => rowHeight,
     getItemKey: index => displayRows[index].id,
     overscan: 12,
-    initialRect: { width: 800, height: effectiveMaxHeight ?? 480 },
+    initialRect: { width: 800, height: effectiveMaxHeight ?? DEFAULT_MAX_HEIGHT },
   })
   const virtualItems = virtualizer.getVirtualItems()
   const windowRows = virtualized
@@ -563,15 +629,14 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     ? virtualizer.getTotalSize() - virtualItems.at(-1)!.end
     : 0
 
-  // The filler rows holding the scrolled-away height. Disabled (and skipped by
-  // keyboard, via disabledBehavior="all" on the table), empty, hover-inert —
+  // The filler rows holding the scrolled-away height. Empty and hover-inert —
   // they only exist so the native <table> keeps its full scroll height.
-  const spacerRow = (id: string, blockSize: number): ReactElement => (
+  const spacerRow = (key: string, blockSize: number): ReactElement => (
     <TableRow
+      aria-hidden
       className="hover:bg-transparent"
       data-slot="data-table-spacer"
-      id={id}
-      isDisabled
+      key={key}
       style={{ blockSize }}
     >
       {allColumns.map(column => (
@@ -591,114 +656,225 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     '--scroll-fade-pin-r': `${pinnedLayout.endTotal}px`,
   } as CSSProperties
 
+  // ── Selection, wired by hand now that the base is a native <table>. The
+  //    effective set is the convenience layer's archive when it is in use, and
+  //    the raw passthrough otherwise. ──
+  const effectiveSelected = usesSelectionValue
+    ? selectedIds
+    : [...(selectedKeys === 'all' ? rows.map(row => row.id) : (selectedKeys ?? []))].map(String)
+  const emitSelection = (selection: Selection): void => {
+    if (usesSelectionValue)
+      handleSelectionValueChange(selection)
+    onSelectionChange?.(selection)
+  }
+  const loadedIds = rows.map(row => row.id)
+  const allLoadedSelected = loadedIds.length > 0 && loadedIds.every(id => effectiveSelected.includes(id))
+  const someLoadedSelected = loadedIds.some(id => effectiveSelected.includes(id))
+
+  const toggleRow = (id: string, next: boolean): void => {
+    if (selectionMode === 'single') {
+      emitSelection(next ? new Set([id]) : new Set())
+      return
+    }
+    const ids = new Set(effectiveSelected)
+    if (next)
+      ids.add(id)
+    else ids.delete(id)
+    emitSelection(ids)
+  }
+
+  // Row click selects only when there is no other gesture for it: with a
+  // checkbox column the checkboxes own selection, and with `onRowAction` the
+  // click is the action.
+  const rowClickSelects = selectionMode !== undefined && selectionMode !== 'none'
+    && !hasSelectionColumn && onRowAction === undefined
+
+  const sortToggle = (columnId: string): void => {
+    const isCurrent = sortDescriptor?.column === columnId
+    onSortChange?.({
+      column: columnId,
+      direction: isCurrent && sortDescriptor.direction === 'ascending' ? 'descending' : 'ascending',
+    })
+  }
+
+  const renderCell = (column: DataTableColumn<T>, row: DataTableRowEntry<T>): ReactNode => {
+    if (hasSelectionColumn && column.id === SELECTION_COLUMN_ID) {
+      return (
+        <Checkbox
+          aria-label={selectRowLabel}
+          checked={effectiveSelected.includes(row.id)}
+          onCheckedChange={next => toggleRow(row.id, next)}
+        />
+      )
+    }
+    return column.cell(row.item, row.index)
+  }
+
+  const renderHeader = (column: DataTableColumn<T>): ReactNode => {
+    if (hasSelectionColumn && column.id === SELECTION_COLUMN_ID) {
+      if (selectionMode !== 'multiple')
+        return null
+      return (
+        <Checkbox
+          aria-label={selectAllLabel}
+          checked={allLoadedSelected}
+          indeterminate={!allLoadedSelected && someLoadedSelected}
+          onCheckedChange={next => emitSelection(
+            next ? 'all' : new Set(effectiveSelected.filter(id => !loadedIds.includes(id))),
+          )}
+        />
+      )
+    }
+    const direction = sortDescriptor?.column === column.id ? sortDescriptor.direction : undefined
+    const label = <span className="flex items-center gap-1">{column.header}</span>
+    if (!column.allowsSorting)
+      return label
+    // A button, not a click handler on the <th>: sorting has to be reachable
+    // and announceable, and `aria-sort` on the header is what says which way.
+    return (
+      <button
+        className="
+          flex items-center gap-1 rounded-sm outline-none inline-full
+          focus-visible:ring-3 focus-visible:ring-ring/50
+        "
+        data-slot="data-table-sort-button"
+        type="button"
+        onClick={() => sortToggle(column.id)}
+      >
+        {column.header}
+        <SortIndicator direction={direction} />
+      </button>
+    )
+  }
+
+  // A bare <table>, not the vendored `Table`: that one wraps itself in its own
+  // `overflow-x-auto` container, and a second scroll container between the
+  // sticky header and the ScrollArea viewport is exactly what stops the header
+  // from sticking — `position: sticky` resolves against the NEAREST scrolling
+  // ancestor, and that inner wrapper never scrolls (it has no height cap).
+  // Horizontal scrolling is the ScrollArea's job here, on the same element that
+  // owns the vertical scroll and the fade mask.
   const table = (
-    <Table
+    <table
       aria-label={ariaLabel}
       data-slot="data-table-grid"
-      defaultSelectedKeys={usesSelectionValue ? undefined : defaultSelectedKeys}
-      onRowAction={handleRowAction}
-      onSortChange={onSortChange}
-      selectedKeys={usesSelectionValue ? selectedIds : selectedKeys}
-      selectionMode={selectionMode}
-      sortDescriptor={sortDescriptor}
-      onSelectionChange={usesSelectionValue
-        ? (selection) => {
-            handleSelectionValueChange(selection)
-            onSelectionChange?.(selection)
-          }
-        : onSelectionChange}
       // border model declared explicitly: without Tailwind preflight the UA
       // default is border-separate + 2px border-spacing, which opens gaps
       // between the header cell backgrounds and the card's rounded corners.
       className="
         caption-bottom border-separate border-spacing-0 text-sm inline-full
       "
-      disabledBehavior="all"
     >
-      <TableHeader columns={allColumns} dependencies={[sortDescriptor]}>
-        {column => (
-          <TableHead
-            allowsSorting={column.allowsSorting}
-            className={cn(
-              'sticky inset-bs-0 z-10 bg-muted',
-              // Pinned headers stick on both axes and overlap their plain
-              // siblings during horizontal scroll.
-              column.pinned && 'z-20',
-              column.className,
-            )}
-            id={column.id}
-            isRowHeader={column.id === rowHeaderId}
-            style={cellStyle(column)}
-          >
-            {({ sortDirection }) => (
-              <span className="flex items-center gap-1">
-                {column.header}
-                {column.allowsSorting && <SortIndicator direction={sortDirection} />}
-              </span>
-            )}
-          </TableHead>
-        )}
-      </TableHeader>
-      <TableBody renderEmptyState={() => children}>
-        {padStart > 0 && spacerRow('__cadenza-pad-start', padStart)}
-        <Collection dependencies={[allColumns]} items={windowRows}>
-          {row => (
-            <TableRow
-              columns={allColumns}
-              data-slot="data-table-row"
-              dependencies={[allColumns]}
-              id={row.id}
-              style={virtualized && !dynamicRowHeight ? { blockSize: rowHeight } : undefined}
-              // TanStack's measureElement maps the node back to its item via
-              // the data-index attribute; the callback ref feeds it the <tr>.
-              // Spread, not inline: the vendored primitive's props type omits
-              // `ref`, which React 19 nevertheless passes through at runtime.
-              {...(virtualized && dynamicRowHeight
-                ? { 'data-index': row.index, 'ref': virtualizer.measureElement }
-                : {})}
-            >
-              {column => (
-                <TableCell
-                  className={cn(
-                    column.pinned && cn('z-10', PINNED_BODY_CELL_CLASSNAME),
-                    column.className,
-                  )}
-                  style={cellStyle(column)}
-                >
-                  {column.cell(row.item, row.index)}
-                </TableCell>
+      <TableHeader>
+        <TableRow>
+          {allColumns.map(column => (
+            <TableHead
+              aria-sort={column.allowsSorting
+                ? (sortDescriptor?.column === column.id ? sortDescriptor.direction : 'none')
+                : undefined}
+              key={column.id}
+              style={cellStyle(column)}
+              className={cn(
+                'sticky inset-bs-0 z-10 bg-muted',
+                // Pinned headers stick on both axes and overlap their plain
+                // siblings during horizontal scroll.
+                column.pinned && 'z-20',
+                column.className,
               )}
-            </TableRow>
-          )}
-        </Collection>
-        {padEnd > 0 && spacerRow('__cadenza-pad-end', padEnd)}
-        {hasRows && hasNextPage && (
-          <TableLoadMoreItem
-            data-slot="data-table-load-more"
-            isLoading={isFetchingNextPage}
-            onLoadMore={onLoadMore ?? (() => {})}
-            scrollOffset={loadMoreScrollOffset}
-            {...loadingMoreProps}
-            className={cn(
-              isFetchingNextPage
-                ? 'py-1.5 text-center text-xs text-muted-foreground'
-                : 'block-px',
-              loadingMoreProps?.className,
+            >
+              {renderHeader(column)}
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {hasRows
+          ? (
+              <>
+                {padStart > 0 && spacerRow('__cadenza-pad-start', padStart)}
+                {windowRows.map(row => (
+                  <TableRow
+                    // The tint has to be spelled out here. The vendored row
+                    // styles its selected background off `data-[state=selected]`
+                    // — Radix's vocabulary, inherited from the shadcn preset —
+                    // and nothing in this library writes `data-state`. So the
+                    // row carries `data-selected` (what the rest of the library
+                    // and Base UI speak) and the class that actually reads it.
+                    className="data-selected:bg-muted"
+                    data-selected={effectiveSelected.includes(row.id) || undefined}
+                    data-slot="data-table-row"
+                    key={row.id}
+                    style={virtualized && !dynamicRowHeight ? { blockSize: rowHeight } : undefined}
+                    onClick={onRowAction !== undefined
+                      ? () => onRowAction(row.item)
+                      : rowClickSelects
+                        ? () => toggleRow(row.id, !effectiveSelected.includes(row.id))
+                        : undefined}
+                    // TanStack's measureElement maps the node back to its item
+                    // via the data-index attribute; the ref feeds it the <tr>.
+                    {...(virtualized && dynamicRowHeight
+                      ? { 'data-index': row.index, 'ref': virtualizer.measureElement }
+                      : {})}
+                  >
+                    {allColumns.map((column) => {
+                      const cellClassName = cn(
+                        column.pinned && cn('z-10', PINNED_BODY_CELL_CLASSNAME),
+                        column.className,
+                      )
+                      // The row-header column is a <th scope="row">: that is
+                      // what makes a screen reader announce the row by its name
+                      // instead of reading every cell bare.
+                      return column.id === rowHeaderId
+                        ? (
+                            <TableHead
+                              className={cn('font-normal text-foreground', cellClassName)}
+                              key={column.id}
+                              scope="row"
+                              style={cellStyle(column)}
+                            >
+                              {renderCell(column, row)}
+                            </TableHead>
+                          )
+                        : (
+                            <TableCell className={cellClassName} key={column.id} style={cellStyle(column)}>
+                              {renderCell(column, row)}
+                            </TableCell>
+                          )
+                    })}
+                  </TableRow>
+                ))}
+                {padEnd > 0 && spacerRow('__cadenza-pad-end', padEnd)}
+                {hasNextPage && (
+                  <LoadMoreRow
+                    colSpan={allColumns.length}
+                    data-slot="data-table-load-more"
+                    isFetchingNextPage={isFetchingNextPage}
+                    scrollOffset={loadMoreScrollOffset}
+                    onLoadMore={onLoadMore}
+                    {...loadingMoreProps}
+                    className={cn('text-xs text-muted-foreground', loadingMoreProps?.className)}
+                  >
+                    {/* A default, not an optional extra: without it the next
+                        page would land with no feedback at all. */}
+                    {loadingMoreProps?.children ?? (
+                      <Spinner
+                        aria-hidden
+                        className="mx-auto block-3.5 inline-3.5"
+                      />
+                    )}
+                  </LoadMoreRow>
+                )}
+              </>
+            )
+          : (
+              <TableRow className="hover:bg-transparent">
+                <TableCell className="text-center block-24" colSpan={allColumns.length}>
+                  {children}
+                </TableCell>
+              </TableRow>
             )}
-          >
-            {/* Required, not optional — see InfiniteSelectList: React Aria
-                renders this row only when it has children, so no default means
-                the next page lands with no feedback. */}
-            {loadingMoreProps?.children ?? (
-              <Spinner
-                aria-hidden
-                className="mx-auto block-3.5 inline-3.5"
-              />
-            )}
-          </TableLoadMoreItem>
-        )}
       </TableBody>
-    </Table>
+    </table>
   )
 
   return (

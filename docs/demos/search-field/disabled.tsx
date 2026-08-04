@@ -9,13 +9,13 @@ export default function DisabledDemo(): ReactElement {
         aria-label="搜索作曲家(禁用)"
         placeholder="搜索作曲家..."
         defaultValue="Ravel"
-        isDisabled
+        disabled
       />
       <SearchField
         aria-label="搜索作曲家(只读)"
         placeholder="搜索作曲家..."
         defaultValue="Ravel"
-        isReadOnly
+        readOnly
       />
     </div>
   )

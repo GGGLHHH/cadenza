@@ -1,29 +1,28 @@
 import type { ReactNode } from 'react'
 
 /**
- * React Aria's dual-form children: a plain node, or a function of the
- * component's render props (which always include `defaultChildren`).
+ * Dual-form children: a plain node, or a function of the component's state
+ * (which always includes `defaultChildren`).
  */
 export type RenderChildren<V> = ReactNode | ((values: V & { defaultChildren: ReactNode | undefined }) => ReactNode)
 
 /**
- * The children branch of React Aria's `useRenderProps`, as a plain function.
- * RAC exports the real one (main entry, 1.19), but it is a hook — and the
- * main call site here resolves children *inside* a RAC function child (see
- * `SearchField`), where rules-of-hooks forbid hook calls. Same reason RAC's
- * other public helper (`composeRenderProps`) is a plain function.
- *
- * Semantics are RAC's exactly (utils.tsx, the children branch):
+ * Resolve dual-form children against the state a wrapper has computed, so
+ * every seam that offers them behaves identically:
  * - function children are called with `values` plus `defaultChildren`;
  * - node children are used as-is;
- * - either way a nullish result falls back to `defaultChildren` — RAC's
- *   final `computedChildren ?? defaultChildren` applies to the function's
- *   return value too, so returning `null` yields the default, not a blank.
+ * - either way a nullish result falls back to `defaultChildren` — the function
+ *   branch included, so returning `null` yields the default, not a blank. The
+ *   way to render nothing is to pass no `defaultChildren`.
  *
- * Not for the seams where RAC itself resolves the children (Button passes
- * function children straight through), nor for collection components, whose
- * function children are an item renderer RAC caches per item — this is only
- * for the layer that owns the resolution.
+ * A plain function rather than a hook because it holds no state and calls
+ * nothing of React's: both call sites (`SearchField`, `InfiniteCombobox`)
+ * resolve in their own render body, where a hook would be legal — it would
+ * just buy rules-of-hooks constraints for nothing.
+ *
+ * (Shape inherited from React Aria's `useRenderProps` children branch, which
+ * the 0.2 seams were built on. The contract is this library's own now, pinned
+ * by test/resolve-render-children.test.ts.)
  */
 export function resolveRenderChildren<V>(
   children: RenderChildren<V>,

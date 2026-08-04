@@ -5,7 +5,7 @@ import { Spinner } from './spinner'
 export interface LoadingOverlayProps extends ComponentProps<'div'> {
   /**
    * Content-plane vocabulary on purpose — "what you want to see has not
-   * arrived", same word as the data adapters use. `isPending` stays on the
+   * arrived", same word as the data adapters use. `pending` stays on the
    * action plane (Button).
    */
   isLoading?: boolean
@@ -20,8 +20,8 @@ export interface LoadingOverlayProps extends ComponentProps<'div'> {
  * (150ms, motion-reduce exempt). `visibility` rides the same transition, so
  * the hidden overlay leaves the accessibility tree — no phantom "Loading"
  * announcements — and flips late on exit, letting the fade finish. Plain div
- * underneath (no RAC base): `className` is a string, everything else spreads,
- * `ref` included.
+ * underneath, no Base UI state to be a function of: `className` is a string,
+ * everything else spreads, `ref` included.
  *
  * It blocks the pointer, not the keyboard — Tab still reaches the controls
  * underneath (Mantine and antd behave the same). Truly sealing the region

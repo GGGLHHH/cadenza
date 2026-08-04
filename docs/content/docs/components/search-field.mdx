@@ -1,17 +1,16 @@
 ---
 title: SearchField
-description: React Aria SearchField 的封装 —— 带去抖查询的搜索字段，清除与 Escape 语义全部由 React Aria 承担
+description: 带去抖查询的搜索字段 —— 输入框、清除按钮、Escape 与 Enter 语义都由封装层自己接
 ---
 
-搜索字段。行为全部由 React Aria 承担：输入框是 `type="search"`，按 Escape 清空，
-字段内的任何 `Button` 都会自动获得「清除」行为 —— 这些都不用我们接线。
+搜索字段。Base UI 没有搜索字段这个部件，所以行为整套由封装层拥有：输入框是
+`type="search"`（`role="searchbox"` 由此而来），Escape 清空，Enter 触发 `onSubmit`，
+清除按钮清空并退出去抖。各个 part 靠 context 认领这些行为，写在哪都能接上。
 
-公开名跟着 React Aria 叫 **`SearchField`** 而不是 SearchInput：React Aria 把它归为
-*field*（一个带语义的字段，不只是一个 input），props 也是 `value` /
-`defaultValue` / `onChange` / `isDisabled` 这一套。名字和 props 说同一门方言，
-查文档时直接对得上。
+叫 **`SearchField`** 而不是 SearchInput，因为它是一个*字段*：根元素持有文本、查询值、
+禁用与只读，输入框只是它的一个 part。
 
-我们在 RAC 之上只加一件事：**去抖后的查询值**。
+除了字段本身，我们只加一件事：**去抖后的查询值**。
 
 ## 基础用法
 
@@ -44,12 +43,12 @@ description: React Aria SearchField 的封装 —— 带去抖查询的搜索字
 <ComponentPreview name="search-field/composition" />
 
 各 part 靠 context 自己接上根组件，不需要往下传任何 props —— `SearchFieldInput`
-底下是 RAC 的 `Input`，`SearchFieldClearButton` 底下是 RAC 的 `Button`，
-两者进到 `SearchField` 里就自动拿到了各自的行为。
+从 context 拿文本、handler 和无障碍名，`SearchFieldClearButton` 从 context 拿清除动作
+和禁用态。摆放顺序随你，接线不受影响。
 
 ## 禁用与只读
 
-`isDisabled` 整个字段不可用（清除按钮一并失效），`isReadOnly` 则保留焦点与选中、
+`disabled` 整个字段不可用（清除按钮一并失效），`readOnly` 则保留焦点与选中、
 只是不能改。只读时**不渲染清除按钮** —— 值本来就改不了，清除也就无从谈起：
 
 <ComponentPreview name="search-field/disabled" />
@@ -81,18 +80,19 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 
 | 按键 | 行为 |
 | --- | --- |
-| `Esc` | 清空字段（React Aria 内建，与点击清除按钮等价） |
-| `Enter` | 触发 `onSubmit`，回调参数是当前文本 |
-| `Tab` | 清除按钮**不占** Tab 停留点（RAC 给它 `tabIndex=-1`，键盘用户用 Esc 清空）；空时它仍在 DOM 中，由 `data-empty` 经 CSS 隐藏 |
+| `Esc` | 清空字段（与点击清除按钮等价，同样跳过去抖） |
+| `Enter` | 触发 `onSubmit`，回调参数是当前原始文本 |
+| `Tab` | 清除按钮**不占** Tab 停留点（`tabIndex={-1}`，键盘用户用 Esc 清空）；空时它仍在 DOM 中，由 `data-empty` 经 CSS 隐藏 |
 
 ## Props
 
 顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
 每个部件的 Props 表后面跟一张**状态**表，左列是挂在 DOM 上的 `data-*`（Tailwind
-直接当变体写），右列是同一状态在 render props 里的名字。
+直接当变体写），右列是同一状态在函数 children 里的名字。
 
-落在 React Aria 部件上的 `className` 都是双形态：字符串，或 `(state) => string`
-的函数（参数就是状态表右列的 render props）。
+根元素是纯 `<div>`，`className` 就是字符串 —— 类型上不假装有函数形态。要按状态改样式
+就用状态表左列的 `data-*`（`data-disabled:opacity-50`），默认组合自己也是这么隐藏
+清除按钮的。只有 `SearchFieldInput` 的 `className` 是双形态，它底下是 Base UI 的 `Input`。
 
 ### SearchField
 
@@ -105,33 +105,27 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | `defaultQueryValue` | `string` | — | 非受控初始查询值 |
 | `queryValue` | `string` | — | 受控查询值 |
 | `onQueryValueChange` | `(value: string \| undefined) => void` | — | 去抖后触发，已 trim、空白归一为 `undefined` |
-| `onSubmit` | `(value: string) => void` | — | 按 Enter 时触发（RAC） |
+| `onSubmit` | `(value: string) => void` | — | 按 Enter 时触发，参数是当前原始文本 |
 | `onClear` | `() => void` | — | 清除时触发（Esc 或清除按钮）。内部的 `resetSearch` 先执行、你传的随后执行 —— 传入**不会**顶掉「清除跳过防抖立即生效」 |
 | `debounceMs` | `number` | `300` | 去抖间隔。**挂载时读取一次**，之后改动不生效（同 `defaultValue` 的约定）|
 | `placeholder` | `string` | — | 默认组合里输入框的占位符 |
-| `isDisabled` | `boolean` | `false` | 禁用整个字段 |
-| `isReadOnly` | `boolean` | `false` | 只读：可聚焦、可选中，不可改 |
-| `isRequired` | `boolean` | `false` | 必填（表单校验用） |
-| `isInvalid` | `boolean` | — | 受控的校验失败态 |
-| `autoFocus` | `boolean` | `false` | 挂载即聚焦 |
-| `children` | `ReactNode \| (state) => ReactNode` | 默认组合 | 传了就完全接管内部结构。函数形态收到状态表右列的 render props，外加 `defaultChildren`（默认组合，可扩展） |
-| `className` | `string \| (state) => string` | — | 根元素类名 |
+| `disabled` | `boolean` | `false` | 禁用整个字段 |
+| `readOnly` | `boolean` | `false` | 只读：可聚焦、可选中，不可改 |
+| `children` | `ReactNode \| (state) => ReactNode` | 默认组合 | 传了就完全接管内部结构。函数形态收到状态表右列那三个状态，外加 `defaultChildren`（默认组合，可扩展） |
+| `className` | `string` | — | 根元素类名 |
+| 其余 | 原生 `<div>` 的 props | — | 透传到根元素 |
 
 **状态**
 
-| 状态 | 出现时机 | render prop |
+| 状态 | 出现时机 | 函数 children 里的名字 |
 | --- | --- | --- |
-| `data-empty` | 字段没有内容（清除按钮靠它显隐） | `isEmpty` |
-| `data-disabled` | `isDisabled` | `isDisabled` |
-| `data-readonly` | `isReadOnly` | `isReadOnly` |
-| `data-required` | `isRequired` | `isRequired` |
-| `data-invalid` | 校验失败 | `isInvalid` |
+| `data-empty` | 字段没有内容（清除按钮靠它显隐） | `empty` |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-readonly` | `readOnly` | `readOnly` |
 
-`children` 是 RAC 原生的双形态：ReactNode，或 `(state) => ReactNode` 的函数——
-参数就是上表右列的 render props，**外加 `defaultChildren`（默认组合本身）**。
-函数形态与 [Button 的约定](/docs/components/button#按状态渲染children-的-render-props)
-一致，是**完全接管**：什么都不自动注入；但要扩展而不是重造时，把
-`defaultChildren` 渲染出来再往旁边加即可（RAC 官方语义）：
+`children` 是双形态的：ReactNode，或 `(state) => ReactNode` 的函数——参数就是上表
+右列那三个状态，**外加 `defaultChildren`（默认组合本身）**。函数形态是**完全接管**：
+什么都不自动注入；但要扩展而不是重造时，把 `defaultChildren` 渲染出来再往旁边加即可：
 
 ```tsx
 <SearchField aria-label="搜索">
@@ -144,8 +138,7 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 </SearchField>
 ```
 
-默认组合自己也在用这套能力（只读时靠 `isReadOnly` 收起清除按钮），
-接管后这些状态原样到你手上。
+默认组合自己也在用这套能力（只读时收起清除按钮），接管后这些状态原样到你手上。
 
 ### InputGroup 一族
 
@@ -168,11 +161,11 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | --- | --- | --- | --- |
 | `placeholder` | `string` | — | 占位符 |
 | `className` | `string \| (state) => string` | — | 类名 |
-| 其余 | RAC `Input` 的 props | — | 透传（含 `onHoverStart` 一族与函数形式 `style`） |
+| 其余 | Base UI `Input` 的 props | — | 透传 |
 
-不需要 `value` / `onChange` —— 它底下是 RAC 的 `Input`，进到 `SearchField`
-里就由字段接管了。原生的 `::-webkit-search-cancel-button` 已经隐掉，
-免得和我们的清除按钮重复。
+不需要 `value` / `onChange` / `aria-label` —— 三者都从字段的 context 拿。
+`type="search"`、Escape 清空、Enter 提交也都在这里接好。原生的
+`::-webkit-search-cancel-button` 已经隐掉，免得和我们的清除按钮重复。
 
 **别给它传 `data-slot`。** 它身上的 `data-slot="input-group-control"` 是接线契约不是标记 ——
 `InputGroup` 的焦点环正是靠 `has-[[data-slot=input-group-control]:focus-visible]`
@@ -187,12 +180,12 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | `aria-label` | `string` | `'Clear search'` | 按钮的无障碍名。默认值是 aria-only 的英文兜底（同 `'Search'` / `'Loading'` 的家法），业务层传译文覆盖 |
 | `className` | `string` | — | 类名 |
 
-清除行为**不用接**：React Aria 给 `SearchField` 内的任何 `Button` 都装上了清除。
-字段为空时它跟随根组件的 `data-empty` 隐藏，只读时默认组合直接不渲染它。
+清除行为**不用接**：它从字段的 context 里拿清除动作和禁用态。字段为空时它跟随根组件
+的 `data-empty` 隐藏，只读时默认组合直接不渲染它。它也不占 Tab 停留点
+（`tabIndex={-1}`）—— 键盘用户用 Escape。
 
-自己组合时记得也把只读这一档处理掉，别只用 `hidden`：RAC 在只读模式下会把这个按钮
-设成 `disabled`，而 `InputGroup` 对**任何** disabled 后代都会整体变灰
-（`has-disabled:opacity-50`），于是一个只读字段会长得跟禁用的一样 ——
+自己组合时记得也把只读这一档处理掉，别只用 `hidden`：`InputGroup` 对**任何** disabled
+后代都会整体变灰（`has-disabled:opacity-50`），于是一个只读字段会长得跟禁用的一样 ——
 而 `display: none` 的元素仍然会被 `:has(:disabled)` 命中，藏起来没用，得不渲染。
 
 `SearchField` 自己只导出两个 part，因为只有这两个真的加了东西：`SearchFieldInput`

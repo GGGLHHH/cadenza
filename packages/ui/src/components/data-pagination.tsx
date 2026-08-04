@@ -60,7 +60,7 @@ export interface DataPaginationStateResult extends DataPaginationState {
 }
 
 /**
- * Pagination state, extracted React Aria-style (`useXxxState`): `page` and
+ * Pagination state, extracted hook-style (`useXxxState`): `page` and
  * `limit` independently controllable, derived page count with the zero/NaN
  * guard, and the overshoot clamp. `DataPagination` consumes it internally;
  * a custom pagination UI can be driven by it headlessly.
@@ -181,21 +181,23 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
               <span className="text-sm whitespace-nowrap">{rowsPerPageLabel}</span>
             )}
             <Select
-              aria-label={rowsPerPageLabel ?? 'Rows per page'}
-              data-slot="data-pagination-limit"
               value={limit}
-              onChange={(key) => {
-                if (key !== null)
-                  setLimit(Number(key))
+              onValueChange={(value) => {
+                if (value !== null)
+                  setLimit(Number(value))
               }}
             >
-              <SelectTrigger className="inline-20">
+              <SelectTrigger
+                aria-label={rowsPerPageLabel ?? 'Rows per page'}
+                className="inline-20"
+                data-slot="data-pagination-limit"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
                   {limitOptions.map(size => (
-                    <SelectItem id={size} key={size} textValue={String(size)}>
+                    <SelectItem key={size} value={size}>
                       {size}
                     </SelectItem>
                   ))}
@@ -217,8 +219,8 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
             <PaginationItem>
               <Button
                 aria-label={firstPageLabel}
-                isDisabled={!canPrevious}
-                onPress={() => setPage(1)}
+                disabled={!canPrevious}
+                onClick={() => setPage(1)}
                 size="icon"
                 variant="outline"
               >
@@ -228,8 +230,8 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
             <PaginationItem>
               <Button
                 aria-label={previousPageLabel}
-                isDisabled={!canPrevious}
-                onPress={() => setPage(current => current - 1)}
+                disabled={!canPrevious}
+                onClick={() => setPage(current => current - 1)}
                 size="icon"
                 variant="outline"
               >
@@ -239,8 +241,8 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
             <PaginationItem>
               <Button
                 aria-label={nextPageLabel}
-                isDisabled={!canNext}
-                onPress={() => setPage(current => current + 1)}
+                disabled={!canNext}
+                onClick={() => setPage(current => current + 1)}
                 size="icon"
                 variant="outline"
               >
@@ -250,8 +252,8 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
             <PaginationItem>
               <Button
                 aria-label={lastPageLabel}
-                isDisabled={!canNext}
-                onPress={() => setPage(totalPages)}
+                disabled={!canNext}
+                onClick={() => setPage(totalPages)}
                 size="icon"
                 variant="outline"
               >

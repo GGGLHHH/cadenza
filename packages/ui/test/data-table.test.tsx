@@ -13,21 +13,6 @@ import {
 } from '../src/components/data-table'
 
 beforeAll(() => {
-  // jsdom lacks the observers RAC's sentinel/virtualizer machinery expects.
-  vi.stubGlobal('ResizeObserver', class {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-  })
-  vi.stubGlobal('IntersectionObserver', class {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-    takeRecords(): [] {
-      return []
-    }
-  })
-  Element.prototype.scrollIntoView = vi.fn()
   // Base UI's ScrollArea polls viewport.getAnimations(), absent in jsdom.
   Element.prototype.getAnimations = () => []
   // TanStack Virtual sizes its window from offsetWidth/offsetHeight, which are
@@ -41,8 +26,8 @@ beforeAll(() => {
     configurable: true,
     get: () => 800,
   })
-  // TanStack's measureElement falls back to getBoundingClientRect (the RO stub
-  // never fires); jsdom's all-zero rect would collapse every measured row.
+  // TanStack's measureElement falls back to getBoundingClientRect (jsdom has no
+  // ResizeObserver); jsdom's all-zero rect would collapse every measured row.
   Element.prototype.getBoundingClientRect = () =>
     ({ x: 0, y: 0, top: 0, left: 0, bottom: 40, right: 800, width: 800, height: 40, toJSON: () => ({}) })
 })
@@ -79,12 +64,47 @@ const slots = (
 describe('dataTable rendering', () => {
   it('renders header cells and body rows from column defs', () => {
     render(<DataTable aria-label="People" columns={columns} items={people} />)
-    expect(screen.getByRole('grid', { name: 'People' })).not.toBeNull()
+    // A plain <table>, not a grid: arrow-key cell navigation went away with
+    // React Aria, and Tab through the focusable controls is what remains.
+    expect(screen.getByRole('table', { name: 'People' })).not.toBeNull()
     expect(screen.getByRole('columnheader', { name: 'Name' })).not.toBeNull()
     expect(screen.getByText('Argerich')).not.toBeNull()
     expect(screen.getByText('Conductor')).not.toBeNull()
     // header row + 3 data rows
     expect(screen.getAllByRole('row')).toHaveLength(4)
+  })
+
+  it('puts no second scroll container between the sticky header and the ScrollArea', () => {
+    // `position: sticky` resolves against the NEAREST scrolling ancestor. The
+    // vendored `Table` wraps itself in its own `overflow-x-auto` div, which has
+    // no height cap and therefore never scrolls — sticking to it means the
+    // header scrolls away with everything else. So the seam renders a bare
+    // <table> and lets the ScrollArea viewport own both axes.
+    render(<DataTable aria-label="People" columns={columns} items={people} />)
+    const grid = document.querySelector('[data-slot="data-table-grid"]')!
+    expect(grid.tagName).toBe('TABLE')
+    expect(document.querySelector('[data-slot="table-container"]')).toBeNull()
+    const viewport = document.querySelector('[data-slot="scroll-area-viewport"]')
+    expect(viewport?.contains(grid)).toBe(true)
+  })
+
+  it('caps the row area by default, which is what gives the sticky header a scrollport', () => {
+    render(<DataTable aria-label="People" columns={columns} items={people} />)
+    const viewport = document.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]')
+    expect(viewport?.style.maxHeight).toBe('480px')
+  })
+
+  it('drops the cap for maxHeight={Infinity} — the page scrolls the table instead', () => {
+    render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        items={people}
+        maxHeight={Number.POSITIVE_INFINITY}
+      />,
+    )
+    const viewport = document.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]')
+    expect(viewport?.style.maxHeight).toBe('')
   })
 
   it('hands the row index to cell renderers', () => {
@@ -189,8 +209,11 @@ describe('dataTable interactions', () => {
         onSortChange={onSortChange}
       />,
     )
-    await userEvent.click(screen.getByRole('columnheader', { name: 'Name' }))
+    // The sort affordance is a real button inside the header cell — reachable
+    // by Tab and announceable, with aria-sort on the cell saying which way.
+    await userEvent.click(screen.getByRole('button', { name: 'Name' }))
     expect(onSortChange).toHaveBeenCalledWith({ column: 'name', direction: 'ascending' })
+    expect(screen.getByRole('columnheader', { name: 'Name' }).getAttribute('aria-sort')).toBe('none')
   })
 
   it('hands the row item (not the key) to onRowAction', async () => {
@@ -213,6 +236,8 @@ describe('dataTable interactions', () => {
         selectionMode="multiple"
       />,
     )
+    // With no checkbox column and no row action, a row click is the selection
+    // gesture — the same fallback React Aria had.
     await userEvent.click(screen.getByRole('row', { name: /Bach/ }))
     expect(onSelectionChange).toHaveBeenCalledOnce()
     const selection = onSelectionChange.mock.calls[0][0] as Set<string>

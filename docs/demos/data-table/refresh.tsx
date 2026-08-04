@@ -25,8 +25,8 @@ export default function RefreshDemo(): ReactElement {
       <Button
         size="sm"
         variant="outline"
-        isPending={isLoading}
-        onPress={() => {
+        pending={isLoading}
+        onClick={() => {
           setIsLoading(true)
           setTimeout(setIsLoading, 2000, false)
         }}

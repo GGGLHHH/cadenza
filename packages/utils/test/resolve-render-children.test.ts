@@ -18,11 +18,11 @@ describe('resolveRenderChildren', () => {
     expect(children).toHaveBeenCalledExactlyOnceWith({ isEmpty: true, defaultChildren: '默认' })
   })
 
-  it('falls back to defaultChildren when the function returns null — RAC parity', () => {
-    // RAC's useRenderProps ends with `computedChildren ?? defaultChildren`,
-    // which applies to the function branch too (utils.tsx). Pinned against
-    // the real source, not intuition — "render nothing" is expressed by
-    // having no defaultChildren, not by returning null over one.
+  it('falls back to defaultChildren when the function returns null', () => {
+    // The `?? defaultChildren` at the end applies to the function branch too,
+    // not just to nullish node children. This test is the spec for that half
+    // of the contract — "render nothing" is expressed by having no
+    // defaultChildren, not by returning null over one.
     expect(resolveRenderChildren(() => null, {}, '默认')).toBe('默认')
     expect(resolveRenderChildren(() => '结果', {}, '默认')).toBe('结果')
   })

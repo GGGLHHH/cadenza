@@ -1,6 +1,6 @@
 # Cadenza
 
-React Aria 负责行为与无障碍，Tailwind + cva 负责外观 —— shadcn 风格的可访问组件库。
+Base UI 负责行为与无障碍，Tailwind + cva 负责外观 —— shadcn 风格的可访问组件库。
 
 **文档站：<https://cadenza-ui-docs.vercel.app>** —— 每个组件的交互 demo、Props 与状态表、
 封装约定都在那里。
@@ -11,13 +11,13 @@ React Aria 负责行为与无障碍，Tailwind + cva 负责外观 —— shadcn 
 
 ```
 packages/ui/               @gedatou/cadenza-ui，tsdown 打包
-  components.json          shadcn 配置：aria-nova 预设，alias 走包名
+  components.json          shadcn 配置：base-nova 预设，alias 走包名
   src/primitives/          shadcn add 写这里。原材料，不可变，不是公开 API
   src/hooks/               同上
   src/components/          我们的组件。唯一被发布的东西
   src/lib/utils.ts         cn()
   src/index.ts             只导出 ./components/*
-  styles.css               aria-nova token，@source 指向 dist
+  styles.css               base-nova token，@source 指向 dist
 docs/                      Next.js + fumadocs（headless，自绘外壳），MDX 里直接跑 React demo
 ```
 
@@ -75,7 +75,7 @@ variant、收紧 prop、包一层 provider 都不必碰 vendored 代码、不会
 `docs/demos/index.tsx` 注册）。
 
 封装的完整约定 —— className 函数契约、ref 类型重述、wiring props 检查单 —— 在仓库
-skill `.claude/skills/wrapping-rac-components/SKILL.md`，Claude Code 会自动套用。
+skill `.claude/skills/wrapping-base-ui-components/SKILL.md`，Claude Code 会自动套用。
 
 拉取新的 primitive：
 

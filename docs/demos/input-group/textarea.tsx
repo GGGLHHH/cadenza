@@ -31,7 +31,7 @@ export default function TextareaDemo(): ReactElement {
           <InputGroupText className="ms-auto">
             {`${value.length} / 500`}
           </InputGroupText>
-          <InputGroupButton isDisabled={value.trim() === ''} variant="default">
+          <InputGroupButton disabled={value.trim() === ''} variant="default">
             发送
             <IconSend aria-hidden />
           </InputGroupButton>

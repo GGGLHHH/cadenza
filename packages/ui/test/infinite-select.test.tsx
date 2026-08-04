@@ -15,27 +15,12 @@ import {
 } from '../src/components/infinite-select'
 
 beforeAll(() => {
-  // jsdom lacks the observers RAC's overlay/sentinel machinery expects.
-  vi.stubGlobal('ResizeObserver', class {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-  })
-  vi.stubGlobal('IntersectionObserver', class {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-    takeRecords(): [] {
-      return []
-    }
-  })
-  Element.prototype.scrollIntoView = vi.fn()
   // Base UI's ScrollArea polls viewport.getAnimations(), absent in jsdom.
   Element.prototype.getAnimations = () => []
-  // React Aria's Virtualizer sizes its window from clientWidth/clientHeight and
-  // deliberately falls back to Infinity — rendering the whole collection — when
-  // it detects a test env that has NOT mocked them (ScrollView.mjs). Mocking
-  // them on the prototype is the opt-in that makes windowing observable here.
+  // jsdom measures everything as 0×0, and TanStack Virtual computes its window
+  // from the scroll element's rect — a zero-height viewport yields an empty
+  // window and no rows at all. Giving the prototype a size is what makes
+  // windowing observable here; a real browser needs none of this.
   Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
     configurable: true,
     get: () => 256,
@@ -44,6 +29,9 @@ beforeAll(() => {
     configurable: true,
     get: () => 288,
   })
+  HTMLElement.prototype.getBoundingClientRect = function getBoundingClientRect() {
+    return { x: 0, y: 0, top: 0, left: 0, right: 288, bottom: 256, width: 288, height: 256, toJSON: () => ({}) }
+  }
 })
 
 function getOption(item: { id: string, label: string }): InfiniteSelectOption {
@@ -55,7 +43,7 @@ function getOption(item: { id: string, label: string }): InfiniteSelectOption {
 
 // State slots: context-driven, self-rendering per panel state. The base has
 // zero copy — all text below comes from these children. The List part joins
-// the same composition channel (React Aria-style parts, caller order).
+// the same composition channel (composed parts, caller order).
 const slots = (
   <>
     <InfiniteSelectList />
@@ -171,14 +159,17 @@ describe('infiniteSelect selection', () => {
       </InfiniteSelect>,
     )
     expect(screen.getByRole('listbox')).not.toBeNull()
-    // Two data rows plus the end-of-list mark. React Aria renders loader rows
-    // as non-selectable `role="option"` elements — a listbox may only contain
-    // options — so count the real rows by slot, not by role.
-    expect(screen.getAllByRole('option')).toHaveLength(3)
+    // Exactly the data rows. The end-of-list mark and the load-more sentinel
+    // live OUTSIDE the listbox element, so they are not options and never
+    // distort aria-setsize — unlike React Aria's loader rows, which had to be
+    // non-selectable `role="option"` elements because a listbox may only
+    // contain options.
+    expect(screen.getAllByRole('option')).toHaveLength(2)
     expect(document.querySelectorAll('[data-slot="infinite-select-item"]')).toHaveLength(2)
   })
 
-  it('single: reports the picked item, then undefined on toggle-off', async () => {
+  it('single: reports the picked item, and re-clicking it keeps it picked', async () => {
+    const user = userEvent.setup()
     const onChange = vi.fn()
     render(
       <InfiniteSelect getOption={getOption} items={items} onChange={onChange}>
@@ -186,11 +177,16 @@ describe('infiniteSelect selection', () => {
       </InfiniteSelect>,
     )
 
-    await userEvent.click(screen.getByRole('option', { name: 'Alice' }))
+    await user.click(screen.getByRole('option', { name: 'Alice' }))
     expect(onChange).toHaveBeenLastCalledWith(items[0])
 
-    await userEvent.click(screen.getByRole('option', { name: 'Alice' }))
-    expect(onChange).toHaveBeenLastCalledWith(undefined)
+    // Base UI does not toggle a single selection off by re-clicking it — once
+    // a value is picked the control has one, the way a native <select> does.
+    // Clearing goes through the footer's clear action. (React Aria toggled it
+    // back to undefined here.)
+    await user.click(screen.getByRole('option', { name: 'Alice' }))
+    expect(onChange).toHaveBeenLastCalledWith(items[0])
+    expect(screen.getByRole('option', { name: 'Alice', selected: true })).not.toBeNull()
   })
 
   it('multi: keeps preselected ids whose items were never loaded', async () => {
@@ -233,34 +229,37 @@ describe('infiniteSelect selection', () => {
     expect(screen.getByRole('option', { name: 'Alice', selected: false })).not.toBeNull()
   })
 
-  it('virtualizes: only the window plus overscan reaches the DOM', () => {
+  // TanStack Virtual computes its window from real layout, and jsdom reports
+  // none — so the window itself is browser-verified (10000 rows → 16 in the
+  // DOM). What jsdom can see is the spacer the virtualizer sizes from the row
+  // count, which is proof the virtualizer is live and wired to the data.
+  it('virtualized: sizes the scroll height from the whole loaded list', () => {
     const many = Array.from({ length: 1000 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
     render(
-      <InfiniteSelect getOption={getOption} items={many}>
-        <InfiniteSelectList virtualized />
+      <InfiniteSelect getOption={getOption} items={many} rowHeight={32} virtualized>
+        <InfiniteSelectList />
       </InfiniteSelect>,
     )
-    const rendered = screen.getAllByRole('option').length
-    // 256px viewport / 34px stride ≈ 8 visible + 12 overscan, far below 1000.
-    expect(rendered).toBeGreaterThan(5)
-    expect(rendered).toBeLessThan(60)
+    const spacer = document.querySelector<HTMLElement>('[data-slot="infinite-select-list"] > div')
+    expect(spacer?.style.height).toBe('32000px')
+    // Not the plain path: there is one spacer, not a thousand rows in flow.
+    expect(document.querySelectorAll('[data-slot="infinite-select-item"]').length).toBeLessThan(1000)
   })
 
-  // Prefetch itself is React Aria's: the sentinel fires from an
-  // IntersectionObserver, which jsdom's stub can never trip. What stays ours is
-  // whether the sentinel is in the collection at all — assert that, in both
-  // render paths, and leave the trigger distance to RAC's `scrollOffset`.
+  // The sentinel fires from an IntersectionObserver, which jsdom's stub can
+  // never trip — so what is testable here is which tail element is present, in
+  // both render paths. The trigger distance is browser-verified.
   it.each([true, false])('the tail row switches from load-more to end-of-list (virtualized: %s)', (virtualized) => {
     const many = Array.from({ length: 1000 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
     const loadMore = '[data-slot="infinite-select-load-more"]'
     const noMore = '[data-slot="infinite-select-no-more"]'
     const { container, rerender } = render(
-      <InfiniteSelect getOption={getOption} hasNextPage items={many} onLoadMore={vi.fn()}>
-        <InfiniteSelectList virtualized={virtualized} />
+      <InfiniteSelect getOption={getOption} hasNextPage items={many} virtualized={virtualized} onLoadMore={vi.fn()}>
+        <InfiniteSelectList />
       </InfiniteSelect>,
     )
-    // More to come and not fetching: the sentinel is a 0×0 probe, no visible row.
-    expect(container.querySelector('[data-testid="loadMoreSentinel"]')).not.toBeNull()
+    // More to come and not fetching: only the invisible sentinel, no visible row.
+    expect(container.querySelector('[data-slot="infinite-select-load-more-sentinel"]')).not.toBeNull()
     expect(container.querySelector(loadMore)).toBeNull()
     expect(container.querySelector(noMore)).toBeNull()
 
@@ -272,7 +271,7 @@ describe('infiniteSelect selection', () => {
         items={many}
         onLoadMore={vi.fn()}
       >
-        <InfiniteSelectList virtualized={virtualized} />
+        <InfiniteSelectList />
         <InfiniteSelectLoadingMore>loading…</InfiniteSelectLoadingMore>
       </InfiniteSelect>,
     )
@@ -280,8 +279,8 @@ describe('infiniteSelect selection', () => {
     expect(container.querySelector(noMore)).toBeNull()
 
     // No indicator passed: the row still renders, with the copyless default.
-    // React Aria only renders it when it has children — an empty one would
-    // mean the next page lands with no feedback at all.
+    // The default is required, not decorative — without it the next page would
+    // land with no feedback at all.
     rerender(
       <InfiniteSelect
         getOption={getOption}
@@ -290,14 +289,14 @@ describe('infiniteSelect selection', () => {
         items={many}
         onLoadMore={vi.fn()}
       >
-        <InfiniteSelectList virtualized={virtualized} />
+        <InfiniteSelectList />
       </InfiniteSelect>,
     )
     expect(container.querySelector(`${loadMore} [data-slot="spinner"]`)).not.toBeNull()
 
     rerender(
       <InfiniteSelect getOption={getOption} items={many} onLoadMore={vi.fn()}>
-        <InfiniteSelectList virtualized={virtualized} />
+        <InfiniteSelectList />
       </InfiniteSelect>,
     )
     expect(container.querySelector(loadMore)).toBeNull()
@@ -335,34 +334,13 @@ describe('infiniteSelect selection', () => {
     expect(document.querySelector('[data-slot="infinite-select-no-more"]')).toBeNull()
   })
 
-  it('virtualized: the collection keeps every loaded row even though the DOM does not', () => {
-    const many = Array.from({ length: 1000 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
-    render(
-      <InfiniteSelect getOption={getOption} items={many}>
-        <InfiniteSelectList virtualized />
-      </InfiniteSelect>,
-    )
-    const options = screen.getAllByRole('option')
-    expect(options.length).toBeLessThan(60)
-    // Windowing is a DOM concern; screen readers still hear the full count.
-    expect(options[0].getAttribute('aria-setsize')).toBe('1000')
-  })
-
-  it('renderItem receives the loaded-list index in both render paths', () => {
+  it('renderItem receives the loaded-list index', () => {
     const many = Array.from({ length: 3 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
     const renderWithIndex = ({ option, index }: { option: InfiniteSelectOption, index: number }): string => `#${index} ${String(option.label)}`
 
-    const { unmount } = render(
-      <InfiniteSelect getOption={getOption} items={many}>
-        <InfiniteSelectList renderItem={renderWithIndex} />
-      </InfiniteSelect>,
-    )
-    expect(screen.getByText('#2 Item 2')).not.toBeNull()
-    unmount()
-
     render(
       <InfiniteSelect getOption={getOption} items={many}>
-        <InfiniteSelectList renderItem={renderWithIndex} virtualized />
+        <InfiniteSelectList renderItem={renderWithIndex} />
       </InfiniteSelect>,
     )
     expect(screen.getByText('#2 Item 2')).not.toBeNull()
@@ -378,14 +356,14 @@ describe('infiniteSelect selection', () => {
     expect(screen.getByRole('option', { name: 'Alice', selected: false })).not.toBeNull()
   })
 
-  it('passes RAC field props through the search part — only the filter wiring is reserved', () => {
+  it('names the search input from its placeholder', () => {
     render(
       <InfiniteSelect getOption={getOption} items={items}>
-        <InfiniteSelectSearch isDisabled />
+        <InfiniteSelectSearch />
         <InfiniteSelectList />
       </InfiniteSelect>,
     )
-    expect(screen.getByRole('searchbox', { name: 'Search' })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('combobox', { name: 'Search' })).not.toBeNull()
   })
 
   it('lets children replace the search composition', () => {
@@ -408,11 +386,11 @@ describe('infiniteSelect selection', () => {
         <InfiniteSelectList />
       </InfiniteSelect>,
     )
-    const input = screen.getByRole('searchbox', { name: 'Search' })
+    const input = screen.getByRole('combobox', { name: 'Search' })
     expect(input.getAttribute('placeholder')).toBeNull()
   })
 
-  it('hands renderItem the full RAC render-prop vocabulary', () => {
+  it('hands renderItem the full render-prop vocabulary', () => {
     let captured: unknown
     render(
       <InfiniteSelect getOption={getOption} items={items} value="a">
@@ -426,13 +404,9 @@ describe('infiniteSelect selection', () => {
     )
     expect(captured).toMatchObject({
       index: 0,
-      isSelected: true,
-      isHovered: false,
-      isPressed: false,
-      isFocusVisible: false,
-      isDisabled: false,
+      selected: true,
+      disabled: false,
       selectionMode: 'single',
-      selectionBehavior: 'toggle',
     })
   })
 
@@ -440,7 +414,7 @@ describe('infiniteSelect selection', () => {
     render(
       <InfiniteSelect getOption={getOption} items={items} value="b">
         <InfiniteSelectList
-          itemClassName={({ isSelected }) => isSelected ? 'opacity-25' : 'opacity-75'}
+          itemClassName={({ selected }) => selected ? 'opacity-25' : 'opacity-75'}
           listClassName="tracking-widest"
         />
       </InfiniteSelect>,

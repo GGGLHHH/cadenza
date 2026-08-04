@@ -1,16 +1,14 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Field, FieldLabel } from '../src/components/field'
 import {
-  PRESS_GRACE_ATTRIBUTE,
   Select,
   SelectContent,
-  SelectEmpty,
   SelectGroup,
   SelectItem,
-  SelectList,
-  SelectPopover,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '../src/components/select'
@@ -18,300 +16,145 @@ import {
 interface Fruit { id: string, name: string }
 const FRUITS: Fruit[] = [{ id: 'apple', name: '苹果' }, { id: 'pear', name: '梨' }]
 
-describe('the seam restates refs the vendored parts drop', () => {
-  // Four parts type their props with a bare RAC interface — RAC declares the ref
-  // on the component type instead, so those signatures lose it. The ref reaches
-  // the DOM either way (React 19 spreads it); these pin that the types now agree.
-  it('forwards ref on Select and SelectValue', () => {
-    const root = createRef<HTMLDivElement>()
-    const value = createRef<HTMLSpanElement>()
-    render(
-      <Select aria-label="水果" ref={root}>
-        <SelectTrigger><SelectValue ref={value} /></SelectTrigger>
-        <SelectContent><SelectItem id="apple">苹果</SelectItem></SelectContent>
-      </Select>,
-    )
-    expect(root.current?.dataset.slot).toBe('select')
-    expect(value.current?.dataset.slot).toBe('select-value')
+// `items` is what tells SelectValue how to render a value in the trigger — the
+// option list does not feed it. Without it the trigger shows the raw value.
+const FRUIT_LABELS = FRUITS.map(fruit => ({ value: fruit.id, label: fruit.name }))
+
+function renderFruits(props: Partial<Parameters<typeof Select>[0]> = {}): void {
+  render(
+    <Select items={FRUIT_LABELS} {...props}>
+      <SelectTrigger aria-label="水果"><SelectValue placeholder="选一个" /></SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          {FRUITS.map(fruit => (
+            <SelectItem key={fruit.id} value={fruit.id}>{fruit.name}</SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>,
+  )
+}
+
+describe('select', () => {
+  it('shows the placeholder until something is picked', () => {
+    renderFruits()
+    expect(screen.getByRole('combobox').textContent).toContain('选一个')
   })
 
-  it('forwards ref on SelectList and SelectGroup', () => {
-    const list = createRef<HTMLDivElement>()
-    const group = createRef<HTMLElement>()
-    render(
-      <Select aria-label="水果" defaultOpen>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectPopover>
-          <SelectList aria-label="水果" ref={list}>
-            <SelectGroup ref={group}>
-              <SelectItem id="apple">苹果</SelectItem>
-            </SelectGroup>
-          </SelectList>
-        </SelectPopover>
-      </Select>,
-    )
-    expect(list.current?.dataset.slot).toBe('select-list')
-    // A collection node: RAC renders it once hidden to build the collection,
-    // then again for real. The ref must survive that round trip, or the type
-    // restated above would be promising something the runtime never delivers.
-    expect(group.current?.dataset.slot).toBe('select-group')
-  })
-})
-
-describe('the seam restates the generics the vendored parts collapse', () => {
-  it('infers the item type from items on SelectList', () => {
-    render(
-      <Select aria-label="水果" defaultOpen>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectPopover>
-          <SelectList aria-label="水果" items={FRUITS}>
-            {/* fruit is Fruit, not unknown — that is the whole point of the cast */}
-            {fruit => <SelectItem id={fruit.id}>{fruit.name}</SelectItem>}
-          </SelectList>
-        </SelectPopover>
-      </Select>,
-    )
-    expect(screen.getByRole('option', { name: '苹果' })).not.toBeNull()
+  it('opens on click and lists the options', async () => {
+    renderFruits()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('combobox'))
+    expect(await screen.findByRole('option', { name: '苹果' })).not.toBeNull()
+    expect(screen.getByRole('option', { name: '梨' })).not.toBeNull()
   })
 
-  it('infers the item type from items on SelectGroup — the only collection SelectContent can carry', () => {
+  it('commits the picked option and reports it', async () => {
+    const onValueChange = vi.fn()
+    renderFruits({ onValueChange })
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: '梨' }))
+    expect(onValueChange).toHaveBeenCalledWith('pear', expect.anything())
+    expect(screen.getByRole('combobox').textContent).toContain('梨')
+  })
+
+  it('keeps a controlled value pinned to the prop while still reporting the change', async () => {
+    const onValueChange = vi.fn()
+    renderFruits({ onValueChange, value: 'apple' })
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: '梨' }))
+    expect(onValueChange).toHaveBeenCalledWith('pear', expect.anything())
+    expect(screen.getByRole('combobox').textContent).toContain('苹果')
+  })
+
+  it('opens with no options at all — an empty select is still a select', async () => {
     render(
-      <Select aria-label="水果" defaultOpen>
-        <SelectTrigger><SelectValue /></SelectTrigger>
+      <Select>
+        <SelectTrigger aria-label="水果"><SelectValue placeholder="选一个" /></SelectTrigger>
         <SelectContent>
-          <SelectGroup items={FRUITS}>
-            {fruit => <SelectItem id={fruit.id}>{fruit.name}</SelectItem>}
+          <div data-testid="empty">还没有可选的</div>
+        </SelectContent>
+      </Select>,
+    )
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('combobox'))
+    // No renderEmptyState hook and none needed: the empty state is plain JSX,
+    // and nothing guards the open the way React Stately's collection size did.
+    expect(screen.getByTestId('empty')).not.toBeNull()
+  })
+
+  it('picks several at once under multiple', async () => {
+    const onValueChange = vi.fn()
+    renderFruits({ multiple: true, onValueChange })
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: '苹果' }))
+    await user.click(screen.getByRole('option', { name: '梨' }))
+    expect(onValueChange).toHaveBeenLastCalledWith(['apple', 'pear'], expect.anything())
+  })
+
+  it('never commits a disabled option', async () => {
+    const onValueChange = vi.fn()
+    render(
+      <Select onValueChange={onValueChange}>
+        <SelectTrigger aria-label="水果"><SelectValue placeholder="选一个" /></SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="apple">苹果</SelectItem>
+            <SelectSeparator />
+            <SelectItem disabled value="pear">梨</SelectItem>
           </SelectGroup>
         </SelectContent>
       </Select>,
     )
-    expect(screen.getByRole('option', { name: '梨' })).not.toBeNull()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: '梨' }))
+    expect(onValueChange).not.toHaveBeenCalled()
   })
 
-  it('rejects SelectValue children that the primitive would silently discard', () => {
+  it('forwards ref on the trigger', () => {
+    const trigger = createRef<HTMLButtonElement>()
     render(
-      <Select aria-label="水果">
-        <SelectTrigger>
-          {/* @ts-expect-error non-function children render nothing — see the seam JSDoc */}
-          <SelectValue>占位</SelectValue>
-        </SelectTrigger>
-        <SelectContent><SelectItem id="apple">苹果</SelectItem></SelectContent>
+      <Select>
+        <SelectTrigger aria-label="水果" ref={trigger}><SelectValue /></SelectTrigger>
+        <SelectContent><SelectItem value="apple">苹果</SelectItem></SelectContent>
       </Select>,
     )
-    expect(screen.queryByText('占位')).toBeNull()
+    expect(trigger.current?.dataset.slot).toBe('select-trigger')
   })
 })
 
-describe('the label channel documented on the seam', () => {
-  function renderLabelled(props: { htmlFor?: string, ariaLabel?: string }): void {
+describe('the label channel', () => {
+  function renderLabelled(): void {
     render(
       <Field>
-        <FieldLabel htmlFor={props.htmlFor}>水果</FieldLabel>
-        <Select aria-label={props.ariaLabel}>
-          <SelectTrigger id="fruit"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem id="apple">苹果</SelectItem></SelectContent>
+        <FieldLabel htmlFor="fruit">水果</FieldLabel>
+        <Select>
+          <SelectTrigger id="fruit"><SelectValue placeholder="选一个" /></SelectTrigger>
+          <SelectContent><SelectItem value="apple">苹果</SelectItem></SelectContent>
         </Select>
       </Field>,
     )
   }
 
-  it('names the trigger when the label text is on both channels', () => {
-    renderLabelled({ htmlFor: 'fruit', ariaLabel: '水果' })
-    expect(screen.getByRole('button', { name: /水果/ })).not.toBeNull()
+  // One channel now carries both halves. The trigger is a real <button>, so a
+  // native <label for> names it AND — because the browser forwards the click —
+  // opens the menu. The React Aria build needed a second `aria-label` (its own
+  // aria-labelledby outranked the native label) plus seam-side click plumbing
+  // (usePress ignored a click with no pointer sequence behind it); neither is
+  // needed here, and this pins that.
+  it('names the trigger through htmlFor alone', () => {
+    renderLabelled()
+    expect(screen.getByRole('combobox', { name: '水果' })).not.toBeNull()
   })
 
-  // The browser forwards a label click to the trigger carrying the coordinates
-  // of the click on the *label*, so it reports a point outside the trigger's own
-  // box. That is what the seam keys off to open the menu. jsdom has no layout —
-  // every rect is 0×0 — so the box is stubbed and the discriminator is what is
-  // under test here; the end-to-end behaviour is verified in a real browser.
-  function clickAt(x: number, y: number): void {
-    const trigger = document.querySelector('[data-slot=select-trigger]')!
-    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
-      left: 100,
-      top: 100,
-      right: 200,
-      bottom: 150,
-      x: 100,
-      y: 100,
-      width: 100,
-      height: 50,
-      toJSON: () => ({}),
-    })
-    fireEvent.click(trigger, { clientX: x, clientY: y, detail: 1 })
-  }
-
-  it('opens the menu for a click forwarded from the label', () => {
-    renderLabelled({ htmlFor: 'fruit', ariaLabel: '水果' })
-    clickAt(150, 60) // 落在 trigger 上方 —— 标签所在的位置
-    expect(document.querySelector('[data-slot=select-list]')).not.toBeNull()
-  })
-
-  it('leaves a press on the trigger itself to React Aria', () => {
-    renderLabelled({ htmlFor: 'fruit', ariaLabel: '水果' })
-    clickAt(150, 120) // 落在 trigger 盒子里 —— usePress 的地盘,别插手
-    expect(document.querySelector('[data-slot=select-list]')).toBeNull()
-  })
-
-  it('loses the name when aria-label is dropped — htmlFor alone cannot carry it', () => {
-    // React Aria puts its own `aria-labelledby` on the trigger, and that beats a
-    // native `<label for>` in the accessible-name computation. The htmlFor is
-    // still worth having: it is what makes the text clickable.
-    renderLabelled({ htmlFor: 'fruit' })
-    expect(screen.queryByRole('button', { name: /水果/ })).toBeNull()
-  })
-})
-
-describe('selectEmpty only works through renderEmptyState', () => {
-  function renderEmpty(node: (empty: () => React.ReactElement) => React.ReactElement): void {
-    render(
-      <Select aria-label="水果" defaultOpen>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectPopover>{node(() => <SelectEmpty>无结果</SelectEmpty>)}</SelectPopover>
-      </Select>,
-    )
-  }
-
-  it('renders inside the list, where its group-data-empty rule can match', () => {
-    renderEmpty(empty => (
-      <SelectList aria-label="水果" items={[] as Fruit[]} renderEmptyState={empty}>
-        {(fruit: Fruit) => <SelectItem id={fruit.id}>{fruit.name}</SelectItem>}
-      </SelectList>
-    ))
-    const list = document.querySelector('[data-slot=select-list]')
-    const empty = document.querySelector('[data-slot=select-empty]')
-    expect(empty).not.toBeNull()
-    expect(list?.contains(empty)).toBe(true)
-    expect(list?.hasAttribute('data-empty')).toBe(true)
-    expect(list?.className).toContain('group/select-list')
-  })
-
-  it('is swallowed by the collection builder when written as a list child', () => {
-    renderEmpty(empty => <SelectList aria-label="水果">{empty()}</SelectList>)
-    expect(document.querySelector('[data-slot=select-empty]')).toBeNull()
-  })
-
-  it('escapes its visibility rule when written outside the list', () => {
-    renderEmpty(empty => (
-      <>
-        <SelectList aria-label="水果">{[]}</SelectList>
-        {empty()}
-      </>
-    ))
-    const list = document.querySelector('[data-slot=select-list]')
-    const empty = document.querySelector('[data-slot=select-empty]')
-    // It renders, but not as a descendant of the group it keys off — so the
-    // base `hidden` class never lifts.
-    expect(empty).not.toBeNull()
-    expect(list?.contains(empty)).toBe(false)
-  })
-})
-
-describe('the press that opens the menu cannot also pick an option', () => {
-  // jsdom has no layout and no hit testing, so the end of the chain — a release
-  // over an option not committing — is not reproducible here; that half is
-  // browser-verified. What is testable is the guard itself: whether the document
-  // is marked at each point of the press, on both of its axes. The stylesheet
-  // does the rest, and it needs no element to exist: the list the mark applies
-  // to is what the press is still busy opening.
-  function press(options: { pointerType?: string, button?: number } = {}): void {
-    const { container } = render(
-      <Select aria-label="水果">
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectItem id="apple">苹果</SelectItem>
-          </SelectGroup>
-        </SelectContent>
-      </Select>,
-    )
-    fireEvent.pointerDown(container.querySelector('[data-slot=select-trigger]')!, {
-      button: options.button ?? 0,
-      clientX: 100,
-      clientY: 100,
-      pointerType: options.pointerType ?? 'mouse',
-    })
-  }
-
-  const isLocked = (): boolean => document.documentElement.hasAttribute(PRESS_GRACE_ATTRIBUTE)
-
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('marks the document while the press is still unclassified', () => {
-    press()
-    expect(isLocked()).toBe(true)
-  })
-
-  // The mark has to be up before the list can possibly exist — that is the whole
-  // point of doing it in the stylesheet — so it goes on synchronously with the
-  // press, not a frame later.
-  it('marks it synchronously, without waiting for the menu to render', () => {
-    press()
-    expect(document.querySelector('[data-slot=select-list]')).toBeNull()
-    expect(isLocked()).toBe(true)
-  })
-
-  it('unlocks once the pointer travels far enough — the drag-select gesture', () => {
-    press()
-    fireEvent.pointerMove(document, { clientX: 100, clientY: 104 })
-    expect(isLocked()).toBe(true) // 4px:抖动
-    // 10px 是复现那个 bug 的位移 —— 刚好够到第一项,所以它必须仍然算抖动
-    fireEvent.pointerMove(document, { clientX: 100, clientY: 110 })
-    expect(isLocked()).toBe(true)
-    fireEvent.pointerMove(document, { clientX: 100, clientY: 130 })
-    expect(isLocked()).toBe(false) // 30px:确实在拖
-  })
-
-  it('unlocks once the press has been held long enough', () => {
-    press()
-    vi.advanceTimersByTime(399)
-    expect(isLocked()).toBe(true)
-    vi.advanceTimersByTime(2)
-    expect(isLocked()).toBe(false)
-  })
-
-  // The release is what would commit, so the guard has to survive its dispatch
-  // and only stand down afterwards.
-  it('stays up through the release, then lets go', () => {
-    press()
-    fireEvent.pointerUp(document, { clientX: 100, clientY: 100 })
-    expect(isLocked()).toBe(true)
-    vi.advanceTimersByTime(1)
-    expect(isLocked()).toBe(false)
-  })
-
-  it('leaves touch alone — only a mouse release ever committed', () => {
-    press({ pointerType: 'touch' })
-    expect(isLocked()).toBe(false)
-  })
-
-  it('leaves pen alone', () => {
-    press({ pointerType: 'pen' })
-    expect(isLocked()).toBe(false)
-  })
-
-  it('leaves non-primary buttons alone', () => {
-    press({ button: 2 })
-    expect(isLocked()).toBe(false)
-  })
-
-  it('still runs an onPointerDown the caller brought', () => {
-    const spy = vi.fn()
-    const { container } = render(
-      <Select aria-label="水果">
-        <SelectTrigger onPointerDown={spy}><SelectValue /></SelectTrigger>
-        <SelectContent><SelectItem id="apple">苹果</SelectItem></SelectContent>
-      </Select>,
-    )
-    fireEvent.pointerDown(container.querySelector('[data-slot=select-trigger]')!, {
-      button: 0,
-      pointerType: 'mouse',
-    })
-    expect(spy).toHaveBeenCalledTimes(1)
+  it('opens the menu when the label text is clicked', async () => {
+    renderLabelled()
+    const user = userEvent.setup()
+    await user.click(screen.getByText('水果'))
+    expect(await screen.findByRole('option', { name: '苹果' })).not.toBeNull()
   })
 })

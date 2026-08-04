@@ -1,15 +1,13 @@
 'use client'
 
-import type { ComponentProps, ReactElement, RefAttributes } from 'react'
-import type { SearchFieldProps as RACSearchFieldProps } from 'react-aria-components'
+import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { IconSearch, IconX } from '@tabler/icons-react'
 import { useDebounceFn } from 'ahooks'
-import { useCallback } from 'react'
-import { SearchField as SearchFieldPrimitive } from 'react-aria-components'
+import { createContext, use, useCallback } from 'react'
 import { cn } from '#lib/utils'
-// The seam versions, not the primitives: their prop types carry the full RAC
-// contract (function className, hover events, ref), so ours inherit it.
+// The seam versions, not the primitives: their prop types carry the full Base UI
+// contract (function className on the control, ref), so ours inherit it.
 import {
   InputGroup,
   InputGroupAddon,
@@ -20,23 +18,23 @@ import {
 /**
  * The published SearchField family.
  *
- * React Aria calls this a *field*, not an input, and the root here is its
- * `SearchField` — so Escape-to-clear, the clear button's wiring and
- * `type="search"` semantics all come from RAC rather than from us. The parts
- * are shadcn's `InputGroup` pieces — used under their own names, since a
- * renamed passthrough would only hide where they came from. They render RAC's
- * own `Input` and `Button`, which is what lets them pick up the field's
- * contexts by just being inside it, with no props threaded down.
+ * A *field*, not an input: the root owns the text, the debounced query, the
+ * clear gesture and Escape-to-clear, and hands them to its parts through
+ * context — so the parts compose freely, in any order, with nothing threaded
+ * down. Base UI has no search field, so this behaviour is the seam's own; the
+ * visible parts are shadcn's `InputGroup` pieces, used under their own names
+ * since a renamed passthrough would only hide where they came from.
  *
- * Only two parts are ours, and only because they add something: the input
- * resets the native search cancel button, and the clear button hides itself
- * while the field is empty.
- *
- * On top of RAC we add one thing: the debounced, normalised query. Typing
+ * On top of the field we add one thing: the debounced, normalised query. Typing
  * updates `value` on every keystroke, while `queryValue` settles `debounceMs`
  * later with the text trimmed and an empty string turned into `undefined` —
  * ready to drop straight into a request or a URL. The vocabulary is
  * deliberately the same as `InfiniteCombobox`'s, which splits the same way.
+ *
+ * The root is a plain `<div>`, so its `className` is honestly a string. Style
+ * off state through the data attributes it writes — `data-empty`,
+ * `data-disabled`, `data-readonly` — the same channel the default composition
+ * uses to hide the clear button.
  */
 
 export interface SearchQueryOptions {
@@ -117,29 +115,51 @@ export function useSearchQuery({
   return { value: text, setValue, queryValue: query, resetSearch }
 }
 
+/** What the field's parts read, and what function children are handed. */
+export interface SearchFieldRenderProps {
+  /** No text in the field. */
+  empty: boolean
+  disabled: boolean
+  readOnly: boolean
+}
+
+interface SearchFieldContextValue extends SearchFieldRenderProps {
+  'value': string
+  'setValue': (value: string) => void
+  'clear': () => void
+  'submit': () => void
+  'aria-label'?: string
+}
+
+const SearchFieldContext = createContext<SearchFieldContextValue | null>(null)
+
 export type SearchFieldProps
-  = Omit<RACSearchFieldProps, 'value' | 'defaultValue' | 'onChange' | 'children'>
-    // RAC declares the ref on the component type, not in the props — restated
-    // here so `<SearchField ref={…}>` typechecks; the spread already carries it.
-    & RefAttributes<HTMLDivElement>
+  = Omit<ComponentProps<'div'>, 'children' | 'defaultValue' | 'onChange'>
     & SearchQueryOptions
     & {
+      disabled?: boolean
+      readOnly?: boolean
       /** Placeholder for the default composition's input. */
       placeholder?: string
+      /** Fires after the field has been cleared, by button or by Escape. */
+      onClear?: () => void
+      /** Fires on Enter, with the current raw text. */
+      onSubmit?: (value: string) => void
       /**
        * Replaces the default composition (icon, input, clear button). Compose
        * the parts yourself to add a shortcut hint, a filter button, a second
-       * addon — see the docs' composition example. RAC's dual form: a function
-       * receives the field's render props (`isEmpty` / `isDisabled` / …) plus
-       * the default composition as `defaultChildren` — nothing is injected,
-       * but extending beats rebuilding: `{({ defaultChildren }) => …}`.
+       * addon — see the docs' composition example. A function receives the
+       * field's state plus the default composition as `defaultChildren` —
+       * nothing is injected, but extending beats rebuilding:
+       * `{({ defaultChildren }) => …}`.
        */
-      children?: RACSearchFieldProps['children']
+      children?: ReactNode | ((state: SearchFieldRenderProps & { defaultChildren: ReactNode }) => ReactNode)
     }
 
 /**
- * The text input. RAC's SearchField wires it up by context alone; all this adds
- * is hiding the browser's own search-clear affordance, which would otherwise
+ * The text input. It reads the field's text, its handlers and its accessible
+ * name from context, so it works anywhere inside the field; all it adds of its
+ * own is hiding the browser's search-clear affordance, which would otherwise
  * sit next to ours.
  *
  * Deliberately carries no `data-slot` of its own. `InputGroupInput` sets
@@ -151,23 +171,41 @@ export type SearchFieldProps
  */
 export function SearchFieldInput({
   className,
+  onKeyDown,
   ...props
 }: ComponentProps<typeof InputGroupInput>): ReactElement {
+  const field = use(SearchFieldContext)
   return (
     <InputGroupInput
+      aria-label={field?.['aria-label']}
       className={cn('[&::-webkit-search-cancel-button]:appearance-none', className)}
+      disabled={field?.disabled}
+      readOnly={field?.readOnly}
+      type="search"
+      value={field?.value}
+      onChange={event => field?.setValue(event.target.value)}
       {...props}
+      // Chained, not left to the spread: a caller listening for keys must not
+      // silently take Escape-to-clear away.
+      onKeyDown={(event) => {
+        onKeyDown?.(event)
+        if (event.defaultPrevented)
+          return
+        if (event.key === 'Escape')
+          field?.clear()
+        if (event.key === 'Enter')
+          field?.submit()
+      }}
     />
   )
 }
 
 /**
- * The clear button. RAC gives any `Button` inside a `SearchField` the clear
- * behaviour, so there is nothing to wire; it only hides itself while the field
- * is empty, off the root's `data-empty`.
+ * The clear button. It clears the field on click and hides itself while the
+ * field is empty, off the root's `data-empty`.
  *
  * Leave it out when the field is read only — the default composition does. Not
- * for tidiness: React Aria disables the clear button there, and `InputGroup`
+ * for tidiness: a read-only field's clear button is disabled, and `InputGroup`
  * dims itself for *any* disabled descendant (`has-disabled:opacity-50`), so a
  * read-only field would render as a disabled one. `hidden` does not help —
  * a display:none element still answers `:has(:disabled)`.
@@ -175,8 +213,10 @@ export function SearchFieldInput({
 export function SearchFieldClearButton({
   className,
   children,
+  onClick,
   ...props
 }: ComponentProps<typeof InputGroupButton>): ReactElement {
+  const field = use(SearchFieldContext)
   return (
     <InputGroupAddon
       align="inline-end"
@@ -189,7 +229,17 @@ export function SearchFieldClearButton({
         aria-label="Clear search"
         className={cn('rounded-full', className)}
         data-slot="search-field-clear"
+        disabled={field?.disabled}
+        // Out of the tab order on purpose: keyboard users clear with Escape,
+        // and a stop between the input and the next control is friction.
+        tabIndex={-1}
         {...props}
+        // After the spread for the same reason as the input's onKeyDown.
+        onClick={(event) => {
+          onClick?.(event)
+          if (!event.defaultPrevented)
+            field?.clear()
+        }}
       >
         {children ?? <IconX aria-hidden />}
       </InputGroupButton>
@@ -198,17 +248,21 @@ export function SearchFieldClearButton({
 }
 
 export function SearchField({
-  className,
-  placeholder,
+  'aria-label': ariaLabel,
   children,
-  value,
-  defaultValue,
-  onChange,
-  queryValue,
-  defaultQueryValue,
-  onQueryValueChange,
+  className,
   debounceMs,
+  defaultQueryValue,
+  defaultValue,
+  disabled = false,
+  onChange,
   onClear,
+  onQueryValueChange,
+  onSubmit,
+  placeholder,
+  queryValue,
+  readOnly = false,
+  value,
   ...props
 }: SearchFieldProps): ReactElement {
   const search = useSearchQuery({
@@ -221,32 +275,46 @@ export function SearchField({
     debounceMs,
   })
 
+  const { resetSearch, setValue } = search
+  const clear = useCallback(() => {
+    resetSearch()
+    onClear?.()
+  }, [onClear, resetSearch])
+
+  const state: SearchFieldRenderProps = { empty: search.value === '', disabled, readOnly }
+  // Not memoised: `value` changes on every keystroke anyway, so a stable
+  // identity would buy nothing and only hide the dependency.
+  const context: SearchFieldContextValue = {
+    ...state,
+    'value': search.value,
+    setValue,
+    clear,
+    'submit': () => onSubmit?.(search.value),
+    'aria-label': ariaLabel,
+  }
+
+  const defaultChildren = (
+    <InputGroup>
+      <InputGroupAddon>
+        <IconSearch aria-hidden />
+      </InputGroupAddon>
+      <SearchFieldInput placeholder={placeholder} />
+      {!readOnly && <SearchFieldClearButton />}
+    </InputGroup>
+  )
+
   return (
-    <SearchFieldPrimitive
-      className={cn('group/search-field inline-full', className)}
-      data-slot="search-field"
-      value={search.value}
-      onChange={search.setValue}
-      // Destructured and chained, not left to the spread: a caller's onClear
-      // would otherwise replace resetSearch wholesale, and clearing would wait
-      // out the debounce instead of dropping the query immediately.
-      onClear={() => {
-        search.resetSearch()
-        onClear?.()
-      }}
-      {...props}
-    >
-      {renderProps => resolveRenderChildren(
-        children,
-        renderProps,
-        <InputGroup>
-          <InputGroupAddon>
-            <IconSearch aria-hidden />
-          </InputGroupAddon>
-          <SearchFieldInput placeholder={placeholder} />
-          {!renderProps.isReadOnly && <SearchFieldClearButton />}
-        </InputGroup>,
-      )}
-    </SearchFieldPrimitive>
+    <SearchFieldContext value={context}>
+      <div
+        className={cn('group/search-field inline-full', className)}
+        data-disabled={disabled || undefined}
+        data-empty={state.empty || undefined}
+        data-readonly={readOnly || undefined}
+        data-slot="search-field"
+        {...props}
+      >
+        {resolveRenderChildren(children, state, defaultChildren)}
+      </div>
+    </SearchFieldContext>
   )
 }

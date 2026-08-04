@@ -41,21 +41,24 @@ function Disclosure({ open, defaultOpen, onOpenChange, children }) {
 
 ## resolveRenderChildren
 
-React Aria `useRenderProps` 的 children 分支，以纯函数提供（RAC 导出的原版是 hook，进不了 RAC 函数 child 的回调）：统一解析「ReactNode 或 `(values) => ReactNode`」的双形态 children。
+统一解析「ReactNode 或 `(values) => ReactNode`」的双形态 children：封装层算好状态和默认组合，解析这一步交给它，各个 seam 的行为就是一致的。
 
 ```tsx
 import { resolveRenderChildren } from '@gedatou/cadenza-utils'
 
-function Field({ children }: { children?: RenderChildren<FieldState> }) {
+function SearchField({ children }: { children?: RenderChildren<SearchFieldState> }) {
+  const state = { empty: value === '', disabled }
+  const defaultChildren = <DefaultComposition />
+
   return (
-    <RACField>
-      {renderProps => resolveRenderChildren(children, renderProps, <DefaultComposition />)}
-    </RACField>
+    <div data-slot="search-field">
+      {resolveRenderChildren(children, state, defaultChildren)}
+    </div>
   )
 }
 ```
 
-函数 children 以 `values` 外加 `defaultChildren` 为参数调用；两种形态的 nullish 结果都回落到 `defaultChildren`（对齐 RAC 源码收尾的 `computedChildren ?? defaultChildren`）。是纯函数而非 hook——典型调用点在 RAC 函数 child 的回调内部，hook 进不去（RAC 公开的 `composeRenderProps` 同理）。文档：<https://cadenza-ui-docs.vercel.app/docs/utils/resolve-render-children>。
+函数 children 以 `values` 外加 `defaultChildren` 为参数调用；两种形态的 nullish 结果都回落到 `defaultChildren`——函数返回 `null` 同样如此，想渲染空就别传 `defaultChildren`。是纯函数而非 hook：它不持状态、也不碰 React 的任何东西，调用点就在组件自己的 render 体里，写成 hook 只会白白背上 rules-of-hooks 的约束。文档：<https://cadenza-ui-docs.vercel.app/docs/utils/resolve-render-children>。
 
 ## License
 

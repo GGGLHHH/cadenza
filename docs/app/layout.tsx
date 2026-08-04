@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     default: 'Cadenza',
     template: '%s - Cadenza',
   },
-  description: 'Accessible React components — React Aria behaviour, shadcn styling',
+  description: 'Accessible React components — Base UI behaviour, shadcn styling',
   icons: { icon: '/favicon.svg' },
 }
 

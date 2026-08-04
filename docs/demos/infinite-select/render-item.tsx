@@ -11,7 +11,7 @@ import { getOption } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 import { selectSlots } from './slots'
 
-// renderItem 替换整行内容:默认的对勾也没了,选中态用 isSelected 自绘
+// renderItem 替换整行内容:默认的对勾也没了,选中态用 selected 自绘
 export default function RenderItemDemo(): ReactElement {
   const state = useInfiniteComboboxState()
   const list = useFakeInfiniteList(state.queryValue)
@@ -24,7 +24,7 @@ export default function RenderItemDemo(): ReactElement {
       onChange={setPicked}
       searchPlaceholder="搜索作曲家…"
       state={state}
-      renderItem={({ item, index, isSelected }) => (
+      renderItem={({ item, index, selected }) => (
         <>
           <span className="
             text-end text-xs text-muted-foreground tabular-nums inline-8
@@ -35,7 +35,7 @@ export default function RenderItemDemo(): ReactElement {
           </span>
           <span className="flex-1 truncate">{item.name}</span>
           <span className="text-xs text-muted-foreground">{item.role}</span>
-          {isSelected && <span className="text-xs text-primary">✓</span>}
+          {selected && <span className="text-xs text-primary">✓</span>}
         </>
       )}
     >

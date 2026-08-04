@@ -1,12 +1,11 @@
-import type { ComponentProps, ReactElement, RefAttributes } from 'react'
-import type { LabelProps } from 'react-aria-components'
+import type { ComponentProps } from 'react'
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel as FieldLabelPrimitive,
+  FieldLabel,
   FieldLegend,
   FieldSeparator,
   FieldSet,
@@ -18,7 +17,7 @@ import {
  * sits in. shadcn's own composition, promoted unchanged: plain DOM elements with
  * `data-slot` hooks, no React Aria behaviour of its own.
  *
- * It matters here because the aria-nova controls are *box-only*: a `Checkbox`,
+ * It matters here because the base-nova controls are *box-only*: a `Checkbox`,
  * `Switch` or `RadioGroupItem` root is the control's own visual box, so its text
  * label does not go in `children` — it goes in a sibling `FieldLabel` pointed at
  * the control by `htmlFor`:
@@ -34,11 +33,11 @@ import {
  * to the form layer built on top of it):
  *
  * - **State mirroring.** `Field` styles its text from its own `data-disabled` /
- *   `data-invalid`; a control's `isDisabled` / `isInvalid` only styles the
- *   control. Set them on `Field` to grey out or redden the label and description.
+ *   `data-invalid`; a control's `disabled` / `invalid` only styles the control.
+ *   Set them on `Field` to grey out or redden the label and description.
  * - **`aria-describedby`.** `FieldDescription` and `FieldError` render text, they
  *   do not announce it. Give them ids and point the control at them, or render
- *   the control inside a React Aria field component that owns the wiring.
+ *   the control inside a Base UI `Field.Root` that owns the wiring.
  *
  * `FieldError` takes either `children` or an `errors` array of `{ message }`
  * objects — the shape form libraries hand back — dedupes it by message, renders a
@@ -57,14 +56,10 @@ export type FieldLegendProps = ComponentProps<typeof FieldLegend>
 export type FieldSeparatorProps = ComponentProps<typeof FieldSeparator>
 export type FieldSetProps = ComponentProps<typeof FieldSet>
 export type FieldTitleProps = ComponentProps<typeof FieldTitle>
-export type FieldLabelProps = LabelProps & RefAttributes<HTMLLabelElement>
-
-// FieldLabel bottoms out in React Aria's Label, which declares its ref on the
-// component type rather than in LabelProps — so the primitive's own
-// ComponentProps<typeof Label> signature drops it. The ref already reaches the
-// label through the spread (React 19); only the type needs restating, so this is
-// a cast, not a wrapper.
-const FieldLabel = FieldLabelPrimitive as (props: FieldLabelProps) => ReactElement
+// FieldLabel bottoms out in a plain <label>, so its props carry the ref already —
+// unlike the React Aria Label this used to wrap, which declared the ref on the
+// component type and needed it restated here.
+export type FieldLabelProps = ComponentProps<typeof FieldLabel>
 
 export {
   Field,

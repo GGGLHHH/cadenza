@@ -29,36 +29,24 @@ describe('cn', () => {
     expect(resolve({})).toBe('p-8')
   })
 
-  it('carries a function className through a vendored primitive to React Aria', () => {
-    // The vendored InputGroup calls cn on its own — under the old cn the
-    // function died in there, silently, while the props type kept promising it
-    // worked. Composing inside cn is what upgrades the whole vendored surface.
-    render(
-      <InputGroup
-        className={({ isDisabled }) => isDisabled ? 'opacity-25' : 'opacity-75'}
-        isDisabled
-      />,
-    )
-    const group = document.querySelector('[data-slot="input-group"]')
-    expect(group?.className).toContain('opacity-25')
-    expect(group?.className).not.toContain('opacity-75')
-    expect(group?.className).toContain('group/input-group')
-  })
-
   it('keeps the function alive across two vendored hops on the control', () => {
-    // InputGroupInput → vendored input-group cn → vendored Input's
-    // composeRenderProps → RAC. Three compositions, one surviving function.
+    // InputGroupInput → vendored input-group's cn → vendored Input's cn → Base
+    // UI's className slot. Two compositions, one surviving function. Under the
+    // old cn it died in the first hop, silently, while the props type kept
+    // promising it worked — composing inside cn is what upgrades the whole
+    // vendored surface at once.
     render(
       <InputGroup>
         <InputGroupInput
           aria-label="查询"
-          className={({ isDisabled }) => isDisabled ? 'opacity-25' : 'opacity-75'}
+          className={({ disabled }) => disabled ? 'opacity-25' : 'opacity-75'}
           disabled
         />
       </InputGroup>,
     )
     const input = document.querySelector('input')
     expect(input?.className).toContain('opacity-25')
+    expect(input?.className).not.toContain('opacity-75')
     expect(input?.className).toContain('flex-1')
   })
 })

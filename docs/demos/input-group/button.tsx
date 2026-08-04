@@ -3,7 +3,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '
 import { IconArrowRight, IconCopy } from '@tabler/icons-react'
 import { useState } from 'react'
 
-// 尾部按钮:InputGroupButton 底下是 React Aria 的 Button,所以用 onPress。
+// 尾部按钮:InputGroupButton 底下是 Base UI 的 Button。
 // size 默认 xs,图标按钮用 icon-xs
 export default function ButtonDemo(): ReactElement {
   const [copied, setCopied] = useState(false)
@@ -16,7 +16,7 @@ export default function ButtonDemo(): ReactElement {
           <InputGroupButton
             aria-label="复制链接"
             size="icon-xs"
-            onPress={() => {
+            onClick={() => {
               setCopied(true)
               setTimeout(setCopied, 1500, false)
             }}

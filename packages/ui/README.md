@@ -1,6 +1,6 @@
 # @gedatou/cadenza-ui
 
-无障碍 React 组件库：行为交给 [React Aria Components](https://react-spectrum.adobe.com/react-aria/)，外观用 shadcn 的 `aria-nova` 预设（Tailwind v4 + cva）。
+无障碍 React 组件库：行为交给 [Base UI](https://base-ui.com)，外观用 shadcn 的 `base-nova` 预设（Tailwind v4 + cva）。
 
 **文档与交互 demo：<https://cadenza-ui-docs.vercel.app>** —— Button、Tabs、SearchField、
 InputGroup、ScrollArea、DataTable、DataPagination、InfiniteSelect / InfiniteCombobox，
@@ -9,7 +9,7 @@ InputGroup、ScrollArea、DataTable、DataPagination、InfiniteSelect / Infinite
 ## 安装
 
 ```bash
-pnpm add @gedatou/cadenza-ui react-aria-components
+pnpm add @gedatou/cadenza-ui
 pnpm add -D tailwindcss tw-animate-css
 ```
 
@@ -30,7 +30,7 @@ import { Button, LinkButton } from '@gedatou/cadenza-ui'
 export function Toolbar() {
   return (
     <>
-      <Button variant="outline" size="sm" onPress={() => console.log('pressed')}>
+      <Button variant="outline" size="sm" onClick={() => console.log('clicked')}>
         Save
       </Button>
       <LinkButton variant="link" href="/docs">文档</LinkButton>
@@ -39,10 +39,10 @@ export function Toolbar() {
 }
 ```
 
-`variant`、`size` 之外的 props 全部透传给对应的 React Aria 组件（`onPress`、`isDisabled`、`isPending` 等）。
+`variant`、`size` 之外的 props 全部透传给对应的 Base UI 组件（`onClick`、`disabled`、`render` 等）。
 
-落在 React Aria / Base UI 槽位上的 `className` 支持函数形式 ——
-`className={({ isSelected }) => …}`，参数就是各组件文档页状态表里的 render props。
+落在 Base UI 槽位上的 `className` 支持函数形式 ——
+`className={({ selected }) => …}`，参数就是各组件文档页状态表里的那组状态。
 
 ## 暗色模式
 
