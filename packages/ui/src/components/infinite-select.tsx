@@ -1,20 +1,21 @@
 'use client'
 
-import type { ComponentProps, CSSProperties, ReactElement, ReactNode, RefAttributes } from 'react'
+import type { ComponentProps, ReactElement, ReactNode, RefAttributes } from 'react'
 import type { ListBoxItemProps, ListBoxProps, SearchFieldProps as RACSearchFieldProps, Selection } from 'react-aria-components'
 import type { LoadingOverlayProps } from './loading-overlay'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck, IconSearch } from '@tabler/icons-react'
-import { useVirtualizer } from '@tanstack/react-virtual'
-import { createContext, use, useEffect, useRef } from 'react'
+import { createContext, use, useRef } from 'react'
 import {
   Autocomplete,
   Input,
   ListBox,
   ListBoxItem,
   ListBoxLoadMoreItem,
+  ListLayout,
   SearchField,
+  Virtualizer,
 } from 'react-aria-components'
 import { findComposedPart } from '#lib/find-part'
 import { cn } from '#lib/utils'
@@ -22,15 +23,17 @@ import { Button } from '#primitives/button'
 import { Separator } from '#primitives/separator'
 import { LoadingOverlay } from './loading-overlay'
 import { ScrollArea } from './scroll-area'
+import { Spinner } from './spinner'
 
 /**
  * Searchable infinite-scrolling list panel, single or multi select.
  *
  * React Aria owns the behaviour: `Autocomplete` wires the search input to the
  * list with virtual focus (arrow keys navigate while the input keeps DOM focus)
- * and `ListBox` owns selection semantics. Rows are virtualized with TanStack
- * Virtual — only the visible window plus overscan reaches the DOM, and
- * `onLoadMore` fires as the window nears the loaded tail. The panel itself
+ * and `ListBox` owns selection semantics. Rows are virtualized by React Aria's
+ * own `Virtualizer` — only the visible window reaches the DOM while the
+ * collection keeps every loaded row, and `onLoadMore` fires as the window
+ * nears the loaded tail. The panel itself
  * renders zero copy — empty/error messages come in through the slot children
  * (`InfiniteSelectEmpty` / `Error`), so i18n stays in the caller's layer;
  * loading is copyless by design, the List part's frosted `LoadingOverlay`.
@@ -150,14 +153,6 @@ export interface InfiniteSelectListProps<T = unknown> {
   /** Replaces the default row content while keeping RAC selection and focus. */
   'renderItem'?: (params: InfiniteSelectItemRenderParams<T>) => ReactNode
   /**
-   * Rendered inside the list, at the end of the scrolled content, while the
-   * next page is fetching. In-flow on purpose: prefetch fires a viewport ahead,
-   * so a user at the top never sees it — only someone at the bottom, exactly
-   * when it is relevant. Position is the part's call, which is why this is a
-   * prop and not a slot child.
-   */
-  'loadingMoreIndicator'?: ReactNode
-  /**
    * How far ahead of the visible bottom the next page starts loading, in
    * viewport heights (the RAC sentinel's `scrollOffset` semantics). Larger
    * values make the loading state rarer at the cost of eager requests.
@@ -167,11 +162,11 @@ export interface InfiniteSelectListProps<T = unknown> {
   /** Scrollbar visibility for the list: always shown, shown on hover, or none. */
   'scrollbars'?: ScrollAreaScrollbars
   /**
-   * Virtualize rows with TanStack Virtual: only the visible window plus
-   * overscan reaches the DOM. Off by default — turn on for large loaded sets
-   * (thousands of rows). Trade-offs while on: rows are fixed-height
-   * (`rowHeight`), and typeahead / Home / End / aria-setsize operate on the
-   * rendered window instead of the loaded set.
+   * Virtualize rows with React Aria's `Virtualizer`: only the visible window
+   * reaches the DOM. Off by default — turn on for large loaded sets (thousands
+   * of rows). The collection keeps every loaded row either way, so typeahead,
+   * Home / End and `aria-setsize` stay full-range. The one trade-off while on:
+   * rows are fixed-height (`rowHeight`).
    */
   'virtualized'?: boolean
   /**
@@ -186,6 +181,10 @@ export interface InfiniteSelectListProps<T = unknown> {
    * Class for the RAC ListBox itself. Function form receives its render props
    * — this and `itemClassName` are the RAC-slot styling outlets; `className`
    * stays on the (Base UI) scroll container for layout constraints.
+   *
+   * The ListBox *is* the Base UI viewport (see the render below), so this is
+   * composed through `cn` with Base UI's own class string — which is what keeps
+   * the function form alive.
    */
   'listClassName'?: ListBoxProps<InfiniteSelectOption>['className']
   /** Class for each option row; function form receives the row's render props. */
@@ -325,6 +324,10 @@ export interface InfiniteSelectContextValue<T = unknown> {
   'aria-label'?: string | undefined
   /** Lifted from a composed `InfiniteSelectLoadingOverlay`; the List renders it. */
   'loadingOverlayProps'?: InfiniteSelectLoadingOverlayProps | undefined
+  /** Lifted from a composed `InfiniteSelectNoMore`; the List renders it. */
+  'noMoreProps'?: InfiniteSelectNoMoreProps | undefined
+  /** Lifted from a composed `InfiniteSelectLoadingMore`; the List renders it. */
+  'loadingMoreProps'?: InfiniteSelectLoadingMoreProps | undefined
 }
 
 const InfiniteSelectContext = createContext<InfiniteSelectContextValue | null>(null)
@@ -386,6 +389,56 @@ export type InfiniteSelectLoadingOverlayProps = Omit<LoadingOverlayProps, 'isLoa
  * wrapper hides it.
  */
 export function InfiniteSelectLoadingOverlay(_props: InfiniteSelectLoadingOverlayProps): null {
+  return null
+}
+
+export type InfiniteSelectLoadingMoreProps = ComponentProps<'div'>
+
+/**
+ * Slotted customization for the next-page indicator: while a page is fetching,
+ * the List part renders a row at the end of the scrolled content. The default
+ * is a Spinner — a mark, not a sentence, because the base ships zero copy.
+ * Compose this to replace it:
+ *
+ * ```tsx
+ * <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
+ * ```
+ *
+ * In-flow on purpose: prefetch fires a viewport ahead, so a user at the top
+ * never sees it — only someone at the bottom, exactly when it is relevant.
+ *
+ * A marker like `InfiniteSelectNoMore`, and the same LoaderNode slot: composing
+ * it is customization, not a switch. Leave it out and the Spinner still renders
+ * — React Aria only renders this row when it has children, so an empty one
+ * would mean the next page lands with no feedback at all.
+ */
+export function InfiniteSelectLoadingMore(_props: InfiniteSelectLoadingMoreProps): null {
+  return null
+}
+
+export type InfiniteSelectNoMoreProps = ComponentProps<'div'>
+
+/**
+ * Slotted customization for the end-of-list mark: once every page is loaded,
+ * the List part renders a terminal row at the end of the scrolled content so
+ * the list visibly *ends* instead of just stopping. The default is a fading
+ * rule — a mark, not a sentence, because the base ships zero copy. Compose
+ * this to replace it with your own text:
+ *
+ * ```tsx
+ * <InfiniteSelectNoMore>没有更多数据</InfiniteSelectNoMore>
+ * ```
+ *
+ * A marker like `InfiniteSelectLoadingOverlay`: it renders nothing where
+ * written, and composing it is customization, not a switch — leave it out and
+ * the default rule still renders. Direct child or inside a Fragment only.
+ *
+ * The row itself is a React Aria `ListBoxLoadMoreItem`, the only way into a
+ * `LoaderNode` — the one collection slot that rides the scroll flow (and gets
+ * a row from `ListLayout` when virtualized) without counting as an option in
+ * `aria-setsize`.
+ */
+export function InfiniteSelectNoMore(_props: InfiniteSelectNoMoreProps): null {
   return null
 }
 
@@ -461,6 +514,8 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     onLoadMore,
     'aria-label': ariaLabel,
     'loadingOverlayProps': findComposedPart(children, InfiniteSelectLoadingOverlay),
+    'noMoreProps': findComposedPart(children, InfiniteSelectNoMore),
+    'loadingMoreProps': findComposedPart(children, InfiniteSelectLoadingMore),
   }
 
   return (
@@ -525,11 +580,10 @@ export function InfiniteSelectSearch({
   )
 }
 
-/** The option-list part: ScrollArea + RAC `ListBox`, TanStack-virtualized on demand. */
+/** The option-list part: ScrollArea + RAC `ListBox`, RAC-virtualized on demand. */
 export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T>): ReactElement | null {
   const {
     renderItem,
-    loadingMoreIndicator,
     loadMoreScrollOffset = 1,
     maxListHeight = 256,
     scrollbars,
@@ -553,50 +607,18 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
     isFetchingNextPage,
     onLoadMore,
     loadingOverlayProps,
+    noMoreProps,
+    loadingMoreProps,
   } = ctx
   const { isLoading } = useInfiniteSelectState()
   const isMultiple = selectionMode === 'multiple'
   const ariaLabel = ariaLabelProp ?? ctx['aria-label']
 
-  // When virtualized, TanStack Virtual owns windowing and positioning while
-  // RAC keeps the semantics. Rows are uniform (rowHeight): no DOM measurement,
-  // no correction pass. The generous overscan keeps arrow-key navigation
-  // fluid — focus advancing into the overscan scrolls, which shifts the
-  // window before focus can reach its edge. The hook must run unconditionally
-  // (rules of hooks); count 0 keeps it inert when virtualization is off.
-  const scrollRef = useRef<HTMLDivElement | null>(null)
-  const virtualizer = useVirtualizer({
-    count: virtualized ? items.length : 0,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => rowHeight,
-    getItemKey: index => getOption(items[index]).id,
-    gap: 2,
-    paddingStart: 4,
-    paddingEnd: 4,
-    overscan: 12,
-    initialRect: { width: 288, height: maxListHeight },
-  })
-  const virtualItems = virtualizer.getVirtualItems()
-
-  // Virtualized load-more, the TanStack way: fire when the overscan window
-  // nears the loaded tail. The trigger distance mirrors the RAC sentinel used
-  // in the non-virtual path: fire while less than `loadMoreScrollOffset`
-  // viewports of unrendered content remain below the window. Adapters are
-  // expected to dedupe repeat calls, as react-query's fetchNextPage does.
-  const lastVirtualEnd = virtualItems.at(-1)?.end
-  useEffect(() => {
-    if (!virtualized || !hasNextPage || isFetchingNextPage || lastVirtualEnd === undefined)
-      return
-    if (virtualizer.getTotalSize() - lastVirtualEnd <= loadMoreScrollOffset * maxListHeight)
-      onLoadMore?.()
-  }, [virtualized, hasNextPage, isFetchingNextPage, lastVirtualEnd, loadMoreScrollOffset, maxListHeight, virtualizer, onLoadMore])
-
-  const renderOption = (item: T, index: number, style?: CSSProperties): ReactElement => {
+  const renderOption = (item: T, index: number): ReactElement => {
     const option = getOption(item)
     return (
       <ListBoxItem
         key={option.id}
-        style={style}
         className={cn(
           `
             flex cursor-default items-center gap-2 rounded-lg px-2 py-1.5
@@ -665,20 +687,22 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
       : null
   }
 
-  return (
-    // The overlay must cover the visible viewport, not scroll with the rows —
-    // hence the positioned shell around the ScrollArea rather than inside it.
-    // The search field stays outside on purpose: typing is what drives the
-    // refresh, covering the input would interrupt it.
-    <div className="relative" data-slot="infinite-select-list-container">
-      <ScrollArea
-        className={className}
-        scrollbars={scrollbars}
-        viewportClassName="scroll-fade-y"
-        viewportRef={scrollRef}
-        viewportStyle={{ maxHeight: maxListHeight }}
-      >
+  // One list, one load-more sentinel, virtualized or not. The ListBox IS the
+  // Base UI viewport: React Aria's Virtualizer insists the collection element
+  // is the scroller, and sharing one element is what lets the sibling
+  // scrollbar and the scroll-fade mask survive virtualization. `bag` carries
+  // Base UI's viewport props — spread them, and compose `bag.className`
+  // through `cn` so a function `listClassName` reaches RAC intact (handing
+  // Base UI an element instead of this function would stringify it).
+  const list = (
+    <ScrollArea
+      className={className}
+      scrollbars={scrollbars}
+      viewportClassName="scroll-fade-y"
+      viewportStyle={{ maxHeight: maxListHeight }}
+      viewportRender={bag => (
         <ListBox
+          {...bag}
           aria-label={ariaLabel}
           data-slot="infinite-select-list"
           selectionMode={isMultiple ? 'multiple' : 'single'}
@@ -687,47 +711,103 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
           // 意味着"清空草稿并提交空集"。Esc 的语义应该是关闭,不是清空。
           {...{ escapeKeyBehavior: 'none' }}
           className={cn(
-            'outline-none',
-            virtualized ? 'relative' : 'flex flex-col gap-0.5 p-1',
+            bag.className,
+            // Contain the scroll: without it, scrolling past the last row
+            // chains to the page behind the popover — and the platform's own
+            // "you've hit the end" rubber band never happens. Same setting the
+            // other overlay scrollers in this library use (combobox, drawer,
+            // message-scroller).
+            'overscroll-contain outline-none',
+            // Virtualized rows are positioned by ListLayout (gap/padding come
+            // from layoutOptions), so flow layout only applies to the plain path.
+            virtualized || 'flex flex-col gap-0.5 p-1',
             listClassName,
           )}
-          style={virtualized ? { height: virtualizer.getTotalSize() } : undefined}
           selectedKeys={selectedIds}
           onSelectionChange={onSelectionChange}
-        >
-          {virtualized
-            ? virtualItems.map(virtualItem => renderOption(items[virtualItem.index], virtualItem.index, {
-                position: 'absolute',
-                top: 0,
-                insetInline: 4,
-                height: virtualItem.size,
-                transform: `translateY(${virtualItem.start}px)`,
-              }))
-            : items.map((item, index) => renderOption(item, index))}
-          {!virtualized && hasNextPage && (
+        />
+      )}
+    >
+      {items.map((item, index) => renderOption(item, index))}
+      {hasNextPage
+        ? (
             <ListBoxLoadMoreItem
+              data-slot="infinite-select-load-more"
               isLoading={isFetchingNextPage}
               onLoadMore={onLoadMore ?? (() => {})}
               scrollOffset={loadMoreScrollOffset}
+              {...loadingMoreProps}
               className={cn(
                 isFetchingNextPage
-                  ? 'py-1.5 text-center text-xs text-muted-foreground'
+                  ? `
+                    flex items-center justify-center py-1.5 text-center text-xs
+                    text-muted-foreground
+                  `
                   : 'block-px',
+                loadingMoreProps?.className,
               )}
             >
-              {loadingMoreIndicator}
+              {/* A default is required, not optional: React Aria only renders
+                  this row when it has children, so nothing here would mean the
+                  next page arrives with no feedback at all. A Spinner is the
+                  copyless default, same rule as LoadingOverlay. */}
+              {loadingMoreProps?.children ?? (
+                <Spinner
+                  aria-hidden
+                  className="block-3.5 inline-3.5"
+                />
+              )}
+            </ListBoxLoadMoreItem>
+          )
+        : (
+            // Every page is in: the same LoaderNode slot, now marking the end.
+            // `isLoading` is what makes it render at all (React Aria gates the
+            // visible row on it) and `onLoadMore` never fires — there is
+            // nothing left to fetch.
+            <ListBoxLoadMoreItem
+              data-slot="infinite-select-no-more"
+              isLoading
+              onLoadMore={() => {}}
+              {...noMoreProps}
+              className={cn(
+                `
+                  flex items-center justify-center py-3 text-center text-xs
+                  text-muted-foreground
+                `,
+                noMoreProps?.className,
+              )}
+            >
+              {noMoreProps?.children ?? (
+                <span
+                  aria-hidden
+                  className={`
+                    bg-linear-to-r from-transparent via-muted-foreground/40
+                    to-transparent block-px inline-24
+                  `}
+                  data-slot="infinite-select-no-more-rule"
+                />
+              )}
             </ListBoxLoadMoreItem>
           )}
-        </ListBox>
-        {virtualized && isFetchingNextPage && loadingMoreIndicator !== undefined && (
-          <div
-            className="py-1.5 text-center text-xs text-muted-foreground"
-            data-slot="infinite-select-loading-more"
-          >
-            {loadingMoreIndicator}
-          </div>
-        )}
-      </ScrollArea>
+    </ScrollArea>
+  )
+
+  return (
+    // The overlay must cover the visible viewport, not scroll with the rows —
+    // hence the positioned shell around the ScrollArea rather than inside it.
+    // The search field stays outside on purpose: typing is what drives the
+    // refresh, covering the input would interrupt it.
+    <div className="relative" data-slot="infinite-select-list-container">
+      {virtualized
+        ? (
+            <Virtualizer
+              layout={ListLayout}
+              layoutOptions={{ rowSize: rowHeight, gap: 2, padding: 4, loaderSize: 30 }}
+            >
+              {list}
+            </Virtualizer>
+          )
+        : list}
       <LoadingOverlay {...loadingOverlayProps} isLoading={isLoading} />
     </div>
   )

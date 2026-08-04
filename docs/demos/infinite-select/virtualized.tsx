@@ -19,11 +19,11 @@ export default function VirtualizedDemo(): ReactElement {
       list={list}
       onChange={setPicked}
       searchPlaceholder="在 10000 条里搜索…"
-      slots={selectSlots}
       state={state}
       virtualized
     >
       <DemoButton>{picked ? picked.name : '虚拟化:一次载入 10000 条'}</DemoButton>
+      {selectSlots}
     </InfiniteCombobox>
   )
 }

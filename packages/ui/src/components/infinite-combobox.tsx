@@ -5,7 +5,7 @@ import type { ControllableSelectionProps, InfiniteSelectActions, InfiniteSelectA
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { useDebounceFn } from 'ahooks'
-import { cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Children, cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { cn } from '#lib/utils'
 import { Popover, PopoverTrigger } from '#primitives/popover'
 import {
@@ -144,17 +144,36 @@ export function useInfiniteComboboxState({
   }
 }
 
+// `ReactNode[]` is spelled out even though `ReactNode` already covers iterables:
+// TypeScript only allows multiple JSX children when the children type is itself
+// an array type, and it will not look inside `Iterable<ReactNode>` to find one.
 export type InfiniteComboboxChildren<T>
-  = | ReactElement
+  = | ReactNode
+    | ReactNode[]
     | ((params: InfiniteComboboxState<T> & { isDisabled: boolean }) => ReactElement)
 
 interface InfiniteComboboxCommonProps<T> {
   /** Accessible name for the option list. Falls back to `searchPlaceholder`. */
   'aria-label'?: string
   /**
-   * The trigger. Must be pressable in React Aria terms (our `Button`, or any
-   * RAC pressable) — `DialogTrigger` wires it up. A function receives the
-   * combobox state plus the current selection for summary rendering.
+   * React Aria's `DialogTrigger` contract, by position: **the first child is
+   * the trigger, every child after it is the panel's composition channel**
+   * (state slots, marker parts, footer) — the same children `InfiniteSelect`
+   * takes, minus the Search and List parts this layer already renders.
+   *
+   * ```tsx
+   * <InfiniteCombobox …>
+   *   <Button>Pick one</Button>
+   *   <InfiniteSelectEmpty>No results</InfiniteSelectEmpty>
+   *   <InfiniteSelectFooter>…</InfiniteSelectFooter>
+   * </InfiniteCombobox>
+   * ```
+   *
+   * The trigger must be pressable in React Aria terms (our `Button`, or any RAC
+   * pressable) — `DialogTrigger` wires it up. Passing a function instead makes
+   * the whole of `children` the trigger (it receives the combobox state plus
+   * the current selection, for summary rendering) and leaves no panel channel;
+   * read `state` directly in your JSX when you need both.
    */
   'children': InfiniteComboboxChildren<T>
   /**
@@ -175,15 +194,8 @@ interface InfiniteComboboxCommonProps<T> {
   /** Multi only: hold toggles as a draft and commit once, when the popover closes. */
   'commitOnClose'?: boolean
   'searchPlaceholder'?: string
-  /** Rendered at the end of the list while the next page fetches. See InfiniteSelect. */
-  'loadingMoreIndicator'?: ReactNode
   /** Prefetch distance in viewport heights. See InfiniteSelect. */
   'loadMoreScrollOffset'?: number
-  /**
-   * The slot channel, passed through as `InfiniteSelect` children: state slots
-   * plus footer. Footer buttons reach clear/close via `useInfiniteSelectActions`.
-   */
-  'slots'?: ReactNode
   'maxListHeight'?: number
   /** Scrollbar visibility for the list: always shown, shown on hover, or none. */
   'scrollbars'?: ScrollAreaScrollbars
@@ -237,9 +249,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     rowHeight,
     renderItem,
     searchPlaceholder,
-    loadingMoreIndicator,
     loadMoreScrollOffset,
-    slots,
     state,
     closeOnSelect = true,
     lockScroll = false,
@@ -359,7 +369,17 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     close: () => state.setOpen(false),
   }
 
-  const trigger = resolveRenderChildren(children, {
+  // React Aria's DialogTrigger contract, by position: first child triggers, the
+  // rest are the overlay's. A function is the trigger whole — there is no
+  // "rest" to split off, and the caller owns `state` anyway.
+  const [triggerChild, panelSlots] = typeof children === 'function'
+    ? [children, null]
+    : (() => {
+        const [first, ...rest] = Children.toArray(children)
+        return [first, rest] as const
+      })()
+
+  const trigger = resolveRenderChildren(triggerChild, {
     ...state,
     selectedItems,
     selectedValue: effectiveSelectedValue,
@@ -438,7 +458,6 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     <>
       <InfiniteSelectSearch autoFocus placeholder={searchPlaceholder} />
       <InfiniteSelectList<T>
-        loadingMoreIndicator={loadingMoreIndicator}
         loadMoreScrollOffset={loadMoreScrollOffset}
         maxListHeight={maxListHeight}
         renderItem={renderItem}
@@ -446,7 +465,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
         scrollbars={scrollbars}
         virtualized={virtualized}
       />
-      {slots}
+      {panelSlots}
     </>
   )
 

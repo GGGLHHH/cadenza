@@ -45,6 +45,7 @@ const registry: Record<string, ComponentType> = {
   'infinite-select/loading-custom': lazy(async () => import('./infinite-select/loading-custom')),
   'infinite-select/slot-error': lazy(async () => import('./infinite-select/slot-error')),
   'infinite-select/footer': lazy(async () => import('./infinite-select/footer')),
+  'infinite-select/no-more': lazy(async () => import('./infinite-select/no-more')),
   'infinite-select/virtualized': lazy(async () => import('./infinite-select/virtualized')),
   'infinite-select/render-item': lazy(async () => import('./infinite-select/render-item')),
   'input-group/icon': lazy(async () => import('./input-group/icon')),

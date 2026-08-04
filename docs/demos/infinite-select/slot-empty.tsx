@@ -31,17 +31,13 @@ export default function EmptySlotDemo(): ReactElement {
       list={emptyList}
       searchPlaceholder="搜索作曲家…"
       state={state}
-      slots={(
-        <>
-          <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
-          <InfiniteSelectError>
-            加载失败
-            <InfiniteSelectRetry>重试</InfiniteSelectRetry>
-          </InfiniteSelectError>
-        </>
-      )}
     >
       <DemoButton>空数据源</DemoButton>
+      <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
+      <InfiniteSelectError>
+        加载失败
+        <InfiniteSelectRetry>重试</InfiniteSelectRetry>
+      </InfiniteSelectError>
     </InfiniteCombobox>
   )
 }

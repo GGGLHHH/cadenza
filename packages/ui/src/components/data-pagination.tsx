@@ -112,8 +112,13 @@ export interface DataPaginationProps extends DataPaginationStateOptions {
   showLimitChanger?: boolean
   /** Start-side summary (e.g. "共 N 条"). Omitted: the slot collapses. */
   summary?: (state: DataPaginationState) => ReactNode
-  /** Visible label before the limit select. Omitted: no text renders. */
-  rowsPerPageLabel?: ReactNode
+  /**
+   * Visible label before the limit select, and the select's accessible name.
+   * A string like its sibling `*Label` props — not a `ReactNode`: content that
+   * needs markup goes through a composition channel, and a rows-per-page label
+   * is not that. Omitted: no text renders and the name falls back to English.
+   */
+  rowsPerPageLabel?: string
   /** Page position between the nav buttons. Defaults to `page / totalPages`. */
   pageIndicator?: (state: DataPaginationState) => ReactNode
   // Accessible names for the icon-only controls. English defaults; pass
@@ -176,7 +181,7 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
               <span className="text-sm whitespace-nowrap">{rowsPerPageLabel}</span>
             )}
             <Select
-              aria-label={typeof rowsPerPageLabel === 'string' ? rowsPerPageLabel : 'Rows per page'}
+              aria-label={rowsPerPageLabel ?? 'Rows per page'}
               data-slot="data-pagination-limit"
               value={limit}
               onChange={(key) => {

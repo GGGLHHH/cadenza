@@ -5,6 +5,7 @@ import {
   FieldDescription,
   FieldLabel,
   InfiniteCombobox,
+  InfiniteSelectLoadingMore,
   useInfiniteComboboxState,
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
@@ -27,14 +28,14 @@ export default function FieldInfiniteComboboxDemo(): ReactElement {
       <InfiniteCombobox<Person>
         getOption={getOption}
         list={list}
-        loadingMoreIndicator="加载更多…"
         onChange={setPicked}
         searchPlaceholder="搜索作曲家…"
-        slots={selectSlots}
         state={state}
         triggerId="field-composer"
       >
         <DemoButton>{picked ? picked.name : '选择作曲家'}</DemoButton>
+        {selectSlots}
+        <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
       </InfiniteCombobox>
       <FieldDescription>从一万条里搜，滚动到底自动加载下一页。</FieldDescription>
     </Field>

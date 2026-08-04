@@ -6,7 +6,7 @@ description: 可搜索、无限滚动的选择器与 InfiniteCombobox 弹层便�
 可搜索、游标分页无限滚动的选择器家族。行为全部由 React Aria 承担：`Autocomplete`
 用虚拟焦点把搜索框和列表接起来（输入框保持 DOM 焦点，方向键在列表里移动），
 `ListBox` 提供选择语义、方向键 / Home / End / typeahead。大数据集可用
-`virtualized` 开启 TanStack Virtual 行虚拟化，见下文。
+`virtualized` 开启行虚拟化，见下文。
 
 分层也照 React Aria 的方式：底下是 **hooks 层**（状态与行为），中间是
 **组合式 parts**（context 接线、按书写顺序渲染），`InfiniteCombobox`
@@ -22,8 +22,23 @@ description: 可搜索、无限滚动的选择器与 InfiniteCombobox 弹层便�
 
 <ComponentPreview name="infinite-select/single" />
 
-触发器是 `children`，必须是 React Aria 意义上可按压的元素（库里的 `Button` 即可）——
-弹层开合、焦点归还、Esc 关闭都由 `DialogTrigger` 接管。传函数可以拿到当前状态做摘要展示。
+组合方式照搬 React Aria 的 `DialogTrigger` 契约，**按位置**：**第一个 child 是触发器，
+它之后的每个 child 都进面板的组合通道**。
+
+```tsx
+<InfiniteCombobox {/* … */}>
+  <Button>选择作曲家</Button>                      {/* 触发器 */}
+  <InfiniteSelectEmpty>没有结果</InfiniteSelectEmpty>  {/* 组合通道 */}
+  <InfiniteSelectFooter>…</InfiniteSelectFooter>
+</InfiniteCombobox>
+```
+
+触发器必须是 React Aria 意义上可按压的元素（库里的 `Button` 即可）—— 弹层开合、
+焦点归还、Esc 关闭都由 `DialogTrigger` 接管。`Search` 和 `List` 两个 part 由便利层
+自己渲染，**不要**再写进来。
+
+`children` 传函数时，整个 children 就是触发器（能拿到当前状态做摘要展示），此时没有
+组合通道 —— 需要两者兼得就直接在 JSX 里读你自己持有的 `state`。
 
 ## 多选 + 暂存提交
 
@@ -39,8 +54,8 @@ description: 可搜索、无限滚动的选择器与 InfiniteCombobox 弹层便�
 ## 虚拟化
 
 默认情况下，加载了多少行就渲染多少行。开启 `virtualized` 后行渲染交给
-TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外少量预渲染的行
-（overscan）存在于 DOM**——加载一万行，DOM 里也始终只有几十个节点。
+React Aria 自己的 `Virtualizer`：**任何时刻只有视口内可见的那一小段行存在于
+DOM**——加载一万行，DOM 里也始终只有十几个节点。
 下面的 demo 一次拉满 10000 条（无翻页）：
 
 <ComponentPreview name="infinite-select/virtualized" />
@@ -49,23 +64,24 @@ TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外�
 <InfiniteCombobox<Person> virtualized rowHeight={32} … />
 ```
 
-开启前要知道的三个取舍：
+开启前要知道的取舍只有一个：
 
-1. **行高固定**为 `rowHeight`（默认 32px）——虚拟化靠固定行高换取零测量、零跳动；
-   自定义 `renderItem` 比默认行高时必须同步调大它。
-2. **键盘和读屏的作用域变窄**：React Aria 只认识 DOM 里的那几十行，所以打字定位
-   （typeahead）、Home / End 只在这几十行内生效，读屏播报的列表总数也是这个数。
-3. 因此**几百行以内不建议开**——不开时 React Aria 认识完整列表，上面这些能力
-   都是全量的，而几百行的 DOM 根本不构成性能问题。
+**行高固定**为 `rowHeight`（默认 32px）——虚拟化靠固定行高换取零测量、零跳动；
+自定义 `renderItem` 比默认行高时必须同步调大它。
+
+键盘和读屏**不受影响**：React Aria 的 collection 与 DOM 解耦，虚拟化只裁剪 DOM，
+collection 里始终是加载过的全部行。所以打字定位（typeahead）、Home / End 和
+读屏播报的列表总数（`aria-setsize`）在开启后依然是全量的。
 
 加载下一页的触发时机与非虚拟模式一致（提前约 1 个视口预取，由
 `loadMoreScrollOffset` 控制），无需关心。
 
 ## 插槽
 
-基座**零文案**。所有可见文案都从 `slots` 通道注入，i18n 只存在于你的业务层。
+基座**零文案**。所有可见文案都从**组合通道**注入 —— 也就是 `InfiniteCombobox`
+触发器之后的那些 children，i18n 只存在于你的业务层。
 状态插槽是 context 驱动的组件，按状态自渲染、互斥；footer 一族是组合式部件，
-放在 slots 末尾自然落在面板底部：
+放在组合通道末尾自然落在面板底部：
 
 ### InfiniteSelectEmpty:空
 
@@ -93,7 +109,7 @@ TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外�
 提升到列表壳的位置渲染；`children` 替换居中的 Spinner，`className` 调磨砂浓度，
 `isLoading` 是基座的接线、不在它的 props 里。直接子级或 Fragment 内有效，
 包进自定义组件会找不到（与 TabIndicator 同一限制）。用 `InfiniteCombobox` 时
-放进 `slots` 即可：
+写在触发器后面即可：
 
 <ComponentPreview name="infinite-select/loading-custom" />
 
@@ -122,14 +138,88 @@ TanStack Virtual：**任何时刻只有视口内可见的行、加上视口外�
 三个状态插槽最终都渲染成同一个 `role="status"` 容器（状态切换会被读屏播报），
 它也单独导出，自定义状态视觉时可复用。
 
-加载更多的指示不走插槽——它必须渲染在**列表滚动流的末尾**（位置由基座决定），
-用 `loadingMoreIndicator` prop 传：预取提前触发，停在顶部的用户根本看不到它，
-只有滚到底部、恰好在等下一页的人才会看见。
+### InfiniteSelectLoadingMore:加载更多
+
+翻下一页时，滚动流末尾会出现一个加载行。**默认是一个 Spinner** —— 和磨砂覆盖层、
+终止行同一条规矩：默认给视觉，不给文案。要文字就组合它：
+
+```tsx
+<InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
+```
+
+和 `InfiniteSelectNoMore` 同款的**标记部件**，也是同一个 `LoaderNode` 位置 ——
+两者是同一位置的两个分支（还有下一页 / 没有了），不会同时出现。同样是**定制入口
+不是开关**：不写也会渲染那个 Spinner。
+
+预取提前约 1 个视口触发，所以停在顶部的用户根本看不到这一行，只有滚到底部、
+恰好在等下一页的人才会看见。
+
+### InfiniteSelectNoMore:到底了
+
+所有页都加载完（`hasNextPage` 为 `false`）且列表非空时，滚动流末尾会出现一个
+**终止行**，让列表看起来是「结束了」而不是「停住了」—— 页很小、加载又快的时候，
+用户光看列表分不清「还在加载」和「没有了」。
+
+下面两个下拉的数据源都是**整三页**（每页 6 条，共 18 条）。滚到底会依次看到
+第 1 页 → `加载中…` → 第 2 页 → `加载中…` → 第 3 页 → **终止行**。左边没有组合
+`InfiniteSelectNoMore`，仍然有终止行（默认那条线）；右边组合了，线被换成文案：
+
+<ComponentPreview name="infinite-select/no-more" />
+
+**默认是一条淡出的细线，不是一句话。** 基座零文案，一个要发 npm 的库不该往 DOM
+里塞任何一种语言 —— 这和加载态默认是 Spinner 而不是「加载中…」是同一条规矩。
+
+它是**定制入口，不是开关**：
+
+```tsx
+<InfiniteCombobox {/* … */}>
+  <Button>选择作曲家</Button>
+  <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
+  <InfiniteSelectNoMore>没有更多数据</InfiniteSelectNoMore>
+</InfiniteCombobox>
+```
+
+不写 → 渲染默认细线。写了 → `children` 顶掉细线，`className` 叠加在终止行上。
+
+（`InfiniteCombobox` 自己就渲染 `InfiniteSelectSearch` 和 `InfiniteSelectList`，
+触发器之后只放状态插槽和标记部件 —— 再写一个 `InfiniteSelectList` 会得到两个列表。）
+
+和 `InfiniteSelectLoadingOverlay` 同款的**标记部件**：写在组合通道里任意位置、
+原地不渲染，由 List 提升到只有它知道的位置（滚动流末尾）。直接子级或 Fragment
+内有效，包进自定义组件会找不到 —— 与 TabIndicator 同一限制。
+
+#### 何时不渲染
+
+| 状态 | 终止行 |
+| --- | --- |
+| `hasNextPage` 为 `true` | 不渲染（那个位置是 load-more 哨兵） |
+| 列表为空 | 不渲染（该由 `InfiniteSelectEmpty` 说话） |
+| 首屏加载 / 错误 | 不渲染（列表壳本身就没渲染） |
+| 加载完且非空 | **渲染** |
+
+终止行和加载更多指示是**同一个位置的两个分支**，不会同时出现。
+
+#### 底层与代价
+
+终止行落在 React Aria 的 `ListBoxLoadMoreItem` 上，也就是 `LoaderNode` ——
+collection 里唯一一个「跟着内容滚、虚拟化时由 `ListLayout` 分到一行、但不算进
+`aria-setsize`」的位置。普通 `<div>` 塞不进 `ListBox` 的 children，会被
+collection builder 丢掉。
+
+两个代价：
+
+1. React Aria 把 loader 行渲染成**不可选中的 `role="option"`**（`role="listbox"`
+   的合法子节点只有 option 和分组），所以 DOM 上会多出一个 option 元素。
+   键盘导航**不会**停在它上面（导航走 collection，`LoaderNode` 不是 item），
+   `aria-setsize` 也不受影响 —— 只有 `getAllByRole('option')` 这类 DOM 查询会数到它。
+   写测试时用 `[data-slot="infinite-select-item"]` 数真实行。
+2. 没有下一页时仍会装一个 `IntersectionObserver`（回调是空函数）。`LoaderNode`
+   只有这一个入口，无从避免。
 
 ## 动作上下文
 
 footer 部件之所以不需要穿线，是因为面板内有一个**动作上下文**。
-`useInfiniteSelectActions<T>()` 在 slots 里的任何部件中都可调用，返回
+`useInfiniteSelectActions<T>()` 在组合通道里的任何部件中都可调用，返回
 `InfiniteSelectActions<T>`：
 
 | 字段 | 说明 |
@@ -142,7 +232,7 @@ footer 部件之所以不需要穿线，是因为面板内有一个**动作上�
 `InfiniteSelectClearButton` / `InfiniteSelectConfirmButton` 内部就是调它；
 「插槽」一节 Footer demo 里的「已选 N」自定义部件也是。两个注意点：
 
-- 在 provider 之外调用会**直接抛错**（fail loud），所以它只能出现在 slots
+- 在 provider 之外调用会**直接抛错**（fail loud），所以它只能出现在组合通道
   子树里；
 - 上下文由 `InfiniteCombobox` 自动填充。只有当你不用 InfiniteCombobox、
   自己拿 `InfiniteSelect` 基座组弹层时，才需要用
@@ -150,7 +240,7 @@ footer 部件之所以不需要穿线，是因为面板内有一个**动作上�
 
 ```tsx
 <InfiniteSelectActionsProvider value={{ selectedItems, selectedIds, clear, close }}>
-  <InfiniteSelect {/* … */}>{slots}</InfiniteSelect>
+  <InfiniteSelect {/* … */}>{/* parts 与状态插槽 */}</InfiniteSelect>
 </InfiniteSelectActionsProvider>
 ```
 
@@ -309,6 +399,7 @@ interface InfiniteSelectItemRenderParams<T> {
 | `ControllableSelectionProps<T>` | 选择相关 props 的判别联合，判别键是 `selectionMode`（单选 `value?: string` / 多选 `value?: string[]`，`onChange` 签名随之切换） |
 | `InfiniteSelectProps<T>` / `InfiniteComboboxProps<T>` | 根组件与便利层的完整 props，业务层包一层时直接复用 |
 | `InfiniteSelectSearchProps` / `InfiniteSelectListProps<T>` | 两个 parts 的 props |
+| `InfiniteSelectLoadingOverlayProps` / `InfiniteSelectNoMoreProps` / `InfiniteSelectLoadingMoreProps` | 三个标记部件的 props——第一个是去掉 `isLoading` 的 `LoadingOverlayProps`，后两个是 `ComponentProps<'div'>` |
 | `InfiniteSelectContextValue<T>` | `useInfiniteSelectContext()` 的返回——自定义 part 可读的接线 |
 | `InfiniteSelectSelectionState<T>` | `useInfiniteSelectSelection()` 的返回：`selectedIds` / `selectedItems` / `onSelectionChange` |
 | `InfiniteSelectActions<T>` | 动作上下文的值形状（`useInfiniteSelectActions()` 的返回 / `InfiniteSelectActionsProvider` 的入参），见「动作上下文」 |
@@ -338,7 +429,7 @@ interface InfiniteSelectItemRenderParams<T> {
 便利层：一个 props 面，内部拆开路由到根组件和各个 part。改用组合式写法时，
 `searchPlaceholder` 去 `InfiniteSelectSearch` 上找 `placeholder`，
 `renderItem` / `virtualized` / `rowHeight` / `maxListHeight` / `scrollbars` /
-`loadingMoreIndicator` / `loadMoreScrollOffset` 都在 `InfiniteSelectList` 上。
+`loadMoreScrollOffset` 在 `InfiniteSelectList` 上；加载更多的文案走 `InfiniteSelectLoadingMore` 部件。
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
@@ -357,13 +448,11 @@ interface InfiniteSelectItemRenderParams<T> {
 | `closeOnScroll` | `boolean` | `false` | 页面滚动时关闭弹层（原生 select 感）；默认弹层随锚点滚动、保持打开 |
 | `searchPlaceholder` | `string` | — | 搜索框占位符，同时兼作它的无障碍名 |
 | `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | 替换行内容（`ListBoxItem` 外壳保留），参数见「自定义行内容」 |
-| `loadingMoreIndicator` | `ReactNode` | — | 列表末尾的加载更多指示（滚动流内） |
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
-| `virtualized` | `boolean` | `false` | TanStack Virtual 行虚拟化，大数据集用 |
+| `virtualized` | `boolean` | `false` | React Aria `Virtualizer` 行虚拟化，大数据集用 |
 | `rowHeight` | `number` | `32` | 虚拟化行的固定高度；自定义 `renderItem` 更高时需同步调整 |
 | `maxListHeight` | `number` | `256` | 列表最大高度 |
 | `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | 滚动条可见性：常显 / hover 与滚动时显示 / 常隐 |
-| `slots` | `ReactNode` | — | 状态插槽 + footer |
 | `aria-label` | `string` | 取 `searchPlaceholder` | 面板的无障碍名 |
 | `selectClassName` | `string` | — | 弹层内根组件的类名 |
 | `contentClassName` | `string` | — | 弹层本身的类名 |
@@ -431,7 +520,6 @@ part 上。
 | --- | --- | --- | --- |
 | `aria-label` | `string` | 回退到根组件的 | 列表的无障碍名 |
 | `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | 替换行内容，`ListBoxItem` 外壳保留 |
-| `loadingMoreIndicator` | `ReactNode` | — | 滚动流内的加载更多指示 |
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离，单位是视口高度 |
 | `virtualized` | `boolean` | `false` | 行虚拟化 |
 | `rowHeight` | `number` | `32` | 虚拟化行的固定高度 |
@@ -487,8 +575,14 @@ part 上。
 | `InfiniteSelectFooter` | 总是（由调用方决定放不放） | `infinite-select-footer` |
 | `InfiniteSelectFooterSeparator` | 总是 | `infinite-select-footer-separator` |
 | `InfiniteSelectLoadingOverlay` | 标记部件：原地不渲染，props 被提升到列表壳的覆盖层上 | 提升后为 `loading-overlay` |
+| `InfiniteSelectNoMore` | 标记部件：原地不渲染，props 被提升到滚动流末尾的终止行上（不写也有默认线） | 提升后为 `infinite-select-no-more` |
+| `InfiniteSelectLoadingMore` | 标记部件：同一位置的另一分支，翻页时渲染（不写也有默认 Spinner） | 提升后为 `infinite-select-load-more` |
 | `InfiniteSelectClearButton` | 总是 | `infinite-select-clear` |
 | `InfiniteSelectConfirmButton` | 总是 | `infinite-select-confirm` |
 
 三个状态插槽共用一个 `role="status"` 的容器，所以变化会被读屏播报一次，而不是三种
 写法各播一次。
+
+两个标记部件（`InfiniteSelectLoadingOverlay` / `InfiniteSelectNoMore`）是**定制入口
+而不是开关** —— 不组合它们，默认视觉（磨砂 Spinner / 淡出细线）照样渲染；组合它们
+是为了替换 `children`、叠加 `className`。其余部件不写就是没有。
