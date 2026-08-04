@@ -7,7 +7,7 @@ import { delay, fetchPeople } from './people'
 // 真实项目里通常由 react-query 的 useInfiniteQuery 担任这个角色。
 export function useFakeInfiniteList(
   query?: string,
-  { failFirst = false, pageSize }: { failFirst?: boolean, pageSize?: number } = {},
+  { failFirst = false, pageSize, limit }: { failFirst?: boolean, pageSize?: number, limit?: number } = {},
 ): InfiniteSelectAdapterProps<Person> {
   const [items, setItems] = useState<Person[]>([])
   const [nextCursor, setNextCursor] = useState<number | undefined>(undefined)
@@ -32,13 +32,13 @@ export function useFakeInfiniteList(
       setIsLoading(false)
       return
     }
-    const page = await fetchPeople({ query, pageSize })
+    const page = await fetchPeople({ query, pageSize, limit })
     if (requestId !== requestIdRef.current)
       return
     setItems(page.items)
     setNextCursor(page.nextCursor)
     setIsLoading(false)
-  }, [failFirst, pageSize, query])
+  }, [failFirst, limit, pageSize, query])
 
   useEffect(() => {
     void loadFirstPage()
@@ -49,13 +49,13 @@ export function useFakeInfiniteList(
       return
     const requestId = requestIdRef.current
     setIsFetchingNextPage(true)
-    const page = await fetchPeople({ cursor: nextCursor, query, pageSize })
+    const page = await fetchPeople({ cursor: nextCursor, query, pageSize, limit })
     if (requestId !== requestIdRef.current)
       return
     setItems(current => [...current, ...page.items])
     setNextCursor(page.nextCursor)
     setIsFetchingNextPage(false)
-  }, [isFetchingNextPage, nextCursor, pageSize, query])
+  }, [isFetchingNextPage, limit, nextCursor, pageSize, query])
 
   return {
     items,

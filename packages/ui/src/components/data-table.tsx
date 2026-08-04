@@ -26,6 +26,7 @@ import {
 } from '#primitives/table'
 import { LoadingOverlay } from './loading-overlay'
 import { ScrollArea } from './scroll-area'
+import { Spinner } from './spinner'
 
 /**
  * Data table on React Aria's `Table`: grid keyboard navigation, row selection
@@ -116,8 +117,6 @@ export interface DataTableBaseProps<T> {
   'isError'?: boolean
   'onLoadMore'?: () => void
   'onRetry'?: () => void
-  /** In-flow indicator at the tail of the scrolled rows while a page loads. */
-  'loadingMoreIndicator'?: ReactNode
   /**
    * How far ahead of the visible bottom the next page starts loading, in
    * viewport heights (the RAC sentinel's `scrollOffset` semantics). Larger
@@ -271,6 +270,29 @@ export function DataTableLoadingOverlay(_props: DataTableLoadingOverlayProps): n
   return null
 }
 
+// `tr`, not `div`: React Aria renders the loader as a table row, so a div's
+// ref type would clash with the row's on spread.
+export type DataTableLoadingMoreProps = ComponentProps<'tr'>
+
+/**
+ * Slotted customization for the next-page indicator: while a page is fetching,
+ * a row renders at the tail of the scrolled rows. The default is a Spinner —
+ * a mark, not a sentence, because the base ships zero copy. Compose this to
+ * replace it:
+ *
+ * ```tsx
+ * <DataTableLoadingMore>加载更多…</DataTableLoadingMore>
+ * ```
+ *
+ * A marker like `DataTableLoadingOverlay`: composing it is customization, not a
+ * switch. Leave it out and the Spinner still renders — React Aria only renders
+ * this row when it has children, so an empty one would mean the next page lands
+ * with no feedback at all.
+ */
+export function DataTableLoadingMore(_props: DataTableLoadingMoreProps): null {
+  return null
+}
+
 interface DataTableRowEntry<T> {
   id: string
   item: T
@@ -361,7 +383,6 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     isError = false,
     onLoadMore,
     onRetry,
-    loadingMoreIndicator,
     loadMoreScrollOffset = 1,
     selectionMode,
     selectionColumn = false,
@@ -395,6 +416,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
   const isEmpty = !isLoading && !isError && rows.length === 0
   const hasRows = showRows && rows.length > 0
   const loadingOverlayProps = findComposedPart(children, DataTableLoadingOverlay)
+  const loadingMoreProps = findComposedPart(children, DataTableLoadingMore)
 
   // The row header defaults against the caller's columns, before the
   // synthesized selection column is prepended — a checkbox must never be what
@@ -652,16 +674,27 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
         {padEnd > 0 && spacerRow('__cadenza-pad-end', padEnd)}
         {hasRows && hasNextPage && (
           <TableLoadMoreItem
+            data-slot="data-table-load-more"
             isLoading={isFetchingNextPage}
             onLoadMore={onLoadMore ?? (() => {})}
             scrollOffset={loadMoreScrollOffset}
+            {...loadingMoreProps}
             className={cn(
               isFetchingNextPage
-                ? 'text-center text-xs text-muted-foreground'
+                ? 'py-1.5 text-center text-xs text-muted-foreground'
                 : 'block-px',
+              loadingMoreProps?.className,
             )}
           >
-            {loadingMoreIndicator}
+            {/* Required, not optional — see InfiniteSelectList: React Aria
+                renders this row only when it has children, so no default means
+                the next page lands with no feedback. */}
+            {loadingMoreProps?.children ?? (
+              <Spinner
+                aria-hidden
+                className="mx-auto block-3.5 inline-3.5"
+              />
+            )}
           </TableLoadMoreItem>
         )}
       </TableBody>

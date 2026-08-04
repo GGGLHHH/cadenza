@@ -64,6 +64,102 @@ RAC 和 Base UI 都把 `className` 类型定为 `string | (state => string)`。c
 - 空态显隐：列表整个不渲染时 DOM 里没有 `data-empty` 可选 → 用 JS context 三态互斥（InfiniteSelect 模式）；
   列表还在 DOM 里 → 用 CSS `group-data-empty`（primitives 模式）。
 
+### 组合通道只能是 children，永远不开第二个 ReactNode prop
+
+RAC 的组合方式只有一种：**children，按位置**。`DialogTrigger` 是第一个 child 是触发器、
+其余是浮层内容；`ComboBox` / `Select` 是 Label / Input / Popover 按书写顺序。RAC 从不为
+「第二种内容」开第二个 prop。
+
+所以便利层（InfiniteCombobox 这类"触发器 + 浮层"的封装）**照抄 DialogTrigger 的位置契约**：
+
+```tsx
+const [triggerChild, panelSlots] = typeof children === 'function'
+  ? [children, null]                                    // 函数形态整个就是触发器
+  : (() => { const [first, ...rest] = Children.toArray(children); return [first, rest] as const })()
+```
+
+- 禁止 `slots?: ReactNode` / `content?: ReactNode` / `panel?: ReactNode` 这类第二通道。
+  `slots`（复数）在 React 生态里已经是 MUI / Base UI 的**组件替换表**（`slots={{ paper: X }}`），
+  本仓库同时在用 Base UI，同名不同义是实打实的坑。
+- RAC 的 `slot`（**单数**，字符串 prop）是另一回事：从父级 context 的 props 表里认领自己那份
+  （`slot="title"` / `slot="increment"`），仓库里 alert-dialog、calendar、accordion 都在用。别混。
+- 类型上要写 `ReactNode | ReactNode[] | ((state) => ReactElement)`。`ReactNode[]` 必须显式列出：
+  TS 只在 children 类型本身是数组类型时才允许多个 JSX children，不会去 `Iterable<ReactNode>` 里找。
+- 位置契约的代价写进 JSDoc：触发器不能被 Fragment 包住（那样第一个 child 是 Fragment，
+  cloneElement 的接线会落到 Fragment 上）。
+
+### 内容永远不走 prop：`?: ReactNode` 就是站错队
+
+判据是**配置 vs 内容**：
+
+| | 走哪 | 例子 |
+| --- | --- | --- |
+| **配置** —— 数字 / 枚举 / 布尔 / 尺寸 / 无障碍名 | prop | `rowHeight` `maxHeight` `loadMoreScrollOffset` `scrollbars` `firstPageLabel` |
+| **内容** —— 调用方要写 JSX 的东西 | **组合通道**（插槽或标记部件） | 状态文案、加载指示、终止行 |
+| **随状态变的内容** | **render prop** `(state) => ReactNode` | `summary` `pageIndicator`（RAC 先例：`renderEmptyState`） |
+
+所以看到 `xxx?: ReactNode` 出现在 props 上（`children` 除外）就停手 —— RAC 从不用 prop 传
+ReactNode。审计命令：
+
+```bash
+grep -rn "?: ReactNode$" packages/ui/src/components/*.tsx | grep -v "'children'"
+```
+
+**这条已经清零，别再加回去。** 历史欠账（2026-08 清掉）：`loadingMoreIndicator`
+（InfiniteSelectList / DataTable / InfiniteCombobox 透传三处）→ `InfiniteSelectLoadingMore` /
+`DataTableLoadingMore` 标记部件；`rowsPerPageLabel: ReactNode` → `string`（它是标签，
+和 `firstPageLabel` 一族同类，顺带让 `aria-label` 无条件正确）。
+
+**标记部件天生带默认值**，这是它比 prop 强的地方：`findComposedPart` 没找到就是 `undefined`，
+owner 照常渲染默认视觉。默认值住在 owner 的渲染处，不在 prop 的 `= xxx` 里，而且标记部件
+还能带 `className`，prop 只能带内容。
+
+```tsx
+const loadingMoreProps = findComposedPart(children, DataTableLoadingMore)
+…
+<TableLoadMoreItem {...loadingMoreProps} className={cn(base, loadingMoreProps?.className)}>
+  {loadingMoreProps?.children ?? <Spinner aria-hidden />}
+</TableLoadMoreItem>
+```
+
+默认视觉一律**无语言**（Spinner / 淡出细线 / 分隔线），不是文案 —— 基座零文案，
+一个要发 npm 的库不该往 DOM 里塞任何一种语言。
+
+标记部件的 props 类型要跟**落地元素**对齐：`ListBoxLoadMoreItem` 渲染成 div →
+`ComponentProps<'div'>`；`TableLoadMoreItem` 渲染成 `<tr>` → `ComponentProps<'tr'>`。
+写错了 spread 时 `ref` 类型会打架（`HTMLDivElement` vs `HTMLTableRowElement`）。
+
+RAC 的 loader 行只在 `isLoading && children` 都成立时才渲染可见行 —— **所以默认值不是
+锦上添花，是必需品**：没有默认值 = 翻页时列表末尾零反馈。
+
+### 部件三分法：普通插槽 / 标记部件 / leaf
+
+两个独立的轴 —— **属于哪棵树**（普通 React 树 vs RAC collection 文档）× **在哪儿渲染**
+（原地 vs 被 owner 提升）：
+
+| | 原地渲染 | 被 owner 提升 |
+| --- | --- | --- |
+| 普通 React 树 | **普通插槽** `InfiniteSelectEmpty` | **标记部件** `InfiniteSelectLoadingOverlay` / `NoMore` |
+| RAC collection 树 | **leaf 部件** `ListBoxItem` / `ListBoxLoadMoreItem` | — |
+
+选择顺序，停在第一个成立的：
+
+1. **调用方写在哪就能在哪正确渲染？→ 普通插槽。** 零机制，默认选它。
+2. **位置是组件的设计决定、不是调用方的排版自由？→ 标记部件。** 自己 `return null`，
+   owner 用 `findComposedPart` 捞 props 渲染到只有它知道的位置（绝对定位覆盖层、滚动流末尾）。
+   标记部件是**定制入口不是开关** —— 不组合它，默认视觉照样渲染（LoadingOverlay 默认 Spinner、
+   NoMore 默认一条淡出细线）。
+3. **要成为集合的一行（被键盘导航认识或明确跳过、算不算 `aria-setsize`、虚拟化时分不分到一行）？
+   → 底下必须落到 RAC leaf 部件。** `<ListBox>` 的 children 先被 collection builder 翻译成节点树，
+   普通 `<div>` 进不去；唯一「跟着内容滚但不算 item」的位置是 `ListBoxLoadMoreItem` 的 `LoaderNode`。
+
+**leaf 永远不是调用方的 API 面**：用户只写插槽，`ListBoxItem` / `ListBoxLoadMoreItem` 是 seam
+在「被提升的内容必须住进 collection」时的落地手段。②可以叠③（NoMore 就是）。
+
+代价：RAC 把 loader 行渲染成不可选中的 `role="option"`（listbox 合法子节点只有 option），
+DOM 上多一个 option；键盘和 `aria-setsize` 不受影响，但 `getAllByRole('option')` 会数到它 ——
+测试里数真实行要用 `[data-slot="…-item"]`。
+
 ## 常见错误（基线实测的原话）
 
 | 错误/借口 | 事实 |

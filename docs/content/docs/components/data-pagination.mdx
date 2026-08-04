@@ -6,7 +6,7 @@ description: offset 分页条 —— page / limit 独立受控，零文案设计
 offset 分页条：左侧摘要、右侧「每页条数选择器 + 页码指示 + 四个导航按钮」。
 组件自己**不产出任何可见文案** —— 页码指示默认是语言中立的 `3 / 13`，摘要、
 「每页」标签由外部注入，i18n 天然留在业务层。aria-label 有英文兜底（四个导航
-按钮，以及每页选择器在 `rowsPerPageLabel` 非字符串时的 `'Rows per page'`），
+按钮，以及每页选择器在不传 `rowsPerPageLabel` 时的 `'Rows per page'`），
 从业务层传译文即可覆盖。
 
 `page` 和 `limit` 各自支持受控 / 非受控（`useControllableState` 语义：
@@ -77,7 +77,7 @@ const { page, setPage, canNext } = useDataPaginationState({
 | `limitOptions` | `number[]` | `[10, 20, 50, 100]` | 每页条数选项 |
 | `showLimitChanger` | `boolean` | `true` | 是否渲染每页条数选择器 |
 | `summary` | `(state) => ReactNode` | — | 左侧摘要；不传则该槽位收起 |
-| `rowsPerPageLabel` | `ReactNode` | — | 选择器前的可见标签（不传则不渲染）。传字符串时同时作为选择器的 aria-label，否则 aria-label 兜底英文 `'Rows per page'` |
+| `rowsPerPageLabel` | `string` | — | 选择器前的可见标签（不传则不渲染），同时作为选择器的 aria-label；不传时 aria-label 兜底英文 `'Rows per page'`。是 `string` 不是 `ReactNode`——要富文本的内容走组合通道，一个「每页」标签不属于那种 |
 | `pageIndicator` | `(state) => ReactNode` | `page / totalPages` | 页码指示 |
 | `firstPageLabel` 等 4 个 | `string` | 英文 | 图标按钮的 aria-label，从业务层传译文 |
 | `className` | `string` | — | 根元素类名 |

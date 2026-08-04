@@ -18,6 +18,18 @@ export type ScrollAreaScrollbars = 'always' | 'hover' | 'hidden'
  * a native scrollbar lives inside that element and gets dimmed by the mask,
  * while a sibling scrollbar stays crisp. Put fade classes on the viewport via
  * `viewportClassName`, never on the root.
+ *
+ * `viewportRender` replaces the viewport element itself (Base UI's `render`).
+ * It exists so another library's scroll container can BE this viewport rather
+ * than sit inside it — React Aria's `Virtualizer` demands that its collection
+ * element is the scroller, and one shared element is the only way to keep both
+ * that and the sibling scrollbar. `InfiniteSelectList` is the caller.
+ *
+ * Use the FUNCTION form, never the element form: given an element, Base UI
+ * merges classNames by string concatenation, which stringifies a React Aria
+ * function `className` into the class attribute and silently kills it. The
+ * function form hands you Base UI's own props so you can compose them through
+ * `cn` and keep the function contract alive.
  */
 export function ScrollArea({
   className,
@@ -26,6 +38,7 @@ export function ScrollArea({
   scrollbars = 'hover',
   viewportClassName,
   viewportRef,
+  viewportRender,
   viewportStyle,
   ...props
 }: ScrollAreaPrimitive.Root.Props & {
@@ -33,6 +46,7 @@ export function ScrollArea({
   scrollbars?: ScrollAreaScrollbars
   viewportClassName?: string
   viewportRef?: Ref<HTMLDivElement>
+  viewportRender?: ScrollAreaPrimitive.Viewport.Props['render']
   viewportStyle?: CSSProperties
 }): ReactElement {
   return (
@@ -45,6 +59,7 @@ export function ScrollArea({
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
         ref={viewportRef}
+        render={viewportRender}
         style={viewportStyle}
         className={cn(
           `

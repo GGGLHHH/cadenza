@@ -149,6 +149,21 @@ Fragment 内有效，包进自定义组件会找不到（与 TabIndicator 同一
 
 （旧版的 `DataTableLoading` 文案插槽已移除，定制走 `DataTableLoadingOverlay`。）
 
+### DataTableLoadingMore:加载更多
+
+翻下一页时，滚动流末尾会出现一个加载行，**默认是一个 Spinner** —— 基座零文案，
+和磨砂覆盖层同一条规矩。要文字就在插槽通道里组合它：
+
+```tsx
+<DataTable {/* … */}>
+  <DataTableLoadingMore>加载更多…</DataTableLoadingMore>
+</DataTable>
+```
+
+同样是 `DataTableLoadingOverlay` 那种**标记部件**：原地不渲染，由基座提升到滚动流
+末尾；**定制入口不是开关**，不写也会渲染那个 Spinner。它落在 React Aria 的
+`TableLoadMoreItem` 上，所以 props 是 `ComponentProps<'tr'>` 而不是 `'div'`。
+
 ### DataTableError / DataTableRetry:错误与重试
 
 `isError` 时自渲染；`DataTableRetry` 自己接好基座的 `onRetry`（没有则不渲染），
@@ -181,7 +196,8 @@ props、内建守卫（`total=0` 不钳位、`limit` 非法兜底）与自定义
 <ComponentPreview name="data-table/infinite" align="stretch" />
 
 `maxHeight` 限定行区高度、表头 sticky —— 无限滚动需要一个会滚动的容器，
-所以这里必须传。`loadingMoreIndicator` 渲染在滚动流末尾：预取提前触发，
+所以这里必须传。加载更多的指示渲染在滚动流末尾（默认一个 Spinner，用
+`DataTableLoadingMore` 换成自己的文案）：预取提前触发，
 停在顶部的用户根本看不到它。
 
 demo 同时开了 `virtualized`，这不是巧合：**无限滚动的已加载集是无界累积的**
@@ -200,7 +216,7 @@ demo 同时开了 `virtualized`，这不是巧合：**无限滚动的已加载�
 
 ## 虚拟化
 
-开启 `virtualized` 后行渲染交给 TanStack Virtual（与 InfiniteSelect 同一套引擎）：
+开启 `virtualized` 后行渲染交给 TanStack Virtual：
 **任何时刻只有视口内可见的行、加上少量预渲染的行（overscan）存在于 DOM**，
 上下各一条不可交互的填充行撑住完整滚动高度，表格保持原生 `<table>`——
 sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 demo 一次拉满 10000 条：
@@ -216,6 +232,11 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
    Home / End、读屏播报的行数都以窗口为准。
 3. 因此**几百行以内不建议开**——不开时 React Aria 认识完整列表，上面这些能力
    都是全量的，而几百行的 DOM 根本不构成性能问题。
+
+> 这一点和 [InfiniteSelect](/docs/components/infinite-select#虚拟化) 不同：那边用的是
+> React Aria 自己的 `Virtualizer`，collection 与 DOM 解耦，虚拟化后键盘和读屏仍是全量的。
+> DataTable 换不过去——`Virtualizer` 会把行改成绝对定位，原生 `<table>` 的 sticky 表头、
+> 列固定和边框全部失效，所以这里保留 TanStack Virtual 并接受作用域变窄。
 
 给列设置 `width` 可以避免滚动时列宽随窗口内容轻微抖动（自动布局的表格列宽
 由可见内容决定）。
@@ -268,7 +289,6 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | `getRowId` | `(item: T) => string` | 取 `item.id` | 行 key 提取 |
 | `isLoading` / `isError` / `onRetry` | — | — | `isLoading` 统一渲染内建磨砂覆盖层（首屏给最低高度）；`isError` / `onRetry` 驱动错误插槽，见「插槽」 |
 | `hasNextPage` / `isFetchingNextPage` / `onLoadMore` | — | — | 无限滚动，见上文 |
-| `loadingMoreIndicator` | `ReactNode` | — | 列表末尾的加载更多指示（滚动流内） |
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
 | `selectionMode` | `'none' \| 'single' \| 'multiple'` | `'none'` | 行选择模式 |
 | `value` / `defaultValue` / `onChange` | `string` \| `string[]` | — | 便利层选择（跨页存档），签名随 `selectionMode` 切换，见「行选择与行动作」 |
