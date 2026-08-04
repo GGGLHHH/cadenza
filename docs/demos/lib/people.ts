@@ -58,17 +58,19 @@ export async function delay(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200))
 }
 
-/** 游标分页(无限滚动用)。 */
+/** 游标分页(无限滚动用)。`limit` 截断结果总数,用来演示「翻到底」。 */
 export async function fetchPeople(options: {
   cursor?: number
   query?: string
   pageSize?: number
+  limit?: number
 }): Promise<{ items: Person[], nextCursor?: number }> {
   await delay()
-  const { cursor = 0, query, pageSize = 20 } = options
-  const filtered = query === undefined || query === ''
+  const { cursor = 0, query, pageSize = 20, limit } = options
+  const matched = query === undefined || query === ''
     ? PEOPLE
     : PEOPLE.filter(person => person.name.toLowerCase().includes(query.toLowerCase()))
+  const filtered = limit === undefined ? matched : matched.slice(0, limit)
   const items = filtered.slice(cursor, cursor + pageSize)
   const next = cursor + pageSize
   return { items, nextCursor: next < filtered.length ? next : undefined }

@@ -1,4 +1,5 @@
 .cache
+.claude/worktrees/
 .DS_Store
 .githooks
 .idea

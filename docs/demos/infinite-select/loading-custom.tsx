@@ -31,19 +31,14 @@ export default function LoadingCustomDemo(): ReactElement {
       list={refreshingList}
       searchPlaceholder="搜索作曲家…"
       state={state}
-      slots={(
-        <InfiniteSelectLoadingOverlay className="backdrop-blur-xs">
-          <span className="
-            flex items-center gap-2 text-sm text-muted-foreground
-          "
-          >
-            <Spinner aria-hidden />
-            正在同步演出数据…
-          </span>
-        </InfiniteSelectLoadingOverlay>
-      )}
     >
       <DemoButton>打开看定制磨砂</DemoButton>
+      <InfiniteSelectLoadingOverlay className="backdrop-blur-xs">
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner aria-hidden />
+          正在同步演出数据…
+        </span>
+      </InfiniteSelectLoadingOverlay>
     </InfiniteCombobox>
   )
 }

@@ -1,0 +1,163 @@
+---
+title: Field
+description: 表单字段的布局家族 —— 标签、描述、错误、编组、分隔，纯 DOM、控件无关，一切字段解剖的地基
+---
+
+表单字段的布局家族，转正自 shadcn。**全部是纯 DOM**：`className` 处处是
+字符串、没有 render props，也不含任何控件逻辑 —— 控件放什么进来它不管。
+
+一个 `Field` 就是一个字段的一列（或一行）：标签、控件、描述、错误按序
+排好。标签与控件的关联走 **`htmlFor` → `id`**：控件把 `id` 落在真正的
+输入元素上，`FieldLabel htmlFor` 指向它，无障碍名和「点文字聚焦/切换」
+都由这条关联给出。这也是后续 box-only 控件（Checkbox / Radio / Switch，
+它们的根元素就是方框本身，文字**不**走 children）唯一的文字标签通道 ——
+Field 先落地，控件才有地方安家。
+
+## 基础用法
+
+`Field`（一列）+ `FieldLabel` + 控件 + `FieldDescription`：
+
+<ComponentPreview name="field/basic" />
+
+## 配 Select
+
+`Select` 的根元素是个 `div`（不是控件本身，也不可被 `<label>` 关联），触发器
+才是真正的控件 —— 所以 `id` 落在 `SelectTrigger` 上，`FieldLabel htmlFor`
+指过去。
+
+**同时还要给 `Select` 一个 `aria-label`。** 这两条通道各管一半，缺一不可：
+
+| 通道 | 管什么 | 缺了会怎样 |
+| --- | --- | --- |
+| `FieldLabel htmlFor` → `SelectTrigger id` | 点文字**聚焦并展开** | 文字点不动 |
+| `Select` 的 `aria-label` | **无障碍名** | 读屏只报当前值，标签整个丢失 |
+
+反直觉的地方在第二行：原生 `<label for>` 本来是能给按钮命名的，但 React Aria
+在触发器上自己设了 `aria-labelledby`，而它在无障碍名计算里**优先级高于**原生
+label —— 于是 `htmlFor` 提供的那个名字被彻底忽略。两个文本要写成一样的，
+它们服务的是两拨人。
+
+<ComponentPreview name="field/select" />
+
+**点标签会直接展开弹层**，这是本库加的默认行为。平台本身到聚焦为止：原生
+`<select>` 点 label 只聚焦，React Aria 在 `useSelect` 里也只调 `focus()`；而
+`Field` 这套解剖用的不是 React Aria 自己的 label，连那一步都没有，浏览器转发过来
+的是一个没有指针序列的裸 `click`，`usePress` 根本不认。所以 `Select` 的封装层补上了
+这一段 —— 不需要你在调用侧接任何东西。
+
+Checkbox / Radio / Switch 是另一种情况 —— 它们是 **box-only**：根元素就是那个
+16px 方块 / 轨道本身（见开头），文字塞进 children 会被挤进方块里，所以同样得
+走外部 `FieldLabel`。区别只在 `id` 的落点：它们落在隐藏的 `<input>` 上，而且
+通常配 `orientation="horizontal"`。
+
+## 配 InfiniteCombobox
+
+触发器是**你自己传进去的元素**（`children`，必须是 React Aria 可按压的），所以
+`id` 没法像 `Select` 那样由你写在部件上 —— React Aria 会给它派一个没人猜得到的
+生成 id。用 `triggerId` 把 `id` 交给它：
+
+<ComponentPreview name="field/infinite-combobox" />
+
+**这里不需要 `aria-label`。** 和 `Select` 正好相反，原因是触发器上没有
+`aria-labelledby`：
+
+| | 触发器上的 `aria-labelledby` | 结果 |
+| --- | --- | --- |
+| `Select` | React Aria 挂了（指向值 + 自身） | 压过原生 `<label for>`，**必须**另写 `aria-label` |
+| `InfiniteCombobox` | 没有 | 原生 `<label for>` 直接生效，**别**再写 `aria-label` |
+
+顺带一提，`InfiniteCombobox` 那个 `aria-label` prop 命名的是**弹层里的列表**
+（不传则回退到 `searchPlaceholder`），和触发器的名字是两回事，别混。
+
+加上 label 之后，按钮的无障碍名会从「按钮文字」换成「label 文字」，按钮文字降为
+它的内容：
+
+```
+加 label 前 → button "选择作曲家"
+加 label 后 → button "作曲家": 选择作曲家
+```
+
+这正是想要的读法 —— 名字是字段名，按钮文字是当前值。
+
+点标签同样**会展开**弹层，和 `Select` 一样由封装层补上（平台默认只聚焦）。
+
+## 编组
+
+一批相关字段用 `FieldSet` + `FieldLegend` 命名（语义是原生
+`fieldset` / `legend`），`FieldGroup` 负责排布与间距：
+
+<ComponentPreview name="field/fieldset" />
+
+## 分隔
+
+`FieldSeparator` 分隔两段；有 children 时文字压在分隔线中央：
+
+<ComponentPreview name="field/separator" />
+
+## 方向
+
+`orientation` 三个值：
+
+| 值 | 布局 | 用途 |
+| --- | --- | --- |
+| `vertical`（默认） | 标签在上、控件在下 | 常规输入字段 |
+| `horizontal` | 控件在前、文字在后，垂直居中 | box-only 控件（Checkbox / Radio / Switch）配 `FieldLabel` |
+| `responsive` | 窄时同 vertical，宽时左右分栏 | 设置页式表单 |
+
+`responsive` 的断点看的是 `FieldGroup` 的**容器宽度**（`@container`
+查询），不是视口 —— 同一段代码放进侧栏就自动回到纵向。宽屏下**长大的
+是左列**（控件贴右），所以左列要用 `FieldContent` 装「标签 + 描述」的
+文本块 —— 光放一个裸 `FieldLabel`，拉伸出来的就全是空白：
+
+<ComponentPreview name="field/responsive" />
+
+## 错误展示
+
+`FieldError` 负责展示**外部校验错误**（`role="alert"`）。`errors` 数组
+就是表单库吐出来的形状（`{ message?: string }[]`，TanStack Form 的
+`field.state.meta.errors` 直接对上）：重复消息去重，单条平铺，多条渲染
+成列表；`children` 优先于 `errors`；没内容就整个不渲染。
+
+<ComponentPreview name="field/error" />
+
+两个要点：
+
+- **`aria-describedby` 手动接**：给 `FieldError` 一个 `id`，控件的
+  `aria-describedby` 指过去。这条通道没有 context 替你接线 —— 换来的是
+  它在任何解剖里都能用，不依赖 RAC 字段组件。
+- **nullish 条目先过滤**：`undefined` 在去重时也占一个槽位，一条真消息
+  加一个 `undefined` 会渲染成单项列表而不是平铺文本。
+
+## 状态约定
+
+控件自身的 `isDisabled` / `isInvalid` 只管控件的视觉。要让整列文字跟着
+变灰 / 变红，在 `Field` 上手动挂 data 属性：
+
+| Field 上的属性 | 效果 |
+| --- | --- |
+| `data-disabled` | 标签等文字降为半透明 |
+| `data-invalid` | 整列文字变 destructive 色 |
+
+## Props
+
+所有部件都接受对应 DOM 元素的原生 props（`className` 是字符串）。特有的：
+
+| 部件 | 元素 | 特有 props |
+| --- | --- | --- |
+| `Field` | `div`（`role="group"`） | `orientation`：`'vertical' \| 'horizontal' \| 'responsive'`，默认 `vertical` |
+| `FieldGroup` | `div` | — |
+| `FieldLabel` | RAC `Label`（`label`） | `htmlFor`（关联通道）；`ref` 指向 `label` 元素 |
+| `FieldContent` | `div` | 横排时容纳标签 + 描述的列容器 |
+| `FieldTitle` | `div` | 非 `label` 场景的标题（无关联语义） |
+| `FieldDescription` | `p` | — |
+| `FieldError` | `div`（`role="alert"`） | `errors?: Array<{ message?: string } \| undefined>`；`children` 优先 |
+| `FieldSet` | `fieldset` | — |
+| `FieldLegend` | `legend` | `variant`：`'legend' \| 'label'`（字号），默认 `legend` |
+| `FieldSeparator` | `div` | `children` 压在分隔线中央 |
+
+每个部件都带 `data-slot="field-*"`，需要从外部定位时当选择器用。
+
+十个部件的 props 类型也一并导出：`FieldProps` / `FieldContentProps` /
+`FieldDescriptionProps` / `FieldErrorProps` / `FieldGroupProps` /
+`FieldLabelProps` / `FieldLegendProps` / `FieldSeparatorProps` /
+`FieldSetProps` / `FieldTitleProps`。

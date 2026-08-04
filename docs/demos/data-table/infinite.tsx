@@ -1,6 +1,9 @@
 import type { ReactElement } from 'react'
 import type { Person } from '../lib/people'
-import { DataTable } from '@gedatou/cadenza-ui'
+import {
+  DataTable,
+  DataTableLoadingMore,
+} from '@gedatou/cadenza-ui'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 import { personColumns } from './columns'
 import { tableSlots } from './slots'
@@ -13,12 +16,12 @@ export default function InfiniteDemo(): ReactElement {
     <DataTable<Person>
       aria-label="作曲家(无限滚动)"
       columns={personColumns}
-      loadingMoreIndicator="加载更多…"
       maxHeight={320}
       virtualized
       {...list}
     >
       {tableSlots}
+      <DataTableLoadingMore>加载更多…</DataTableLoadingMore>
     </DataTable>
   )
 }

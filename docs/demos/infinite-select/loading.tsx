@@ -32,17 +32,13 @@ export default function LoadingDemo(): ReactElement {
       list={loadingList}
       searchPlaceholder="搜索作曲家…"
       state={state}
-      slots={(
-        <>
-          <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
-          <InfiniteSelectError>
-            加载失败
-            <InfiniteSelectRetry>重试</InfiniteSelectRetry>
-          </InfiniteSelectError>
-        </>
-      )}
     >
       <DemoButton>永远在加载</DemoButton>
+      <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
+      <InfiniteSelectError>
+        加载失败
+        <InfiniteSelectRetry>重试</InfiniteSelectRetry>
+      </InfiniteSelectError>
     </InfiniteCombobox>
   )
 }

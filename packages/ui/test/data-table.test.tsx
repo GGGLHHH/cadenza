@@ -7,6 +7,7 @@ import {
   DataTable,
   DataTableEmpty,
   DataTableError,
+  DataTableLoadingMore,
   DataTableLoadingOverlay,
   DataTableRetry,
 } from '../src/components/data-table'
@@ -291,11 +292,12 @@ describe('dataTable interactions', () => {
         hasNextPage
         isFetchingNextPage
         items={many}
-        loadingMoreIndicator="More…"
         maxHeight={400}
         onLoadMore={() => {}}
         virtualized
-      />,
+      >
+        <DataTableLoadingMore>More…</DataTableLoadingMore>
+      </DataTable>,
     )
     expect(screen.getByText('More…')).not.toBeNull()
     expect(screen.getAllByRole('row').length).toBeLessThan(60)
@@ -461,9 +463,10 @@ describe('dataTable interactions', () => {
         hasNextPage
         isFetchingNextPage
         items={people}
-        loadingMoreIndicator="More…"
         onLoadMore={() => {}}
-      />,
+      >
+        <DataTableLoadingMore>More…</DataTableLoadingMore>
+      </DataTable>,
     )
     expect(screen.getByText('More…')).not.toBeNull()
   })

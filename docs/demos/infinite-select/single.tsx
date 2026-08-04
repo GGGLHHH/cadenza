@@ -1,6 +1,10 @@
 import type { ReactElement } from 'react'
 import type { Person } from '../lib/people'
-import { InfiniteCombobox, useInfiniteComboboxState } from '@gedatou/cadenza-ui'
+import {
+  InfiniteCombobox,
+  InfiniteSelectLoadingMore,
+  useInfiniteComboboxState,
+} from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
@@ -16,13 +20,13 @@ export default function SingleDemo(): ReactElement {
     <InfiniteCombobox<Person>
       getOption={getOption}
       list={list}
-      loadingMoreIndicator="加载更多…"
       onChange={setPicked}
       searchPlaceholder="搜索作曲家…"
-      slots={selectSlots}
       state={state}
     >
       <DemoButton>{picked ? picked.name : '选择作曲家'}</DemoButton>
+      {selectSlots}
+      <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
     </InfiniteCombobox>
   )
 }

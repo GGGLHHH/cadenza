@@ -7,7 +7,9 @@ import {
   InfiniteSelectEmpty,
   InfiniteSelectError,
   InfiniteSelectList,
+  InfiniteSelectLoadingMore,
   InfiniteSelectLoadingOverlay,
+  InfiniteSelectNoMore,
   InfiniteSelectRetry,
   InfiniteSelectSearch,
 } from '../src/components/infinite-select'
@@ -30,14 +32,15 @@ beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn()
   // Base UI's ScrollArea polls viewport.getAnimations(), absent in jsdom.
   Element.prototype.getAnimations = () => []
-  // TanStack Virtual sizes its window from offsetWidth/offsetHeight, which are
-  // always 0 in layout-less jsdom — every row would be culled. Pretend to be a
-  // viewport.
-  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+  // React Aria's Virtualizer sizes its window from clientWidth/clientHeight and
+  // deliberately falls back to Infinity — rendering the whole collection — when
+  // it detects a test env that has NOT mocked them (ScrollView.mjs). Mocking
+  // them on the prototype is the opt-in that makes windowing observable here.
+  Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
     configurable: true,
     get: () => 256,
   })
-  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+  Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
     configurable: true,
     get: () => 288,
   })
@@ -168,7 +171,11 @@ describe('infiniteSelect selection', () => {
       </InfiniteSelect>,
     )
     expect(screen.getByRole('listbox')).not.toBeNull()
-    expect(screen.getAllByRole('option')).toHaveLength(2)
+    // Two data rows plus the end-of-list mark. React Aria renders loader rows
+    // as non-selectable `role="option"` elements — a listbox may only contain
+    // options — so count the real rows by slot, not by role.
+    expect(screen.getAllByRole('option')).toHaveLength(3)
+    expect(document.querySelectorAll('[data-slot="infinite-select-item"]')).toHaveLength(2)
   })
 
   it('single: reports the picked item, then undefined on toggle-off', async () => {
@@ -239,26 +246,106 @@ describe('infiniteSelect selection', () => {
     expect(rendered).toBeLessThan(60)
   })
 
-  it('virtualized prefetch: fires onLoadMore near the tail, stays quiet far from it', () => {
-    const onLoadMore = vi.fn()
+  // Prefetch itself is React Aria's: the sentinel fires from an
+  // IntersectionObserver, which jsdom's stub can never trip. What stays ours is
+  // whether the sentinel is in the collection at all — assert that, in both
+  // render paths, and leave the trigger distance to RAC's `scrollOffset`.
+  it.each([true, false])('the tail row switches from load-more to end-of-list (virtualized: %s)', (virtualized) => {
     const many = Array.from({ length: 1000 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
-    const { unmount } = render(
-      <InfiniteSelect getOption={getOption} hasNextPage items={many} onLoadMore={onLoadMore}>
-        <InfiniteSelectList virtualized />
+    const loadMore = '[data-slot="infinite-select-load-more"]'
+    const noMore = '[data-slot="infinite-select-no-more"]'
+    const { container, rerender } = render(
+      <InfiniteSelect getOption={getOption} hasNextPage items={many} onLoadMore={vi.fn()}>
+        <InfiniteSelectList virtualized={virtualized} />
       </InfiniteSelect>,
     )
-    // Window sits at the top; ~30k px of unrendered rows remain below.
-    expect(onLoadMore).not.toHaveBeenCalled()
-    unmount()
+    // More to come and not fetching: the sentinel is a 0×0 probe, no visible row.
+    expect(container.querySelector('[data-testid="loadMoreSentinel"]')).not.toBeNull()
+    expect(container.querySelector(loadMore)).toBeNull()
+    expect(container.querySelector(noMore)).toBeNull()
 
-    const few = Array.from({ length: 5 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
+    rerender(
+      <InfiniteSelect
+        getOption={getOption}
+        hasNextPage
+        isFetchingNextPage
+        items={many}
+        onLoadMore={vi.fn()}
+      >
+        <InfiniteSelectList virtualized={virtualized} />
+        <InfiniteSelectLoadingMore>loading…</InfiniteSelectLoadingMore>
+      </InfiniteSelect>,
+    )
+    expect(container.querySelector(loadMore)?.textContent).toBe('loading…')
+    expect(container.querySelector(noMore)).toBeNull()
+
+    // No indicator passed: the row still renders, with the copyless default.
+    // React Aria only renders it when it has children — an empty one would
+    // mean the next page lands with no feedback at all.
+    rerender(
+      <InfiniteSelect
+        getOption={getOption}
+        hasNextPage
+        isFetchingNextPage
+        items={many}
+        onLoadMore={vi.fn()}
+      >
+        <InfiniteSelectList virtualized={virtualized} />
+      </InfiniteSelect>,
+    )
+    expect(container.querySelector(`${loadMore} [data-slot="spinner"]`)).not.toBeNull()
+
+    rerender(
+      <InfiniteSelect getOption={getOption} items={many} onLoadMore={vi.fn()}>
+        <InfiniteSelectList virtualized={virtualized} />
+      </InfiniteSelect>,
+    )
+    expect(container.querySelector(loadMore)).toBeNull()
+    // Default: a mark, not a sentence — the base ships zero copy.
+    expect(container.querySelector(noMore)?.textContent).toBe('')
+    expect(container.querySelector('[data-slot="infinite-select-no-more-rule"]')).not.toBeNull()
+  })
+
+  it('infiniteSelectNoMore replaces the default end-of-list mark, and only then', () => {
     render(
-      <InfiniteSelect getOption={getOption} hasNextPage items={few} onLoadMore={onLoadMore}>
+      <InfiniteSelect getOption={getOption} items={items}>
+        <InfiniteSelectList />
+        <InfiniteSelectNoMore>没有更多数据</InfiniteSelectNoMore>
+      </InfiniteSelect>,
+    )
+    expect(document.querySelector('[data-slot="infinite-select-no-more"]')?.textContent).toBe('没有更多数据')
+    expect(document.querySelector('[data-slot="infinite-select-no-more-rule"]')).toBeNull()
+  })
+
+  it('no end-of-list mark while a next page exists or the list is empty', () => {
+    const { rerender } = render(
+      <InfiniteSelect getOption={getOption} hasNextPage items={items} onLoadMore={vi.fn()}>
+        <InfiniteSelectList />
+        <InfiniteSelectNoMore>没有更多数据</InfiniteSelectNoMore>
+      </InfiniteSelect>,
+    )
+    expect(document.querySelector('[data-slot="infinite-select-no-more"]')).toBeNull()
+
+    rerender(
+      <InfiniteSelect getOption={getOption} items={[]}>
+        <InfiniteSelectList />
+        <InfiniteSelectNoMore>没有更多数据</InfiniteSelectNoMore>
+      </InfiniteSelect>,
+    )
+    expect(document.querySelector('[data-slot="infinite-select-no-more"]')).toBeNull()
+  })
+
+  it('virtualized: the collection keeps every loaded row even though the DOM does not', () => {
+    const many = Array.from({ length: 1000 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
+    render(
+      <InfiniteSelect getOption={getOption} items={many}>
         <InfiniteSelectList virtualized />
       </InfiniteSelect>,
     )
-    // The window covers the whole list: within a viewport of the tail.
-    expect(onLoadMore).toHaveBeenCalled()
+    const options = screen.getAllByRole('option')
+    expect(options.length).toBeLessThan(60)
+    // Windowing is a DOM concern; screen readers still hear the full count.
+    expect(options[0].getAttribute('aria-setsize')).toBe('1000')
   })
 
   it('renderItem receives the loaded-list index in both render paths', () => {

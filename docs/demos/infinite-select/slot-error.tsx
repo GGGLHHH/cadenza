@@ -4,6 +4,7 @@ import {
   InfiniteCombobox,
   InfiniteSelectEmpty,
   InfiniteSelectError,
+  InfiniteSelectLoadingMore,
   InfiniteSelectRetry,
   useInfiniteComboboxState,
 } from '@gedatou/cadenza-ui'
@@ -20,20 +21,16 @@ export default function ErrorSlotDemo(): ReactElement {
     <InfiniteCombobox<Person>
       getOption={getOption}
       list={list}
-      loadingMoreIndicator="加载更多…"
       searchPlaceholder="搜索作曲家…"
       state={state}
-      slots={(
-        <>
-          <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
-          <InfiniteSelectError>
-            加载失败
-            <InfiniteSelectRetry>重试</InfiniteSelectRetry>
-          </InfiniteSelectError>
-        </>
-      )}
     >
       <DemoButton>首次加载会失败</DemoButton>
+      <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
+      <InfiniteSelectError>
+        加载失败
+        <InfiniteSelectRetry>重试</InfiniteSelectRetry>
+      </InfiniteSelectError>
+      <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
     </InfiniteCombobox>
   )
 }

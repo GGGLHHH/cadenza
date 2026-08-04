@@ -42,22 +42,18 @@ export default function FooterDemo(): ReactElement {
       searchPlaceholder="搜索作曲家…"
       state={state}
       value={ids}
-      slots={(
-        <>
-          {selectSlots}
-          <InfiniteSelectFooter>
-            <InfiniteSelectClearButton>清空</InfiniteSelectClearButton>
-            <InfiniteSelectFooterSeparator />
-            <FooterSelectedCount />
-            <InfiniteSelectFooterSeparator />
-            <InfiniteSelectConfirmButton>确定</InfiniteSelectConfirmButton>
-          </InfiniteSelectFooter>
-        </>
-      )}
     >
       <DemoButton>
         {ids.length > 0 ? `已选 ${ids.length} 位` : 'footer 三件套 + 自定义部件'}
       </DemoButton>
+      {selectSlots}
+      <InfiniteSelectFooter>
+        <InfiniteSelectClearButton>清空</InfiniteSelectClearButton>
+        <InfiniteSelectFooterSeparator />
+        <FooterSelectedCount />
+        <InfiniteSelectFooterSeparator />
+        <InfiniteSelectConfirmButton>确定</InfiniteSelectConfirmButton>
+      </InfiniteSelectFooter>
     </InfiniteCombobox>
   )
 }
