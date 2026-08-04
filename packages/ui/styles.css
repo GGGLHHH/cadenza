@@ -856,6 +856,24 @@
   cursor: not-allowed;
 }
 
+/* A Select's menu opens on press START, a few pixels under the trigger, and
+   React Aria commits an option on any mouse release over it — the press does
+   not have to have begun there (see SelectTrigger's JSDoc). So an ordinary
+   click near the trigger's lower edge can pick the first option by accident.
+   SelectTrigger marks the document for as long as the press could still be
+   that, and the list is untargetable meanwhile: the release lands on the
+   popover and commits nothing.
+
+   A stylesheet rule rather than an inline style on the list, because the list
+   is what the press is busy creating — there is no element to reach for when
+   the press starts, and any guess about which frame it arrives on is wrong on
+   a machine slower than the one it was guessed on. Unlayered for the same
+   reason as the cursor rules above: `pointer-events-none` is a utility, and no
+   @layer rule can outrank the utilities layer. */
+[data-select-press-grace] [data-slot="select-list"] {
+  pointer-events: none;
+}
+
 /* An action in flight is busy, not forbidden. React Aria marks a pending
    button with BOTH aria-disabled (matching the not-allowed rules above) and
    data-pending — these come later at the same zero specificity, so the wait

@@ -1,6 +1,12 @@
 'use client'
 
-import type { ComponentProps, ReactElement, ReactNode, RefAttributes } from 'react'
+import type {
+  ComponentProps,
+  ReactElement,
+  ReactNode,
+  PointerEvent as ReactPointerEvent,
+  RefAttributes,
+} from 'react'
 import type {
   ListBoxProps,
   ListBoxSectionProps,
@@ -8,7 +14,7 @@ import type {
   SelectValueProps as RACSelectValueProps,
   SelectValueRenderProps,
 } from 'react-aria-components'
-import { use } from 'react'
+import { use, useEffect, useRef } from 'react'
 import { SelectStateContext } from 'react-aria-components'
 import {
   SelectContent,
@@ -137,8 +143,38 @@ export type SelectSeparatorProps = ComponentProps<typeof SelectSeparator>
 export type SelectEmptyProps = ComponentProps<typeof SelectEmpty>
 
 /**
- * The trigger, plus the one behaviour this seam adds: a click forwarded from an
- * associated `<label for>` opens the menu.
+ * How far the pointer must travel, while held, before a release over an option
+ * counts as a deliberate drag-select rather than a drift during a click.
+ *
+ * Base UI reads 8px as a drag, which does not transfer: its popup puts the
+ * selected item under the cursor, so travel means leaving that item, and the
+ * item under the cursor is guarded by time alone. Here the menu opens below —
+ * the first option starts about 8px under the trigger's bottom edge, so an 8px
+ * threshold unlocks exactly the drift this is meant to catch. The number has to
+ * clear the gap plus most of a 28px row, and stay under the ~38px a drag from
+ * the middle of the trigger to the first option covers.
+ */
+const DRAG_UNLOCK_PX = 24
+
+/**
+ * How long the pointer must stay down before a release over an option counts as
+ * deliberate on its own. Base UI's `SELECTED_DELAY`.
+ */
+const HOLD_UNLOCK_MS = 400
+
+/**
+ * Marks the document while a press on a trigger is still unclassified. Paired
+ * with the rule in `styles.css` that makes select lists untargetable — see
+ * {@link SelectTrigger}. Exported so a consumer styling around it has a name to
+ * refer to rather than a string copied out of the stylesheet.
+ */
+export const PRESS_GRACE_ATTRIBUTE = 'data-select-press-grace'
+
+/**
+ * The trigger. Two behaviours live here that React Aria does not provide, both
+ * about the same thing: what a press on the trigger is allowed to do.
+ *
+ * ## A click forwarded from an associated `<label for>` opens the menu
  *
  * React Aria deliberately stops at focus — `useSelect`'s own `labelProps.onClick`
  * only calls `focus()`, matching a native `<select>`. And when the label is not
@@ -157,9 +193,103 @@ export type SelectEmptyProps = ComponentProps<typeof SelectEmpty>
  * Deliberately stateless: tracking the pointer sequence instead looks tempting
  * and does not work, because React Aria's overlay swallows the trigger's own
  * click once the menu is open, so any flag set on `pointerdown` is never cleared.
+ *
+ * ## A press that opens the menu cannot also pick an option
+ *
+ * The menu opens on press *start*, four pixels under the trigger. Release ten
+ * pixels lower — a drift, not a gesture — and the pointer is over the first
+ * option, which commits. Nothing about that requires the press to have started
+ * on the option:
+ *
+ * ```js
+ * // react-aria/usePress.mjs — the element's own pointerup handler
+ * if (e.button === 0 && !state.isPressed)
+ *   triggerPressUpEvent(e, state.pointerType || e.pointerType)
+ * ```
+ *
+ * `!state.isPressed` is not a guard against foreign presses, it *selects* for
+ * them: an element mid-press defers to `onClick` instead, so this branch exists
+ * precisely for a release the element did not start. React Aria then wires that
+ * branch up for every option — `useSelect` hands the listbox
+ * `shouldSelectOnPressUp: true` and `shouldFocusOnHover: true`, whose product is
+ * `useOption`'s `allowsDifferentPressOrigin`, which is what subscribes
+ * `onPressUp` to selection. It is the native `<select>` press-drag-release
+ * gesture, and it fires for an ordinary click that drifted.
+ *
+ * So the press is classified, on the two axes Base UI's Select uses (its
+ * `SelectTrigger`/`SelectItem` pair, same bug, same fix). Until it reads as a
+ * gesture the list is made untargetable, so the release lands on the popover and
+ * commits nothing:
+ *
+ * - travelled more than {@link DRAG_UNLOCK_PX} → a drag, unlock
+ * - held longer than {@link HOLD_UNLOCK_MS} → deliberate, unlock
+ * - released → unlock on the next tick, after this release is over
+ *
+ * `pointer-events` rather than swallowing the event: `stopPropagation` on a
+ * `pointerup` also takes it from React Aria's own global listener (the one
+ * `usePress` registers on `document` at press start), and a library has no
+ * business deleting an event other code is listening for. Mouse only — the
+ * `onPressUp` above only selects for `pointerType === 'mouse'`, so touch and pen
+ * were never affected and must not start being.
+ *
+ * The lock is an attribute on the document element, paired with a rule in
+ * `styles.css`, rather than an inline style on the list. The list does not exist
+ * yet when the press starts — the menu it belongs to is what the press is
+ * opening — so anything that reaches for the element has to guess when it lands,
+ * and that guess is wrong on any machine where React commits a frame later than
+ * this one. A rule that is already in the stylesheet applies the moment the list
+ * mounts, whenever that is.
  */
-function SelectTrigger({ onClickCapture, ...props }: SelectTriggerProps): ReactElement {
+function SelectTrigger({ onClickCapture, onPointerDown, ...props }: SelectTriggerProps): ReactElement {
   const state = use(SelectStateContext)
+  // The teardown of the press currently being classified, if any. Also the
+  // unmount safety net: a press that outlives its trigger still lets go.
+  const unlockRef = useRef<(() => void) | null>(null)
+  useEffect(() => () => unlockRef.current?.(), [])
+
+  const lockUntilClassified = (event: ReactPointerEvent<HTMLButtonElement>): void => {
+    unlockRef.current?.()
+    if (event.button !== 0 || event.pointerType !== 'mouse')
+      return
+
+    const trigger = event.currentTarget
+    const doc = trigger.ownerDocument
+    const view = doc.defaultView
+    if (view === null)
+      return
+
+    const originX = event.clientX
+    const originY = event.clientY
+    let holdTimer = 0
+    let releaseTimer = 0
+
+    const unlock = (): void => {
+      unlockRef.current = null
+      doc.documentElement.removeAttribute(PRESS_GRACE_ATTRIBUTE)
+      doc.removeEventListener('pointermove', onMove, true)
+      doc.removeEventListener('pointerup', onRelease, true)
+      view.clearTimeout(holdTimer)
+      view.clearTimeout(releaseTimer)
+    }
+
+    function onMove(moved: PointerEvent): void {
+      if (Math.abs(moved.clientX - originX) > DRAG_UNLOCK_PX
+        || Math.abs(moved.clientY - originY) > DRAG_UNLOCK_PX) {
+        unlock()
+      }
+    }
+
+    // Not on this release — the guard has to still be up while it is dispatched.
+    function onRelease(): void {
+      releaseTimer = view!.setTimeout(unlock, 0)
+    }
+
+    unlockRef.current = unlock
+    doc.documentElement.setAttribute(PRESS_GRACE_ATTRIBUTE, '')
+    doc.addEventListener('pointermove', onMove, true)
+    doc.addEventListener('pointerup', onRelease, true)
+    holdTimer = view.setTimeout(unlock, HOLD_UNLOCK_MS)
+  }
 
   return (
     <SelectTriggerPrimitive
@@ -171,6 +301,10 @@ function SelectTrigger({ onClickCapture, ...props }: SelectTriggerProps): ReactE
         if (landedOutside && event.detail !== 0)
           state?.toggle()
         onClickCapture?.(event)
+      }}
+      onPointerDown={(event) => {
+        lockUntilClassified(event)
+        onPointerDown?.(event)
       }}
     />
   )

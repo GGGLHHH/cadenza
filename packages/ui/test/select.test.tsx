@@ -1,8 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createRef } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Field, FieldLabel } from '../src/components/field'
 import {
+  PRESS_GRACE_ATTRIBUTE,
   Select,
   SelectContent,
   SelectEmpty,
@@ -203,5 +204,114 @@ describe('selectEmpty only works through renderEmptyState', () => {
     // base `hidden` class never lifts.
     expect(empty).not.toBeNull()
     expect(list?.contains(empty)).toBe(false)
+  })
+})
+
+describe('the press that opens the menu cannot also pick an option', () => {
+  // jsdom has no layout and no hit testing, so the end of the chain — a release
+  // over an option not committing — is not reproducible here; that half is
+  // browser-verified. What is testable is the guard itself: whether the document
+  // is marked at each point of the press, on both of its axes. The stylesheet
+  // does the rest, and it needs no element to exist: the list the mark applies
+  // to is what the press is still busy opening.
+  function press(options: { pointerType?: string, button?: number } = {}): void {
+    const { container } = render(
+      <Select aria-label="水果">
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem id="apple">苹果</SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>,
+    )
+    fireEvent.pointerDown(container.querySelector('[data-slot=select-trigger]')!, {
+      button: options.button ?? 0,
+      clientX: 100,
+      clientY: 100,
+      pointerType: options.pointerType ?? 'mouse',
+    })
+  }
+
+  const isLocked = (): boolean => document.documentElement.hasAttribute(PRESS_GRACE_ATTRIBUTE)
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('marks the document while the press is still unclassified', () => {
+    press()
+    expect(isLocked()).toBe(true)
+  })
+
+  // The mark has to be up before the list can possibly exist — that is the whole
+  // point of doing it in the stylesheet — so it goes on synchronously with the
+  // press, not a frame later.
+  it('marks it synchronously, without waiting for the menu to render', () => {
+    press()
+    expect(document.querySelector('[data-slot=select-list]')).toBeNull()
+    expect(isLocked()).toBe(true)
+  })
+
+  it('unlocks once the pointer travels far enough — the drag-select gesture', () => {
+    press()
+    fireEvent.pointerMove(document, { clientX: 100, clientY: 104 })
+    expect(isLocked()).toBe(true) // 4px:抖动
+    // 10px 是复现那个 bug 的位移 —— 刚好够到第一项,所以它必须仍然算抖动
+    fireEvent.pointerMove(document, { clientX: 100, clientY: 110 })
+    expect(isLocked()).toBe(true)
+    fireEvent.pointerMove(document, { clientX: 100, clientY: 130 })
+    expect(isLocked()).toBe(false) // 30px:确实在拖
+  })
+
+  it('unlocks once the press has been held long enough', () => {
+    press()
+    vi.advanceTimersByTime(399)
+    expect(isLocked()).toBe(true)
+    vi.advanceTimersByTime(2)
+    expect(isLocked()).toBe(false)
+  })
+
+  // The release is what would commit, so the guard has to survive its dispatch
+  // and only stand down afterwards.
+  it('stays up through the release, then lets go', () => {
+    press()
+    fireEvent.pointerUp(document, { clientX: 100, clientY: 100 })
+    expect(isLocked()).toBe(true)
+    vi.advanceTimersByTime(1)
+    expect(isLocked()).toBe(false)
+  })
+
+  it('leaves touch alone — only a mouse release ever committed', () => {
+    press({ pointerType: 'touch' })
+    expect(isLocked()).toBe(false)
+  })
+
+  it('leaves pen alone', () => {
+    press({ pointerType: 'pen' })
+    expect(isLocked()).toBe(false)
+  })
+
+  it('leaves non-primary buttons alone', () => {
+    press({ button: 2 })
+    expect(isLocked()).toBe(false)
+  })
+
+  it('still runs an onPointerDown the caller brought', () => {
+    const spy = vi.fn()
+    const { container } = render(
+      <Select aria-label="水果">
+        <SelectTrigger onPointerDown={spy}><SelectValue /></SelectTrigger>
+        <SelectContent><SelectItem id="apple">苹果</SelectItem></SelectContent>
+      </Select>,
+    )
+    fireEvent.pointerDown(container.querySelector('[data-slot=select-trigger]')!, {
+      button: 0,
+      pointerType: 'mouse',
+    })
+    expect(spy).toHaveBeenCalledTimes(1)
   })
 })
