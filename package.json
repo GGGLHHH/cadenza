@@ -10,6 +10,7 @@
     "build": "pnpm -r run build",
     "dev": "pnpm -r --parallel run dev",
     "lint": "eslint",
+    "fix": "eslint --fix",
     "test": "vitest",
     "typecheck": "tsc && pnpm -r run typecheck",
     "release": "bumpp --no-verify",
