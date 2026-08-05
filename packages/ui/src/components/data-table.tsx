@@ -13,7 +13,6 @@ import { createContext, use, useEffect, useLayoutEffect, useMemo, useRef } from 
 import { createChangeEventDetails, createGenericEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
 import { cn, dataAttr } from '#lib/utils'
-import { Checkbox } from '#primitives/checkbox'
 import {
   TableBody,
   TableCell,
@@ -22,6 +21,7 @@ import {
   TableRow,
 } from '#primitives/table'
 import { Button } from './button'
+import { Checkbox } from './checkbox'
 import { LoadingOverlay } from './loading-overlay'
 import { ScrollArea } from './scroll-area'
 import { Spinner } from './spinner'
