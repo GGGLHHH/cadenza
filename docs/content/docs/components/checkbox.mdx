@@ -1,0 +1,125 @@
+---
+title: Checkbox
+description: box-only 的复选框 —— id 落在隐藏 input 上，一条 htmlFor 同时管点击与无障碍名
+---
+
+Base UI 的 `Checkbox.Root` 装进 shadcn 的 base-nova 盒子。封装层只补了一件事：
+[半选态的样子](#半选)。
+
+它是 **box-only** 的：根元素渲染一个 `<span role="checkbox">`，旁边跟一个隐藏的
+`<input type="checkbox">` —— 所以根元素**就是**那个方块，再没有别的。文字得交给
+同级的 `FieldLabel`（见 [Field](/docs/components/field)）。
+
+## 基础用法
+
+`Field orientation="horizontal"` + `Checkbox id` + `FieldLabel htmlFor`；要带描述时，
+用 `FieldContent` 装「标签 + 描述」那一列：
+
+<ComponentPreview name="checkbox/basic" />
+
+**一条 `htmlFor` 把两件事都买下了**，值得知道为什么 —— 因为 `id` 并没有落在看上去的
+那个地方：
+
+| 通道 | 管什么 |
+| --- | --- |
+| `FieldLabel htmlFor` → `Checkbox id` | 点文字切换 **+** 无障碍名 |
+
+`id` 落在**隐藏的那个 `<input>`** 上（可见的方块自己留一个生成的 id）。于是原生
+`<label for>` 把点击转发给这个 input —— 切换正是它完成的；与此同时 Base UI 反查
+`input.labels`，把 label 的 id 镜像到方块上当 `aria-labelledby` —— 屏幕阅读器读到的
+名字由此而来。不需要第二个 `aria-label`，封装层也不用补任何点击接线。
+
+压根没有可见文字时（比如表格里每行一个）才给 `aria-label`。
+
+上面第二个是禁用的：控件自己的 `disabled` 只管控件的视觉，要让整列文字跟着变灰，
+按 [Field](/docs/components/field) 的状态约定在 `Field` 上手动挂 `data-disabled`。
+
+## 半选
+
+<ComponentPreview name="checkbox/indeterminate" />
+
+`indeterminate` 是一个**显示态**，和 `checked` 正交，不是 `checked` 的第三个取值 ——
+渲染出来是 `aria-checked="mixed"`。所以「全选」框的写法就是两个值各算各的：全勾时
+`checked`，只勾了一部分时 `indeterminate`。
+
+Base UI 另有一个 `parent` prop 专做这件事，但它必须待在 `CheckboxGroup` 里，而本库
+**没有提升那个部件** —— 上面的 demo 因此自己算这两个值。
+
+⚠️ 没有 group 包着时 `parent` 不是「不起作用」，而是**有害**：它会把隐藏 input 的
+`name` 清空（这个字段从 `FormData` 里整个消失）、跳过 `uncheckedValue` 那个 input，
+并在框上打一个 `data-parent=""`。别在 group 之外用它。
+
+**那条横杠是封装层补的。** base-nova 的盒子只画 `data-checked`：半选时既不填色、
+里面那个对勾还在，看上去和「勾上了」一模一样。所以 `Checkbox` 在默认 `className` 里
+按 `data-indeterminate` 填色、藏掉对勾、用 `before` 画出横杠 —— 盒子里的指示器是部件
+自己渲染的，没有可替换的 children，只能走 CSS。这条修复同样落在
+[DataTable](/docs/components/data-table) 的表头全选上。
+
+## 受控
+
+<ComponentPreview name="checkbox/controlled" />
+
+受控三件套是 `checked` / `defaultChecked` / `onCheckedChange`。回调的第二参是真的
+`ChangeEventDetails`（导出名 `CheckboxChangeEventDetails`）：
+
+- `reason` **恒为 `'none'`** —— 上游给复选框就没派第二种 reason，别指望靠它分辨来源。
+- `cancel()` 会被尊重：调了它，组件内部那份状态就不推进。
+
+受控时显示的本来就是你的 `checked`，`cancel()` 拦下的是组件内部那份看不见的状态；
+非受控（只给 `defaultChecked`）时，那份状态就是显示的那份，于是 `cancel()` 直接把这
+一下勾选拦住 —— demo 里第二个框就是这样，不写任何外部 state 也取消不掉。
+
+## 表单
+
+序列化走原生：给了 `name`，那个隐藏 input 就参与提交 —— 勾着时提交 `value`（不给
+`value` 就是原生的 `"on"`），没勾时提交 `uncheckedValue`，默认什么都不提交，和原生
+复选框一致。
+
+## 状态与 className
+
+`className` 通到的是 Base UI 的 slot，所以函数形态成立：`(state) => string | undefined`。
+那个 state 就是 `CheckboxState`：
+
+| `data-*` | `CheckboxState` 里的名字 | 出现时机 |
+| --- | --- | --- |
+| `data-checked` / `data-unchecked` | `checked` | 勾着 / 没勾。**`indeterminate` 时两个都不出现** |
+| `data-indeterminate` | `indeterminate` | 半选。封装层的横杠样式挂在这个属性上 |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-readonly` | `readOnly` | `readOnly` |
+| `data-required` | `required` | `required` |
+
+`CheckboxState` 里还有 Field 那一组（`valid` / `touched` / `dirty` / `filled` /
+`focused`）。它们**只在 Base UI 的 `Field.Root` 里才会动** —— 本库的 `Field` 不是它
+（那是纯 DOM 布局），所以在这里这组值不会变。
+
+## 选择列
+
+[DataTable](/docs/components/data-table) 的选择列渲染的就是这个 Checkbox：每行一个，
+表头那个「全选」用的正是上面那套 `checked` + `indeterminate` 的算法。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `id` | `string` | — | 落在隐藏的 `<input>` 上，`FieldLabel htmlFor` 指这里 |
+| `defaultChecked` | `boolean` | `false` | 非受控初始勾选态 |
+| `checked` | `boolean` | — | 受控勾选态 |
+| `onCheckedChange` | `(checked: boolean, eventDetails: CheckboxChangeEventDetails) => void` | — | 勾选变化回调。`reason` 恒为 `'none'`，`cancel()` 拒绝这次变更 |
+| `indeterminate` | `boolean` | `false` | 半选显示态，与 `checked` 正交 |
+| `disabled` | `boolean` | `false` | 忽略用户交互 |
+| `readOnly` | `boolean` | `false` | 只读：不能勾也不能取消 |
+| `required` | `boolean` | `false` | 提交表单前必须勾上 |
+| `name` | `string` | — | 表单字段名，隐藏 input 靠它参与提交 |
+| `value` | `string` | — | 勾着时提交的值；不给就是原生的 `"on"` |
+| `uncheckedValue` | `string` | — | 没勾时提交的值；不给就什么都不提交 |
+| `form` | `string` | — | 拥有这个隐藏 input 的表单 id，控件渲染在表单之外时用 |
+| `parent` | `boolean` | `false` | Base UI `CheckboxGroup` 的能力，本库未提升 —— 在 group 之外打开会清空 `name`，见[半选](#半选)一节 |
+| `inputRef` | `Ref<HTMLInputElement>` | — | 拿到那个隐藏的 `<input>` |
+| `nativeButton` | `boolean` | `false` | 用 `render` 换成真 `<button>` 时才打开；打开后 `id` 改落在按钮上 |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 换掉渲染的元素 |
+| `className` | `string \| ((state: CheckboxState) => string \| undefined)` | — | 类名。排在封装层那组半选样式之后，冲突时你的赢 |
+| 其余 | Base UI `Checkbox.Root` 的 props（`span` 的原生属性 + `ref`） | — | 透传 |
+
+三个类型一并导出：`CheckboxProps` / `CheckboxState` / `CheckboxChangeEventDetails`。

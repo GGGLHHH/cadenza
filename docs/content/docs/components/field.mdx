@@ -9,9 +9,8 @@ description: 表单字段的布局家族 —— 标签、描述、错误、编�
 一个 `Field` 就是一个字段的一列（或一行）：标签、控件、描述、错误按序
 排好。标签与控件的关联走 **`htmlFor` → `id`**：控件把 `id` 落在真正的
 输入元素上，`FieldLabel htmlFor` 指向它，无障碍名和「点文字聚焦/切换」
-都由这条关联给出。这也是后续 box-only 控件（Checkbox / Radio / Switch，
-它们的根元素就是方框本身，文字**不**走 children）唯一的文字标签通道 ——
-Field 先落地，控件才有地方安家。
+都由这条关联给出。这也是 box-only 控件（Checkbox / Switch / RadioGroupItem，
+它们的根元素就是方框本身，文字**不**走 children）唯一的文字标签通道。
 
 ## 基础用法
 
@@ -45,10 +44,8 @@ Field 先落地，控件才有地方安家。
 > `usePress` 不认没有指针序列的裸 click，「点标签展开」还得封装层自己补。
 > 升级时把那个多余的 `aria-label` 删掉即可。
 
-Checkbox / Radio / Switch 是另一种情况 —— 它们是 **box-only**：根元素就是那个
-16px 方块 / 轨道本身（见开头），文字塞进 children 会被挤进方块里，所以同样得
-走外部 `FieldLabel`。区别只在 `id` 的落点：它们落在隐藏的 `<input>` 上，而且
-通常配 `orientation="horizontal"`。
+Checkbox / Switch / RadioGroupItem 是另一种情况 —— 见下面
+[配 Checkbox / Switch / RadioGroup](#配-checkbox--switch--radiogroup)。
 
 ## 配 InfiniteCombobox
 
@@ -73,6 +70,31 @@ Checkbox / Radio / Switch 是另一种情况 —— 它们是 **box-only**：根
 这正是想要的读法 —— 名字是字段名，按钮文字是当前值。
 
 点标签同样**会展开**弹层，和 `Select` 一样：触发器是真按钮，浏览器把点击转发过去。
+
+## 配 Checkbox / Switch / RadioGroup
+
+[Checkbox](/docs/components/checkbox) / [Switch](/docs/components/switch) /
+[RadioGroupItem](/docs/components/radio-group) 是 **box-only**：根元素就是那个
+16px 方块 / 轨道本身，文字塞进 children 会被挤进方块里，所以同样得走外部
+`FieldLabel`。和上面两个触发器类控件比，只有三处不同：
+
+| | 触发器类（Select / InfiniteCombobox） | box-only（Checkbox / Switch / Radio） |
+| --- | --- | --- |
+| `orientation` | `vertical`（标签在上） | **`horizontal`**（控件在前、文字在后） |
+| `id` 落在 | 触发器,一个真 `<button>` | **隐藏的 `<input>`** 上 |
+| 带描述时 | 描述直接跟在控件后 | 用 **`FieldContent`** 把「标签 + 描述」装成一列 |
+
+<ComponentPreview name="field/box-controls" />
+
+命名这条线仍然是同一条：`FieldLabel htmlFor` → 控件 `id`，一条通道同时给出无障碍名
+和「点文字切换」。原理略有不同 —— 原生 `<label for>` 指的是那个隐藏 input，点击由
+浏览器转发过去完成切换；而屏幕阅读器读的是可见的方框，它的名字由 Base UI 反查
+`input.labels`、把 label 的 id 镜像成 `aria-labelledby` 得来。两头都不用你补第二份文案。
+
+**只有一处要手接：`RadioGroup` 整组的名字。** 组渲染出来是个裸的 `role="radiogroup"`
+div，Base UI 只从**它自己的** `Field.Root` / `Fieldset.Legend` context 里取名字，而这里的
+`FieldSet` / `FieldLegend` 是 shadcn 纯 DOM 线 —— 两条线不相通。给 `FieldLegend` 一个
+`id`、组上 `aria-labelledby` 指过去，就像上面 demo 那样。
 
 ## 编组
 
