@@ -129,6 +129,19 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 
 - **`TabsIndicator` 默认在场**(默认在场家法):`TabsList` 自动渲染滑动指示器
   ——这就是本库 tabs 的长相;`indicator={false}` 关掉,自己组合一只则默认让位
+- **修复:`orientation="vertical"` 之前从未真正生效**——vendored 层(shadcn
+  base-nova)的根把 `orientation` 解构成纯视觉的 `data-orientation` 属性,
+  **从不传给 Base UI**:纵向的 `aria-orientation`、方向键换轴(↑/↓)、
+  activation direction 一直全坏,列表竖排只是 CSS 恰好读了那个手写属性。
+  seam 现在直渲 Base UI Root(vendored 那行类照抄并注明手工同步),
+  纵向语义全部就位,回归测试钉住
+- **面板交叉滑动默认在场**:Base UI 官方 animated-panels 同款参数
+  (opacity 175ms / translate 350ms cubic-bezier(0.22,1,0.36,1)、±50% 行程、
+  进出相反)。官方要求手写 viewport 容器,这里根组件隐式代劳——连续的
+  TabsPanel 子元素自动收进新部件 **TabsViewport**(同格 grid 叠放 + overflow
+  裁剪),布局零跳动。三态:不写→默认;自己写 TabsViewport→结构归你;
+  viewport={false}→回退免容器的进场微滑。位移过渡写在 translate 属性上
+  (Tailwind v4 的位移类设的是它,写 transform 会变瞬跳,浏览器实测钉住)
 - **默认激活方式反了**：Base UI 默认手动（方向键只移焦点，Enter/Space 才切换）。
   依赖旧默认的地方在 `TabList` 上显式加 `activateOnFocus`
 - `items` + 函数 children 的动态集合形态消失，改用普通 `.map()`

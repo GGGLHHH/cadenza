@@ -1,15 +1,15 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { ComponentProps, ReactElement } from 'react'
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { ComponentProps, ReactElement, ReactNode } from 'react'
+import { Tabs as BaseTabs } from '@base-ui/react/tabs'
+import { Children, createContext, isValidElement, use, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { findComposedPart } from '#lib/find-part'
 import { cn } from '#lib/utils'
 import {
   TabsContent,
   TabsList as TabsListPrimitive,
   tabsListVariants,
-  Tabs as TabsPrimitive,
   TabsTrigger,
 } from '#primitives/tabs'
 
@@ -22,7 +22,7 @@ import {
  * `Tabs` / `TabsList` / `TabsTab` / `TabsPanel` (Base UI's flat exports are
  * `TabsTab`, not `Tab`: the family prefix is not ours to drop). The props are
  * Base UI's, passed straight through: `value` / `defaultValue` /
- * `onValueChange` on the root, `orientation`, `activateOnFocus` on the list,
+ * `onValueChange` / `orientation` on the root, `activateOnFocus` on the list,
  * `value` pairing a `TabsTab` with its `TabsPanel`.
  *
  * Composition is the whole API: the root takes no `items` and no config object,
@@ -30,7 +30,19 @@ import {
  * arrow-key navigation and `aria-controls` wiring. A tab set computed from data
  * is an ordinary `.map()`.
  */
-export type TabsProps = ComponentProps<typeof TabsPrimitive>
+export type TabsProps = BaseTabs.Root.Props & {
+  /**
+   * The panel viewport is present by default: consecutive `TabsPanel` direct
+   * children (arrays from `.map()` included) are gathered into a
+   * `TabsViewport`, which is what lets the cross-slide animation overlay the
+   * outgoing and incoming panels without a layout jump. `viewport={false}`
+   * disables the gathering (panels fall back to the container-free enter-only
+   * animation); composing your own `TabsViewport` also does — the structure is
+   * then entirely yours. Panels hidden inside custom wrapper components are
+   * not gathered (the same direct-child boundary every implicit part has).
+   */
+  viewport?: boolean
+}
 export type TabsListProps = ComponentProps<typeof TabsListPrimitive> & VariantProps<typeof tabsListVariants> & {
   /**
    * The sliding indicator is present by default — it is this library's tabs
@@ -41,7 +53,15 @@ export type TabsListProps = ComponentProps<typeof TabsListPrimitive> & VariantPr
   indicator?: boolean
 }
 export type TabsTabProps = ComponentProps<typeof TabsTrigger>
-export type TabsPanelProps = ComponentProps<typeof TabsContent>
+export type TabsPanelProps = ComponentProps<typeof TabsContent> & {
+  /**
+   * The activation animation is present by default: the entering panel fades
+   * and slides in from the side the newly active tab sits on
+   * (`data-activation-direction`, Base UI's attribute). `animated={false}`
+   * removes it; `className` refines it (cn merges, yours wins).
+   */
+  animated?: boolean
+}
 
 /**
  * The tab strip. Adds the positioning context `TabsIndicator` needs — the
@@ -241,11 +261,154 @@ export function TabsIndicator({ className }: TabsIndicatorProps): ReactElement {
   )
 }
 
-export const Tabs = TabsPrimitive
+/**
+ * The root. Gathers consecutive `TabsPanel` children into an implicit
+ * `TabsViewport` (three states: absent → default present; composed → yours;
+ * `viewport={false}` → gone).
+ *
+ * Renders Base UI's Root directly, NOT the vendored wrapper — the vendored
+ * root destructures `orientation` into a cosmetic `data-orientation`
+ * attribute and never forwards it to Base UI (upstream shadcn bug), which
+ * silently breaks everything vertical: `aria-orientation`, the arrow-key
+ * axis, and the activation direction (`none` forever, so panels never slide
+ * vertically). The one classname line below is the vendored root's, kept in
+ * sync by hand; Base UI writes the real `data-orientation` itself, and the
+ * styling variants key off the same attribute.
+ */
+export function Tabs({ children, className, viewport = true, ...props }: TabsProps): ReactElement {
+  return (
+    <BaseTabs.Root
+      className={cn(`
+        group/tabs flex gap-2
+        data-horizontal:flex-col
+      `, className)}
+      data-slot="tabs"
+      {...props}
+    >
+      {viewport ? gatherPanelsIntoViewport(children) : children}
+    </BaseTabs.Root>
+  )
+}
+
+/**
+ * Wrap each run of consecutive `TabsPanel` elements in a `TabsViewport`,
+ * leaving everything else in place. A composed `TabsViewport` anywhere turns
+ * the gathering off entirely — the structure is the caller's.
+ */
+function gatherPanelsIntoViewport(children: ReactNode): ReactNode {
+  const array = Children.toArray(children)
+  if (array.some(child => isValidElement(child) && child.type === TabsViewport))
+    return children
+
+  const out: ReactNode[] = []
+  let run: ReactNode[] = []
+  const flush = (): void => {
+    if (run.length > 0) {
+      out.push(<TabsViewport key={`implicit-viewport-${out.length}`}>{run}</TabsViewport>)
+      run = []
+    }
+  }
+  for (const child of array) {
+    if (isValidElement(child) && child.type === TabsPanel) {
+      run.push(child)
+    }
+    else {
+      flush()
+      out.push(child)
+    }
+  }
+  flush()
+  return out
+}
 
 /** Base UI's `Tabs.Tab`, unchanged: `value` pairs it with a `TabsPanel`, plus `disabled`. */
 export const TabsTab = TabsTrigger
 
-export const TabsPanel = TabsContent
+// The container-free fallback (viewport={false}, or a panel the gathering
+// could not reach): enter-only micro-slide. `data-ending-style:hidden` is
+// load-bearing, not styling: Base UI keeps the outgoing panel mounted whenever
+// the element carries a transition DURATION (its wait heuristic reads computed
+// style, browser-verified — no styles need to actually change), so without it
+// two panels stack in flow for the length of the transition.
+const PANEL_ANIMATION_CLASSNAME = `
+  transition-[transform,opacity] duration-200 ease-out
+  data-starting-style:opacity-0
+  data-starting-style:data-[activation-direction=down]:translate-y-2
+  data-starting-style:data-[activation-direction=left]:-translate-x-2
+  data-starting-style:data-[activation-direction=right]:translate-x-2
+  data-starting-style:data-[activation-direction=up]:-translate-y-2
+  data-ending-style:hidden
+  motion-reduce:transition-none
+`
+
+// Inside a TabsViewport: Base UI's animated-panels demo verbatim — panels
+// stack in the same grid cell, opacity 175ms ease, translate 350ms
+// cubic-bezier(0.22,1,0.36,1) — their `transform` swapped for `translate`,
+// the property Tailwind v4's translate-x/y utilities actually set — ±50%
+// displacement, the outgoing panel exiting
+// opposite to the incoming one. Their demo is horizontal-only; the up/down
+// arms extend the same geometry to vertical orientation. Transforms sit
+// behind motion-safe (their @media no-preference gate); the fades run always.
+const VIEWPORT_PANEL_ANIMATION_CLASSNAME = `
+  col-start-1 row-start-1 inline-full
+  [transition:opacity_175ms_ease,translate_350ms_cubic-bezier(0.22,1,0.36,1)]
+  data-ending-style:opacity-0
+  data-starting-style:opacity-0
+  motion-safe:data-ending-style:data-[activation-direction=down]:-translate-y-1/2
+  motion-safe:data-ending-style:data-[activation-direction=left]:translate-x-1/2
+  motion-safe:data-ending-style:data-[activation-direction=right]:-translate-x-1/2
+  motion-safe:data-ending-style:data-[activation-direction=up]:translate-y-1/2
+  motion-safe:data-starting-style:data-[activation-direction=down]:translate-y-1/2
+  motion-safe:data-starting-style:data-[activation-direction=left]:-translate-x-1/2
+  motion-safe:data-starting-style:data-[activation-direction=right]:translate-x-1/2
+  motion-safe:data-starting-style:data-[activation-direction=up]:-translate-y-1/2
+  motion-reduce:transition-none
+`
+
+const TabsViewportContext = createContext(false)
+if (process.env.NODE_ENV !== 'production')
+  TabsViewportContext.displayName = 'TabsViewportContext'
+
+export type TabsViewportProps = ComponentProps<'div'>
+
+/**
+ * The panel stage: panels inside it stack in one grid cell, which is what
+ * lets the outgoing and incoming panels cross-slide without a layout jump
+ * (Base UI's animated-panels structure, created implicitly by `Tabs` — see
+ * the root's `viewport` prop). Compose it yourself to own the placement.
+ */
+export function TabsViewport({ className, ...props }: TabsViewportProps): ReactElement {
+  return (
+    <TabsViewportContext value>
+      <div
+        className={cn(`
+          relative grid grid-cols-[minmax(0,1fr)] overflow-clip inline-full
+        `, className)}
+        data-slot="tabs-viewport"
+        {...props}
+      />
+    </TabsViewportContext>
+  )
+}
+
+/**
+ * The panel, wearing the activation animation by default (three states:
+ * absent → default present; `className` → refine; `animated={false}` → gone).
+ * Inside a `TabsViewport` (the default — the root gathers panels into one)
+ * it is the full cross-slide, Base UI's animated-panels demo verbatim;
+ * outside one it falls back to a container-free enter-only micro-slide.
+ */
+export function TabsPanel({ animated = true, className, ...props }: TabsPanelProps): ReactElement {
+  const inViewport = use(TabsViewportContext)
+  return (
+    <TabsContent
+      className={cn(
+        animated && (inViewport ? VIEWPORT_PANEL_ANIMATION_CLASSNAME : PANEL_ANIMATION_CLASSNAME),
+        className,
+      )}
+      {...props}
+    />
+  )
+}
 
 export { tabsListVariants }

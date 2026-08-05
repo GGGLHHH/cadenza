@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '../src/components/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab, TabsViewport } from '../src/components/tabs'
 
 function renderDashboard(props: Omit<TabsProps, 'children'> = {}): void {
   render(
@@ -245,5 +245,100 @@ describe('tabIndicator', () => {
     const indicators = document.querySelectorAll('[data-slot="tabs-indicator"]')
     expect(indicators.length).toBe(1)
     expect(indicators[0]?.className).toContain('opacity-90')
+  })
+
+  it('panels are gathered into an implicit viewport wearing the cross-slide by default', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList aria-label="动画">
+          <TabsTab value="a">A</TabsTab>
+          <TabsTab value="b">B</TabsTab>
+        </TabsList>
+        <TabsPanel value="a">甲</TabsPanel>
+        <TabsPanel value="b">乙</TabsPanel>
+      </Tabs>,
+    )
+    const viewport = document.querySelector('[data-slot="tabs-viewport"]')
+    expect(viewport).not.toBeNull()
+    // Both panels live inside it, stacked into the same grid cell — that is
+    // what lets outgoing and incoming cross-slide without a layout jump.
+    expect(viewport?.querySelectorAll('[data-slot="tabs-content"]').length).toBe(1) // inactive one unmounts
+    const panel = viewport?.querySelector('[data-slot="tabs-content"]')
+    expect(panel?.className).toContain('col-start-1')
+    // Base UI's animated-panels numbers, verbatim.
+    expect(panel?.className).toContain('[transition:opacity_175ms_ease,translate_350ms_cubic-bezier(0.22,1,0.36,1)]')
+    expect(panel?.className).toContain('data-[activation-direction=right]:translate-x-1/2')
+    // The list stays outside the viewport.
+    expect(viewport?.querySelector('[data-slot="tabs-list"]')).toBeNull()
+  })
+
+  it('viewport={false} falls back to the container-free enter-only micro-slide', () => {
+    render(
+      <Tabs defaultValue="a" viewport={false}>
+        <TabsList aria-label="动画">
+          <TabsTab value="a">A</TabsTab>
+        </TabsList>
+        <TabsPanel value="a">面板</TabsPanel>
+      </Tabs>,
+    )
+    expect(document.querySelector('[data-slot="tabs-viewport"]')).toBeNull()
+    const panel = document.querySelector('[data-slot="tabs-content"]')
+    expect(panel?.className).toContain('data-[activation-direction=right]:translate-x-2')
+    // Load-bearing in the container-free mode: without it Base UI keeps the
+    // outgoing panel in flow for the transition window and two panels stack.
+    expect(panel?.className).toContain('data-ending-style:hidden')
+  })
+
+  it('a composed TabsViewport turns the gathering off — structure is the caller\'s, no nesting', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList aria-label="自己的">
+          <TabsTab value="a">A</TabsTab>
+        </TabsList>
+        <TabsViewport className="opacity-95">
+          <TabsPanel value="a">面板</TabsPanel>
+        </TabsViewport>
+      </Tabs>,
+    )
+    const viewports = document.querySelectorAll('[data-slot="tabs-viewport"]')
+    expect(viewports.length).toBe(1)
+    expect(viewports[0]?.className).toContain('opacity-95')
+  })
+
+  it('animated={false} strips the animation in either mode', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList aria-label="关动画">
+          <TabsTab value="a">A</TabsTab>
+        </TabsList>
+        <TabsPanel animated={false} value="a">面板</TabsPanel>
+      </Tabs>,
+    )
+    expect(document.querySelector('[data-slot="tabs-content"]')?.className).not.toContain('data-starting-style:opacity-0')
+  })
+
+  it('vertical: orientation reaches Base UI — aria-orientation and the arrow-key axis follow', async () => {
+    // Regression pin for the vendored-root bug: shadcn's base-nova root
+    // destructures `orientation` into a cosmetic data attribute and never
+    // forwards it, leaving Base UI horizontal forever (no aria-orientation,
+    // wrong arrow axis, activation direction stuck at 'none').
+    const user = userEvent.setup()
+    render(
+      <Tabs defaultValue="a" orientation="vertical">
+        <TabsList aria-label="纵向">
+          <TabsTab value="a">A</TabsTab>
+          <TabsTab value="b">B</TabsTab>
+        </TabsList>
+        <TabsPanel value="a">甲</TabsPanel>
+        <TabsPanel value="b">乙</TabsPanel>
+      </Tabs>,
+    )
+    const list = screen.getByRole('tablist', { name: '纵向' })
+    expect(list.getAttribute('aria-orientation')).toBe('vertical')
+    expect(document.querySelector('[data-slot="tabs"]')?.getAttribute('data-orientation')).toBe('vertical')
+
+    await user.click(screen.getByRole('tab', { name: 'A' }))
+    await user.keyboard('{ArrowDown}')
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'B' }))
   })
 })

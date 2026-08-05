@@ -14,6 +14,7 @@
 | 家族 | 部件/能力 | 判定 | 依据与机制 |
 | --- | --- | --- | --- |
 | Select | 全家 | ✅ 已打样 | 一行式 + 隐式组 + trigger 默认组合 + `clearable` |
+| Tabs | 面板交叉滑动 + `TabsViewport` | ✅ **默认在场**(后补) | 官方 animated-panels 同款(175ms/350ms/±50%)。容器义务由根组件隐式代劳:连续 TabsPanel 自动收进 TabsViewport(B 层,同格叠放);`viewport={false}` 回退免容器进场微滑;藏进自定义包装的面板收不进(直接子元素边界)。教训 ×3:Base UI 的卸载等待启发式只看元素有无过渡时长(不看样式是否在变);Tailwind v4 位移走 translate 属性,过渡列表写 transform 会变瞬跳;vendored 根吞掉 orientation 从不传给 Base UI(上游 bug,纵向语义全坏、方向永远 none)——seam 直渲 Base UI Root 绕过,纵向动画由此才通 |
 | Tabs | `TabsIndicator` | ✅ **默认在场**(本轮) | 6/6 demo 全写、零定制——它就是本库 tabs 的长相,忘写=长得和文档不一样。B 层:`TabsList` 自动渲染;`indicator={false}` 关默认那只;自己组合则让位(`findComposedPart` 检测)。开关只管默认的——indicator 不改语义,组合的归组合管(与 Select `clearable` 总开关语义不同,JSDoc 已注明) |
 | InfiniteSelect | `InputGroup`+`List` | ✅ **默认组合**(本轮) | 裸面板不给 children 什么都不渲染,是「必须背部件名」的反例。A 层:children 缺席 → InputGroup+List;新增 `searchPlaceholder`(与 InfiniteCombobox 同词) |
 | SearchField | 默认组合 | ✅ 早已符合 | 家法的原型:icon+input+clear 默认组合 |

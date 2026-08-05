@@ -61,6 +61,31 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 `prefers-reduced-motion` 下自动降级为瞬时移动；首次渲染直接就位，不做滑入动画。
 标签宽度变化（字体加载完、角标数字变了）会自动重新测量。
 
+## 面板切换动画
+
+**交叉滑动默认在场**——Base UI 官方
+[animated panels](https://base-ui.com/react/components/tabs#animated-panels)
+的同款参数（opacity 175ms ease、位移 350ms `cubic-bezier(0.22,1,0.36,1)`、
+±50% 行程）：旧面板向一侧滑出淡出，新面板同时从新标签所在的那一侧滑入
+（方向来自 `data-activation-direction`，纵向 tabs 是上下滑）。位移在
+`prefers-reduced-motion` 下不做，淡入淡出保留。
+
+官方示例要求手写一个 viewport 容器；这里**根组件隐式代劳**——连续的
+`TabsPanel` 直接子元素（`.map()` 数组也算）被自动收进一个 `TabsViewport`，
+面板叠进同一格 grid 单元，进出双方重叠着动、布局零跳动。三态照旧：
+
+```tsx
+<Tabs>…</Tabs>                              // 不写:默认交叉滑动
+<Tabs>
+  <TabsViewport className="…">…面板…</TabsViewport>   // 自己写 viewport:结构归你
+</Tabs>
+<Tabs viewport={false}>…</Tabs>             // 关 viewport:回退免容器的进场微滑
+<TabsPanel animated={false} …>              // 单面板关动画
+```
+
+边界：藏在自定义包装组件里的面板收不进 viewport（与所有隐式部件同款的
+「直接子元素」边界），会回退到进场微滑。
+
 ## 垂直排列
 
 `orientation="vertical"` 时 `TabsList` 竖排，方向键也跟着换轴（上下键切换）——
