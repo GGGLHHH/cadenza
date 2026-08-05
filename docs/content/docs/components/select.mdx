@@ -7,6 +7,14 @@ description: Base UI Select 的封装 —— 组合式下拉选择，弹层把�
 键盘打字定位、方向键导航、Escape 关闭、`aria-controls` / `aria-activedescendant`
 互指都是它的事。组合就是全部 API。
 
+**三个选择器,先挑对再看用法:**
+
+| 组件 | 什么时候 |
+| --- | --- |
+| **Select** | 选项固定,不用打字找 |
+| [Combobox](/docs/components/combobox) | 要**打字过滤**,而整份列表已经在手上 —— 过滤在浏览器 |
+| [InfiniteCombobox](/docs/components/infinite-select) | 要打字过滤,但列表在服务端、要分页取 |
+
 **默认在场是这个家族的家法**：不写 children，`Select` 用 `items` 渲染完整
 默认组合（触发器 + 回显 + 清除 ✕ + 弹层 + 选项）；写了 children 就逐层接管。
 组合时结构永远是：`Select` 里放一个 `SelectTrigger`（内含 `SelectValue`），
@@ -177,6 +185,10 @@ description: Base UI Select 的封装 —— 组合式下拉选择，弹层把�
 | `name` | `string` | — | 表单字段名，会渲染一个隐藏 input |
 | `modal` | `boolean` | `false` | 打开时是否锁住页面滚动与外部交互。**封装层把 Base UI 的默认 `true` 翻成了 `false`**——页面照常滚动 |
 | `open` / `defaultOpen` / `onOpenChange` | — | — | 弹层开合的受控 / 非受控通道 |
+| `clearable` | `boolean` | `true` | 清除的**总开关**：`false` 连你显式写的 `SelectClear` 一起关掉 |
+| `placeholder` | `string` | — | 只在**不写 children** 的默认组合里用，喂给自动渲染的 `SelectValue`；自己写 trigger 后被忽略 |
+| `aria-label` | `string` | — | 默认组合触发器的无障碍名（没有可见标签时才需要）；自己写 `SelectTrigger` 时改挂在它上面 |
+| `id` | `string` | — | Base UI 把它路由给触发器，所以 `FieldLabel htmlFor` 指根组件即可 |
 
 根组件本身不渲染 DOM，所以它没有 `className`，也没有状态属性。
 

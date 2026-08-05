@@ -10,6 +10,10 @@ description: 可搜索、无限滚动的选择器家族 —— 基座面板与�
 `onInputValueChange`，调用方重新取数，面板渲染回来的结果。大数据集可用 `virtualized`
 开启行虚拟化，见下文。
 
+**整份列表已经在手上、过滤只需在浏览器里做**，就不必上这一家 —— 那是
+[`Combobox`](/docs/components/combobox)，同样是 Base UI 的 `Combobox`，但过滤开着、
+没有游标分页那一整套。分工看 [Select 那页开头的四选一表](/docs/components/select)。
+
 分层：底下是 **hooks 层**（状态与行为），中间是
 **组合式 parts**（context 接线、按书写顺序渲染），`InfiniteCombobox`
 是把这些一把组好的**便利层**。日常用便利层就够；要改结构时降到 parts

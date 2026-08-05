@@ -1,0 +1,99 @@
+---
+title: Input
+description: 单行文本框 —— 自带边框、自成一体；普通的 htmlFor 通道，外加 Base UI 的 onValueChange
+---
+
+Base UI 的 `Input` 装进 shadcn 的 base-nova 盒子。**字段就只是一个字段**的时候用它 ——
+边框、圆角、焦点环都长在它自己身上。
+
+## 基础用法
+
+`Field` + `FieldLabel htmlFor` + `Input id` + `FieldDescription`：
+
+<ComponentPreview name="input/basic" />
+
+标签通道是**最普通的那条**：`id` 落在真正的 `<input>` 上，`FieldLabel htmlFor` 指过去，
+原生 `<label for>` 一次给出无障碍名和「点标签聚焦」。没有 box-only 控件（
+[Checkbox](/docs/components/checkbox) / [Switch](/docs/components/switch)）那种
+「id 其实在隐藏 input 上」的绕路，也不用补 `aria-label`。
+
+## 什么时候换 InputGroup
+
+**一旦有东西要和输入框共用边框就换 [InputGroup](/docs/components/input-group)** ——
+前置图标、行尾按钮、单位后缀、快捷键提示，任何一个都算。
+
+因为边框的归属变了：在 `InputGroup` 里，**拥有边框和焦点环的是那一行**，
+`InputGroupInput` 自己一点边框都没有。所以这不是「给 `Input` 加个附加物」，
+而是换一个部件 —— 把附加物塞进 `Input` 旁边只会得到两个盒子。
+
+反过来说，只有一个光秃秃的输入框时不必上 `InputGroup`，`Input` 本身就是完整的。
+
+## 值变化
+
+原生 `onChange` 照常可用，Base UI 在它之外**另给**一个 `onValueChange(value, details)`：
+第一参直接是字符串，省掉 `event.target.value` 那一跳。
+
+两个回调**同时触发**，不是二选一 —— Base UI 合并事件处理器（`mergeProps` 把内部与外部
+的 `on*` 串起来依次调用），你传的 `onChange` 不会顶掉部件内部那个。
+
+第二参 `InputChangeEventDetails` 里：
+
+- `reason` **恒为 `'none'`** —— 上游给字段控件就派了这一种，别指望靠它分辨来源。
+- `event` 是原生事件。
+- `cancel()` 在这里**没有接收方**：部件读完值就往下走，从不检查 `isCanceled`。
+  要拦下一次输入，只能受控着不把新值写回。
+
+## 状态与 className
+
+`className` 通到的是 Base UI 的 slot，所以函数形态成立：`(state) => string | undefined`，
+参数是 `InputState`：
+
+| `data-*` | `InputState` 里的名字 | 出现时机 |
+| --- | --- | --- |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-valid` / `data-invalid` | `valid` | 校验通过 / 失败。初值是 `null`，两个都不出现 |
+| `data-touched` | `touched` | 失焦过一次 |
+| `data-dirty` | `dirty` | 值和初值不同 |
+| `data-filled` | `filled` | 有值 |
+| `data-focused` | `focused` | 聚焦中 |
+
+除 `data-disabled` 外，这一组**只在 Base UI 的 `Field.Root` 里才会动** —— 本库的
+[Field](/docs/components/field) 不是它（那是纯 DOM 布局），所以在这里 `valid` 恒为
+`null`、其余四个恒为 `false`。
+
+皮肤画的错误态挂在 **`aria-invalid`** 上而不是 `data-invalid`（和
+[InputGroup](/docs/components/input-group) 一致）：手动传 `aria-invalid` 就有红框红环，
+不需要 Base UI 的校验参与。
+
+## 为什么是一次 cast
+
+封装层没有包一层组件，只做了一次类型 cast —— 和 `InputGroupInput` 需要的是同一次。
+
+转正之前的 vendored 文件把 props 写成了 `ComponentProps<'input'>`，这一压平就抹掉了三样
+底下的 `Input` 其实认得的东西：**函数形态的 `className`**、**`onValueChange`**、以及
+**Base UI 自己重新声明的 `defaultValue`**（`BaseUIComponentProps` 先把原生那个摘掉了）。
+每个 prop 本来就是原样展开传下去的，运行时一直通着，**只有类型需要还原**。
+
+函数 `className` 是真能用的：本库的 `cn` 遇到函数会返回一个函数、等 state 到了再解析
+（clsx 是直接吞掉），所以你的类名照样排在封装层那组之后，冲突时你的赢。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `id` | `string` | — | 落在真 `<input>` 上，`FieldLabel htmlFor` 指这里 |
+| `defaultValue` | `string \| number \| readonly string[]` | — | 非受控初值。Base UI 重新声明的那个 |
+| `value` | `string \| number \| readonly string[]` | — | 受控值 |
+| `onValueChange` | `(value: string, eventDetails: InputChangeEventDetails) => void` | — | 值变化，第一参就是字符串。`reason` 恒为 `'none'`，`cancel()` 无效 |
+| `onChange` | `(event: ChangeEvent<HTMLInputElement>) => void` | — | 原生回调，和 `onValueChange` 一起触发 |
+| `disabled` | `boolean` | `false` | 忽略用户交互，同时渲染 `data-disabled` |
+| `name` | `string` | — | 表单字段名 |
+| `type` | `string` | — | 原生 `<input>` 类型；不给就是浏览器默认的 `text` |
+| `placeholder` | `string` | — | 占位符 |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 换掉渲染的元素 |
+| `className` | `string \| ((state: InputState) => string \| undefined)` | — | 类名。排在封装层那组之后，冲突时你的赢 |
+| 其余 | Base UI `Input` 的 props（原生 `input` 属性 + `ref`） | — | 透传，`readOnly` / `required` / `autoComplete` 都在里面 |
+
+三个类型一并导出：`InputProps` / `InputState` / `InputChangeEventDetails`。

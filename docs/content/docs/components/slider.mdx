@@ -1,0 +1,188 @@
+---
+title: Slider
+description: 滑块 —— 一个值一个拇指，Value 泛型不退化，onValueCommitted 才是该挂请求的那个
+---
+
+Base UI 的 `Slider` 装进 shadcn 的 base-nova 皮肤。**一个值一个拇指**：`defaultValue={40}`
+渲染一个，`defaultValue={[25, 75]}` 渲染两个，同一个组件两种形态。
+
+它是**封装层自己的组合，不是原样转出**，就为了那句话能成立 —— vendored 那份按
+`Array.isArray(value)` 数拇指，标量走不进这条判断，于是退回 `[min, max]`：最常见的
+单值滑块因此长出**两个叠在同一位置的拇指**，多一个 Tab 停靠点，屏幕阅读器也多播报
+一个滑块，而这个控件只有一个值。这里的拇指数按**真正在用的那个值**算
+（`value ?? defaultValue`，用 `??` 不用 `||` —— `0` 是个正经的值，falsy 判断会把它
+漏进默认分支、数错拇指）。
+
+## 基础用法
+
+<ComponentPreview name="slider/basic" />
+
+## 标签怎么给
+
+`Slider` 的根渲染的是 `<div role="group">`，**不是一个可 label 的元素**；真正带
+`role="slider"` 的，是每个拇指里那个视觉隐藏的 `<input type="range">`。所以标签这条线
+和 [Checkbox](/docs/components/checkbox) 那套 `htmlFor` → `id` 不一样：
+
+| 写法 | 谁拿到名字 |
+| --- | --- |
+| `aria-labelledby` 指向标签元素的 `id` | 根那个 group **和**每个拇指里的 input（Base UI 会往下传） |
+| `aria-label` 写在根上 | 只有根那个 group；拇指的 input 拿不到 |
+| `FieldLabel htmlFor` | 谁都没有 —— 见下 |
+
+**有可见文字就用 `aria-labelledby`。** 配 [`FieldTitle`](/docs/components/field) 正合适：
+它是个 `div`（不是 `label`），本来就是给「没有单一控件可指」的编组用的，而 `role="group"`
+的滑块正是这种。
+
+`FieldLabel htmlFor` 在这里没有落点，别指它：原生 `<label for>` 只认可 label 的元素，
+指向根那个 `div` 等于没指；而封装层自己渲染拇指，没有给外部塞 `id` 的口子 —— 就算有，
+Base UI 的 `Slider.Thumb` 的 `id` 也是落在拇指那个 `div` 上，里面 input 的 id 是内部
+生成的，猜不到。
+
+压根没有可见文字时（工具条里的一根音量条）才写 `aria-label`。
+
+## 区间
+
+<ComponentPreview name="slider/range" />
+
+数组里有几个值就有几个拇指，**编号从 0 起**，`data-index` 写在每个拇指上。渲染前值会
+被 clamp 到 `[min, max]` 并按升序排列。
+
+正好两个值时，Base UI 给两个拇指默认的 `aria-valuetext` 是 `"180 start range"` /
+`"680 end range"` —— 三个以上就只播报数字本身。
+
+两个拇指撞上时的行为由 `thumbCollisionBehavior` 决定：`'push'`（默认，推着走）、
+`'swap'`（交换位置）、`'none'`（顶住不动，多出来的位移丢弃）。要它们始终隔开一点，
+用 `minStepsBetweenValues`。
+
+## 泛型不退化
+
+签名是 `Slider<Value extends number | readonly number[] = number>`，**泛型跟着你传的
+值走**：
+
+```tsx
+<Slider defaultValue={40} onValueChange={next => setLevel(next)} />       // next: number
+<Slider defaultValue={[25, 75]} onValueChange={next => setRange(next)} /> // next: number[]
+<Slider onValueChange={next => setLevel(next)} />                         // next: number
+```
+
+也就是说回调拿到的不是 `number | readonly number[]`，不用在每个调用点先窄化一次再用。
+`SliderProps` 同样带这个泛型（默认 `number`）。
+
+## 拖动中与落定
+
+<ComponentPreview name="slider/commit" />
+
+两个回调**不是一回事**：
+
+| 回调 | 什么时候响 | 第二参 | 能不能拦 |
+| --- | --- | --- | --- |
+| `onValueChange` | 值每变一次 | `SliderChangeEventDetails` | 能。`cancel()` 一调，这次变更就不落到组件内部那份状态上，`onValueCommitted` 也不会跟着响 |
+| `onValueCommitted` | 这一下交互落定后 | `SliderCommitEventDetails` | 不能 —— 它是**通知**（generic event），压根没有 `cancel()` |
+
+「落定」的时机分两条路：
+
+- **指针**（`'drag'` / `'track-press'`）—— 松手时才落定，拖一整趟只算一次。
+- **键盘**（`'keyboard'`）—— 每按一下当场就落定一次。
+
+上游把这条写死在契约里：值没变、或者这次变更被 `cancel()` 了，就不会为它触发落定。
+
+两个回调的 `reason` 取值集合相同：
+
+| `reason` | 来自 |
+| --- | --- |
+| `'drag'` | 拖拽拇指 |
+| `'track-press'` | 按在轨道上 |
+| `'keyboard'` | 方向键、PageUp / PageDown、Home / End |
+| `'input-change'` | 隐藏的 range input 自己发出 change（表单集成、辅助技术直接改值） |
+| `'none'` | 没有具体交互来源 |
+
+**昂贵的那件事挂 `onValueCommitted`。** 一趟拖动会把 `onValueChange` 打成几十上百次，
+拿它发请求就是几十上百个请求。
+
+## 表单
+
+序列化是 Base UI 的：给了 `name`，**每个拇指里那个 `<input type="range">` 都带上这个
+name** 参与提交。单值滑块提交一条；区间滑块同名提交两条，读的时候用
+`FormData.getAll(name)`：
+
+```ts
+new FormData(form).getAll('price') // ['180', '680']
+```
+
+`form` 指定拥有这些 input 的表单 id，控件渲染在 `<form>` 之外时用。
+
+## 方向
+
+`orientation="vertical"` 时 `data-orientation` 在根、控件、轨道、指示条、拇指上一起翻成
+`vertical`，封装层的默认样式跟着换轴：轨道变竖条，控件拿 `block-full` 撑满外面给的高度，
+再用 `min-block-40` 兜一个最小高度 —— 不给高度也不至于塌成 0。
+
+## 拇指贴边
+
+封装层把 `thumbAlignment` 从 Base UI 的 `'center'` 改成了 `'edge'`：值走到两端时整个拇指
+内缩在控件里，而不是一半探到轨道外面去。要回原来的行为，自己传 `thumbAlignment="center"`。
+
+## 状态与 className
+
+`className` 通到的是 Base UI 的 slot，所以函数形态成立：`(state) => string | undefined`。
+那个 state 就是 `SliderState`：
+
+| `data-*` | `SliderState` 里的名字 | 出现时机 |
+| --- | --- | --- |
+| `data-orientation` | `orientation` | 一直有值：`horizontal` / `vertical`。根与所有部件上都有 |
+| `data-dragging` | `dragging` | 正在拖拽拇指 |
+| `data-disabled` | `disabled` | `disabled` |
+
+`SliderState` 里另有一组**故意不落成 `data-*`** 的：`values` / `activeThumbIndex` /
+`min` / `max` / `step` / `minStepsBetweenValues` —— 数值进属性选择器没有意义，要用就在
+`className` 的函数形态里读。
+
+还有 Field 那一组（`valid` / `touched` / `dirty` / `filled` / `focused`），和
+[Checkbox](/docs/components/checkbox) 同样的注脚：它们**只在 Base UI 的 `Field.Root` 里
+才会动**，本库的 [`Field`](/docs/components/field) 是纯 DOM 布局，不是它。
+
+### 从外面改样式
+
+三个部件由封装层自己渲染，没有对外的组合位（写进 `children` 的东西不会出现）。要改样式
+就用 `data-slot` 选择器：
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `slider` | 根，`<div role="group">` |
+| `slider-track` | 轨道，那条底槽 |
+| `slider-range` | 已选中那一截（Base UI 的 `Slider.Indicator`） |
+| `slider-thumb` | 拇指，一个值一个 |
+
+夹在中间的 `Slider.Control`（负责命中与拖拽的那层）没有 `data-slot`，它带的是 Base UI
+自己的 `data-base-ui-slider-control`。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultValue` | `Value` | `min`（也就是 `0`） | 非受控初始值。`number` 一个拇指，数组一个值一个拇指 |
+| `value` | `Value` | — | 受控值 |
+| `onValueChange` | `(value: Value extends number ? number : Value, eventDetails: SliderChangeEventDetails) => void` | — | 值变化回调，可 `cancel()` |
+| `onValueCommitted` | `(value: Value extends number ? number : Value, eventDetails: SliderCommitEventDetails) => void` | — | 落定回调，通知，没有 `cancel()` |
+| `min` | `number` | `0` | 最小值 |
+| `max` | `number` | `100` | 最大值。开发模式下 `min >= max` 会告警 |
+| `step` | `number` | `1` | 步长，以 `min` 为原点吸附 |
+| `largeStep` | `number` | `10` | Shift + 方向键、PageUp / PageDown 的步长 |
+| `minStepsBetweenValues` | `number` | `0` | 区间里两个拇指之间至少隔几步 |
+| `thumbCollisionBehavior` | `'push' \| 'swap' \| 'none'` | `'push'` | 两个拇指撞上时推着走 / 交换 / 顶住不动 |
+| `orientation` | `'horizontal' \| 'vertical'` | `'horizontal'` | 方向 |
+| `disabled` | `boolean` | `false` | 忽略用户交互 |
+| `name` | `string` | — | 表单字段名，每个拇指的 input 都用它 |
+| `form` | `string` | — | 拥有这些 input 的表单 id，控件渲染在表单之外时用 |
+| `format` | `Intl.NumberFormatOptions` | — | 播报用的数字格式，进拇指的 `aria-valuetext` |
+| `locale` | `Intl.LocalesArgument` | — | 配 `format` 的 locale，不给就跟运行时 |
+| `thumbAlignment` | `'center' \| 'edge' \| 'edge-client-only'` | `'edge'` | **封装层改过默认值**，见[拇指贴边](#拇指贴边) |
+| `aria-labelledby` | `string` | — | 指向标签元素的 id，会往下传给每个拇指的 input |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 换掉根渲染的元素 |
+| `className` | `string \| ((state: SliderState) => string \| undefined)` | — | 根的类名。排在封装层那组默认之后，冲突时你的赢 |
+| 其余 | Base UI `Slider.Root` 的 props（`div` 的原生属性 + `ref`） | — | 透传。`children` 除外 —— 部件由封装层渲染 |
+
+四个类型一并导出：`SliderProps`（带 `Value` 泛型）/ `SliderState` /
+`SliderChangeEventDetails` / `SliderCommitEventDetails`。

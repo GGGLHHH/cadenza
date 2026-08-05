@@ -1,0 +1,49 @@
+---
+title: Textarea
+description: 多行文本框 —— 一个纯 textarea，跟着内容长高，下限 min-h-16
+---
+
+一个纯 `<textarea>`，从上到下都是它自己 —— **没有任何 Base UI 部件**。
+
+这决定了它的全部脾气：`className` 老实是 `string`（没有 `(state) => string` 那一形态，
+也没有 `data-*` 状态表），**没有 `onValueChange`**（值变化只有原生 `onChange`，自己从
+`event.target.value` 取），也**没有 [Input](/docs/components/input) 那条
+`Field.Root` context 线** —— 放进 Base UI 的 `Field.Root` 里它不会自动接线。
+
+标签通道还是最普通的那条：`FieldLabel htmlFor` → `id`。
+
+## 基础用法
+
+<ComponentPreview name="textarea/basic" />
+
+## 高度
+
+`field-sizing-content`：高度**跟着内容走**，敲到第几行就有多高，不必自己算 `rows`、
+也不会在内部长出滚动条。
+
+下限是 `min-h-16`（4rem）—— 空着的时候不至于塌成一条缝。要改下限传 `min-block-*`
+（比如 `min-block-32`），要封顶就传 `max-block-*`，到顶之后才开始滚。
+
+## 在 InputGroup 里
+
+要配工具条、字数统计、发送按钮时，用
+[`InputGroupTextarea`](/docs/components/input-group) 而不是这一个：**那一行才拥有边框**，
+把自带边框的 `Textarea` 放进去会得到两层框。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `id` | `string` | — | `FieldLabel htmlFor` 指这里 |
+| `defaultValue` | `string \| number \| readonly string[]` | — | 非受控初值 |
+| `value` | `string \| number \| readonly string[]` | — | 受控值，配 `onChange` |
+| `onChange` | `(event: ChangeEvent<HTMLTextAreaElement>) => void` | — | 原生回调，值在 `event.target.value` |
+| `disabled` | `boolean` | `false` | 禁用 |
+| `name` | `string` | — | 表单字段名 |
+| `placeholder` | `string` | — | 占位符 |
+| `className` | `string` | — | 类名。底下是纯 `<textarea>`，只收字符串 |
+| 其余 | 原生 `<textarea>` 的属性（含 `ref`） | — | 透传，`readOnly` / `required` / `maxLength` 都在里面 |
+
+`TextareaProps` 类型一并导出。

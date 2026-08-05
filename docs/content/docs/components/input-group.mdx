@@ -10,6 +10,11 @@ description: 带前后缀的输入框 —— 图标、文本、按钮和输入�
 输入框底下是 Base UI 的 `Input`，把它放进 Base UI 的 `Field.Root` 里就自动接线，
 不用往下传 props；按钮是 Base UI 的 `Button`，行与文本域是纯 DOM。
 
+**什么都不附加的时候用 [`Input`](/docs/components/input)**（多行用
+[`Textarea`](/docs/components/textarea)）。边框归这一行所有，所以 `InputGroupInput`
+自己是**没有边框**的 —— 单独拿出来用会是个裸输入框。一旦有东西要和输入框共用边框，
+再换过来。
+
 ## 图标
 
 `InputGroupAddon` 的 `align` 决定放行首还是行尾，默认 `inline-start`：

@@ -1,0 +1,152 @@
+---
+title: InputOTP
+description: 一次性验证码输入 —— 全库唯一不建在 Base UI 上的控件，一个隐形的真 input 横跨所有格子
+---
+
+**全库唯一不建在 Base UI 上的控件。** 底下是 [`input-otp`](https://input-otp.rodz.dev)
+包：一个**真的 `<input>`**，视觉上完全隐形，横跨所有格子铺满整行；你看见的那一排方框
+只是按它的值画出来的 `div`。
+
+这个结构不是为了好看 —— 它正是短信自动填充和整串粘贴能用的原因。焦点、选区、输入法、
+`autocomplete="one-time-code"`（默认就带）全都由那个真 input 承担：自动填充和粘贴看见的
+是一个完整字段，不是六个各管一位的小框。
+
+⚠️ 协议因此也是 **React DOM 的**，不是这个库其他控件那套：`value` / `onChange`，而
+`onChange` 收到的是**字符串**，不是事件；这个家族里**没有任何 `eventDetails`**，
+也没有 `cancel()`。
+
+## 基础用法
+
+<ComponentPreview name="input-otp/basic" />
+
+两条硬规矩：
+
+- **`maxLength` 必填**，而且要和你渲染的格子数一致。它是那个真 input 的 `maxlength`，
+  也是内部 `slots` 数组的长度。
+- **`index` 从 0 起连续编号，跨 group 也接着数。** 每个 `InputOTPSlot` 靠 `index` 去
+  `slots[index]` 取自己那个字符；上面那个 demo 是 `0 1 2` + 分隔符 + `3 4 5`，不是
+  两组各自从 0 开始。超出 `maxLength` 的 `index` 取不到东西，只会画一个永远空着的框。
+
+分组纯粹是组合出来的：一段连续的格子包一个 `InputOTPGroup`（圆角画在组的首尾），
+组与组之间放一个 `InputOTPSeparator`。
+
+## 标签怎么接
+
+`id` 落在那个隐形的真 input 上，所以
+[`FieldLabel htmlFor`](/docs/components/field) 照常成立 —— 一条 `htmlFor` 同时给出
+无障碍名和「点文字聚焦」，和普通输入框没有区别。上面 demo 用的就是这条。
+
+`name` 同样落在那个 input 上，整串验证码作为一个字段正常参与表单提交。
+
+## 受控
+
+<ComponentPreview name="input-otp/controlled" />
+
+- `onChange(value: string)` —— 参数直接是当前整串值。**不是事件**，所以没有
+  `event.target.value`，也没有第二参。
+- `onComplete(value: string)` —— 长度从「不满」变成「正好等于 `maxLength`」的那一刻响
+  一次。粘贴一整串同样会触发。
+
+只给 `defaultValue`（普通字符串）也能跑，值确实会显示出来 —— 但 `input-otp` 会把这个
+prop 连同它自己的 `value` 一起摊到真 input 上，React 因此在开发模式下报一句
+「contains an input with both value and defaultValue props」。**要干净就用受控**，上面
+demo 那样。
+
+## 两条 className 通道
+
+`InputOTP` 上有两个类名口子，管的是两个不同的元素：
+
+| Prop | 落在哪 |
+| --- | --- |
+| `className` | 那个**隐形的真 input** |
+| `containerClassName` | **可见的那一行**（容器 `div`，格子和分隔符都在里面） |
+
+想改行距、格子间距、整行宽度 —— 全是 `containerClassName`。`className` 基本只在需要动
+输入行为相关的样式（比如 `disabled:` 下的光标）时才用得上。两个都是纯字符串：这一家
+不是 Base UI 部件，没有函数形态。
+
+## data-slot 与 data-active
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `input-otp` | 那个隐形的真 input |
+| `input-otp-group` | 一组连续的格子 |
+| `input-otp-slot` | 单个格子 |
+| `input-otp-separator` | 组间分隔符，同时带 `role="separator"` |
+
+可见的容器行没有 `data-slot`，它带的是 `input-otp` 包自己的 `data-input-otp-container`。
+
+**`data-active` 是值形布尔。** 当前光标所在的格子标的是 `data-active="true"`，其余的是
+`data-active="false"` —— 属性**一直在**，只是值在变。这和本库其余部分的空串形态
+（`data-checked=""`，靠属性在不在判断）不是一回事：vendored 那份直接把布尔值写进属性，
+而它是逐字节对齐上游的，改不得。
+
+所以这里的选择器要写 `data-[active=true]:`：
+
+```tsx
+<InputOTPSlot className="data-[active=true]:ring-4" index={0} />
+```
+
+`styles.css` 里那个 `data-active` 自定义变体特意写宽容了
+（`[data-active]:not([data-active="false"])`），所以 `data-active:` 也能匹配到这里 ——
+但整个家族的既有类名都是 `data-[active=true]:` 写法，跟着写省得两种风格混用。
+
+## 分隔符是包过一层的
+
+`InputOTPSeparator` 是这个页面里唯一被封装层**重新包过**的部件，其余三个都是原样转出。
+
+原因是 vendored 那份把自己的 `className` 写在 props 展开的**前面**：
+
+```tsx
+// vendored（改不得）
+<div className="flex items-center …" role="separator" {...props} />
+```
+
+于是外部传一个 `className` 进来，不是叠加，而是把整段布局类**整个顶掉** —— 图标当场
+失去自己的盒子和尺寸。封装层在外面套一层做一次 `cn` 合并，把「冲突时你的赢、不冲突时
+我的还在」这条普通规矩还回来。
+
+它渲染的是一个 `IconMinus`。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### InputOTP
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `maxLength` | `number` | — | **必填**。总字符数，要和格子数一致 |
+| `children` | `ReactNode` | — | 格子与分隔符。和 `render` 二选一 |
+| `defaultValue` | `string` | `''` | 非受控初始值。会触发 React 的 both value/defaultValue 告警，见[受控](#受控) |
+| `value` | `string` | — | 受控值 |
+| `onChange` | `(newValue: string) => unknown` | — | 值变化回调。**参数是字符串，不是事件** |
+| `onComplete` | `(value: string) => unknown` | — | 填满 `maxLength` 时响一次 |
+| `pattern` | `string` | — | 正则**源码串**，交给 `new RegExp()`（如 `^\d+$`）。不匹配的输入与粘贴整段拒绝 |
+| `pasteTransformer` | `(pasted: string) => string` | — | 粘贴内容入库前先过一道（去空格、去连字符之类） |
+| `inputMode` | `string` | `'numeric'` | 移动端键盘类型，透传给真 input |
+| `autoComplete` | `string` | `'one-time-code'` | 短信自动填充靠它，别随手覆盖 |
+| `disabled` | `boolean` | `false` | 原生属性；容器有 `has-disabled:opacity-50` 跟着变灰 |
+| `name` | `string` | — | 表单字段名 |
+| `id` | `string` | — | 落在真 input 上，`FieldLabel htmlFor` 指这里 |
+| `textAlign` | `'left' \| 'center' \| 'right'` | `'left'` | 隐形 input 里文本（也就是光标停靠）的对齐方式 |
+| `pushPasswordManagerStrategy` | `'increase-width' \| 'none'` | `'increase-width'` | 检测到密码管理器图标时把容器撑宽一点，别让图标压在格子上 |
+| `noScriptCSSFallback` | `string \| null` | 内置一段 CSS | 无 JS 时用的 `<noscript>` 样式兜底；传 `null` 不渲染 |
+| `render` | `(props: { slots, isFocused, isHovering }) => ReactNode` | — | 自绘整行，和 `children` 二选一 |
+| `containerClassName` | `string` | — | 可见那一行的类名 |
+| `className` | `string` | — | 隐形真 input 的类名 |
+| 其余 | 原生 `input` 属性 | — | 透传给隐形 input（含 `ref`——它就是那个 input） |
+
+### InputOTPGroup / InputOTPSlot / InputOTPSeparator
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `index` | `number` | — | **`InputOTPSlot` 必填**，从 0 起连续，跨 group 也连续 |
+| `className` | `string` | — | 三个都是纯 `div`，只收字符串 |
+| 其余 | 原生 `div` 属性 | — | 透传（含 `ref`） |
+
+`InputOTPGroup` 与 `InputOTPSlot` 是原样转出的，`InputOTPSeparator`
+[被包过一层](#分隔符是包过一层的)。
+
+四个类型一并导出：`InputOTPProps` / `InputOTPGroupProps` / `InputOTPSlotProps` /
+`InputOTPSeparatorProps`。
