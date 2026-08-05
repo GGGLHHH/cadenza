@@ -15,6 +15,13 @@ import {
 // seconds when the point is that it has not arrived yet.
 const SETTLES = 20
 const NEVER = 10_000
+// For the one assertion that counts *how many* queries a burst of typing
+// collapses into. That count only holds while every keystroke gap stays inside
+// the debounce window, so the window has to outrun scheduler jitter — at
+// SETTLES a loaded machine occasionally spent >20ms between two keys and the
+// debounce fired twice, failing roughly one run in fifty. Nothing waits this
+// long: the assertion runs as soon as the query arrives.
+const COLLAPSES = 500
 
 describe('searchField', () => {
   it('renders a searchbox — type=search is what gives it the role', () => {
@@ -31,7 +38,7 @@ describe('searchField', () => {
     render(
       <SearchField
         aria-label="搜索"
-        debounceMs={SETTLES}
+        debounceMs={COLLAPSES}
         onQueryValueChange={onQueryValueChange}
         onValueChange={onValueChange}
       />,
