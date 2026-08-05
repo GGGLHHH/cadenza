@@ -127,6 +127,8 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 
 ### Tabs
 
+- **`TabsIndicator` 默认在场**(默认在场家法):`TabsList` 自动渲染滑动指示器
+  ——这就是本库 tabs 的长相;`indicator={false}` 关掉,自己组合一只则默认让位
 - **默认激活方式反了**：Base UI 默认手动（方向键只移焦点，Enter/Space 才切换）。
   依赖旧默认的地方在 `TabList` 上显式加 `activateOnFocus`
 - `items` + 函数 children 的动态集合形态消失，改用普通 `.map()`
@@ -135,6 +137,8 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 
 ### SearchField
 
+- **新增 `clearable` 总开关**(默认开):`false` 连显式组合的 `SearchFieldClear`
+  一并关掉;Escape 清空是输入框自己的键盘语义,不受它管
 - 根元素是纯 `<div>`，`className` 收窄成 `string`。状态走 `data-empty` /
   `data-disabled` / `data-readonly`
 - 函数 children 的状态从 `{ isEmpty, isDisabled, isReadOnly }` 改成
@@ -142,6 +146,9 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 
 ### InfiniteSelect / InfiniteCombobox
 
+- **裸 `InfiniteSelect` 补默认组合**(默认在场家法):不写 children 渲染
+  `InfiniteSelectInputGroup` + `InfiniteSelectList`,新增根 prop `searchPlaceholder`;
+  写了 children 整条通道归使用方
 - 底座换成 Base UI 的 `Combobox`（`inline` 模式），虚拟化换成 TanStack Virtual
 - `InfiniteCombobox.isDisabled` → `disabled`，函数 children 拿到的 `isDisabled` → `disabled`，
   `useInfiniteComboboxState` 的 `isOpen` → `open`（`defaultOpen` / `onOpenChange` 本来就对）

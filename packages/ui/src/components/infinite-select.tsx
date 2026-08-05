@@ -108,6 +108,13 @@ interface InfiniteSelectCommonProps<T> {
    */
   'name'?: string
 
+  /**
+   * Placeholder for the default composition's input group, doubling as its
+   * accessible name — the same word `InfiniteCombobox` uses. Ignored once you
+   * write your own children.
+   */
+  'searchPlaceholder'?: string
+
   'getOption': (item: T) => InfiniteSelectOption
 
   /**
@@ -129,8 +136,10 @@ interface InfiniteSelectCommonProps<T> {
   /**
    * The composition channel: parts (`InfiniteSelectInputGroup` /
    * `InfiniteSelectList`), state slots (`InfiniteSelectEmpty` / `Error`) and
-   * the footer bar, in caller order. The base renders no copy — and no parts —
-   * of its own.
+   * the footer bar, in caller order. Not writing it renders the default
+   * composition — input group + list (the default-presence rule); writing it
+   * takes the whole channel over. The base renders no copy of its own either
+   * way.
    */
   'children'?: ReactNode
 }
@@ -501,6 +510,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     onInputValueChange,
     getOption,
     name,
+    searchPlaceholder,
     virtualized = false,
     rowHeight = 32,
     'aria-label': ariaLabel,
@@ -592,7 +602,12 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
             onInputValueChange={onInputValueChange}
             onValueChange={onValueChange}
           >
-            {children}
+            {children ?? (
+              <>
+                <InfiniteSelectInputGroup placeholder={searchPlaceholder} />
+                <InfiniteSelectList />
+              </>
+            )}
           </Combobox.Root>
         </InfiniteSelectContext>
       </InfiniteSelectStateContext>

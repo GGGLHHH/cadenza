@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
 
 // 两档对比,聚焦后按方向键试试:
 //   默认(手动)—— 方向键只移动焦点,Enter/Space 才切换面板。面板加载昂贵时
@@ -11,7 +11,6 @@ export default function KeyboardActivationDemo(): ReactElement {
     <div className="flex flex-col gap-8">
       <Tabs defaultValue="overview">
         <TabsList aria-label="手动激活(默认)">
-          <TabsIndicator />
           <TabsTab value="overview">概览</TabsTab>
           <TabsTab value="analytics">分析</TabsTab>
           <TabsTab value="reports">报告</TabsTab>
@@ -35,7 +34,6 @@ export default function KeyboardActivationDemo(): ReactElement {
 
       <Tabs defaultValue="overview">
         <TabsList activateOnFocus aria-label="随焦点激活">
-          <TabsIndicator />
           <TabsTab value="overview">概览</TabsTab>
           <TabsTab value="analytics">分析</TabsTab>
           <TabsTab value="reports">报告</TabsTab>

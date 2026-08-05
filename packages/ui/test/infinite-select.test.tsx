@@ -457,4 +457,23 @@ describe('infiniteSelect selection', () => {
     )
     expect(document.querySelector<HTMLInputElement>('input[name="composer"]')?.value).toBe('')
   })
+
+  it('default composition: no children renders the input group and the list', () => {
+    render(<InfiniteSelect getOption={getOption} items={items} searchPlaceholder="搜索作曲家" />)
+    // The input group with its placeholder-as-name (Base UI's Combobox.Input
+    // maps to role=combobox), and the listbox with the options.
+    expect(screen.getByRole('combobox', { name: '搜索作曲家' })).not.toBeNull()
+    expect(screen.getAllByRole('option')).toHaveLength(2)
+  })
+
+  it('written children take the whole channel over — no implicit parts', () => {
+    render(
+      <InfiniteSelect getOption={getOption} items={items}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    // Only what was written: the list, no input group.
+    expect(document.querySelector('[data-slot="infinite-select-input-group"]')).toBeNull()
+    expect(screen.getAllByRole('option')).toHaveLength(2)
+  })
 })

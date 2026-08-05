@@ -1,13 +1,12 @@
 import type { ReactElement } from 'react'
-import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
 
 // variant="line" 只换外观:去掉胶囊底色,改成底部一条 2px 指示线;
-// 同一个 TabsIndicator 换个形状,滑动与跟随悬停的行为完全一样。
+// 同一个指示器(默认在场)在 line 变体下换个形状,滑动与跟随悬停的行为完全一样。
 export default function LineDemo(): ReactElement {
   return (
     <Tabs defaultValue="overview">
       <TabsList aria-label="项目仪表盘" variant="line">
-        <TabsIndicator />
         <TabsTab value="overview">概览</TabsTab>
         <TabsTab value="analytics">分析</TabsTab>
         <TabsTab value="reports">报告</TabsTab>

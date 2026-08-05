@@ -359,8 +359,10 @@ interface InfiniteSelectItemRenderParams<T> {
    Base UI 的值 → 业务 `onChange` 的翻译；`useInfiniteComboboxState`
    管弹层开合与搜索/防抖；`useDataPaginationState` 是同一模式在分页器上的应用。
    全部导出，可脱离组件 headless 使用。
-2. **Parts 层（组合式组件 + context 接线）**——根组件 `InfiniteSelect` 只提供
-   数据与选择的 context 和 Base UI `Combobox.Root` 外壳；`InfiniteSelectInputGroup`
+2. **Parts 层（组合式组件 + context 接线）**——根组件 `InfiniteSelect` 提供
+   数据与选择的 context 和 Base UI `Combobox.Root` 外壳。**不写 children 就渲染
+   默认组合**（`InfiniteSelectInputGroup` + `InfiniteSelectList`，默认在场家法）；
+   写了 children 整条通道归你。`InfiniteSelectInputGroup`
    （搜索框）、`InfiniteSelectList`（列表，含虚拟化与预取）、状态插槽、footer
    一族都是普通 children，**按书写顺序渲染**，各自带自己的 props：
 
@@ -494,6 +496,7 @@ interface InfiniteSelectItemRenderParams<T> {
 | `isFetchingNextPage` | `boolean` | `false` | 正在取下一页 |
 | `hasNextPage` | `boolean` | `false` | 还有下一页 |
 | `isError` | `boolean` | `false` | 加载失败 |
+| `searchPlaceholder` | `string` | — | 默认组合的搜索框占位符兼无障碍名（与 `InfiniteCombobox` 同词）。写了 children 就忽略 |
 | `onLoadMore` | `() => void` | — | 触底（或提前一个视口）时调用 |
 | `onRetry` | `() => void` | — | 给 `InfiniteSelectRetry` 用；不传则该插槽不渲染 |
 | `aria-label` | `string` | — | 面板无障碍名，`InfiniteSelectList` 会回退到它 |

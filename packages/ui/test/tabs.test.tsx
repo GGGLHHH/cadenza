@@ -207,4 +207,43 @@ describe('tabIndicator', () => {
     expect(list?.getAttribute('data-variant')).toBe('line')
     expect(document.querySelector('[data-slot="tabs-indicator"]')?.parentElement).toBe(list)
   })
+
+  it('wears the sliding indicator by default — the house look needs no composing', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList aria-label="默认在场">
+          <TabsTab value="a">A</TabsTab>
+        </TabsList>
+        <TabsPanel value="a">面板</TabsPanel>
+      </Tabs>,
+    )
+    expect(document.querySelectorAll('[data-slot="tabs-indicator"]').length).toBe(1)
+  })
+
+  it('indicator={false} removes the default one', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList aria-label="关掉" indicator={false}>
+          <TabsTab value="a">A</TabsTab>
+        </TabsList>
+        <TabsPanel value="a">面板</TabsPanel>
+      </Tabs>,
+    )
+    expect(document.querySelector('[data-slot="tabs-indicator"]')).toBeNull()
+  })
+
+  it('an explicitly composed indicator is yours — the default one steps aside, no doubling', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList aria-label="自己的">
+          <TabsIndicator className="opacity-90" />
+          <TabsTab value="a">A</TabsTab>
+        </TabsList>
+        <TabsPanel value="a">面板</TabsPanel>
+      </Tabs>,
+    )
+    const indicators = document.querySelectorAll('[data-slot="tabs-indicator"]')
+    expect(indicators.length).toBe(1)
+    expect(indicators[0]?.className).toContain('opacity-90')
+  })
 })

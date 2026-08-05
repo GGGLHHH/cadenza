@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 import { DemoButton } from '../lib/demo-button'
 
@@ -15,7 +15,6 @@ export default function ControlledDemo(): ReactElement {
     <div className="flex flex-col gap-4">
       <Tabs value={value} onValueChange={setValue}>
         <TabsList aria-label="项目仪表盘">
-          <TabsIndicator />
           <TabsTab value="overview">概览</TabsTab>
           <TabsTab value="analytics">分析</TabsTab>
           <TabsTab value="reports">报告</TabsTab>

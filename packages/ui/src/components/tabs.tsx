@@ -3,6 +3,7 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { ComponentProps, ReactElement } from 'react'
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { findComposedPart } from '#lib/find-part'
 import { cn } from '#lib/utils'
 import {
   TabsContent,
@@ -30,17 +31,33 @@ import {
  * is an ordinary `.map()`.
  */
 export type TabsProps = ComponentProps<typeof TabsPrimitive>
-export type TabsListProps = ComponentProps<typeof TabsListPrimitive> & VariantProps<typeof tabsListVariants>
+export type TabsListProps = ComponentProps<typeof TabsListPrimitive> & VariantProps<typeof tabsListVariants> & {
+  /**
+   * The sliding indicator is present by default — it is this library's tabs
+   * look (every docs demo wears it). `indicator={false}` removes the default
+   * one; an explicitly composed `TabsIndicator` is always yours and unaffected
+   * (composing one while passing `false` is a contradiction, not a use case).
+   */
+  indicator?: boolean
+}
 export type TabsTabProps = ComponentProps<typeof TabsTrigger>
 export type TabsPanelProps = ComponentProps<typeof TabsContent>
 
 /**
- * The tab strip. Adds nothing but the positioning context `TabsIndicator` needs
- * — the vendored list already carries `group/tabs-list` and mirrors its variant
- * as `data-variant`, which is what the indicator styles itself off.
+ * The tab strip. Adds the positioning context `TabsIndicator` needs — the
+ * vendored list already carries `group/tabs-list` and mirrors its variant as
+ * `data-variant`, which is what the indicator styles itself off — and renders
+ * the indicator by default (three states: absent → default present; composed →
+ * yours; `indicator={false}` → gone).
  */
-export function TabsList({ className, ...props }: TabsListProps): ReactElement {
-  return <TabsListPrimitive className={cn('relative', className)} {...props} />
+export function TabsList({ children, className, indicator = true, ...props }: TabsListProps): ReactElement {
+  const hasOwnIndicator = findComposedPart(children, TabsIndicator) !== undefined
+  return (
+    <TabsListPrimitive className={cn('relative', className)} {...props}>
+      {children}
+      {indicator && !hasOwnIndicator && <TabsIndicator />}
+    </TabsListPrimitive>
+  )
 }
 
 export interface TabsIndicatorProps {

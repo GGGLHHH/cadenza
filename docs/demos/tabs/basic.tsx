@@ -1,14 +1,14 @@
 import type { ReactElement } from 'react'
-import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
 
 // 非受控用法:defaultValue 指定初始选中,TabsTab 与 TabsPanel 靠同名 value 自动配对
 // 方向键切换、aria-controls / aria-labelledby 关联都由 Base UI 处理,无需手写
-// TabsIndicator 是那块会滑动的选中底色:鼠标悬停时它就跟过去,移开再滑回选中项
+// 会滑动的选中底色(TabsIndicator)默认在场:鼠标悬停时它跟过去,移开再滑回选中项。
+// 不用写;indicator={false} 可关,自己写 <TabsIndicator className=…> 则完全归你
 export default function BasicDemo(): ReactElement {
   return (
     <Tabs defaultValue="analytics">
       <TabsList aria-label="项目仪表盘">
-        <TabsIndicator />
         <TabsTab value="overview">概览</TabsTab>
         <TabsTab value="analytics">分析</TabsTab>
         <TabsTab value="reports">报告</TabsTab>

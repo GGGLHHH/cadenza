@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
 
 // 禁用是逐个 tab 声明的,Base UI 没有根上的禁用集合 —— 禁用集合由数据算出来时
 // 就在 map 里写 disabled={ids.has(id)}。禁用的 tab 会被键盘导航跳过,
@@ -8,7 +8,6 @@ export default function DisabledDemo(): ReactElement {
   return (
     <Tabs defaultValue="overview">
       <TabsList aria-label="项目仪表盘">
-        <TabsIndicator />
         <TabsTab value="overview">概览</TabsTab>
         <TabsTab disabled value="analytics">分析</TabsTab>
         <TabsTab disabled value="reports">报告</TabsTab>

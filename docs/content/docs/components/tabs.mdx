@@ -21,7 +21,7 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 `TabsTab` 的 `value` 就是它的 key，同名 `value` 的 `TabsPanel` 自动配对；
 `defaultValue` 指定初始选中（不给则选第一个**未禁用**的标签）。
 `TabsList` 的 `aria-label` 必给 —— 它是这组标签页的无障碍名。
-`TabsIndicator` 是那块会滑动的选中标记，见[下一节](#滑动指示器)：
+会滑动的选中标记（`TabsIndicator`）**默认在场**，见[下一节](#滑动指示器)：
 
 <ComponentPreview name="tabs/basic" />
 
@@ -45,21 +45,21 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 > Base UI 自己也有 `Tabs.Indicator`，但它只跟随**已选中**的标签。这块是本库另写的，
 > 多出来的就是悬停与焦点那两档。
 
-写在 `TabsList` 里即可，位置随意；放进去之后标签自身就不再画选中底色，
-两个 `variant` 都支持（`default` 是滑动的胶囊，`line` 是滑动的下划线）：
+**它默认在场**——`TabsList` 自动渲染一只,这就是本库 tabs 的长相,不用写。三态:
 
 ```tsx
-<TabsList aria-label="项目仪表盘">
-  <TabsIndicator />
-  <TabsTab value="overview">概览</TabsTab>
-  <TabsTab value="analytics">分析</TabsTab>
+<TabsList aria-label="…">…</TabsList>                    // 不写:默认在场
+<TabsList aria-label="…">
+  <TabsIndicator className="…" />                        // 写:完全归你,默认那只让位
+  …
 </TabsList>
+<TabsList aria-label="…" indicator={false}>…</TabsList>  // 显式关:回到各画各的选中态
 ```
 
+指示器在场时标签自身不再画选中底色,两个 `variant` 都支持
+（`default` 是滑动的胶囊，`line` 是滑动的下划线）。
 `prefers-reduced-motion` 下自动降级为瞬时移动；首次渲染直接就位，不做滑入动画。
 标签宽度变化（字体加载完、角标数字变了）会自动重新测量。
-
-不写 `TabsIndicator` 也完全可用 —— 那就是每个标签各画各的选中态，没有过渡。
 
 ## 垂直排列
 

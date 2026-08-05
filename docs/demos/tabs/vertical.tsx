@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
 
 // orientation="vertical" 时 TabsList 竖排在左、面板在右;
 // 方向键也跟着换轴(上下键切换 tab),这是 RAC 按 orientation 自动处理的
@@ -8,7 +8,6 @@ export default function VerticalDemo(): ReactElement {
   return (
     <Tabs className="flex gap-4" defaultValue="overview" orientation="vertical">
       <TabsList aria-label="项目仪表盘">
-        <TabsIndicator />
         <TabsTab value="overview">概览</TabsTab>
         <TabsTab value="analytics">分析</TabsTab>
         <TabsTab value="reports">报告</TabsTab>

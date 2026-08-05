@@ -276,4 +276,24 @@ describe('searchField', () => {
     render(<SearchField aria-label="搜索" defaultValue="ravel" />)
     expect(screen.getByRole('button', { name: 'Clear search' }).tabIndex).toBe(-1)
   })
+
+  it('clearable={false} is the master switch — no clear button, explicit composition included', () => {
+    render(
+      <SearchField aria-label="搜索" clearable={false} defaultValue="ravel">
+        <InputGroup>
+          <SearchFieldInput />
+          <SearchFieldClear />
+        </InputGroup>
+      </SearchField>,
+    )
+    expect(screen.queryByRole('button', { name: 'Clear search' })).toBeNull()
+  })
+
+  it('clearable={false} leaves Escape-to-clear alone — that is the input\'s own semantic', async () => {
+    const user = userEvent.setup()
+    render(<SearchField aria-label="搜索" clearable={false} defaultValue="ravel" />)
+    await user.click(screen.getByRole('searchbox'))
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('searchbox')).toHaveProperty('value', '')
+  })
 })

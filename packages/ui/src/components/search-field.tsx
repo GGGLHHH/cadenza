@@ -163,6 +163,8 @@ export interface SearchFieldState {
 
 interface SearchFieldContextValue extends SearchFieldState {
   'value': string
+  /** The clear affordance's master switch (root's `clearable`, default true). */
+  'clearable': boolean
   'setValue': (value: string, eventDetails?: SearchFieldChangeEventDetails) => void
   'clear': (eventDetails?: SearchFieldChangeEventDetails) => void
   'submit': () => void
@@ -186,6 +188,13 @@ export type SearchFieldProps
     & {
       disabled?: boolean
       readOnly?: boolean
+      /**
+       * The clear affordance's master switch, default ON — `false` removes the
+       * clear button everywhere, an explicitly composed `SearchFieldClear`
+       * included. Escape-to-clear stays: that is the search input's own
+       * keyboard semantic, not the button's.
+       */
+      clearable?: boolean
       /** Placeholder for the default composition's input. */
       placeholder?: string
       /** Fires on Enter, with the current raw text. */
@@ -263,8 +272,10 @@ export function SearchFieldClear({
   children,
   onClick,
   ...props
-}: ComponentProps<typeof InputGroupButton>): ReactElement {
+}: ComponentProps<typeof InputGroupButton>): ReactElement | null {
   const field = useSearchFieldContext()
+  if (!field.clearable)
+    return null
   return (
     <InputGroupAddon
       align="inline-end"
@@ -299,6 +310,7 @@ export function SearchField({
   'aria-label': ariaLabel,
   children,
   className,
+  clearable = true,
   debounceMs,
   defaultQueryValue,
   defaultValue,
@@ -329,6 +341,7 @@ export function SearchField({
   const context: SearchFieldContextValue = {
     ...state,
     'value': search.value,
+    'clearable': clearable,
     'setValue': search.setValue,
     'clear': search.resetSearch,
     'submit': () => onSubmit?.(search.value),

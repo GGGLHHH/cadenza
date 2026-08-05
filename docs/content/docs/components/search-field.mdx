@@ -102,6 +102,7 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | `defaultValue` | `string` | `''` | 非受控初始文本 |
 | `value` | `string` | — | 受控文本 |
 | `onValueChange` | `(value, eventDetails) => void` | — | 每次文本变化触发。`eventDetails.reason` 说明来源（`input-change` / `clear-press` / `escape-key`），`cancel()` 拒绝这次变更 |
+| `clearable` | `boolean` | `true` | 清除按钮总开关——`false` 连显式组合的 `SearchFieldClear` 一并关掉。Escape 清空不受它管（那是 search 输入框自己的键盘语义） |
 | `defaultQueryValue` | `string` | — | 非受控初始查询值 |
 | `queryValue` | `string` | — | 受控查询值 |
 | `onQueryValueChange` | `(value: string \| undefined) => void` | — | 去抖后触发，已 trim、空白归一为 `undefined` |
