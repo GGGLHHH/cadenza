@@ -59,6 +59,7 @@ const registry: Record<string, ComponentType> = {
   'scroll-area/scrollbars': lazy(async () => import('./scroll-area/scrollbars')),
   'scroll-area/scroll-fade': lazy(async () => import('./scroll-area/scroll-fade')),
   'select/basic': lazy(async () => import('./select/basic')),
+  'select/clearable': lazy(async () => import('./select/clearable')),
   'select/group': lazy(async () => import('./select/group')),
   'select/multiple': lazy(async () => import('./select/multiple')),
   'select/dynamic': lazy(async () => import('./select/dynamic')),

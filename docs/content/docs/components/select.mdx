@@ -7,16 +7,25 @@ description: Base UI Select 的封装 —— 组合式下拉选择，弹层把�
 键盘打字定位、方向键导航、Escape 关闭、`aria-controls` / `aria-activedescendant`
 互指都是它的事。组合就是全部 API。
 
-结构永远是：`Select` 里放一个 `SelectTrigger`（内含 `SelectValue`），后面跟一个
-`SelectContent`（内含 `SelectGroup` / `SelectItem`）。
+**默认在场是这个家族的家法**：不写 children，`Select` 用 `items` 渲染完整
+默认组合（触发器 + 回显 + 清除 ✕ + 弹层 + 选项）；写了 children 就逐层接管。
+组合时结构永远是：`Select` 里放一个 `SelectTrigger`（内含 `SelectValue`），
+后面跟一个 `SelectContent`（内含 `SelectItem`）。**`SelectGroup` 不必写**——
+没写时 `SelectContent` 自动包一层隐式分组（列表的内边距住在组上）；
+`SelectTrigger` 不给 children 也自动含 `SelectValue` 与清除。
 
 ## 基础用法
 
-`SelectItem` 的 `value` 就是它的值，`SelectValue` 回显当前选中，`placeholder`
-写在 `SelectValue` 上（不是根组件）。`SelectTrigger` 是真正的控件，
-`aria-label` 和 `id` 都落在它身上：
+一行式：`items` 供数据，`placeholder` / `aria-label` 落在根上，其余全部默认
+（含清除 ✕）。`id` 也写在根上——Base UI 会把它路由给触发器，
+`FieldLabel htmlFor` 直接指它即可：
 
 <ComponentPreview name="select/basic" />
+
+要定制某一层时写 children：`SelectItem` 的 `value` 就是它的值，`SelectValue`
+回显当前选中（此时 `placeholder` 写在 `SelectValue` 上），`SelectTrigger`
+是真正的控件，`aria-label` 落在它身上。写了 children 的层完全归你，
+没写的层保持默认。
 
 ### `items` 只管触发器怎么显示
 
@@ -26,12 +35,18 @@ description: Base UI Select 的封装 —— 组合式下拉选择，弹层把�
 ```tsx
 <Select items={{ apple: '苹果', pear: '梨' }}>          // 映射表
 <Select items={fruits.map(f => ({ value: f.id, label: f.name }))}>  // 数组
+<Select items={[{ value: '弦乐', items: [{ value: 'violin', label: '小提琴' }] }]}>
+                                    // 分组形态(标题键是 value,Base UI 官方约定)
 <SelectValue>{value => labels[value] ?? '—'}</SelectValue>          // 或者函数
 ```
 
 不给的话触发器上印的是原始值本身（`apple` 而不是「苹果」）。
-`items` **不渲染任何东西** —— 选项还是你自己 `.map()` 出来的。
-值和标签本来就一样时（比如每页条数 10 / 20 / 50）不用管这条。
+组合路径上 `items` **不渲染任何东西**——选项还是你自己 `.map()` 出来的;
+一行式（不写 children）由默认组合用它渲染选项。**分组形态会被拍平渲染**
+（组标题不出现,DEV 下有警告）——这是 Base UI 的用法:分组形态只喂标签解析
+（它内部就是 flatMap），**渲染分组永远走组合路径**（`SelectGroup` +
+`SelectLabel`，连 Combobox 官方分组也是调用方自己 map）。值和标签本来就
+一样时（比如每页条数 10 / 20 / 50）不用管这条。
 
 ## 分组与分隔
 
@@ -60,13 +75,32 @@ description: Base UI Select 的封装 —— 组合式下拉选择，弹层把�
 
 ## 空状态
 
-没有专门的入口，也不需要 —— 自己判断 `length` 写 JSX 就行。空集合的 `Select`
-照样能打开：
+`SelectEmpty` 与选项写在一起，列表里没有任何选项时它**自动现身**——纯 CSS
+（`:only-child`），零接线。走默认的隐式分组时这就是全部；只有**手写**
+`SelectGroup` 时有一条约束：数据为空时别渲染空的组壳，否则它不再是唯一
+子元素。空集合的 `Select` 照样能打开：
 
 <ComponentPreview name="select/empty" />
 
 > React Aria 那版这里有个坑：react-stately 在 `open()` 里就把空集合挡住了，
 > 不显式开 `allowsEmptyCollection` 根本看不到空态。Base UI 没有这道门。
+
+## 可清除
+
+**清除默认在场**：有值时一个 ✕ 站在 chevron 的位置，点击清空（单选 `null`、
+多选 `[]`，`reason: 'clear-press'`）且**不打开弹层**；空值、`disabled`、
+`readOnly` 时它不渲染，chevron 归位。`clearable={false}` 是总开关——必填
+表单字段这类「可清除是语义错误」的场景用它，它也会让显式组合的
+`SelectClear` 失效：
+
+<ComponentPreview name="select/clearable" />
+
+手写 trigger children 时清除不会隐式出现——组合路径完全归你，要它就写
+`<SelectClear />`（可定制 aria-label / 图标）。它是标记部件：写在 trigger
+里但渲染在 trigger **旁**——HTML 禁止 button 套 button，封装层把它提升为
+触发器的兄弟元素（真 `<button>`，在 Tab 序里：清除没有别的键盘路径，
+鼠标专属的做法会把键盘用户锁在外面）。清除非受控 Select 之所以可行，
+是因为封装层内部接管了值状态（对 Base UI 永远受控）。
 
 ## 禁用
 
@@ -97,9 +131,11 @@ description: Base UI Select 的封装 —— 组合式下拉选择，弹层把�
 | 时间 | 按住 400ms | 按住不放再松开，是有意的「按下—拖—松开」手势 |
 | 位移 | 拖出 8px | 指针从某一项上移开过，说明在拖选 |
 
-任一成立才允许那次松手提交。这也是 `alignItemWithTrigger` 默认为 `true`
-的配套设计：**选中项被对到光标正下方**（原生 macOS select 的做法），
-所以「移开 8px」等价于「离开了原本那一项」。
+任一成立才允许那次松手提交。这套守卫是 `alignItemWithTrigger` 的配套设计：
+开着时**选中项被对到光标正下方**（原生 macOS select 的做法），「移开 8px」
+等价于「离开了原本那一项」。本库把 `alignItemWithTrigger` **默认关掉**了
+（普通贴边下拉，弹层不在指针底下打开，守卫处于待命状态）——传
+`alignItemWithTrigger` 即可换回 macOS 式对齐，守卫随之生效。
 
 前一版（React Aria 底座）这里是封装层自己实现的一套守卫 ——
 一个挂在 `<html>` 上的属性加一条样式规则。现在整段删掉了，
@@ -139,7 +175,7 @@ description: Base UI Select 的封装 —— 组合式下拉选择，弹层把�
 | `readOnly` | `boolean` | `false` | 只读 |
 | `required` | `boolean` | `false` | 必填（表单校验用） |
 | `name` | `string` | — | 表单字段名，会渲染一个隐藏 input |
-| `modal` | `boolean` | `true` | 打开时是否锁住页面滚动与外部交互 |
+| `modal` | `boolean` | `false` | 打开时是否锁住页面滚动与外部交互。**封装层把 Base UI 的默认 `true` 翻成了 `false`**——页面照常滚动 |
 | `open` / `defaultOpen` / `onOpenChange` | — | — | 弹层开合的受控 / 非受控通道 |
 
 根组件本身不渲染 DOM，所以它没有 `className`，也没有状态属性。
@@ -182,7 +218,7 @@ Portal + Positioner + Popup + List 一整套，滚动箭头也在里面。定位
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `alignItemWithTrigger` | `boolean` | `true` | 把选中项对到触发器（光标）位置。关掉就是普通的贴边弹出 |
+| `alignItemWithTrigger` | `boolean` | `false` | 把选中项对到触发器（光标）位置（macOS 式）。**封装层默认关**——普通贴边弹出；它开着时滚动锁也会随之生效（上游 Positioner 的锁定条件是 `alignItemWithTrigger \|\| modal`） |
 | `side` | `'top' \| 'bottom' \| 'left' \| 'right' \| 'inline-start' \| 'inline-end'` | `'bottom'` | 贴哪一边 |
 | `sideOffset` | `number` | `4` | 与触发器的间距 |
 | `align` | `'start' \| 'center' \| 'end'` | `'center'` | 交叉轴对齐 |
@@ -203,7 +239,7 @@ Portal + Positioner + Popup + List 一整套，滚动箭头也在里面。定位
 
 | 部件 | 元素 | 说明 |
 | --- | --- | --- |
-| `SelectGroup` | `div`（`role="group"`） | 一组选项 |
+| `SelectGroup` | `div`（`role="group"`） | 一组选项。不写时 `SelectContent` 自动包一层隐式分组；写了就完全归你 |
 | `SelectLabel` | `div` | 组标题，自动关联到所在的组 |
 | `SelectSeparator` | `div` | 分隔线，不可交互 |
 

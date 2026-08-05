@@ -3,7 +3,7 @@ import {
   Button,
   Select,
   SelectContent,
-  SelectGroup,
+  SelectEmpty,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -17,9 +17,10 @@ const PIECES: Piece[] = [
   { id: 'jeux', title: '水之嬉戏' },
 ]
 
-// 空态没有专门的入口,也不需要:自己判断 length 写 JSX 就行。
-// 空集合的 Select 照样能打开 —— 不像 React Aria 那版,那边 react-stately
-// 在 open() 里就把空集合挡住了,不显式开 allowsEmptyCollection 根本看不到空态
+// SelectEmpty 与选项写在一起,列表里没有任何选项时它自动现身(:only-child,
+// 零 JS)。唯一的约束:数据为空时别渲染空的 SelectGroup 壳,否则它不再是
+// 唯一子元素。空集合的 Select 照样能打开 —— 不像 React Aria 那版,那边
+// react-stately 在 open() 里就把空集合挡住了。
 export default function EmptyDemo(): ReactElement {
   const [pieces, setPieces] = useState<Piece[]>([])
 
@@ -30,22 +31,10 @@ export default function EmptyDemo(): ReactElement {
           <SelectValue placeholder="选一首" />
         </SelectTrigger>
         <SelectContent>
-          {pieces.length === 0
-            ? (
-                <p className="
-                  px-3 py-6 text-center text-sm text-muted-foreground
-                "
-                >
-                  还没有可选的曲目
-                </p>
-              )
-            : (
-                <SelectGroup>
-                  {pieces.map(piece => (
-                    <SelectItem key={piece.id} value={piece.id}>{piece.title}</SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
+          <SelectEmpty>还没有可选的曲目</SelectEmpty>
+          {pieces.map(piece => (
+            <SelectItem key={piece.id} value={piece.id}>{piece.title}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
       <Button

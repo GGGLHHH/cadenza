@@ -203,6 +203,24 @@ LoadingOverlay)必须伪装成 Base UI 家族成员——公开 API 上分不出
    (Spinner/淡出细线,库不往 DOM 塞任何语言的文案);props 类型与落地元素对齐
    (`<tr>` 落地就 `ComponentProps<'tr'>`)。
    列表尾巴(终止行/加载指示/哨兵)渲染在 listbox/tbody 语义之外,不进 `aria-setsize`。
+10. **默认在场(三态,用户拍板 2026-08)**:二次封装的价值主张是好默认——完整体验
+    「不写就有」,忘写部件导致使用方魔改是默认值的失职,不是使用方的错。
+    该默认在场的部件对使用方有三态:**不写 → 默认在场;写 → 定制;显式关闭 → 消失**。
+    落点分两层裁量(A+B):
+    - **默认组合层(A)**:根组件 children 可选,不给就用数据 props 渲染完整默认组合
+      (SearchField 首创;Select 的 `items`+`placeholder`+`aria-label` 一行式)。
+      **改语义的部件**(如 clear)只住在这一层和显式组合里,由裸形容词能力开关驱动
+      (`clearable` 默认 `true`,是总开关——`false` 连显式组合的也关),不在手写组合里隐式冒出;
+      部件级默认组合同理(`SelectTrigger` 无 children → 自动 `SelectValue`+clear)。
+    - **部件级隐式(B)**:**无害的结构部件**在组合路径上也自动补
+      (`SelectContent` 的隐式 `SelectGroup`)。检测用 `findComposedPart`,
+      检测到使用方自己写了就完全让位,绝不双包。
+    - 零文案部件(`SelectEmpty` 这类内容槽)不能默认——库不写任何语言的文案。
+    - 默认组合渲染数据时**只用 Base UI 已示范的读法**:分组形态的 items 拍平
+      (Base UI 的 resolveValueLabel 就是 flatMap),渲染分组是组合词汇,
+      默认组合不代写 `SelectGroup`/`SelectLabel`。
+    - 写了 children 的层完全归使用方(忘写部件也不补),没写的层保持默认——
+      「逐层接管」,不是全有或全无。
 
 ## 常见错误(基线实测)
 
@@ -226,4 +244,6 @@ LoadingOverlay)必须伪装成 Base UI 家族成员——公开 API 上分不出
 - 写了 `Omit<…, 'className'>` 却说不清是哪条路由逼的
 - `{...props}` 后面没有任何内部 handler,但组件明明有接线
 - `ComponentProps<typeof X>` 直接当公开 props 用,没查 ref/泛型丢没丢
+- 在 Base UI 的开放形状(`[key: string]: unknown`)里自选键名,而没查官方 demo 用的哪个键
+  (先例:Group 的标题键是 `value`——`{ value: 'Fruits', items }`,不是 label)
 - 想给 vendored 文件加一行/改一个类型

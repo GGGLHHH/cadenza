@@ -91,6 +91,28 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 
 ### Select
 
+- **默认在场(三态)成为家法,Select 打样**:不写 children,根组件用 `items`
+  渲染完整默认组合(触发器+回显+清除+弹层+选项)。分组形态的 `items` 拍平渲染
+  (Base UI 用法:该形态只喂标签解析,渲染分组是组合词汇——`SelectGroup`/
+  `SelectLabel` 手写,DEV 下有警告指路);
+  `SelectTrigger` 不给 children 也自动含 `SelectValue` 与清除。新增根 props:
+  `placeholder` / `aria-label` / `clearable`(默认 `true`,总开关——`false`
+  连显式组合的 `SelectClear` 一并关掉)。写了 children 的层完全归使用方
+- **新增 `SelectClear`**：写进 `SelectTrigger`，有值时 ✕ 替换 chevron 的位置,
+  点击清空(单选 `null` / 多选 `[]`,`reason: 'clear-press'`)且不开弹层;
+  空值 / disabled / readOnly 不渲染。标记部件——HTML 禁止 button 套 button,
+  封装层把它提升为触发器的兄弟真 `<button>`(在 Tab 序里,清除的唯一键盘路径)。
+  为此封装层的 `Select` 根接管了值状态(对 Base UI 永远受控),非受控用法也能清;
+  `onValueChange` 的 reason 并入 `'clear-press'`(`SelectChangeEventReason`)
+- **新增 `SelectEmpty`**:与选项并排写进 `SelectContent`,列表无选项时自动现身
+  (`:only-child` 纯 CSS)。走隐式分组时零约束;手写组时:数据为空别渲染空组壳
+- **`SelectGroup` 可省略**:`SelectContent` 检测不到组时自动包一层隐式分组
+  (列表内边距住在组上,之前不写组会贴边)。写了自己的组就完全不干预
+- **两个默认值在封装层翻转**：`modal` 默认 `false`（Base UI 默认 `true`——打开
+  即锁页面滚动与外部交互），`alignItemWithTrigger` 默认 `false`（Base UI/shadcn
+  默认 `true` 的 macOS 式选中项对齐，关掉就是普通贴边下拉）。两者都仍是普通
+  prop，传入即恢复上游行为。注意上游的滚动锁条件是
+  `alignItemWithTrigger || modal`——两个都关才真正不锁滚动
 - **误选那个 bug 由上游修好了**（Base UI 的 400ms 按住 / 8px 拖动双轴），
   封装层那套 `PRESS_GRACE_ATTRIBUTE` 守卫和配套的 styles.css 规则整个删除。
   该导出随之消失
