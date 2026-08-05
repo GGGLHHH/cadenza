@@ -20,9 +20,9 @@ import {
 } from '#primitives/pagination'
 import {
   Select,
-  SelectContent,
   SelectGroup,
   SelectItem,
+  SelectPopup,
   SelectTrigger,
   SelectValue,
 } from './select'
@@ -236,7 +236,7 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
               >
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectPopup>
                 <SelectGroup>
                   {limitOptions.map(size => (
                     <SelectItem key={size} value={size}>
@@ -244,7 +244,7 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
                     </SelectItem>
                   ))}
                 </SelectGroup>
-              </SelectContent>
+              </SelectPopup>
             </Select>
           </div>
         )}

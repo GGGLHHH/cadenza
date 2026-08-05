@@ -3,6 +3,7 @@
 import type { ComponentProps, CSSProperties, ReactElement, MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import type { ChangeEventDetails, GenericEventDetails } from '#lib/change-event-details'
 import type { Key, Selection, SortDescriptor } from '#lib/collections'
+import type { ButtonProps } from './button'
 import type { LoadingOverlayProps } from './loading-overlay'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { useControllableState } from '@gedatou/cadenza-utils'
@@ -12,7 +13,6 @@ import { createContext, use, useEffect, useLayoutEffect, useMemo, useRef } from 
 import { createChangeEventDetails, createGenericEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
 import { cn, dataAttr } from '#lib/utils'
-import { Button } from '#primitives/button'
 import { Checkbox } from '#primitives/checkbox'
 import {
   TableBody,
@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '#primitives/table'
+import { Button } from './button'
 import { LoadingOverlay } from './loading-overlay'
 import { ScrollArea } from './scroll-area'
 import { Spinner } from './spinner'
@@ -100,7 +101,7 @@ export type DataTableSelectionProps<T>
     selectionMode?: 'none'
     value?: undefined
     defaultValue?: undefined
-    onChange?: undefined
+    onValueChange?: undefined
   }
   | {
     selectionMode: 'single'
@@ -108,14 +109,14 @@ export type DataTableSelectionProps<T>
     value?: string | null
     defaultValue?: string
     /** `eventDetails.cancel()` rejects the change. */
-    onChange?: (item: T | null, eventDetails: DataTableChangeEventDetails) => void
+    onValueChange?: (item: T | null, eventDetails: DataTableChangeEventDetails) => void
   }
   | {
     selectionMode: 'multiple'
     /** Controlled selected row ids — the cross-page archive. */
     value?: string[]
     defaultValue?: string[]
-    onChange?: (items: T[], ids: string[], eventDetails: DataTableChangeEventDetails) => void
+    onValueChange?: (items: T[], ids: string[], eventDetails: DataTableChangeEventDetails) => void
   }
 
 export interface DataTableBaseProps<T> {
@@ -143,7 +144,7 @@ export interface DataTableBaseProps<T> {
 
   // Raw selection passthrough: `selectedKeys` is the controlled set verbatim
   // (`'all'` reads as "every loaded row"), with no cross-page bookkeeping.
-  // Ignored while the value/onChange convenience layer (see
+  // Ignored while the value/onValueChange convenience layer (see
   // DataTableSelectionProps) is in use, except that onSelectionChange still
   // observes the raw selection.
   'selectedKeys'?: Iterable<Key> | 'all'
@@ -268,7 +269,7 @@ export function DataTableError({ className, ...props }: ComponentProps<'div'>): 
 }
 
 /** Retry button: wired to the table's `onRetry`; renders nothing without one. */
-export function DataTableRetry({ onClick, ...props }: ComponentProps<typeof Button>): ReactElement | null {
+export function DataTableRetry({ onClick, ...props }: ButtonProps): ReactElement | null {
   const { onRetry } = useDataTableState()
   if (!onRetry)
     return null
@@ -425,6 +426,7 @@ function LoadMoreRow({
   colSpan,
   children,
   className,
+  ref: composedRef,
   ...props
 }: ComponentProps<'tr'> & {
   onLoadMore: (() => void) | undefined
@@ -454,7 +456,23 @@ function LoadMoreRow({
   }, [scrollOffset])
 
   return (
-    <tr className={cn('hover:bg-transparent', className)} ref={ref} {...props}>
+    <tr
+      // A tail row, not a data row: the same treatment the spacer rows get, so
+      // a screen reader never counts the sentinel among the results.
+      aria-hidden
+      className={cn('hover:bg-transparent', className)}
+      {...props}
+      // After the spread and merged, never replaced: in React 19 `ref` is an
+      // ordinary prop, so a composed `DataTableLoadingMore ref` would otherwise
+      // overwrite the observer's and the sentinel would silently stop firing.
+      ref={(node) => {
+        ref.current = node
+        if (typeof composedRef === 'function')
+          composedRef(node)
+        else if (composedRef !== null && composedRef !== undefined)
+          composedRef.current = node
+      }}
+    >
       <td className={isFetchingNextPage ? 'py-1.5 text-center' : 'block-px'} colSpan={colSpan}>
         {isFetchingNextPage ? children : null}
       </td>
@@ -549,12 +567,12 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
   }
 
   // ── Convenience selection layer (cross-page archive). Active only when the
-  //    caller opted into value/defaultValue/onChange; otherwise the raw
+  //    caller opted into value/defaultValue/onValueChange; otherwise the raw
   //    `selectedKeys` passthrough below is what drives the rows. Controlled-ness
   //    is `value !== undefined`, Base UI's judgment — `undefined` belongs to
   //    "uncontrolled", and a controlled single select clears with `null`. ──
   const usesSelectionValue = props.value !== undefined || props.defaultValue !== undefined
-    || props.onChange !== undefined
+    || props.onValueChange !== undefined
 
   const normalizeIds = (value: string | string[] | null | undefined): string[] => {
     if (value === undefined || value === null)
@@ -614,11 +632,11 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
       const selectedItems = ids
         .map(id => cache.get(id))
         .filter((entry): entry is T => entry !== undefined)
-      props.onChange?.(selectedItems, ids, eventDetails)
+      props.onValueChange?.(selectedItems, ids, eventDetails)
     }
     else if (props.selectionMode === 'single') {
       const id = ids[0]
-      props.onChange?.(id === undefined ? null : cache.get(id) ?? null, eventDetails)
+      props.onValueChange?.(id === undefined ? null : cache.get(id) ?? null, eventDetails)
     }
     if (eventDetails.isCanceled)
       return
@@ -865,61 +883,80 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
           ? (
               <>
                 {padStart > 0 && spacerRow('__cadenza-pad-start', padStart)}
-                {windowRows.map(row => (
-                  <TableRow
+                {windowRows.map((row) => {
+                  // One activation path for pointer and keyboard. A clickable
+                  // row that only answers the mouse locks keyboard users out of
+                  // the gesture entirely — and with `selectionColumn` off (the
+                  // default) row clicking is the *only* way to select.
+                  const activate = onRowAction !== undefined
+                    ? (): void => onRowAction(row.item)
+                    : rowClickSelects
+                      ? (event: Event): void => toggleRow(
+                          row.id,
+                          !effectiveSelected.includes(row.id),
+                          createChangeEventDetails('item-press', event),
+                        )
+                      : undefined
+                  return (
+                    <TableRow
                     // The tint has to be spelled out here. The vendored row
                     // styles its selected background off `data-[state=selected]`
                     // — Radix's vocabulary, inherited from the shadcn preset —
                     // and nothing in this library writes `data-state`. So the
                     // row carries `data-selected` (what the rest of the library
                     // and Base UI speak) and the class that actually reads it.
-                    className="data-selected:bg-muted"
-                    data-selected={dataAttr(effectiveSelected.includes(row.id))}
-                    data-slot="data-table-row"
-                    key={row.id}
-                    style={virtualized && !dynamicRowHeight ? { blockSize: rowHeight } : undefined}
-                    onClick={onRowAction !== undefined
-                      ? () => onRowAction(row.item)
-                      : rowClickSelects
-                        ? (event: ReactMouseEvent) => toggleRow(
-                            row.id,
-                            !effectiveSelected.includes(row.id),
-                            createChangeEventDetails('item-press', event.nativeEvent),
-                          )
-                        : undefined}
-                    // TanStack's measureElement maps the node back to its item
-                    // via the data-index attribute; the ref feeds it the <tr>.
-                    {...(virtualized && dynamicRowHeight
-                      ? { 'data-index': row.index, 'ref': virtualizer.measureElement }
-                      : {})}
-                  >
-                    {allColumns.map((column) => {
-                      const cellClassName = cn(
-                        column.pinned && cn('z-10', PINNED_BODY_CELL_CLASSNAME),
-                        column.className,
-                      )
-                      // The row-header column is a <th scope="row">: that is
-                      // what makes a screen reader announce the row by its name
-                      // instead of reading every cell bare.
-                      return column.id === rowHeaderId
-                        ? (
-                            <TableHead
-                              className={cn('font-normal text-foreground', cellClassName)}
-                              key={column.id}
-                              scope="row"
-                              style={cellStyle(column)}
-                            >
-                              {renderCell(column, row)}
-                            </TableHead>
-                          )
-                        : (
-                            <TableCell className={cellClassName} key={column.id} style={cellStyle(column)}>
-                              {renderCell(column, row)}
-                            </TableCell>
-                          )
-                    })}
-                  </TableRow>
-                ))}
+                      className="data-selected:bg-muted"
+                      data-selected={dataAttr(effectiveSelected.includes(row.id))}
+                      data-slot="data-table-row"
+                      key={row.id}
+                      style={virtualized && !dynamicRowHeight ? { blockSize: rowHeight } : undefined}
+                      tabIndex={activate === undefined ? undefined : 0}
+                      onClick={activate === undefined
+                        ? undefined
+                        : (event: ReactMouseEvent) => activate(event.nativeEvent)}
+                      onKeyDown={activate === undefined
+                        ? undefined
+                        : (event) => {
+                            if (event.key !== 'Enter' && event.key !== ' ')
+                              return
+                            // Space would scroll the region out from under the row.
+                            event.preventDefault()
+                            activate(event.nativeEvent)
+                          }}
+                      // TanStack's measureElement maps the node back to its item
+                      // via the data-index attribute; the ref feeds it the <tr>.
+                      {...(virtualized && dynamicRowHeight
+                        ? { 'data-index': row.index, 'ref': virtualizer.measureElement }
+                        : {})}
+                    >
+                      {allColumns.map((column) => {
+                        const cellClassName = cn(
+                          column.pinned && cn('z-10', PINNED_BODY_CELL_CLASSNAME),
+                          column.className,
+                        )
+                        // The row-header column is a <th scope="row">: that is
+                        // what makes a screen reader announce the row by its name
+                        // instead of reading every cell bare.
+                        return column.id === rowHeaderId
+                          ? (
+                              <TableHead
+                                className={cn('font-normal text-foreground', cellClassName)}
+                                key={column.id}
+                                scope="row"
+                                style={cellStyle(column)}
+                              >
+                                {renderCell(column, row)}
+                              </TableHead>
+                            )
+                          : (
+                              <TableCell className={cellClassName} key={column.id} style={cellStyle(column)}>
+                                {renderCell(column, row)}
+                              </TableCell>
+                            )
+                      })}
+                    </TableRow>
+                  )
+                })}
                 {padEnd > 0 && spacerRow('__cadenza-pad-end', padEnd)}
                 {hasNextPage && (
                   <LoadMoreRow

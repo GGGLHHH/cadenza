@@ -17,7 +17,7 @@ export default function VirtualizedDemo(): ReactElement {
     <InfiniteCombobox<Person>
       getOption={getOption}
       list={list}
-      onChange={setPicked}
+      onValueChange={setPicked}
       searchPlaceholder="在 10000 条里搜索…"
       state={state}
       virtualized

@@ -1,6 +1,6 @@
 'use client'
 
-import type { CSSProperties, ReactElement, Ref } from 'react'
+import type { ReactElement, Ref } from 'react'
 import { ScrollArea as ScrollAreaPrimitive } from '@base-ui/react/scroll-area'
 import { cn } from '#lib/utils'
 
@@ -17,12 +17,13 @@ export type ScrollAreaProps = ScrollAreaPrimitive.Root.Props & {
   scrollbars?: ScrollAreaScrollbars
   /**
    * Viewport class names — the scroll-fade utilities belong here, not on the
-   * root. A plain string: the viewport is ours to compose, so there is no
-   * Base UI state to be a function of.
+   * root. The function form receives `ScrollAreaViewportState` (`scrolling`,
+   * `hasOverflowX/Y`, the four overflow-edge flags), which is exactly the state
+   * a scroll fade wants to read.
    */
-  viewportClassName?: string
+  viewportClassName?: ScrollAreaPrimitive.Viewport.Props['className']
   viewportRef?: Ref<HTMLDivElement>
-  viewportStyle?: CSSProperties
+  viewportStyle?: ScrollAreaPrimitive.Viewport.Props['style']
 }
 
 export type ScrollAreaScrollbarProps = ScrollAreaPrimitive.Scrollbar.Props

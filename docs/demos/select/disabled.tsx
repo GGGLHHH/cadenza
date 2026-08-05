@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
 import {
   Select,
-  SelectContent,
   SelectGroup,
   SelectItem,
+  SelectPopup,
   SelectTrigger,
   SelectValue,
 } from '@gedatou/cadenza-ui'
@@ -17,23 +17,23 @@ export default function DisabledDemo(): ReactElement {
         <SelectTrigger aria-label="整体禁用">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectPopup>
           <SelectGroup>
             <SelectItem value="viola">中提琴</SelectItem>
           </SelectGroup>
-        </SelectContent>
+        </SelectPopup>
       </Select>
       <Select items={{ violin: '小提琴', viola: '中提琴', cello: '大提琴' }}>
         <SelectTrigger aria-label="单项禁用">
           <SelectValue placeholder="大提琴已被占用" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectPopup>
           <SelectGroup>
             <SelectItem value="violin">小提琴</SelectItem>
             <SelectItem value="viola">中提琴</SelectItem>
             <SelectItem disabled value="cello">大提琴</SelectItem>
           </SelectGroup>
-        </SelectContent>
+        </SelectPopup>
       </Select>
     </div>
   )

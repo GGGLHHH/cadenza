@@ -69,6 +69,8 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 | `Button.loading` | 移除，只留 `pending`（单词单义，无别名对） |
 | `LoadingOverlay.isLoading` | `loading`（裸形容词。适配器豁免只覆盖「整体 spread 的 react-query 字段」，这个组件从不接 spread） |
 | `ScrollBar` | `ScrollAreaScrollbar`（平铺名 `<Family><Part>`；Base UI 的部件就叫 `ScrollArea.Scrollbar`） |
+| `SelectContent` / `SelectContentProps` | `SelectPopup` / `SelectPopupProps`（弹出内容在 Base UI 词表里叫 Popup；`$B/select/` 下只有 popup/positioner/portal，没有 content。Content 专指「被移入弹层的内容容器」） |
+| `DataTable` / `InfiniteSelect` / `InfiniteCombobox` 的 `onChange` | `onValueChange`（受控三件套 `value`/`defaultValue`/`onValueChange`；裸 `onChange` 专属原生 DOM 元素。与 `useInfiniteSelectSelection()` 早已使用的名字对齐） |
 
 **其他**
 
@@ -113,9 +115,9 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
   封装层把它提升为触发器的兄弟真 `<button>`(在 Tab 序里,清除的唯一键盘路径)。
   为此封装层的 `Select` 根接管了值状态(对 Base UI 永远受控),非受控用法也能清;
   `onValueChange` 的 reason 并入 `'clear-press'`(`SelectChangeEventReason`)
-- **新增 `SelectEmpty`**:与选项并排写进 `SelectContent`,列表无选项时自动现身
+- **新增 `SelectEmpty`**:与选项并排写进 `SelectPopup`,列表无选项时自动现身
   (`:only-child` 纯 CSS)。走隐式分组时零约束;手写组时:数据为空别渲染空组壳
-- **`SelectGroup` 可省略**:`SelectContent` 检测不到组时自动包一层隐式分组
+- **`SelectGroup` 可省略**:`SelectPopup` 检测不到组时自动包一层隐式分组
   (列表内边距住在组上,之前不写组会贴边)。写了自己的组就完全不干预
 - **两个默认值在封装层翻转**：`modal` 默认 `false`（Base UI 默认 `true`——打开
   即锁页面滚动与外部交互），`alignItemWithTrigger` 默认 `false`（Base UI/shadcn
@@ -136,6 +138,10 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 
 ### Tabs
 
+- `TabsPanel` 的 DOM 现在标 `data-slot="tabs-panel"`(此前落地的是 vendored 的
+  `tabs-content`——shadcn 的 Radix 时代用词,库内零消费者)
+- **修:组合在 Fragment 里的 `TabsViewport` 检测不到**,会被再包一层。让位检测改用
+  全库统一的 `findComposedPart`(它会看穿 Fragment),不再手写 `child.type ===`
 - **`TabsIndicator` 默认在场**(默认在场家法):`TabsList` 自动渲染滑动指示器
   ——这就是本库 tabs 的长相;`indicator={false}` 关掉,自己组合一只则默认让位
 - **修复:`orientation="vertical"` 之前从未真正生效**——vendored 层(shadcn
@@ -159,6 +165,9 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 
 ### SearchField
 
+- **修:给 `SearchFieldInput` 传 `onChange` 会冻死输入框** —— 内部的文本接线写在
+  `{...props}` 前面,被调用方的同名 handler 顶掉,受控值再也不动。现在与
+  `onKeyDown` 一样串联在 spread 之后
 - **新增 `clearable` 总开关**(默认开):`false` 连显式组合的 `SearchFieldClear`
   一并关掉;Escape 清空是输入框自己的键盘语义,不受它管
 - 根元素是纯 `<div>`，`className` 收窄成 `string`。状态走 `data-empty` /
@@ -172,6 +181,11 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 
 ### InfiniteSelect / InfiniteCombobox
 
+- **修:非受控用法每次渲染都误报「defaultValue 变了」** —— seam 把 `defaultValue`
+  规范化成数组时每帧新建引用,受控守卫按引用比较就一直响,顺带让面板 context 的
+  `useMemo` 恒失效。现在身份稳住了
+- `InfiniteSelectActionsProvider` 去掉 `@internal` 标记:文档一直教人在「不用便利层、
+  自己组弹层」时用它,它本来就是公开的
 - **裸 `InfiniteSelect` 补默认组合**(默认在场家法):不写 children 渲染
   `InfiniteSelectInputGroup` + `InfiniteSelectList`,新增根 prop `searchPlaceholder`;
   写了 children 整条通道归使用方
@@ -197,6 +211,12 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 
 ### DataTable
 
+- **修:可点的行现在能用键盘触达**(`tabIndex` + Enter/Space 走与点击同一条路径)。
+  `selectionColumn` 默认关,此时点行是唯一的选中手势 —— 只认鼠标等于把键盘用户
+  挡在门外,也与文件头「每个可交互部件都是真控件」的承诺相悖
+- **修:`DataTableLoadingMore` 传 `ref` 会顶掉翻页哨兵的观察器**(React 19 里
+  `ref` 是普通 prop),现在合并而非替换;哨兵行同时补上注释里早就承诺的
+  `aria-hidden`,读屏不再把它数成一条数据行
 - **换一批行自动回到行区顶部**：点「下一页」不再把上一页的滚动偏移套在新数据上
   （实测:每页 50、滚到 1020px 翻页,原本停在第 2 页的第 26 行)。表格看不到页码,
   判据是**首行 id**——翻页 / 换每页条数 / 排序 / 搜索会变(回顶),无限滚动追加与
@@ -218,6 +238,9 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 
 ### ScrollArea
 
+- `viewportClassName` / `viewportStyle` 放宽成 Base UI 的 `(state) => …` 形态:
+  viewport 是 Base UI 部件,状态里的 `scrolling` 与四个溢出方向标志正是 scroll-fade
+  要读的东西(旧注释说「viewport 没有 Base UI 状态可依赖」,那句是错的)
 - `viewportRender` 移除：它只为 React Aria 的 `Virtualizer` 存在（那个虚拟化器要求
   集合元素本身就是滚动器），TanStack Virtual 不需要，零调用方
 - **补上类型导出** `ScrollAreaProps` / `ScrollAreaScrollbarProps`：根组件此前是全库

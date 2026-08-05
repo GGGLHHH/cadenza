@@ -382,7 +382,7 @@ describe('dataTable interactions', () => {
         aria-label="People"
         columns={columns}
         items={people}
-        onChange={onChange}
+        onValueChange={onChange}
         selectionColumn
         selectionMode="multiple"
         value={[]}
@@ -403,7 +403,7 @@ describe('dataTable interactions', () => {
         aria-label="People"
         columns={columns}
         items={people}
-        onChange={onChange}
+        onValueChange={onChange}
         selectionColumn
         selectionMode="multiple"
         value={['ghost-from-other-page']}
@@ -423,7 +423,7 @@ describe('dataTable interactions', () => {
         aria-label="People"
         columns={columns}
         items={people}
-        onChange={onChange}
+        onValueChange={onChange}
         selectionColumn
         selectionMode="multiple"
         value={['ghost-from-other-page', 'p1', 'p2', 'p3']}
@@ -448,7 +448,7 @@ describe('dataTable interactions', () => {
           aria-label="People"
           columns={columns}
           items={items}
-          onChange={(nextItems, nextIds) => {
+          onValueChange={(nextItems, nextIds) => {
             latest = { items: nextItems, ids: nextIds }
           }}
           selectionColumn
@@ -478,7 +478,7 @@ describe('dataTable interactions', () => {
         aria-label="People"
         columns={columns}
         items={people}
-        onChange={onChange}
+        onValueChange={onChange}
         selectionColumn
         selectionMode="single"
       />,
@@ -539,6 +539,52 @@ describe('dataTable interactions', () => {
     // Same rows again (a refresh keeping its placeholder data): also no reset.
     rerender(<DataTable aria-label="People" columns={columns} isLoading items={[...people]} />)
     expect(scroll.get()).toBe(240)
+  })
+
+  // The row click is the only selection gesture with `selectionColumn` off (the
+  // default), so it has to answer the keyboard too.
+  it('a clickable row is reachable and activatable from the keyboard', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        items={people}
+        selectionMode="multiple"
+        value={[]}
+        onValueChange={onValueChange}
+      />,
+    )
+    const row = document.querySelector<HTMLElement>('[data-slot="data-table-row"]')!
+    expect(row.tabIndex).toBe(0)
+    row.focus()
+    await user.keyboard('{Enter}')
+    expect(onValueChange).toHaveBeenLastCalledWith(
+      [people[0]],
+      ['p1'],
+      expect.objectContaining({ reason: 'item-press' }),
+    )
+  })
+
+  it('the load-more sentinel keeps its observer ref when a composed part brings one', () => {
+    const composed = vi.fn()
+    render(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        hasNextPage
+        items={people}
+        onLoadMore={() => {}}
+      >
+        <DataTableLoadingMore ref={composed} />
+      </DataTable>,
+    )
+    const sentinel = document.querySelector('[data-slot="data-table-load-more"]')
+    // The caller's ref is honoured…
+    expect(composed).toHaveBeenCalledWith(sentinel)
+    // …and the row is still marked as a non-data tail row.
+    expect(sentinel?.getAttribute('aria-hidden')).toBe('true')
   })
 
   it('renders the loading-more indicator at the tail while fetching the next page', () => {

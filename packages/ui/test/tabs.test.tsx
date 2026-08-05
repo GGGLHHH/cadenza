@@ -262,8 +262,8 @@ describe('tabIndicator', () => {
     expect(viewport).not.toBeNull()
     // Both panels live inside it, stacked into the same grid cell — that is
     // what lets outgoing and incoming cross-slide without a layout jump.
-    expect(viewport?.querySelectorAll('[data-slot="tabs-content"]').length).toBe(1) // inactive one unmounts
-    const panel = viewport?.querySelector('[data-slot="tabs-content"]')
+    expect(viewport?.querySelectorAll('[data-slot="tabs-panel"]').length).toBe(1) // inactive one unmounts
+    const panel = viewport?.querySelector('[data-slot="tabs-panel"]')
     expect(panel?.className).toContain('col-start-1')
     // Base UI's animated-panels numbers, verbatim.
     expect(panel?.className).toContain('[transition:opacity_175ms_ease,translate_350ms_cubic-bezier(0.22,1,0.36,1)]')
@@ -282,7 +282,7 @@ describe('tabIndicator', () => {
       </Tabs>,
     )
     expect(document.querySelector('[data-slot="tabs-viewport"]')).toBeNull()
-    const panel = document.querySelector('[data-slot="tabs-content"]')
+    const panel = document.querySelector('[data-slot="tabs-panel"]')
     expect(panel?.className).toContain('data-[activation-direction=right]:translate-x-2')
     // Load-bearing in the container-free mode: without it Base UI keeps the
     // outgoing panel in flow for the transition window and two panels stack.
@@ -305,6 +305,27 @@ describe('tabIndicator', () => {
     expect(viewports[0]?.className).toContain('opacity-95')
   })
 
+  // Slot channels routinely arrive wrapped in a fragment — the house detector
+  // looks through them, a hand-rolled `child.type ===` check does not, and the
+  // gathering would wrap a second viewport around the caller's own.
+  it('yields to a composed TabsViewport inside a fragment too — never double-wraps', () => {
+    render(
+      <Tabs defaultValue="a">
+        <TabsList aria-label="片段里的">
+          <TabsTab value="a">A</TabsTab>
+        </TabsList>
+        <>
+          <TabsViewport className="opacity-95">
+            <TabsPanel value="a">面板</TabsPanel>
+          </TabsViewport>
+        </>
+      </Tabs>,
+    )
+    const viewports = document.querySelectorAll('[data-slot="tabs-viewport"]')
+    expect(viewports.length).toBe(1)
+    expect(viewports[0]?.className).toContain('opacity-95')
+  })
+
   it('animated={false} strips the animation in either mode', () => {
     render(
       <Tabs defaultValue="a">
@@ -314,7 +335,7 @@ describe('tabIndicator', () => {
         <TabsPanel animated={false} value="a">面板</TabsPanel>
       </Tabs>,
     )
-    expect(document.querySelector('[data-slot="tabs-content"]')?.className).not.toContain('data-starting-style:opacity-0')
+    expect(document.querySelector('[data-slot="tabs-panel"]')?.className).not.toContain('data-starting-style:opacity-0')
   })
 
   it('vertical: orientation reaches Base UI — aria-orientation and the arrow-key axis follow', async () => {

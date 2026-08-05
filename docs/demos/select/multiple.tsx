@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
 import {
   Select,
-  SelectContent,
   SelectGroup,
   SelectItem,
+  SelectPopup,
   SelectTrigger,
   SelectValue,
 } from '@gedatou/cadenza-ui'
@@ -27,13 +27,13 @@ export default function MultipleDemo(): ReactElement {
         <SelectTrigger aria-label="乐器">
           <SelectValue placeholder="可多选" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectPopup>
           <SelectGroup>
             {Object.entries(INSTRUMENTS).map(([id, label]) => (
               <SelectItem key={id} value={id}>{label}</SelectItem>
             ))}
           </SelectGroup>
-        </SelectContent>
+        </SelectPopup>
       </Select>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
         <dt className="text-muted-foreground">value</dt>

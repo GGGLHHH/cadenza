@@ -1,10 +1,10 @@
 import type { ReactElement } from 'react'
 import {
   Select,
-  SelectContent,
   SelectGroup,
   SelectItem,
   SelectLabel,
+  SelectPopup,
   SelectSeparator,
   SelectTrigger,
   SelectValue,
@@ -27,7 +27,7 @@ export default function GroupDemo(): ReactElement {
       <SelectTrigger aria-label="乐器" className="inline-56">
         <SelectValue placeholder="选一件乐器" />
       </SelectTrigger>
-      <SelectContent>
+      <SelectPopup>
         <SelectGroup>
           <SelectLabel>弦乐</SelectLabel>
           <SelectItem value="violin">小提琴</SelectItem>
@@ -41,7 +41,7 @@ export default function GroupDemo(): ReactElement {
           <SelectItem value="oboe">双簧管</SelectItem>
           <SelectItem value="clarinet">单簧管</SelectItem>
         </SelectGroup>
-      </SelectContent>
+      </SelectPopup>
     </Select>
   )
 }

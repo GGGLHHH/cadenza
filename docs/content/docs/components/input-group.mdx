@@ -66,8 +66,9 @@ has-[[data-slot=input-group-control]:focus-visible]:ring-3
 顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
 
 只有 `InputGroupInput` 的 `className` 是双形态（字符串，或 `(state) => string`）——
-它底下是 Base UI 的 `Input`。其余部件都是纯 DOM 元素，`className` 就是字符串，
-类型上不会假装有函数形态。
+它底下是 Base UI 的 `Input`。其余部件的 `className` 都是字符串：多数是纯 DOM
+元素，而 `InputGroupButton` 虽然底下是 Base UI 的 `Button`，类名却要穿过 `cva`
+（它会把函数直接丢掉），所以类型也如实收窄成字符串。
 
 ### InputGroup
 

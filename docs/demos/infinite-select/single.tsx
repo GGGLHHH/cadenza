@@ -20,7 +20,7 @@ export default function SingleDemo(): ReactElement {
     <InfiniteCombobox<Person>
       getOption={getOption}
       list={list}
-      onChange={setPicked}
+      onValueChange={setPicked}
       searchPlaceholder="搜索作曲家…"
       state={state}
     >

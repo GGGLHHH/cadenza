@@ -24,7 +24,7 @@ transform / isolation 都救不了）。宿主的 `overflow-hidden` 负责另一
 
 它就是库内加载态的**默认视觉**：[DataTable](/docs/components/data-table) 和
 [InfiniteSelect](/docs/components/infinite-select) 的一切 `isLoading`、
-[Button](/docs/components/button) 的 `pending`（别名 `loading`），渲染的都是这同一层
+[Button](/docs/components/button) 的 `pending`，渲染的都是这同一层
 （Button 的实例传 `rounded-none backdrop-blur-none`、磨砂改由标签的**内容滤镜**
 承担——按钮尺度下 backdrop 模糊核会沿边角涂出晕染，模糊内容本身观感相同而边缘
 像素级干净，这是真机放大验证过的结论）——

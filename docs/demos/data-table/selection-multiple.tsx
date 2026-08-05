@@ -16,7 +16,7 @@ export default function MultiSelectionDemo(): ReactElement {
         aria-label="作曲家(可多选)"
         columns={personColumns}
         items={PEOPLE.slice(0, 6)}
-        onChange={(_items, nextIds) => setIds(nextIds)}
+        onValueChange={(_items, nextIds) => setIds(nextIds)}
         onRowAction={person => setLastOpened(person.name)}
         selectionColumn
         selectionMode="multiple"

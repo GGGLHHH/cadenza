@@ -4,9 +4,9 @@ import {
   FieldDescription,
   FieldLabel,
   Select,
-  SelectContent,
   SelectGroup,
   SelectItem,
+  SelectPopup,
   SelectTrigger,
   SelectValue,
 } from '@gedatou/cadenza-ui'
@@ -28,13 +28,13 @@ export default function SelectDemo(): ReactElement {
         <SelectTrigger id="field-select-piece">
           <SelectValue placeholder="选一首" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectPopup>
           <SelectGroup>
             {Object.entries(PIECES).map(([value, label]) => (
               <SelectItem key={value} value={value}>{label}</SelectItem>
             ))}
           </SelectGroup>
-        </SelectContent>
+        </SelectPopup>
       </Select>
       <FieldDescription>将原样印在节目单上。</FieldDescription>
     </Field>

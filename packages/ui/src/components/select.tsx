@@ -10,10 +10,10 @@ import { createChangeEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
 import { cn } from '#lib/utils'
 import {
-  SelectContent as SelectContentPrimitive,
   SelectGroup,
   SelectItem,
   SelectLabel,
+  SelectContent as SelectPopupPrimitive,
   Select as SelectRootPrimitive,
   SelectSeparator,
   SelectTrigger as SelectTriggerPrimitive,
@@ -30,14 +30,14 @@ import {
  * ```tsx
  * <Select>
  *   <SelectTrigger><SelectValue placeholder="Pick one" /><SelectClear /></SelectTrigger>
- *   <SelectContent>
+ *   <SelectPopup>
  *     <SelectEmpty>没有数据</SelectEmpty>
  *     {fruits.map(fruit => <SelectItem key={fruit.id} value={fruit.id}>{fruit.name}</SelectItem>)}
- *   </SelectContent>
+ *   </SelectPopup>
  * </Select>
  * ```
  *
- * No `SelectGroup` in sight: `SelectContent` wraps ungrouped children in one
+ * No `SelectGroup` in sight: `SelectPopup` wraps ungrouped children in one
  * implicitly (the list padding lives on the group). Write your own group(s) —
  * for headings, say — and the implicit one steps aside.
  *
@@ -83,7 +83,7 @@ import {
  * - **Clearing is `SelectClear`** — compose it inside the trigger and an ✕
  *   stands in the chevron's spot while something is selected. See its JSDoc.
  *
- * `SelectContent` is Portal + Positioner + Popup + List in one part, with the
+ * `SelectPopup` is Portal + Positioner + Popup + List in one part, with the
  * scroll arrows already inside. Its positioning props (`side`, `sideOffset`,
  * `align`, `alignOffset`, `alignItemWithTrigger`) go to the positioner and
  * everything else to the popup.
@@ -146,7 +146,7 @@ export type SelectProps<Value = string, Multiple extends boolean | undefined = f
      */
     'aria-label'?: string
   }
-export type SelectContentProps = ComponentProps<typeof SelectContentPrimitive>
+export type SelectPopupProps = ComponentProps<typeof SelectPopupPrimitive>
 export type SelectGroupProps = ComponentProps<typeof SelectGroup>
 export type SelectItemProps = ComponentProps<typeof SelectItem>
 export type SelectLabelProps = ComponentProps<typeof SelectLabel>
@@ -296,7 +296,7 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
         {children ?? (
           <>
             <SelectTrigger aria-label={ariaLabel} />
-            <SelectContent>{renderDefaultOptions(props.items)}</SelectContent>
+            <SelectPopup>{renderDefaultOptions(props.items)}</SelectPopup>
           </>
         )}
       </SelectRootPrimitive>
@@ -328,7 +328,7 @@ function renderDefaultOptions(items: SelectPrimitive.Root.Props<unknown, false>[
     console.error(
       'cadenza-ui: grouped `items` render as a flat list in the default composition — '
       + 'group headings are composition vocabulary (Base UI usage). '
-      + 'Write SelectContent with SelectGroup/SelectLabel to render groups.',
+      + 'Write SelectPopup with SelectGroup/SelectLabel to render groups.',
     )
   }
   const flatItems = isGrouped
@@ -350,12 +350,12 @@ function renderDefaultOptions(items: SelectPrimitive.Root.Props<unknown, false>[
  * `SelectEmpty` rides along — alone in the implicit group it is still an
  * `:only-child`.
  */
-export function SelectContent({ alignItemWithTrigger = false, children, ...props }: SelectContentProps): ReactElement {
+export function SelectPopup({ alignItemWithTrigger = false, children, ...props }: SelectPopupProps): ReactElement {
   const hasGroup = findComposedPart(children, SelectGroup) !== undefined
   return (
-    <SelectContentPrimitive alignItemWithTrigger={alignItemWithTrigger} {...props}>
+    <SelectPopupPrimitive alignItemWithTrigger={alignItemWithTrigger} {...props}>
       {hasGroup ? children : <SelectGroup>{children}</SelectGroup>}
-    </SelectContentPrimitive>
+    </SelectPopupPrimitive>
   )
 }
 
@@ -465,7 +465,7 @@ function SelectClearOverlay({
 export type SelectEmptyProps = ComponentProps<'div'>
 
 /**
- * The empty-state slot: write it into `SelectContent` alongside the options
+ * The empty-state slot: write it into `SelectPopup` alongside the options
  * and it shows itself only while it is the list's only child — i.e. while
  * there are no options. Pure CSS (`:only-child`), no wiring. The constraint
  * that makes it work: with no data, render no empty `SelectGroup` shell.

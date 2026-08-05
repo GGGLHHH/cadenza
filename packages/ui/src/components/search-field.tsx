@@ -238,6 +238,7 @@ export type SearchFieldProps
  */
 export function SearchFieldInput({
   className,
+  onChange,
   onKeyDown,
   ...props
 }: ComponentProps<typeof InputGroupInput>): ReactElement {
@@ -250,11 +251,17 @@ export function SearchFieldInput({
       readOnly={field.readOnly}
       type="search"
       value={field.value}
-      onChange={event => field.setValue(
-        event.target.value,
-        createChangeEventDetails('input-change', event.nativeEvent),
-      )}
       {...props}
+      // Chained after the spread, like onKeyDown below: the field's text is
+      // wired through this handler, and a caller listening in must not silently
+      // freeze the input on its controlled value.
+      onChange={(event) => {
+        field.setValue(
+          event.target.value,
+          createChangeEventDetails('input-change', event.nativeEvent),
+        )
+        onChange?.(event)
+      }}
       // Chained, not left to the spread: a caller listening for keys must not
       // silently take Escape-to-clear away.
       onKeyDown={(event) => {

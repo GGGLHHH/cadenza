@@ -49,8 +49,8 @@ description: 覆盖式滚动条的滚动容器 —— 滚动条渲染在视口�
 | --- | --- | --- | --- |
 | `orientation` | `'vertical'` \| `'horizontal'` \| `'both'` | `'vertical'` | 渲染哪些滚动条 |
 | `scrollbars` | `'always'` \| `'hover'` \| `'hidden'` | `'hover'` | 滚动条显隐策略（导出类型 `ScrollAreaScrollbars`） |
-| `viewportClassName` | `string` | — | 视口类名；scroll-fade 挂这里 |
-| `viewportStyle` | `CSSProperties` | — | 视口内联样式（如 `maxHeight`） |
+| `viewportClassName` | `string \| (state) => string` | — | 视口类名；scroll-fade 挂这里。函数形式收到视口状态（`scrolling`、`hasOverflowX/Y` 与四个溢出边缘标志——正是 scroll-fade 要读的那些） |
+| `viewportStyle` | `CSSProperties \| (state) => CSSProperties` | — | 视口内联样式（如 `maxHeight`），同样支持函数形式 |
 | `viewportRef` | `Ref<HTMLDivElement>` | — | 视口引用（滚动位置、虚拟化都要它） |
 | `className` | `string \| (state) => string` | — | 根元素类名；尺寸约束定在这里。函数形式收到 Base UI Root 的状态（`scrolling`、`hasOverflowX/Y` 与 `overflowXStart` 等溢出方向、`cornerHidden`——`hovering` 不在其中，它只挂在滚动条元素的 `data-hovering` 上） |
 | 其余 | `ScrollArea.Root.Props` | — | 透传 Base UI Root |

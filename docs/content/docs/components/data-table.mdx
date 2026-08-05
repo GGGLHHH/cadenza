@@ -51,7 +51,7 @@ description: 原生 table 语义的数据表格 —— 列定义驱动 + 组合�
 ## 行选择与行动作
 
 选择推荐走**便利层**：`selectionMode`（`single` / `multiple`）+
-`value` / `defaultValue` / `onChange`，与 InfiniteSelect 同一套契约。
+`value` / `defaultValue` / `onValueChange`，与 InfiniteSelect 同一套契约。
 开 `selectionColumn` 会在最前面合成一列复选框：行内勾选、表头全选/半选全部自动接线。
 复选框的无障碍名走 `selectAllLabel` / `selectRowLabel`（英文兜底，业务层传译文）。
 需要原始语义（`selectedKeys` / `onSelectionChange` / `'all'` 哨兵）的高级场景仍可用
@@ -60,14 +60,15 @@ description: 原生 table 语义的数据表格 —— 列定义驱动 + 组合�
 
 ### 单选
 
-`value` 是单个 id，`onChange` 直接收行对象（取消选中时收 `undefined`）；
-表头不渲染全选框。点击行、点击 checkbox 都可以选中：
+`value` 是单个 id，`onValueChange` 直接收行对象（取消选中时收 `null`）；
+表头不渲染全选框。下面的 demo 开了 `selectionColumn`，所以选择走复选框——不开它
+的时候，点击行才是选中手势（见下方的路由表）：
 
 <ComponentPreview name="data-table/selection-single" align="stretch" />
 
 ### 多选
 
-`value` 是 id 数组；`onChange(items, ids)` 里 **`ids` 是权威全集**，
+`value` 是 id 数组；`onValueChange(items, ids)` 里 **`ids` 是权威全集**，
 `items` 只回显已加载页的对象——与 InfiniteSelect 的口径一致，持久化请存 `ids`。
 
 <ComponentPreview name="data-table/selection-multiple" align="stretch" />
@@ -83,6 +84,9 @@ description: 原生 table 语义的数据表格 —— 列定义驱动 + 组合�
 
 复选框永远是明确的选择入口 —— 这正是 `selectionColumn` 的用武之地。
 
+**行可点时它也进 Tab 序**,Enter / Space 与点击走同一条路径:不开
+`selectionColumn` 时点行是唯一的选中手势,只认鼠标等于把键盘用户挡在门外。
+
 两个细节：
 
 - 合成列永远不做行头（读屏播报行名仍取你的数据列），有 `pinned: 'start'`
@@ -95,7 +99,7 @@ description: 原生 table 语义的数据表格 —— 列定义驱动 + 组合�
 
 选择集按 id 存档，**天然跨页**：翻页只是换 `items`，`value` 里的 id 不动，
 翻回来 checkbox 自动恢复；勾选第 2 页的行不会丢第 1 页的存档；跨页的行对象
-由组件缓存，`onChange` 的 `items` 参数里能拿到。把选择 state 放在翻页 state
+由组件缓存，`onValueChange` 的 `items` 参数里能拿到。把选择 state 放在翻页 state
 外面即可。下面的 demo 每页 5 条——跨几页勾选，名单一直完整（跨页的名字
 来自组件的对象缓存，不是当前页数据）：
 
@@ -189,7 +193,8 @@ Fragment 内有效，包进自定义组件会找不到（与 TabsIndicator 同�
 
 ### DataTableStatus:状态容器
 
-三个状态插槽最终都渲染成同一个 `role="status"` 容器（状态切换会被读屏播报），
+空 / 错误两个状态插槽最终都渲染成同一个 `role="status"` 容器（状态切换会被读屏
+播报；加载没有文案插槽，走磨砂覆盖层），
 它也单独导出——自定义状态视觉时给各插槽传 `className` 微调，或复用这个容器
 保持一致的排版。
 
@@ -292,7 +297,7 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | `DataTableColumn<T>` | 列定义：`{ id, header, cell, rowHeader?, sortable?, pinned?, width?, minWidth?, maxWidth?, className? }` |
 | `DataTableColumnWidth` | 列宽：px 数字或百分比字符串（如 `'50%'`） |
 | `DataTableProps<T>` | `DataTable` 完整 props，业务层包一层时直接复用 |
-| `DataTableSelectionProps<T>` | 便利层选择的判别联合（单选 `value?: string` / 多选 `value?: string[]`，`onChange` 签名随之切换） |
+| `DataTableSelectionProps<T>` | 便利层选择的判别联合（单选 `value?: string` / 多选 `value?: string[]`，`onValueChange` 签名随之切换） |
 | `DataPaginationProps` / `DataPaginationState` | 分页器 props 与 `summary` / `pageIndicator` 收到的状态 |
 | `SortDescriptor` / `Selection` / `Key` | 本库自己的集合词汇，排序与选择回调的类型 |
 
@@ -302,7 +307,7 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 
 | 按键 | 行为 |
 | --- | --- |
-| `Tab` | 依次落到排序按钮、行复选框，以及单元格里你自己放的按钮/链接 |
+| `Tab` | 依次落到排序按钮、行复选框、**可激活的行本身**（有 `onRowAction`、或行点击即选中时），以及单元格里你自己放的按钮/链接 |
 | `Space` / `Enter` | 激活当前聚焦的那个控件 |
 
 > 0.2（React Aria 底座）这里有方向键在单元格间移动的网格导航和 `role="grid"`。
@@ -323,7 +328,7 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | `hasNextPage` / `isFetchingNextPage` / `onLoadMore` | — | — | 无限滚动，见上文 |
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
 | `selectionMode` | `'none' \| 'single' \| 'multiple'` | `'none'` | 行选择模式 |
-| `value` / `defaultValue` / `onChange` | `string` \| `string[]` | — | 便利层选择（跨页存档），签名随 `selectionMode` 切换，见「行选择与行动作」 |
+| `value` / `defaultValue` / `onValueChange` | `string` \| `string[]` | — | 便利层选择（跨页存档），签名随 `selectionMode` 切换，见「行选择与行动作」 |
 | `selectedKeys` / `onSelectionChange` | — | — | 原始选择透传。便利层激活时前者被忽略；`onSelectionChange` 仍触发，仅作观察 |
 | `selectionColumn` | `boolean` | `false` | 合成复选框列（行勾选 + 表头全选），见「行选择与行动作」 |
 | `selectAllLabel` / `selectRowLabel` | `string` | `'Select all rows'` / `'Select row'` | 复选框的无障碍名，英文兜底，业务层传译文 |

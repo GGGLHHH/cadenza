@@ -38,7 +38,7 @@ export default function FooterDemo(): ReactElement {
       getOption={getOption}
       list={list}
       selectionMode="multiple"
-      onChange={(_items, nextIds) => setIds(nextIds)}
+      onValueChange={(_items, nextIds) => setIds(nextIds)}
       searchPlaceholder="搜索作曲家…"
       state={state}
       value={ids}

@@ -30,7 +30,7 @@ description: Base UI Button 的封装 —— cva 变体与尺寸，加上一套 
 ## 进行中
 
 `pending` 表示**这个按钮触发的动作还在途中**（对齐 React 的 `useTransition` /
-`useFormStatus` 词汇；`loading` 是它的别名，任一为真即进行中）。Base UI 没有这个概念，
+`useFormStatus` 词汇）。Base UI 没有这个概念，
 所以三件事由封装层自己接上：
 
 | 做什么 | 怎么做的 | 不做会怎样 |
@@ -58,7 +58,7 @@ backdrop 模糊核会沿边角涂出晕染（真机放大验证过的物理事�
 
 <ComponentPreview name="button/pending" />
 
-这套结构只在**传了** `pending` / `loading` 时挂载（传 `false` 也算——机制留在
+这套结构只在**传了** `pending` 时挂载（传 `false` 也算——机制留在
 DOM 里退出动画才放得完）；没用这个特性的按钮渲染裸 children，零开销。
 想让宽度真正纹丝不动，pending 期间别换文案——spinner 已经在说话了。
 
@@ -92,7 +92,6 @@ DOM 里退出动画才放得完）；没用这个特性的按钮渲染裸 childr
 | `onClick` | `(e: MouseEvent) => void` | — | 原生点击；`disabled`（含 `pending`）时不触发 |
 | `disabled` | `boolean` | `false` | 禁用（渲染原生 `disabled` 属性） |
 | `pending` | `boolean` | `false` | 进行中：阻断激活但保持可聚焦、打 `data-pending` / `aria-busy`。默认视觉是同一个 LoadingOverlay（真覆盖：标签留在暗纱下，Spinner 浮在纱上；按钮尺度不模糊） |
-| `loading` | `boolean` | `false` | `pending` 的别名，任一为真即进行中（给习惯 `loading` 词汇的业务层） |
 | `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | 表单里需要提交时改它；`pending` 期间 `'submit'` 被改写成 `'button'` |
 | `variant` | `'default' \| 'secondary' \| 'outline' \| 'ghost' \| 'destructive' \| 'link'` | `'default'` | 变体 |
 | `size` | `'xs' \| 'sm' \| 'default' \| 'lg' \| 'icon-xs' \| 'icon-sm' \| 'icon' \| 'icon-lg'` | `'default'` | 尺寸 |
@@ -108,7 +107,7 @@ DOM 里退出动画才放得完）；没用这个特性的按钮渲染裸 childr
 | 状态 | 出现时机 |
 | --- | --- |
 | `data-disabled` | `disabled` |
-| `data-pending` | `pending` / `loading` |
+| `data-pending` | `pending` |
 
 交互态没有 data 属性：Base UI 的 Button 只暴露 `disabled`，hover / active /
 focus-visible 直接用 CSS 伪类（`buttonVariants` 自己就是这么写的），在原生

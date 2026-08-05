@@ -25,7 +25,14 @@ import {
  */
 export type InputGroupProps = ComponentProps<typeof InputGroup>
 export type InputGroupAddonProps = ComponentProps<typeof InputGroupAddon>
-export type InputGroupButtonProps = ComponentProps<typeof InputGroupButton>
+/**
+ * `className` is narrowed to a string, like `Button`'s: the vendored button
+ * funnels it through `cva`, which drops a function instead of resolving it —
+ * and takes the variant classes down with it. Style off the `data-*` attributes
+ * Base UI writes instead.
+ */
+export type InputGroupButtonProps
+  = Omit<ComponentProps<typeof InputGroupButton>, 'className'> & { className?: string }
 export type InputGroupTextProps = ComponentProps<typeof InputGroupText>
 export type InputGroupTextareaProps = ComponentProps<typeof InputGroupTextarea>
 export type InputGroupInputProps = BaseInput.Props & RefAttributes<HTMLInputElement>

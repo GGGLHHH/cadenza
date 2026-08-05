@@ -197,7 +197,7 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `value` | `string \| number` | 它在 List 中的序号 | 这个标签的 key，与对应 `TabsPanel` 的 `value` 相同 |
+| `value` | `string \| number` | **必填** | 这个标签的 key，与对应 `TabsPanel` 的 `value` 相同（全等比较，没有按序号回退这回事） |
 | `disabled` | `boolean` | `false` | 禁用这一个标签 |
 | `nativeButton` | `boolean` | `true` | 关掉它才能用 `render` 换成 `<a>`（路由驱动的标签页） |
 | `render` | `ReactElement \| (props, state) => ReactElement` | — | 元素替换。优先函数形态 |
@@ -219,7 +219,7 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `value` | `string \| number` | 它在文档中的序号 | 与对应 `TabsTab` 的 `value` 相同即自动配对 |
+| `value` | `string \| number` | **必填** | 与对应 `TabsTab` 的 `value` 相同即自动配对 |
 | `keepMounted` | `boolean` | `false` | 未选中时也保留在 DOM（默认只渲染选中的那个） |
 | `className` | `string \| (state) => string` | — | 类名 |
 
@@ -231,5 +231,6 @@ shadcn 源码里那套 `TabsList` / `TabsTrigger` / `TabsContent` 是 Radix 留�
 | `data-activation-direction` | 同根组件 | `tabActivationDirection` |
 | `data-hidden` | `keepMounted` 保留下来、但当前未选中的面板 | `hidden` |
 
-`TabsProps` / `TabsListProps` / `TabsTabProps` / `TabsPanelProps` / `TabsIndicatorProps`
-五个类型也一并导出，业务层再包一层时直接复用。
+`TabsProps` / `TabsListProps` / `TabsTabProps` / `TabsPanelProps` /
+`TabsIndicatorProps` / `TabsViewportProps` 六个类型也一并导出，业务层再包一层时
+直接复用。

@@ -172,7 +172,7 @@ describe('infiniteSelect selection', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     render(
-      <InfiniteSelect getOption={getOption} items={items} onChange={onChange}>
+      <InfiniteSelect getOption={getOption} items={items} onValueChange={onChange}>
         <InfiniteSelectList />
       </InfiniteSelect>,
     )
@@ -198,7 +198,7 @@ describe('infiniteSelect selection', () => {
         getOption={getOption}
         items={items}
         selectionMode="multiple"
-        onChange={onChange}
+        onValueChange={onChange}
         value={['x']}
       >
         <InfiniteSelectList />

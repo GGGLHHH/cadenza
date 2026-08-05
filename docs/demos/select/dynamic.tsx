@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
 import {
   Select,
-  SelectContent,
   SelectGroup,
   SelectItem,
+  SelectPopup,
   SelectTrigger,
   SelectValue,
 } from '@gedatou/cadenza-ui'
@@ -27,7 +27,7 @@ export default function DynamicDemo(): ReactElement {
       <SelectTrigger aria-label="曲目" className="inline-72">
         <SelectValue placeholder="选一首" />
       </SelectTrigger>
-      <SelectContent>
+      <SelectPopup>
         <SelectGroup>
           {PIECES.map(piece => (
             <SelectItem key={piece.id} label={piece.title} value={piece.id}>
@@ -36,7 +36,7 @@ export default function DynamicDemo(): ReactElement {
             </SelectItem>
           ))}
         </SelectGroup>
-      </SelectContent>
+      </SelectPopup>
     </Select>
   )
 }

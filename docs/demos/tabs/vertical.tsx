@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
 
 // orientation="vertical" 时 TabsList 竖排在左、面板在右;
-// 方向键也跟着换轴(上下键切换 tab),这是 RAC 按 orientation 自动处理的
+// 方向键也跟着换轴(上下键切换 tab),这是 Base UI 按 orientation 自动处理的
 // 指示器同样换轴:改成上下滑动、高度补间
 export default function VerticalDemo(): ReactElement {
   return (

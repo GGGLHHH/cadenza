@@ -297,7 +297,10 @@ export function Tabs({ children, className, viewport = true, ...props }: TabsPro
  */
 function gatherPanelsIntoViewport(children: ReactNode): ReactNode {
   const array = Children.toArray(children)
-  if (array.some(child => isValidElement(child) && child.type === TabsViewport))
+  // The house detector, not a hand-rolled `child.type ===`: it looks through
+  // Fragments too, which is where a composed viewport most often hides — miss it
+  // and the gathering wraps a second one around the caller's own.
+  if (findComposedPart(children, TabsViewport) !== undefined)
     return children
 
   const out: ReactNode[] = []
@@ -406,6 +409,10 @@ export function TabsPanel({ animated = true, className, ...props }: TabsPanelPro
         animated && (inViewport ? VIEWPORT_PANEL_ANIMATION_CLASSNAME : PANEL_ANIMATION_CLASSNAME),
         className,
       )}
+      // Named for the part, not for the vendored file it lands in: the primitive
+      // writes `tabs-content` (shadcn's Radix-era word); nothing else consumes it.
+      // Before the spread, so a caller can still override.
+      data-slot="tabs-panel"
       {...props}
     />
   )

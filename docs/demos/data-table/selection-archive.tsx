@@ -22,7 +22,7 @@ export default function ArchiveDemo(): ReactElement {
         selectionColumn
         selectionMode="multiple"
         value={selectedIds}
-        onChange={(nextItems, nextIds) => {
+        onValueChange={(nextItems, nextIds) => {
           setSelectedIds(nextIds)
           setSelectedItems(nextItems)
         }}

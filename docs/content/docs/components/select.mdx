@@ -10,8 +10,8 @@ description: Base UI Select 的封装 —— 组合式下拉选择，弹层把�
 **默认在场是这个家族的家法**：不写 children，`Select` 用 `items` 渲染完整
 默认组合（触发器 + 回显 + 清除 ✕ + 弹层 + 选项）；写了 children 就逐层接管。
 组合时结构永远是：`Select` 里放一个 `SelectTrigger`（内含 `SelectValue`），
-后面跟一个 `SelectContent`（内含 `SelectItem`）。**`SelectGroup` 不必写**——
-没写时 `SelectContent` 自动包一层隐式分组（列表的内边距住在组上）；
+后面跟一个 `SelectPopup`（内含 `SelectItem`）。**`SelectGroup` 不必写**——
+没写时 `SelectPopup` 自动包一层隐式分组（列表的内边距住在组上）；
 `SelectTrigger` 不给 children 也自动含 `SelectValue` 与清除。
 
 ## 基础用法
@@ -169,7 +169,7 @@ description: Base UI Select 的封装 —— 组合式下拉选择，弹层把�
 | `defaultValue` | `Value \| Value[] \| null` | `null` | 非受控初始值 |
 | `value` | `Value \| Value[] \| null` | — | 受控值；`multiple` 时是数组 |
 | `onValueChange` | `(value, eventDetails) => void` | — | 选中变化回调 |
-| `items` | `Record<string, ReactNode> \| Array<{ value, label }>` | — | **只喂 `SelectValue`**，不构建列表 |
+| `items` | `Record<string, ReactNode> \| Array<{ value, label }> \| Array<{ value, items }>` | — | 写了 children 时**只喂 `SelectValue`**；不写 children 的一行式用法里，它同时是选项数据源（分组形态会被拍平——渲染分组要自己写 `SelectGroup`） |
 | `multiple` | `boolean` | `false` | 多选；开了之后值的类型整体变成数组 |
 | `disabled` | `boolean` | `false` | 禁用整个控件 |
 | `readOnly` | `boolean` | `false` | 只读 |
@@ -211,7 +211,7 @@ description: Base UI Select 的封装 —— 组合式下拉选择，弹层把�
 **别给它传 `data-slot`。** 它身上的 `data-slot="select-value"` 是接线契约不是标记 ——
 `SelectTrigger` 的布局规则（`*:data-[slot=select-value]:…`）正是靠它命中的。
 
-### SelectContent
+### SelectPopup
 
 Portal + Positioner + Popup + List 一整套，滚动箭头也在里面。定位相关的 props
 去 positioner，其余去 popup。
@@ -239,7 +239,7 @@ Portal + Positioner + Popup + List 一整套，滚动箭头也在里面。定位
 
 | 部件 | 元素 | 说明 |
 | --- | --- | --- |
-| `SelectGroup` | `div`（`role="group"`） | 一组选项。不写时 `SelectContent` 自动包一层隐式分组；写了就完全归你 |
+| `SelectGroup` | `div`（`role="group"`） | 一组选项。不写时 `SelectPopup` 自动包一层隐式分组；写了就完全归你 |
 | `SelectLabel` | `div` | 组标题，自动关联到所在的组 |
 | `SelectSeparator` | `div` | 分隔线，不可交互 |
 
@@ -263,6 +263,7 @@ Portal + Positioner + Popup + List 一整套，滚动箭头也在里面。定位
 选中标记（对勾）由部件自己渲染在行尾。**别给它传 `data-slot`** ——
 `data-slot="select-item"` 是焦点高亮规则的锚点。
 
-八个部件的 props 类型也一并导出：`SelectProps` / `SelectContentProps` /
+十个部件的 props 类型也一并导出：`SelectProps` / `SelectPopupProps` /
 `SelectGroupProps` / `SelectItemProps` / `SelectLabelProps` /
-`SelectSeparatorProps` / `SelectTriggerProps` / `SelectValueProps`。
+`SelectSeparatorProps` / `SelectTriggerProps` / `SelectValueProps` /
+`SelectClearProps` / `SelectEmptyProps`。

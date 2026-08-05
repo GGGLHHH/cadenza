@@ -2,9 +2,9 @@ import type { ReactElement } from 'react'
 import {
   Button,
   Select,
-  SelectContent,
   SelectEmpty,
   SelectItem,
+  SelectPopup,
   SelectTrigger,
   SelectValue,
 } from '@gedatou/cadenza-ui'
@@ -30,12 +30,12 @@ export default function EmptyDemo(): ReactElement {
         <SelectTrigger aria-label="曲目">
           <SelectValue placeholder="选一首" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectPopup>
           <SelectEmpty>还没有可选的曲目</SelectEmpty>
           {pieces.map(piece => (
             <SelectItem key={piece.id} value={piece.id}>{piece.title}</SelectItem>
           ))}
-        </SelectContent>
+        </SelectPopup>
       </Select>
       <Button
         className="self-start"

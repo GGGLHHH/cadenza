@@ -14,7 +14,7 @@ export default function SingleSelectionDemo(): ReactElement {
         aria-label="作曲家(单选)"
         columns={personColumns}
         items={PEOPLE.slice(0, 6)}
-        onChange={setPicked}
+        onValueChange={setPicked}
         selectionColumn
         selectionMode="single"
         value={picked?.id ?? null}

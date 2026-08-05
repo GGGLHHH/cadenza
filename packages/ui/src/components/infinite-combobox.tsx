@@ -80,7 +80,7 @@ export function useInfiniteComboboxState({
   onQueryValueChange,
   debounceMs = 300,
 }: InfiniteComboboxStateOptions = {}): InfiniteComboboxState {
-  // No `onChange` wiring on the state hooks: the cancel protocol needs the
+  // No `onValueChange` wiring on the state hooks: the cancel protocol needs the
   // user callback to run before the state write, so they fire explicitly below.
   const [openState, setOpenState] = useControllableState({
     value: open,
@@ -235,7 +235,12 @@ interface InfiniteComboboxCommonProps<T> {
   'getOption': (item: T) => InfiniteSelectOption
   'renderItem'?: (params: InfiniteSelectItemRenderParams<T>) => ReactNode
   'disabled'?: boolean
-  'contentClassName'?: string
+  /**
+   * The popover's class outlet (`popoverProps` deliberately has no `className`).
+   * Function form receives Base UI's popup state — the popover surface is a
+   * Base UI slot, not a plain div.
+   */
+  'contentClassName'?: ComponentProps<typeof PopoverContent>['className']
   /** Multi only: hold toggles as a draft and commit once, when the popover closes. */
   'commitOnClose'?: boolean
   'searchPlaceholder'?: string
@@ -349,7 +354,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
       // cancel() rejects the commit and keeps the previous applied selection.
       const ids = draftIdsRef.current
       const eventDetails = createChangeEventDetails<InfiniteSelectChangeEventReason>('none')
-      ;(props as { onChange?: (items: T[], ids: string[], eventDetails: InfiniteSelectChangeEventDetails) => void }).onChange?.(
+      ;(props as { onValueChange?: (items: T[], ids: string[], eventDetails: InfiniteSelectChangeEventDetails) => void }).onValueChange?.(
         draftItemsRef.current,
         ids,
         eventDetails,
@@ -360,7 +365,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     }
 
     // Don't reset to the external value right after committing: the parent
-    // hasn't applied our onChange yet, so externalValueRef is stale — draftIds
+    // hasn't applied our onValueChange yet, so externalValueRef is stale — draftIds
     // already holds the committed ids.
     if (!justCommitted && (wasOpen === undefined || justClosed)) {
       const externalValue = externalValueRef.current
@@ -421,13 +426,13 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
       return
     }
     if (props.selectionMode === 'multiple') {
-      props.onChange?.([], [], eventDetails)
+      props.onValueChange?.([], [], eventDetails)
       if (eventDetails.isCanceled)
         return
       setSelectedValue([])
     }
     else {
-      props.onChange?.(null, eventDetails)
+      props.onValueChange?.(null, eventDetails)
       if (eventDetails.isCanceled)
         return
       setSelectedValue(null)
@@ -555,7 +560,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
                   {...shared}
                   selectionMode="multiple"
                   value={deferredEnabled ? draftIds : ((selectedValue as string[] | null | undefined) ?? [])}
-                  onChange={(items, ids, eventDetails) => {
+                  onValueChange={(items, ids, eventDetails) => {
                     if (deferredEnabled) {
                       // Draft path: no user callback until the popover closes,
                       // so nothing here for cancel() to reject.
@@ -565,7 +570,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
                       hasChangedRef.current = true
                       return
                     }
-                    props.onChange?.(items, ids, eventDetails)
+                    props.onValueChange?.(items, ids, eventDetails)
                     if (eventDetails.isCanceled)
                       return
                     setSelectedValue(ids)
@@ -578,8 +583,8 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
                 <InfiniteSelect<T>
                   {...shared}
                   value={(selectedValue as string | null | undefined) ?? null}
-                  onChange={(item, eventDetails) => {
-                    props.onChange?.(item, eventDetails)
+                  onValueChange={(item, eventDetails) => {
+                    props.onValueChange?.(item, eventDetails)
                     if (eventDetails.isCanceled)
                       return
                     setSelectedValue(item === null ? null : getOption(item).id)

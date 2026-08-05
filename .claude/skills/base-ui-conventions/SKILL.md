@@ -202,6 +202,10 @@ LoadingOverlay)必须伪装成 Base UI 家族成员——公开 API 上分不出
 3. **wiring props 解构串联**:内部要接的回调必须从 props 解构、内部逻辑先跑、caller 的后跑
    (eventDetails 场景反过来:用户回调先跑、内部查 isCanceled——见 §4)。
    写在 `{...props}` 前面 = caller 一传就顶掉接线,静默失效。
+   **`ref` 同属此列**:React 19 里 ref 是普通 prop,内部 ref 写在 spread 前面
+   同样会被 caller 顶掉(实测:表格的翻页哨兵因此永不挂载)。解构出来合并,别替换。
+   审计手法:对每个自渲染 DOM 的部件,看 `{...props}` **后面**还剩什么——
+   那才是 caller 顶不掉的;前面的每一项都要问「被顶掉会怎样」。
 4. **data-slot**:每个部件最外层标 `data-slot="kebab-名"`。例外要有契约理由并注释。
 5. **禁用态走 data 属性镜像**(见 §5)。
 6. **集合组件保泛型**(见 §1.3)。
@@ -245,6 +249,7 @@ LoadingOverlay)必须伪装成 Base UI 家族成员——公开 API 上分不出
 | 「函数 className 反正没人用」 | 它是 Base UI 文档常规用法,类型公开承诺了它 |
 | 「直接改 primitives 那一行更快」 | 改一字节 = 毁上游漂移信号 + 钉死测试红。修 seam、修 cn,或 fork |
 | 「类型先放宽,运行时以后再说」 | 半开门(类型许函数、运行时吞掉)是最危险一类,类型和运行时同时说实话 |
+| 「标成 string 更简单,反正没人传函数」 | 反方向的半开门:落点是 Base UI 槽位、运行时本来就支持,类型却拦着。窄化只在 cva 这类**真吞函数**的路由上成立,而且要写清是哪条路由逼的 |
 | 「data-x={cond \|\| undefined} 反正 CSS 能匹配」 | 渲染成 "true",与 Base UI 空串值形分叉。走 dataAttr |
 | 「回调加个 boolean flag 区分来源」 | 来源属于 eventDetails.reason,词表里挑,不开新参数 |
 

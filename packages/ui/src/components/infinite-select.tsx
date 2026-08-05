@@ -2,8 +2,9 @@
 
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
+import type { ButtonProps } from './button'
 import type { LoadingOverlayProps } from './loading-overlay'
-import type { ScrollAreaScrollbars } from './scroll-area'
+import type { ScrollAreaProps, ScrollAreaScrollbars } from './scroll-area'
 import { Combobox } from '@base-ui/react/combobox'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck, IconSearch } from '@tabler/icons-react'
@@ -12,8 +13,8 @@ import { createContext, use, useEffect, useLayoutEffect, useMemo, useRef } from 
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
 import { cn, dataAttr } from '#lib/utils'
-import { Button } from '#primitives/button'
 import { Separator } from '#primitives/separator'
+import { Button } from './button'
 import { LoadingOverlay } from './loading-overlay'
 import { ScrollArea } from './scroll-area'
 import { Spinner } from './spinner'
@@ -189,8 +190,12 @@ export interface InfiniteSelectListProps<T = unknown> {
   'maxListHeight'?: number
   /** Scrollbar visibility for the list: always shown, shown on hover, or none. */
   'scrollbars'?: ScrollAreaScrollbars
-  /** Class for the scroll container around the list. */
-  'className'?: string
+  /**
+   * Class for the scroll container around the list. Function form receives the
+   * ScrollArea root's Base UI state (`scrolling`, the overflow flags) — the
+   * list's own container is a Base UI slot, not a plain div.
+   */
+  'className'?: ScrollAreaProps['className']
   /** Class for the listbox element itself. Function form receives Base UI's list state. */
   'listClassName'?: ComponentProps<typeof Combobox.List>['className']
   /** Class for every row. Function form receives Base UI's item state. */
@@ -212,17 +217,32 @@ export type ControllableSelectionProps<TItem = unknown>
      * an unloaded page has an id but no item. Persist `ids`, not `items`.
      * `eventDetails.cancel()` rejects the change.
      */
-    onChange?: (items: TItem[], ids: string[], eventDetails: InfiniteSelectChangeEventDetails) => void
+    onValueChange?: (items: TItem[], ids: string[], eventDetails: InfiniteSelectChangeEventDetails) => void
   }
   | {
     selectionMode?: 'single'
     /** Controlled selected id. `null` is the controlled empty value — `undefined` means uncontrolled. */
     value?: string | null
     defaultValue?: string
-    onChange?: (item: TItem | null, eventDetails: InfiniteSelectChangeEventDetails) => void
+    onValueChange?: (item: TItem | null, eventDetails: InfiniteSelectChangeEventDetails) => void
   }
 
 export type InfiniteSelectProps<T> = InfiniteSelectCommonProps<T> & ControllableSelectionProps<T>
+
+const EMPTY_IDS: string[] = []
+
+/**
+ * Controlled-ness is `value !== undefined`, Base UI's judgment: `undefined`
+ * belongs to "uncontrolled", and a controlled single select clears with `null`
+ * — never with `undefined`, which would read as handing control back.
+ *
+ * Module scope so the memos below can depend on the raw prop alone.
+ */
+function normalizeIds(value: string | string[] | null | undefined): string[] {
+  if (value === undefined || value === null)
+    return []
+  return Array.isArray(value) ? value : [value]
+}
 
 // ── Hooks layer: the selection state that drives the panel, exported for
 //    headless composition. ──
@@ -243,7 +263,7 @@ export interface InfiniteSelectSelectionState<T> {
 
 /**
  * Controllable selection + the cross-page item cache + the Base UI value →
- * business `onChange` translation. `InfiniteSelect` consumes it internally;
+ * business `onValueChange` translation. `InfiniteSelect` consumes it internally;
  * a custom composition can drive its own list with it.
  */
 export function useInfiniteSelectSelection<T>(
@@ -255,18 +275,23 @@ export function useInfiniteSelectSelection<T>(
   const { items, getOption } = options
   const isMultiple = options.selectionMode === 'multiple'
 
-  // Controlled-ness is `value !== undefined`, Base UI's judgment: `undefined`
-  // belongs to "uncontrolled", and a controlled single select clears with
-  // `null` — never with `undefined`, which would read as handing control back.
-  const normalizeIds = (value: string | string[] | null | undefined): string[] => {
-    if (value === undefined || value === null)
-      return []
-    return Array.isArray(value) ? value : [value]
-  }
+  // Memoised because `normalizeIds` mints a fresh array every call, and the
+  // controlled-state guard compares by identity: an honest uncontrolled caller
+  // would otherwise trip "the defaultValue changed after mount" on every single
+  // render, and every downstream useMemo keyed on `selectedIds` would go stale
+  // just as often.
+  const valueIds = useMemo(
+    () => (options.value === undefined ? undefined : normalizeIds(options.value)),
+    [options.value],
+  )
+  const defaultValueIds = useMemo(
+    () => (options.defaultValue === undefined ? undefined : normalizeIds(options.defaultValue)),
+    [options.defaultValue],
+  )
   const [selectedIds, setSelectedIds] = useControllableState<string[]>({
-    value: options.value !== undefined ? normalizeIds(options.value) : undefined,
-    defaultValue: options.defaultValue !== undefined ? normalizeIds(options.defaultValue) : undefined,
-    fallback: [],
+    value: valueIds,
+    defaultValue: defaultValueIds,
+    fallback: EMPTY_IDS,
   })
 
   // `ids` from onValueChange is authoritative; this cache only echoes item
@@ -301,7 +326,7 @@ export function useInfiniteSelectSelection<T>(
       const nextItems = ids
         .map(id => selectedItemsCacheRef.current.get(id))
         .filter((entry): entry is T => entry !== undefined)
-      options.onChange?.(nextItems, ids, eventDetails)
+      options.onValueChange?.(nextItems, ids, eventDetails)
       if (eventDetails.isCanceled)
         return
       // Map 迭代器允许边遍历边删,无需先拷贝
@@ -314,7 +339,7 @@ export function useInfiniteSelectSelection<T>(
     }
 
     const id = ids[0]
-    options.onChange?.(
+    options.onValueChange?.(
       id === undefined ? null : items.find(item => getOption(item).id === id) ?? null,
       eventDetails,
     )
@@ -490,7 +515,7 @@ export function InfiniteSelectError({ className, ...props }: ComponentProps<'div
 }
 
 /** Retry button: wired to the panel's `onRetry`; renders nothing without one. */
-export function InfiniteSelectRetry({ onClick, ...props }: ComponentProps<typeof Button>): ReactElement | null {
+export function InfiniteSelectRetry({ onClick, ...props }: ButtonProps): ReactElement | null {
   const { onRetry } = useInfiniteSelectState()
   if (!onRetry)
     return null
@@ -981,11 +1006,12 @@ if (process.env.NODE_ENV !== 'production')
   InfiniteSelectActionsContext.displayName = 'InfiniteSelectActionsContext'
 
 /**
- * Wiring between `InfiniteCombobox` and the footer parts. It lives here only
- * because hosting it up there would make an import cycle. Not public API:
- * compose the exported footer parts instead.
- *
- * @internal
+ * Feeds the footer parts their actions. `InfiniteCombobox` fills it in for you
+ * — reach for this only when you skip the convenience layer and build a popover
+ * around the bare `InfiniteSelect` yourself, which is the one case where
+ * nothing else supplies `clear` / `close` (the docs' "动作上下文" section shows
+ * it). It lives in this file rather than in infinite-combobox.tsx only because
+ * hosting it up there would make an import cycle.
  */
 export function InfiniteSelectActionsProvider<T>({ value, children }: {
   value: InfiniteSelectActions<T>
@@ -1033,7 +1059,7 @@ export function InfiniteSelectFooterSeparator({ className, ...props }: Component
  * the vocabulary word for this role (`Combobox.Clear`), never `ClearButton` —
  * named action parts carry the role, not the element.
  */
-export function InfiniteSelectClear({ className, onClick, ...props }: ComponentProps<typeof Button>): ReactElement {
+export function InfiniteSelectClear({ className, onClick, ...props }: ButtonProps): ReactElement {
   const { clear, close } = useInfiniteSelectActions()
   return (
     <Button
@@ -1057,7 +1083,7 @@ export function InfiniteSelectClear({ className, onClick, ...props }: ComponentP
  * and submit" is exactly the vocabulary's `Close` (`Dialog.Close`), so no
  * `Confirm` coinage.
  */
-export function InfiniteSelectClose({ className, onClick, ...props }: ComponentProps<typeof Button>): ReactElement {
+export function InfiniteSelectClose({ className, onClick, ...props }: ButtonProps): ReactElement {
   const { close } = useInfiniteSelectActions()
   return (
     <Button

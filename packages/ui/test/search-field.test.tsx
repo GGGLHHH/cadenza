@@ -298,6 +298,24 @@ describe('searchField', () => {
     expect(screen.queryByRole('button', { name: 'Clear search' })).toBeNull()
   })
 
+  // The field's text runs through the input's own onChange. Wired before the
+  // spread it would be replaced by any caller listening in, freezing the input
+  // on its controlled value — so it is chained after, like onKeyDown.
+  it('a caller onChange listens in without severing the field\'s own wiring', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    const spy = vi.fn()
+    render(
+      <SearchField aria-label="搜索" onValueChange={onValueChange}>
+        <SearchFieldInput onChange={spy} />
+      </SearchField>,
+    )
+    await user.type(screen.getByRole('searchbox'), 'ab')
+    expect(spy).toHaveBeenCalled()
+    expect(onValueChange).toHaveBeenLastCalledWith('ab', expect.objectContaining({ reason: 'input-change' }))
+    expect(screen.getByRole('searchbox')).toHaveProperty('value', 'ab')
+  })
+
   it('clearable={false} leaves Escape-to-clear alone — that is the input\'s own semantic', async () => {
     const user = userEvent.setup()
     render(<SearchField aria-label="搜索" clearable={false} defaultValue="ravel" />)

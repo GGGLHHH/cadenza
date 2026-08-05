@@ -6,10 +6,10 @@ import { Field, FieldLabel } from '../src/components/field'
 import {
   Select,
   SelectClear,
-  SelectContent,
   SelectEmpty,
   SelectGroup,
   SelectItem,
+  SelectPopup,
   SelectSeparator,
   SelectTrigger,
   SelectValue,
@@ -26,13 +26,13 @@ function renderFruits(props: Partial<Parameters<typeof Select>[0]> = {}): void {
   render(
     <Select items={FRUIT_LABELS} {...props}>
       <SelectTrigger aria-label="水果"><SelectValue placeholder="选一个" /></SelectTrigger>
-      <SelectContent>
+      <SelectPopup>
         <SelectGroup>
           {FRUITS.map(fruit => (
             <SelectItem key={fruit.id} value={fruit.id}>{fruit.name}</SelectItem>
           ))}
         </SelectGroup>
-      </SelectContent>
+      </SelectPopup>
     </Select>,
   )
 }
@@ -41,12 +41,12 @@ function renderFruitsWithEmpty(fruits: Fruit[]): void {
   render(
     <Select items={fruits.map(fruit => ({ value: fruit.id, label: fruit.name }))}>
       <SelectTrigger aria-label="水果"><SelectValue placeholder="选一个" /></SelectTrigger>
-      <SelectContent>
+      <SelectPopup>
         <SelectEmpty>没有数据</SelectEmpty>
         {fruits.map(fruit => (
           <SelectItem key={fruit.id} value={fruit.id}>{fruit.name}</SelectItem>
         ))}
-      </SelectContent>
+      </SelectPopup>
     </Select>,
   )
 }
@@ -94,11 +94,11 @@ describe('select', () => {
           <SelectValue />
           <SelectClear />
         </SelectTrigger>
-        <SelectContent>
+        <SelectPopup>
           {FRUITS.map(fruit => (
             <SelectItem key={fruit.id} value={fruit.id}>{fruit.name}</SelectItem>
           ))}
-        </SelectContent>
+        </SelectPopup>
       </Select>,
     )
     expect(screen.getByRole('combobox').textContent).toContain('梨')
@@ -123,11 +123,11 @@ describe('select', () => {
           <SelectValue placeholder="选一个" />
           <SelectClear />
         </SelectTrigger>
-        <SelectContent>
+        <SelectPopup>
           {FRUITS.map(fruit => (
             <SelectItem key={fruit.id} value={fruit.id}>{fruit.name}</SelectItem>
           ))}
-        </SelectContent>
+        </SelectPopup>
       </Select>,
     )
     // The positioning container is there (the marker is composed), the ✕ is not.
@@ -142,7 +142,7 @@ describe('select', () => {
           <SelectValue />
           <SelectClear />
         </SelectTrigger>
-        <SelectContent />
+        <SelectPopup />
       </Select>,
     )
     expect(document.querySelector('[data-slot="select-clear"]')).toBeNull()
@@ -153,7 +153,7 @@ describe('select', () => {
           <SelectValue />
           <SelectClear />
         </SelectTrigger>
-        <SelectContent />
+        <SelectPopup />
       </Select>,
     )
     const user = userEvent.setup()
@@ -170,7 +170,7 @@ describe('select', () => {
           <SelectValue />
           <SelectClear />
         </SelectTrigger>
-        <SelectContent />
+        <SelectPopup />
       </Select>,
     )
     const clear = screen.getByRole('button', { name: 'Clear selection' })
@@ -209,7 +209,7 @@ describe('select', () => {
           <SelectValue />
           <SelectClear />
         </SelectTrigger>
-        <SelectContent />
+        <SelectPopup />
       </Select>,
     )
     expect(screen.queryByRole('button', { name: 'Clear selection' })).toBeNull()
@@ -246,11 +246,11 @@ describe('select', () => {
     render(
       <Select defaultValue="pear" items={FRUIT_LABELS} placeholder="选一个">
         <SelectTrigger aria-label="水果" />
-        <SelectContent>
+        <SelectPopup>
           {FRUITS.map(fruit => (
             <SelectItem key={fruit.id} value={fruit.id}>{fruit.name}</SelectItem>
           ))}
-        </SelectContent>
+        </SelectPopup>
       </Select>,
     )
     const trigger = screen.getByRole('combobox', { name: '水果' })
@@ -338,9 +338,9 @@ describe('select', () => {
     render(
       <Select>
         <SelectTrigger aria-label="水果"><SelectValue placeholder="选一个" /></SelectTrigger>
-        <SelectContent>
+        <SelectPopup>
           <div data-testid="empty">还没有可选的</div>
-        </SelectContent>
+        </SelectPopup>
       </Select>,
     )
     const user = userEvent.setup()
@@ -365,13 +365,13 @@ describe('select', () => {
     render(
       <Select onValueChange={onValueChange}>
         <SelectTrigger aria-label="水果"><SelectValue placeholder="选一个" /></SelectTrigger>
-        <SelectContent>
+        <SelectPopup>
           <SelectGroup>
             <SelectItem value="apple">苹果</SelectItem>
             <SelectSeparator />
             <SelectItem disabled value="pear">梨</SelectItem>
           </SelectGroup>
-        </SelectContent>
+        </SelectPopup>
       </Select>,
     )
     const user = userEvent.setup()
@@ -385,7 +385,7 @@ describe('select', () => {
     render(
       <Select>
         <SelectTrigger aria-label="水果" ref={trigger}><SelectValue /></SelectTrigger>
-        <SelectContent><SelectItem value="apple">苹果</SelectItem></SelectContent>
+        <SelectPopup><SelectItem value="apple">苹果</SelectItem></SelectPopup>
       </Select>,
     )
     expect(trigger.current?.dataset.slot).toBe('select-trigger')
@@ -399,7 +399,7 @@ describe('the label channel', () => {
         <FieldLabel htmlFor="fruit">水果</FieldLabel>
         <Select>
           <SelectTrigger id="fruit"><SelectValue placeholder="选一个" /></SelectTrigger>
-          <SelectContent><SelectItem value="apple">苹果</SelectItem></SelectContent>
+          <SelectPopup><SelectItem value="apple">苹果</SelectItem></SelectPopup>
         </Select>
       </Field>,
     )
@@ -451,7 +451,7 @@ describe('the label channel', () => {
           <FieldLabel htmlFor="fruit">水果</FieldLabel>
           <Select>
             <SelectTrigger id="fruit"><SelectValue placeholder="选一个" /></SelectTrigger>
-            <SelectContent><SelectItem value="apple">苹果</SelectItem></SelectContent>
+            <SelectPopup><SelectItem value="apple">苹果</SelectItem></SelectPopup>
           </Select>
         </Field>
       </>,
