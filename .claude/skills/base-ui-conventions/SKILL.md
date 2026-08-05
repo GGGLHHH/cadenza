@@ -42,6 +42,11 @@ LoadingOverlay)必须伪装成 Base UI 家族成员——公开 API 上分不出
   同形字段(`isLoading`/`isFetchingNextPage`/`isError`/`hasNextPage`)刻意镜像 react-query,
   换取 `<DataTable {...list} />` 整体 spread。边界:**仅限 adapter 契约字段**;
   任何新 prop、render/state 参数、data 属性一律 Base UI 词形。
+  **不接 spread 的组件不在豁免面里**——`LoadingOverlay` 是独立组件,写 `loading`;
+  派生状态同理(context 里写 `{ empty, error, filled }`,不是 `{ isEmpty, isError, hasItems }`)。
+  公开 context 里**原样转发**适配器字段(`hasNextPage`/`isFetchingNextPage`)算豁免内
+  (自定义 part 读了还要还给同一个适配器),但要注释标明;凡是自己算出来的一律裸形容词。
+  「有值/有内容」的裸词用 Base UI Field 词表的 `filled`,不要造 `hasValue`/`hasItems`。
 
 ### 1.2 部件分类学
 
@@ -133,6 +138,10 @@ LoadingOverlay)必须伪装成 Base UI 家族成员——公开 API 上分不出
   `trigger-press` `outside-press` `item-press` `close-press` `clear-press` `input-change`
   `input-clear` `input-blur` `escape-key` `focus-out` `none` `initial` `imperative-action` …)。
   造新词前先查这张表。
+- **回调槽 vs 命令式 setter**:名字是 `onXxxChange`(要交给别人当回调槽的)签名里
+  第二参**必填**——喂它的一方永远传详情,可选就是在替调用方开一条「有时没有」的路;
+  命令式 setter(`setValue`/`clear`,由使用方主动调)可以给默认详情
+  (`= createChangeEventDetails('none')`),因为默认值本身就是在履行「第二参永远存在」。
 - 「完成通知」不带 details:`onOpenChangeComplete(open)` 单参;
   「提交」回调 `onValueCommitted(value, details)` 的 details 是 generic、**无 cancel**。
   change 与 commit 是两个回调,不给 onChange 塞模式 flag。
@@ -185,6 +194,11 @@ LoadingOverlay)必须伪装成 Base UI 家族成员——公开 API 上分不出
    Base UI 槽位 → 函数契约自动成立;普通 DOM → 类型必须是 string。写进 JSDoc。
 2. **ref 类型重述**:底座把 ref 声明在组件类型上而不是 props 里时,
    `ComponentProps<typeof X>` 会丢它。seam 补 `& RefAttributes<对应元素>`。
+   同一处还要查**与宿主原生 props 的重名**:自建 prop 若与根元素的原生 handler
+   同名(`<div>` 上的 `onSubmit`/`onChange`),`ComponentProps<'div'> & { … }` 是
+   **相交**不是覆盖——类型会要求回调同时满足两个签名。自建的那个既然在根组件里
+   解构走、永不落到元素上,就把名字加进 `Omit` 名单并注明理由。
+   (实测:`SearchField.onSubmit` 一参时恰好通过,补上第二参才炸出来。)
 3. **wiring props 解构串联**:内部要接的回调必须从 props 解构、内部逻辑先跑、caller 的后跑
    (eventDetails 场景反过来:用户回调先跑、内部查 isCanceled——见 §4)。
    写在 `{...props}` 前面 = caller 一传就顶掉接线,静默失效。
@@ -247,3 +261,6 @@ LoadingOverlay)必须伪装成 Base UI 家族成员——公开 API 上分不出
 - 在 Base UI 的开放形状(`[key: string]: unknown`)里自选键名,而没查官方 demo 用的哪个键
   (先例:Group 的标题键是 `value`——`{ value: 'Fruits', items }`,不是 label)
 - 想给 vendored 文件加一行/改一个类型
+- 提升 vendored 组件时**照抄 shadcn 的裸名**(`ScrollBar`)——提升就是定形,
+  名字要补成 `<Family><Part>`(`ScrollAreaScrollbar`,对齐 Base UI 的 `ScrollArea.Scrollbar`)
+- 公开组件的 props 是**内联匿名类型**、没有 `XxxProps` 导出(业务层想包一层就无从引用)

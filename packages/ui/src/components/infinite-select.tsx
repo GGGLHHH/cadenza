@@ -232,8 +232,13 @@ export interface InfiniteSelectSelectionState<T> {
   selectedIds: string[]
   /** Selected item objects, loaded pages only (cross-page cache). */
   selectedItems: T[]
-  /** Feed Base UI's `onValueChange` with this. Details default to reason `'none'`. */
-  onValueChange: (value: string | string[] | null, eventDetails?: InfiniteSelectChangeEventDetails) => void
+  /**
+   * Feed Base UI's `onValueChange` with this — its details pass straight
+   * through. Driving it yourself means constructing the details too
+   * (`createChangeEventDetails('none')` for a programmatic change): the second
+   * argument is never optional, same as every other change callback here.
+   */
+  onValueChange: (value: string | string[] | null, eventDetails: InfiniteSelectChangeEventDetails) => void
 }
 
 /**
@@ -278,7 +283,7 @@ export function useInfiniteSelectSelection<T>(
 
   const onValueChange = (
     value: string | string[] | null,
-    eventDetails: InfiniteSelectChangeEventDetails = createChangeEventDetails('none'),
+    eventDetails: InfiniteSelectChangeEventDetails,
   ): void => {
     const ids = value === null ? [] : Array.isArray(value) ? value : [value]
 
@@ -334,8 +339,14 @@ export interface InfiniteSelectContextValue<T = unknown> {
   'getOption': (item: T) => InfiniteSelectOption
   'selectionMode': 'single' | 'multiple'
   'selectedIds': string[]
-  /** The list has rows to show (loaded, no error, non-empty). */
-  'hasItems': boolean
+  /**
+   * The list has rows to show (loaded, no error, non-empty) — Base UI's Field
+   * word for "has content", not a coined `hasItems`.
+   */
+  'filled': boolean
+  // Verbatim mirrors of the adapter contract props, kept in react-query's word
+  // forms on purpose: a custom part reads them and hands them back to the same
+  // adapter. The exemption covers these two, nothing derived.
   'hasNextPage': boolean
   'isFetchingNextPage': boolean
   'onLoadMore'?: (() => void) | undefined
@@ -377,19 +388,20 @@ export function InfiniteSelectStatus({ className, ...props }: ComponentProps<'di
 
 // ── State slots: context-driven, zero copy in the base. States are mutually
 //    exclusive, so at most one InfiniteSelectStatus renders at a time. ──
-interface InfiniteSelectState {
-  isLoading: boolean
-  isError: boolean
-  isEmpty: boolean
-  isFetchingNextPage: boolean
+// Bare adjectives: the react-query word forms stop at the adapter props, they
+// do not travel inward.
+interface InfiniteSelectStateContextValue {
+  loading: boolean
+  error: boolean
+  empty: boolean
   onRetry?: (() => void) | undefined
 }
 
-const InfiniteSelectStateContext = createContext<InfiniteSelectState | null>(null)
+const InfiniteSelectStateContext = createContext<InfiniteSelectStateContextValue | null>(null)
 if (process.env.NODE_ENV !== 'production')
   InfiniteSelectStateContext.displayName = 'InfiniteSelectStateContext'
 
-function useInfiniteSelectState(): InfiniteSelectState {
+function useInfiniteSelectState(): InfiniteSelectStateContextValue {
   const ctx = use(InfiniteSelectStateContext)
   if (ctx === null)
     throw new Error('cadenza-ui: InfiniteSelectStateContext is missing. InfiniteSelect parts must be placed within <InfiniteSelect>.')
@@ -398,18 +410,18 @@ function useInfiniteSelectState(): InfiniteSelectState {
 
 /** Empty slot: renders its children when the list has no results. */
 export function InfiniteSelectEmpty(props: ComponentProps<'div'>): ReactElement | null {
-  const { isEmpty } = useInfiniteSelectState()
-  return isEmpty ? <InfiniteSelectStatus {...props} /> : null
+  const { empty } = useInfiniteSelectState()
+  return empty ? <InfiniteSelectStatus {...props} /> : null
 }
 
-export type InfiniteSelectLoadingOverlayProps = Omit<LoadingOverlayProps, 'isLoading'>
+export type InfiniteSelectLoadingOverlayProps = Omit<LoadingOverlayProps, 'loading'>
 
 /**
  * Slotted customization for the built-in loading overlay: compose it anywhere
  * in the panel's children and the List part renders your props over the list
  * region — `children` replace the centred spinner, `className` tunes the
  * frost. A marker like TabsIndicator: it renders nothing where written (an
- * absolute overlay cannot live in the panel's flow), and `isLoading` stays
+ * absolute overlay cannot live in the panel's flow), and `loading` stays
  * the base's wiring. Direct child or inside a Fragment only — a custom
  * wrapper hides it.
  */
@@ -466,8 +478,8 @@ export function InfiniteSelectNoMore(_props: InfiniteSelectNoMoreProps): null {
 
 /** Error slot: container for the error copy plus `InfiniteSelectRetry`. */
 export function InfiniteSelectError({ className, ...props }: ComponentProps<'div'>): ReactElement | null {
-  const { isError } = useInfiniteSelectState()
-  return isError
+  const { error } = useInfiniteSelectState()
+  return error
     ? (
         <InfiniteSelectStatus
           className={cn(`flex flex-col items-center gap-2 py-4`, className)}
@@ -527,7 +539,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
   // screen (react-query placeholderData), over a min-height blank while the
   // first page is still coming. Only errors unmount the list.
   const isEmpty = !isLoading && !isError && items.length === 0
-  const hasItems = !isError && items.length > 0
+  const filled = !isError && items.length > 0
 
   // Provider value memoised (the house rule): the wiring context feeds every
   // part, and an unstable object would re-render them all per keystroke of
@@ -538,7 +550,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     getOption,
     selectionMode,
     selectedIds,
-    hasItems,
+    filled,
     hasNextPage,
     isFetchingNextPage,
     onLoadMore,
@@ -553,7 +565,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     getOption,
     selectionMode,
     selectedIds,
-    hasItems,
+    filled,
     hasNextPage,
     isFetchingNextPage,
     onLoadMore,
@@ -563,9 +575,9 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     children,
   ])
 
-  const stateContextValue = useMemo<InfiniteSelectState>(
-    () => ({ isLoading, isError, isEmpty, isFetchingNextPage, onRetry }),
-    [isLoading, isError, isEmpty, isFetchingNextPage, onRetry],
+  const stateContextValue = useMemo<InfiniteSelectStateContextValue>(
+    () => ({ loading: isLoading, error: isError, empty: isEmpty, onRetry }),
+    [isLoading, isError, isEmpty, onRetry],
   )
 
   return (
@@ -720,7 +732,7 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
     getOption,
     selectionMode,
     selectedIds,
-    hasItems,
+    filled,
     hasNextPage,
     isFetchingNextPage,
     onLoadMore,
@@ -730,7 +742,7 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
     noMoreProps,
     loadingMoreProps,
   } = ctx
-  const { isLoading } = useInfiniteSelectState()
+  const { loading } = useInfiniteSelectState()
   const isMultiple = selectionMode === 'multiple'
   const ariaLabel = ariaLabelProp ?? ctx['aria-label']
 
@@ -821,11 +833,11 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
   // First page still coming: nothing exists to size the list yet, so the
   // shell gets a minimum height for the frosted overlay to show on. Same
   // look as a refresh — one loading visual everywhere.
-  if (!hasItems) {
-    return isLoading
+  if (!filled) {
+    return loading
       ? (
           <div className="relative min-block-24" data-slot="infinite-select-list-container">
-            <LoadingOverlay {...loadingOverlayProps} isLoading />
+            <LoadingOverlay {...loadingOverlayProps} loading />
           </div>
         )
       : null
@@ -929,7 +941,7 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
               </div>
             )}
       </ScrollArea>
-      <LoadingOverlay {...loadingOverlayProps} isLoading={isLoading} />
+      <LoadingOverlay {...loadingOverlayProps} loading={loading} />
     </div>
   )
 }

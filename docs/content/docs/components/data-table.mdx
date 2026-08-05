@@ -158,7 +158,7 @@ i18n 只存在于你的业务层。
 在插槽通道里组合它即可定制上面那层磨砂。它是 TabsIndicator 式的**标记部件**——
 写在哪里都不渲染（绝对定位的覆盖层没法住在空态区的文档流里），由卡片提升到
 覆盖层的位置渲染；`children` 替换居中的 Spinner（品牌动画、文案都行），
-`className` 调磨砂浓度，`isLoading` 是基座的接线、不在它的 props 里。直接子级或
+`className` 调磨砂浓度，`loading` 是基座的接线、不在它的 props 里。直接子级或
 Fragment 内有效，包进自定义组件会找不到（与 TabsIndicator 同一限制）：
 
 <ComponentPreview name="data-table/loading-custom" align="stretch" />

@@ -155,8 +155,8 @@ export type SelectTriggerProps = ComponentProps<typeof SelectTriggerPrimitive>
 export type SelectValueProps = ComponentProps<typeof SelectValue>
 
 interface SelectContextValue {
-  /** Something is selected — a non-null single value or a non-empty array. */
-  hasValue: boolean
+  /** Something is selected — a non-null single value or a non-empty array. Base UI's Field word for "has a value" (`data-filled`), not a coined `hasValue`. */
+  filled: boolean
   disabled: boolean
   readOnly: boolean
   /** The clear master switch (root's `clearable`, default true). */
@@ -220,9 +220,9 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
   const handleValueChangeRef = useRef(handleValueChange)
   handleValueChangeRef.current = handleValueChange
 
-  const hasValue = multiple === true ? Array.isArray(value) && value.length > 0 : value != null
+  const filled = multiple === true ? Array.isArray(value) && value.length > 0 : value != null
   const context = useMemo<SelectContextValue>(() => ({
-    hasValue,
+    filled,
     disabled,
     readOnly,
     clearable,
@@ -231,7 +231,7 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
       (multiple === true ? [] : null) as StateValue,
       createChangeEventDetails('clear-press', event),
     ),
-  }), [hasValue, disabled, readOnly, clearable, placeholder, multiple])
+  }), [filled, disabled, readOnly, clearable, placeholder, multiple])
 
   return (
     <SelectContext value={context}>
@@ -323,7 +323,7 @@ export function SelectContent({ alignItemWithTrigger = false, children, ...props
  * involved.
  */
 export function SelectTrigger({ children, className, ...props }: SelectTriggerProps): ReactElement {
-  const { hasValue, disabled, readOnly, clearable, placeholder, clear } = useSelectContext()
+  const { filled, disabled, readOnly, clearable, placeholder, clear } = useSelectContext()
   // No children → the trigger's own default composition: a SelectValue wired
   // to the root's placeholder, plus the clear affordance (`clearable` gates
   // it). An explicitly composed SelectClear works the same — clearable stays
@@ -331,7 +331,7 @@ export function SelectTrigger({ children, className, ...props }: SelectTriggerPr
   const autoComposed = children === undefined
   const composedClearProps = autoComposed ? {} : findComposedPart(children, SelectClear)
   const clearProps = clearable ? composedClearProps : undefined
-  const clearVisible = clearProps !== undefined && hasValue && !disabled && !readOnly
+  const clearVisible = clearProps !== undefined && filled && !disabled && !readOnly
   const trigger = (
     <SelectTriggerPrimitive
       className={cn(clearVisible && '[&>svg:last-child]:invisible', className)}

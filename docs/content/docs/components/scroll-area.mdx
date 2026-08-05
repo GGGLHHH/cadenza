@@ -55,4 +55,13 @@ description: 覆盖式滚动条的滚动容器 —— 滚动条渲染在视口�
 | `className` | `string \| (state) => string` | — | 根元素类名；尺寸约束定在这里。函数形式收到 Base UI Root 的状态（`scrolling`、`hasOverflowX/Y` 与 `overflowXStart` 等溢出方向、`cornerHidden`——`hovering` 不在其中，它只挂在滚动条元素的 `data-hovering` 上） |
 | 其余 | `ScrollArea.Root.Props` | — | 透传 Base UI Root |
 
-单独导出的 `ScrollBar` 供自定义组合场景使用，一般用不到。
+单独导出的 `ScrollAreaScrollbar` 供自定义组合场景使用，一般用不到 —— 名字随
+家族（Base UI 的部件就叫 `ScrollArea.Scrollbar`），不是 shadcn 的裸名 `ScrollBar`。
+
+**导出的类型**
+
+| 类型 | 说明 |
+| --- | --- |
+| `ScrollAreaProps` | 根组件完整 props（Base UI Root 的 props + 上表的 seam 扩展） |
+| `ScrollAreaScrollbarProps` | 滚动条部件的 props（即 `ScrollArea.Scrollbar.Props`） |
+| `ScrollAreaScrollbars` | `scrollbars` 的取值联合 |

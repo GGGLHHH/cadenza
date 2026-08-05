@@ -229,19 +229,19 @@ export function DataTableStatus({ className, ...props }: ComponentProps<'div'>):
 
 // ── State slots: context-driven, zero copy in the base. States are mutually
 //    exclusive, so at most one DataTableStatus renders at a time. ──
-interface DataTableState {
-  isLoading: boolean
-  isError: boolean
-  isEmpty: boolean
-  isFetchingNextPage: boolean
+// Bare adjectives: the react-query word forms stop at the adapter props, they
+// do not travel inward.
+interface DataTableStateContextValue {
+  empty: boolean
+  error: boolean
   onRetry?: (() => void) | undefined
 }
 
-const DataTableStateContext = createContext<DataTableState | null>(null)
+const DataTableStateContext = createContext<DataTableStateContextValue | null>(null)
 if (process.env.NODE_ENV !== 'production')
   DataTableStateContext.displayName = 'DataTableStateContext'
 
-function useDataTableState(): DataTableState {
+function useDataTableState(): DataTableStateContextValue {
   const ctx = use(DataTableStateContext)
   if (ctx === null)
     throw new Error('cadenza-ui: DataTableStateContext is missing. DataTable parts must be placed within <DataTable>.')
@@ -250,14 +250,14 @@ function useDataTableState(): DataTableState {
 
 /** Empty slot: renders its children when the table has no rows. */
 export function DataTableEmpty(props: ComponentProps<'div'>): ReactElement | null {
-  const { isEmpty } = useDataTableState()
-  return isEmpty ? <DataTableStatus {...props} /> : null
+  const { empty } = useDataTableState()
+  return empty ? <DataTableStatus {...props} /> : null
 }
 
 /** Error slot: container for the error copy plus `DataTableRetry`. */
 export function DataTableError({ className, ...props }: ComponentProps<'div'>): ReactElement | null {
-  const { isError } = useDataTableState()
-  return isError
+  const { error } = useDataTableState()
+  return error
     ? (
         <DataTableStatus
           className={cn('flex flex-col items-center gap-2', className)}
@@ -287,7 +287,7 @@ export function DataTableRetry({ onClick, ...props }: ComponentProps<typeof Butt
   )
 }
 
-export type DataTableLoadingOverlayProps = Omit<LoadingOverlayProps, 'isLoading'>
+export type DataTableLoadingOverlayProps = Omit<LoadingOverlayProps, 'loading'>
 
 /**
  * Slotted customization for the built-in loading overlay: compose it in the
@@ -295,7 +295,7 @@ export type DataTableLoadingOverlayProps = Omit<LoadingOverlayProps, 'isLoading'
  * replace the centred spinner, `className` tunes the frost. A marker part: it
  * renders nothing where written (an absolute overlay cannot live in the
  * empty-state flow) — the card lifts its props out of the slot channel and
- * renders the overlay itself, so `isLoading` stays the base's wiring.
+ * renders the overlay itself, so `loading` stays the base's wiring.
  * Direct child or inside a Fragment only — a custom wrapper hides it.
  */
 export function DataTableLoadingOverlay(_props: DataTableLoadingOverlayProps): null {
@@ -631,12 +631,12 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     setSelectedIds(ids)
   }
 
-  // Provider value memoised (the house rule): the five fields change rarely,
-  // and an unstable object would re-render every slot on every keystroke of
+  // Provider value memoised (the house rule): these fields change rarely, and
+  // an unstable object would re-render every slot on every keystroke of
   // unrelated state.
-  const stateContextValue = useMemo<DataTableState>(
-    () => ({ isLoading, isError, isEmpty, isFetchingNextPage, onRetry }),
-    [isLoading, isError, isEmpty, isFetchingNextPage, onRetry],
+  const stateContextValue = useMemo<DataTableStateContextValue>(
+    () => ({ empty: isEmpty, error: isError, onRetry }),
+    [isEmpty, isError, onRetry],
   )
 
   // A bounded height is what gives the sticky header a scrollport, and what
@@ -961,7 +961,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
         <LoadingOverlay
           {...loadingOverlayProps}
           className={cn('z-30', loadingOverlayProps?.className)}
-          isLoading={isLoading}
+          loading={isLoading}
         />
       </DataTableStateContext>
     </div>

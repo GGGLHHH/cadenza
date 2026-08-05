@@ -108,7 +108,7 @@ export function Button({
               {/* rounded-none + backdrop-blur-none: the flat scrim is shaped
                   entirely by the host's overflow clip — the same geometry
                   that shapes the background, so they coincide to the pixel. */}
-              <LoadingOverlay className="rounded-none backdrop-blur-none" isLoading={pending}>
+              <LoadingOverlay className="rounded-none backdrop-blur-none" loading={pending}>
                 {/* text-foreground, not currentColor: inside the button the
                     inherited colour is the label's own, which camouflages the
                     spinner against the veiled label — foreground pairs with

@@ -1,12 +1,12 @@
 'use client'
 
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
-import type { ChangeEventDetails } from '#lib/change-event-details'
+import type { ChangeEventDetails, GenericEventDetails } from '#lib/change-event-details'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { IconSearch, IconX } from '@tabler/icons-react'
 import { useDebounceFn } from 'ahooks'
 import { createContext, use, useCallback } from 'react'
-import { createChangeEventDetails } from '#lib/change-event-details'
+import { createChangeEventDetails, createGenericEventDetails } from '#lib/change-event-details'
 import { cn, dataAttr } from '#lib/utils'
 // The seam versions, not the primitives: their prop types carry the full Base UI
 // contract (function className on the control, ref), so ours inherit it.
@@ -44,6 +44,15 @@ export type SearchFieldChangeEventReason
   = 'input-change' | 'clear-press' | 'escape-key' | 'imperative-action' | 'none'
 
 export type SearchFieldChangeEventDetails = ChangeEventDetails<SearchFieldChangeEventReason>
+
+/** Why a submit fired: Enter today, `'none'` for a programmatic one. */
+export type SearchFieldSubmitEventReason = 'keyboard' | 'none'
+
+/**
+ * Submitting writes no state of its own, so — like `onSortChange` — its details
+ * are generic: reason and event, no `cancel()` that would skip nothing.
+ */
+export type SearchFieldSubmitEventDetails = GenericEventDetails<SearchFieldSubmitEventReason>
 
 export interface SearchQueryOptions {
   /** Controlled raw text. */
@@ -167,7 +176,7 @@ interface SearchFieldContextValue extends SearchFieldState {
   'clearable': boolean
   'setValue': (value: string, eventDetails?: SearchFieldChangeEventDetails) => void
   'clear': (eventDetails?: SearchFieldChangeEventDetails) => void
-  'submit': () => void
+  'submit': (eventDetails: SearchFieldSubmitEventDetails) => void
   'aria-label'?: string
 }
 
@@ -182,8 +191,12 @@ function useSearchFieldContext(): SearchFieldContextValue {
   return context
 }
 
+// `onSubmit` joins the omitted div props for the same reason `onChange` did:
+// the root is a `<div>`, so React declares a native handler under that name and
+// an intersection would demand a callback satisfying both signatures. Ours is
+// destructured out and never reaches the element.
 export type SearchFieldProps
-  = Omit<ComponentProps<'div'>, 'children' | 'defaultValue' | 'onChange'>
+  = Omit<ComponentProps<'div'>, 'children' | 'defaultValue' | 'onChange' | 'onSubmit'>
     & SearchQueryOptions
     & {
       disabled?: boolean
@@ -197,8 +210,8 @@ export type SearchFieldProps
       clearable?: boolean
       /** Placeholder for the default composition's input. */
       placeholder?: string
-      /** Fires on Enter, with the current raw text. */
-      onSubmit?: (value: string) => void
+      /** Fires on Enter, with the current raw text and why it fired. */
+      onSubmit?: (value: string, eventDetails: SearchFieldSubmitEventDetails) => void
       /**
        * Replaces the default composition (icon, input, clear button). Compose
        * the parts yourself to add a shortcut hint, a filter button, a second
@@ -251,7 +264,7 @@ export function SearchFieldInput({
         if (event.key === 'Escape')
           field.clear(createChangeEventDetails('escape-key', event.nativeEvent))
         if (event.key === 'Enter')
-          field.submit()
+          field.submit(createGenericEventDetails('keyboard', event.nativeEvent))
       }}
     />
   )
@@ -344,7 +357,7 @@ export function SearchField({
     'clearable': clearable,
     'setValue': search.setValue,
     'clear': search.resetSearch,
-    'submit': () => onSubmit?.(search.value),
+    'submit': eventDetails => onSubmit?.(search.value, eventDetails),
     'aria-label': ariaLabel,
   }
 

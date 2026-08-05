@@ -3,7 +3,8 @@ import { Button } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
 // 全变体公用一个 loading 状态:点任意一颗,整排进入 pending —— 标签原地被磨砂
-// 融开(覆盖不替换)、Spinner 浮在暗纱上、宽度不变。isLoading 是 pending 的别名;
+// 融开(覆盖不替换)、Spinner 浮在暗纱上、宽度不变。动作面只有 pending 这一个词,
+// 内容面的 loading(LoadingOverlay)是它的对应词、不是别名;
 // 快操作防闪属于调用方:确有需要就延迟置起 pending
 export default function PendingDemo(): ReactElement {
   const [isPending, setIsPending] = useState(false)

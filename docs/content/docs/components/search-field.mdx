@@ -81,7 +81,7 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | 按键 | 行为 |
 | --- | --- |
 | `Esc` | 清空字段（与点击清除按钮等价，同样跳过去抖） |
-| `Enter` | 触发 `onSubmit`，回调参数是当前原始文本 |
+| `Enter` | 触发 `onSubmit`，回调参数是当前原始文本 + `eventDetails`（`reason: 'keyboard'`） |
 | `Tab` | 清除按钮**不占** Tab 停留点（`tabIndex={-1}`，键盘用户用 Esc 清空）；空时它仍在 DOM 中，由 `data-empty` 经 CSS 隐藏 |
 
 ## Props
@@ -105,8 +105,8 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | `clearable` | `boolean` | `true` | 清除按钮总开关——`false` 连显式组合的 `SearchFieldClear` 一并关掉。Escape 清空不受它管（那是 search 输入框自己的键盘语义） |
 | `defaultQueryValue` | `string` | — | 非受控初始查询值 |
 | `queryValue` | `string` | — | 受控查询值 |
-| `onQueryValueChange` | `(value: string \| undefined) => void` | — | 去抖后触发，已 trim、空白归一为 `undefined` |
-| `onSubmit` | `(value: string) => void` | — | 按 Enter 时触发，参数是当前原始文本 |
+| `onQueryValueChange` | `(value, eventDetails) => void` | — | 去抖后触发，已 trim、空白归一为 `undefined` |
+| `onSubmit` | `(value, eventDetails) => void` | — | 按 Enter 时触发，参数是当前原始文本。第二参是 `SearchFieldSubmitEventDetails`——**generic 详情、无 `cancel()`**（提交不写任何内部状态，没有可跳过的东西），`reason` 为 `'keyboard'` |
 
 | `debounceMs` | `number` | `300` | 去抖间隔。**挂载时读取一次**，之后改动不生效（同 `defaultValue` 的约定）|
 | `placeholder` | `string` | — | 默认组合里输入框的占位符 |

@@ -11,6 +11,22 @@ import { cn } from '#lib/utils'
  */
 export type ScrollAreaScrollbars = 'always' | 'hover' | 'hidden'
 
+export type ScrollAreaProps = ScrollAreaPrimitive.Root.Props & {
+  /** Which scrollbars to render. The root mirrors it as `data-orientation`. */
+  orientation?: 'vertical' | 'horizontal' | 'both'
+  scrollbars?: ScrollAreaScrollbars
+  /**
+   * Viewport class names — the scroll-fade utilities belong here, not on the
+   * root. A plain string: the viewport is ours to compose, so there is no
+   * Base UI state to be a function of.
+   */
+  viewportClassName?: string
+  viewportRef?: Ref<HTMLDivElement>
+  viewportStyle?: CSSProperties
+}
+
+export type ScrollAreaScrollbarProps = ScrollAreaPrimitive.Scrollbar.Props
+
 /**
  * Scroll container with overlay scrollbars rendered OUTSIDE the viewport
  * (Base UI structure: Root > Viewport + Scrollbar siblings). This exists
@@ -28,13 +44,7 @@ export function ScrollArea({
   viewportRef,
   viewportStyle,
   ...props
-}: ScrollAreaPrimitive.Root.Props & {
-  orientation?: 'vertical' | 'horizontal' | 'both'
-  scrollbars?: ScrollAreaScrollbars
-  viewportClassName?: string
-  viewportRef?: Ref<HTMLDivElement>
-  viewportStyle?: CSSProperties
-}): ReactElement {
+}: ScrollAreaProps): ReactElement {
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
@@ -61,10 +71,10 @@ export function ScrollArea({
       {scrollbars !== 'hidden' && (
         <>
           {(orientation === 'vertical' || orientation === 'both') && (
-            <ScrollBar className={hoverClassName(scrollbars)} orientation="vertical" />
+            <ScrollAreaScrollbar className={hoverClassName(scrollbars)} orientation="vertical" />
           )}
           {(orientation === 'horizontal' || orientation === 'both') && (
-            <ScrollBar className={hoverClassName(scrollbars)} orientation="horizontal" />
+            <ScrollAreaScrollbar className={hoverClassName(scrollbars)} orientation="horizontal" />
           )}
           <ScrollAreaPrimitive.Corner data-slot="scroll-area-corner" />
         </>
@@ -85,11 +95,17 @@ function hoverClassName(scrollbars: ScrollAreaScrollbars): string | undefined {
     : undefined
 }
 
-export function ScrollBar({
+/**
+ * A single scrollbar, for compositions that render their own — `ScrollArea`
+ * renders these itself from `orientation`, so reaching for it directly is rare.
+ * Named for its family (`ScrollArea` + Base UI's `Scrollbar` part), not
+ * shadcn's bare `ScrollBar`.
+ */
+export function ScrollAreaScrollbar({
   className,
   orientation = 'vertical',
   ...props
-}: ScrollAreaPrimitive.Scrollbar.Props): ReactElement {
+}: ScrollAreaScrollbarProps): ReactElement {
   return (
     <ScrollAreaPrimitive.Scrollbar
       data-slot="scroll-area-scrollbar"

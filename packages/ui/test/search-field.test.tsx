@@ -1,3 +1,4 @@
+import type { SearchFieldSubmitEventDetails } from '../src/components/search-field'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
@@ -262,12 +263,20 @@ describe('searchField', () => {
   })
   it('submits the raw text on Enter', async () => {
     const user = userEvent.setup()
-    const onSubmit = vi.fn()
+    const onSubmit = vi.fn<(value: string, details: SearchFieldSubmitEventDetails) => void>()
     render(<SearchField aria-label="搜索" defaultValue="ravel" onSubmit={onSubmit} />)
 
     await user.click(screen.getByRole('searchbox'))
     await user.keyboard('{Enter}')
-    expect(onSubmit).toHaveBeenCalledExactlyOnceWith('ravel')
+    // Submitting is a notification, so its details are generic: reason and the
+    // real KeyboardEvent, no cancel() that would skip nothing.
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith(
+      'ravel',
+      expect.objectContaining({ reason: 'keyboard' }),
+    )
+    const details = onSubmit.mock.calls[0][1]
+    expect(details.event).toBeInstanceOf(KeyboardEvent)
+    expect(details).not.toHaveProperty('cancel')
   })
 
   it('keeps the clear button out of the tab order', () => {

@@ -11,7 +11,7 @@ export default function CustomDemo(): ReactElement {
     >
       <p className="text-sm text-muted-foreground">这一段内容正在刷新。</p>
       <p className="mbs-1 text-sm text-muted-foreground">磨砂层下还能隐约看到它。</p>
-      <LoadingOverlay isLoading>
+      <LoadingOverlay loading>
         <span className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
           <Spinner aria-hidden />
           正在加载数据…

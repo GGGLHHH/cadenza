@@ -7,7 +7,7 @@ description: 区域级磨砂加载覆盖层 —— 铺满最近的 relative 父�
 铺满同宽高；半透明背景 + `backdrop-blur` 的磨砂玻璃，底下的内容隐约可见——
 语义是「内容还在、正在刷新」，不是空白骨架屏。
 
-**保持渲染、切换 `isLoading`**，进出两个方向都有 150ms 交叉淡入
+**保持渲染、切换 `loading`**，进出两个方向都有 150ms 交叉淡入
 （`motion-reduce` 豁免）。隐藏靠 `visibility` 一起过渡：退场时淡完才消失，
 消失后**离开无障碍树**——不会有幽灵的「Loading」播报，也不会挡任何点击。
 
@@ -31,7 +31,7 @@ transform / isolation 都救不了）。宿主的 `overflow-hidden` 负责另一
 首屏给最低高度防坍缩，刷新/进行中盖住旧内容（表格和下拉由业务层配 react-query 的
 `placeholderData` 保住旧数据即可触发）。内嵌实例的定制：表格和下拉走各自的
 slotted 标记部件 `DataTableLoadingOverlay` / `InfiniteSelectLoadingOverlay`
-（props 就是本组件的，`isLoading` 除外——那是基座的接线），样例见两个组件页的
+（props 就是本组件的，`loading` 除外——那是基座的接线），样例见两个组件页的
 「加载中」小节；Button 的定制走「不传 `pending`、children 自己画」这条路，
 见 [Button](/docs/components/button) 页。
 
@@ -47,7 +47,7 @@ slotted 标记部件 `DataTableLoadingOverlay` / `InfiniteSelectLoadingOverlay`
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `isLoading` | `boolean` | `false` | 显示覆盖层。**内容面词汇**——和数据适配器的 `isLoading` 同义；动作面的「在途」用 Button 的 `pending` |
+| `loading` | `boolean` | `false` | 显示覆盖层。**内容面词汇**——和数据适配器的 `isLoading` 同义（这里是裸形容词：react-query 词形只在整体 spread 的适配器 props 上豁免）；动作面的「在途」用 Button 的 `pending` |
 | `children` | `ReactNode` | 居中 Spinner | 传了就完全替换默认内容 |
 | `className` | `string` | — | 类名。纯 div，不是 Base UI 部件，只收字符串；改磨砂程度（`backdrop-blur-*`）、背景浓度（`bg-background/*`）、`z-*` 都从这里 |
 | 其余 | 原生 `div` 属性 | — | 透传（含 `ref`） |
@@ -56,7 +56,7 @@ slotted 标记部件 `DataTableLoadingOverlay` / `InfiniteSelectLoadingOverlay`
 
 | 状态 | 出现时机 |
 | --- | --- |
-| `data-loading` | `isLoading` 为真（自定义 CSS 的钩子，如 `data-loading:…`） |
+| `data-loading` | `loading` 为真（自定义 CSS 的钩子，如 `data-loading:…`） |
 
 ## 边界与无障碍
 

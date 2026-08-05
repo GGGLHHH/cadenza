@@ -113,7 +113,7 @@ TanStack Virtual：**任何时刻只有视口内可见的那一小段行存在�
 在组合通道里放它即可定制上面那层磨砂。它是 TabsIndicator 式的**标记部件**——
 写在哪里都不渲染（绝对定位的覆盖层没法住在面板的文档流里），由 List 部件
 提升到列表壳的位置渲染；`children` 替换居中的 Spinner，`className` 调磨砂浓度，
-`isLoading` 是基座的接线、不在它的 props 里。直接子级或 Fragment 内有效，
+`loading` 是基座的接线、不在它的 props 里。直接子级或 Fragment 内有效，
 包进自定义组件会找不到（与 TabsIndicator 同一限制）。用 `InfiniteCombobox` 时
 写在触发器后面即可：
 
@@ -386,7 +386,7 @@ interface InfiniteSelectItemRenderParams<T> {
    搜索框与列表之间不用手动接线——根组件的 `Combobox.Root` 会通过 Base UI 自己的
    context 把任意深度的 `Combobox.Input` / `Combobox.List` 后代配对（虚拟焦点、
    选择语义）。自定义 part 用 `useInfiniteSelectContext()` 读根组件提供的接线
-   （items / getOption / selectionMode / selectedIds / hasItems / hasNextPage /
+   （items / getOption / selectionMode / selectedIds / filled / hasNextPage /
    isFetchingNextPage / onLoadMore / virtualized / rowHeight，以及从组合通道提升
    上来的 `loadingOverlayProps` / `noMoreProps` / `loadingMoreProps`）。
 3. **便利层** —— `InfiniteCombobox` 用一组扁平 props 把弹层 + parts + 插槽
@@ -404,7 +404,7 @@ interface InfiniteSelectItemRenderParams<T> {
 | `ControllableSelectionProps<T>` | 选择相关 props 的判别联合，判别键是 `selectionMode`（单选 `value?: string` / 多选 `value?: string[]`，`onChange` 签名随之切换） |
 | `InfiniteSelectProps<T>` / `InfiniteComboboxProps<T>` | 根组件与便利层的完整 props，业务层包一层时直接复用 |
 | `InfiniteSelectInputGroupProps` / `InfiniteSelectListProps<T>` | 两个 parts 的 props |
-| `InfiniteSelectLoadingOverlayProps` / `InfiniteSelectNoMoreProps` / `InfiniteSelectLoadingMoreProps` | 三个标记部件的 props——第一个是去掉 `isLoading` 的 `LoadingOverlayProps`，后两个是 `ComponentProps<'div'>` |
+| `InfiniteSelectLoadingOverlayProps` / `InfiniteSelectNoMoreProps` / `InfiniteSelectLoadingMoreProps` | 三个标记部件的 props——第一个是去掉 `loading` 的 `LoadingOverlayProps`，后两个是 `ComponentProps<'div'>` |
 | `InfiniteSelectContextValue<T>` | `useInfiniteSelectContext()` 的返回——自定义 part 可读的接线 |
 | `InfiniteSelectSelectionState<T>` | `useInfiniteSelectSelection()` 的返回：`selectedIds` / `selectedItems` / `onValueChange`（喂给 Base UI 的 `Combobox.Root`） |
 | `InfiniteSelectActions<T>` | 动作上下文的值形状（`useInfiniteSelectActions()` 的返回 / `InfiniteSelectActionsProvider` 的入参），见「动作上下文」 |

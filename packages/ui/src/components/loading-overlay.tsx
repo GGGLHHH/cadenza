@@ -7,8 +7,12 @@ export interface LoadingOverlayProps extends ComponentProps<'div'> {
    * Content-plane vocabulary on purpose — "what you want to see has not
    * arrived", same word as the data adapters use. `pending` stays on the
    * action plane (Button).
+   *
+   * A bare adjective, not the adapters' `isLoading`: the react-query word
+   * forms are exempt only where a whole list object spreads onto the component
+   * (`<DataTable {...list} />`), and nothing ever spreads onto this one.
    */
-  isLoading?: boolean
+  loading?: boolean
 }
 
 /**
@@ -16,7 +20,7 @@ export interface LoadingOverlayProps extends ComponentProps<'div'> {
  * positioned ancestor — **the parent must be `relative`** — dims and blurs the
  * content underneath, and centres a Spinner (replace it via `children`).
  *
- * Keep it rendered and toggle `isLoading`: both directions cross-fade in CSS
+ * Keep it rendered and toggle `loading`: both directions cross-fade in CSS
  * (150ms, motion-reduce exempt). `visibility` rides the same transition, so
  * the hidden overlay leaves the accessibility tree — no phantom "Loading"
  * announcements — and flips late on exit, letting the fade finish. Plain div
@@ -28,7 +32,7 @@ export interface LoadingOverlayProps extends ComponentProps<'div'> {
  * means putting `inert` on the content, which is the caller's decision.
  */
 export function LoadingOverlay({
-  isLoading = false,
+  loading = false,
   className,
   children,
   ...props
@@ -36,7 +40,7 @@ export function LoadingOverlay({
   return (
     <div
       data-slot="loading-overlay"
-      data-loading={dataAttr(isLoading)}
+      data-loading={dataAttr(loading)}
       className={cn(
         // rounded-[inherit] is load-bearing: Chromium does not clip
         // backdrop-filter by an ancestor's rounded overflow — only the
@@ -50,7 +54,7 @@ export function LoadingOverlay({
           duration-150
           motion-reduce:transition-none
         `,
-        isLoading
+        loading
           ? 'cursor-wait opacity-100'
           : `pointer-events-none invisible opacity-0`,
         className,

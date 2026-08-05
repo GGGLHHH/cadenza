@@ -67,13 +67,16 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 | `DataTableColumn.isRowHeader` / `allowsSorting` | `rowHeader` / `sortable`（0.2 里最后两个 React Aria 词形） |
 | `DataPagination.showLimitChanger` | 移除——`limitOptions={[]}` 用缺席表达（全库无 `show*` 布尔） |
 | `Button.loading` | 移除，只留 `pending`（单词单义，无别名对） |
+| `LoadingOverlay.isLoading` | `loading`（裸形容词。适配器豁免只覆盖「整体 spread 的 react-query 字段」，这个组件从不接 spread） |
+| `ScrollBar` | `ScrollAreaScrollbar`（平铺名 `<Family><Part>`；Base UI 的部件就叫 `ScrollArea.Scrollbar`） |
 
 **其他**
 
 - `SelectProps` 改为泛型别名 `SelectProps<Value, Multiple>`——之前经
   `ComponentProps` 实例化，`onValueChange` 的值类型退化
 - 保留不动（有意）：react-query 适配面的 `isLoading` / `isFetchingNextPage` /
-  `hasNextPage` / `isError`（换取 `{...list}` 整体 spread，成文豁免）；
+  `hasNextPage` / `isError`（换取 `{...list}` 整体 spread，成文豁免——**边界就是
+  适配器 props**，内部 context 与 `LoadingOverlay` 都已换回裸形容词）；
   `SelectLabel` 的词义冲突（shadcn 继承，注释已澄清）
 
 ### Button
@@ -156,6 +159,10 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
   `data-disabled` / `data-readonly`
 - 函数 children 的状态从 `{ isEmpty, isDisabled, isReadOnly }` 改成
   `{ empty, disabled, readOnly }`
+- **`onSubmit` 补第二参**:`(value, eventDetails)`,`SearchFieldSubmitEventDetails`
+  是 generic 详情(`reason: 'keyboard'`,无 `cancel()`——提交不写内部状态,
+  没有可跳过的东西)。同时 `onSubmit` 加入根 props 的 `Omit` 名单:根是 `<div>`,
+  与原生同名 handler 相交会要求回调同时满足两个签名(旧的一参签名恰好蒙混过关)
 
 ### InfiniteSelect / InfiniteCombobox
 
@@ -178,6 +185,9 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 - 终止行、加载指示、翻页哨兵移出 listbox 元素 —— 不再是 `role="option"`，
   `getAllByRole('option')` 数到的就是真实行
 - 单选点已选中项**不再取消选中**（Base UI 的语义，同原生 `<select>`）；清空走底栏的清除动作
+- `useInfiniteSelectSelection()` 返回的 `onValueChange` **第二参改必填**：它是回调槽
+  （交给 Base UI 的 `Combobox.Root`，那边永远传详情），不是命令式 setter。自己驱动时
+  用 `createChangeEventDetails('none')` 构造
 
 ### DataTable
 
@@ -199,6 +209,8 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 
 - `viewportRender` 移除：它只为 React Aria 的 `Virtualizer` 存在（那个虚拟化器要求
   集合元素本身就是滚动器），TanStack Virtual 不需要，零调用方
+- **补上类型导出** `ScrollAreaProps` / `ScrollAreaScrollbarProps`：根组件此前是全库
+  唯一没有公开 props 类型的组件（内联匿名类型，业务层包一层拿不到）
 
 ### 修掉的两处视觉回归
 
