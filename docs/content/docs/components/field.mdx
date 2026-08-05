@@ -29,9 +29,16 @@ Field 先落地，控件才有地方安家。
 
 | 通道 | 管什么 |
 | --- | --- |
-| `FieldLabel htmlFor` → `SelectTrigger id` | 无障碍名 **+** 点文字展开弹层 |
+| `FieldLabel htmlFor` → `SelectTrigger id` | 无障碍名 **+** 点文字开合弹层 |
 
 <ComponentPreview name="field/select" />
+
+**标签就是控件**：弹层开着时再点标签是关掉它,一次干净的开合。这需要封装层
+补一刀 —— Base UI 在弹层外按下就判定关闭(`outside-press`,同一次手势松手时
+还有 `cancel-open`),而浏览器紧接着把标签的 click 转发给触发器、触发器再翻转
+一次,两下相加就是「关掉又打开」的闪烁。指向自家触发器的 `<label>` 不算「外部」,
+封装层把这两个关闭 `cancel()` 掉,让转发的那次 click 独自完成开合。
+`InfiniteCombobox` 同理(它的弹层同样非模态)。
 
 > 0.2（React Aria 底座）这里要写两遍文案：它在触发器上挂了自己的 `aria-labelledby`，
 > 在无障碍名计算里压过原生 `<label for>`，所以必须另给一个 `aria-label`；而且

@@ -1,7 +1,7 @@
 'use client'
 
 import type { Select as SelectPrimitive } from '@base-ui/react/select'
-import type { ComponentProps, ReactElement, ReactNode } from 'react'
+import type { ComponentProps, ReactElement, ReactNode, RefObject } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconX } from '@tabler/icons-react'
@@ -165,6 +165,35 @@ interface SelectContextValue {
   placeholder: string | undefined
   /** Clears back to the empty value (`null` / `[]`) with reason `'clear-press'`. */
   clear: (event: Event) => void
+  /**
+   * The trigger element. The root needs it to tell a press on the control's own
+   * `FieldLabel` apart from a press outside the select — see `isOwnLabelPress`.
+   */
+  triggerRef: RefObject<HTMLButtonElement | null>
+}
+
+/**
+ * The reasons a press on the label reaches the root as a close. Base UI fires
+ * `outside-press` on the pointer going down outside the popup, then
+ * `cancel-open` for the same gesture when it also comes up outside — one press
+ * on the label produces both, and both have to be let through.
+ */
+const LABEL_PRESS_REASONS = new Set<string>(['outside-press', 'cancel-open'])
+
+/**
+ * Is this press on a `<label>` that points at our own trigger?
+ *
+ * Such a press is not "outside" the select in any sense the user would
+ * recognise: a label IS its control. Base UI cannot know that — it dismisses on
+ * `pointerdown` anywhere outside the popup — while the browser goes on to
+ * forward the label's `click` to the trigger, which toggles. Left alone the two
+ * add up to a close followed by an open, which reads as a flicker.
+ */
+function isOwnLabelPress(event: Event, trigger: HTMLElement | null): boolean {
+  if (trigger === null || !(event.target instanceof Element))
+    return false
+  const label = event.target.closest('label')
+  return label !== null && label.control === trigger
 }
 
 const SelectContext = createContext<SelectContextValue | null>(null)
@@ -195,6 +224,7 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
     disabled = false,
     modal = false,
     multiple,
+    onOpenChange,
     onValueChange,
     placeholder,
     readOnly = false,
@@ -220,6 +250,23 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
   const handleValueChangeRef = useRef(handleValueChange)
   handleValueChangeRef.current = handleValueChange
 
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const handleOpenChange = (
+    nextOpen: boolean,
+    eventDetails: SelectPrimitive.Root.ChangeEventDetails,
+  ): void => {
+    // Cancelled before the caller's callback runs, not after: this corrects
+    // what the event *is* — a press on our own label is not an outside press —
+    // rather than deciding what to do about it. The caller still hears about
+    // it, with `isCanceled` already set. The browser then forwards the label's
+    // click to the trigger, which toggles the popup itself.
+    if (!nextOpen && LABEL_PRESS_REASONS.has(eventDetails.reason)
+      && isOwnLabelPress(eventDetails.event, triggerRef.current)) {
+      eventDetails.cancel()
+    }
+    onOpenChange?.(nextOpen, eventDetails)
+  }
+
   const filled = multiple === true ? Array.isArray(value) && value.length > 0 : value != null
   const context = useMemo<SelectContextValue>(() => ({
     filled,
@@ -231,6 +278,7 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
       (multiple === true ? [] : null) as StateValue,
       createChangeEventDetails('clear-press', event),
     ),
+    triggerRef,
   }), [filled, disabled, readOnly, clearable, placeholder, multiple])
 
   return (
@@ -242,6 +290,7 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
         multiple={multiple}
         readOnly={readOnly}
         value={value}
+        onOpenChange={handleOpenChange}
         onValueChange={handleValueChange}
       >
         {children ?? (
@@ -322,8 +371,8 @@ export function SelectContent({ alignItemWithTrigger = false, children, ...props
  * never drift into stacking or both vanishing, and no stylesheet rule is
  * involved.
  */
-export function SelectTrigger({ children, className, ...props }: SelectTriggerProps): ReactElement {
-  const { filled, disabled, readOnly, clearable, placeholder, clear } = useSelectContext()
+export function SelectTrigger({ children, className, ref, ...props }: SelectTriggerProps): ReactElement {
+  const { filled, disabled, readOnly, clearable, placeholder, clear, triggerRef } = useSelectContext()
   // No children → the trigger's own default composition: a SelectValue wired
   // to the root's placeholder, plus the clear affordance (`clearable` gates
   // it). An explicitly composed SelectClear works the same — clearable stays
@@ -335,6 +384,15 @@ export function SelectTrigger({ children, className, ...props }: SelectTriggerPr
   const trigger = (
     <SelectTriggerPrimitive
       className={cn(clearVisible && '[&>svg:last-child]:invisible', className)}
+      // Claimed, not taken: the caller's ref still gets the element. The root
+      // needs it to recognise presses on this control's own label.
+      ref={(node) => {
+        triggerRef.current = node
+        if (typeof ref === 'function')
+          ref(node)
+        else if (ref !== null && ref !== undefined)
+          ref.current = node
+      }}
       {...props}
     >
       {autoComposed ? <SelectValue placeholder={placeholder} /> : children}

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -421,5 +421,48 @@ describe('the label channel', () => {
     const user = userEvent.setup()
     await user.click(screen.getByText('水果'))
     expect(await screen.findByRole('option', { name: '苹果' })).not.toBeNull()
+  })
+
+  // The label is the control, so clicking it while the menu is open closes it —
+  // once. Base UI dismisses on a press outside the popup (`outside-press`, then
+  // `cancel-open` for the same gesture), and the browser forwards the label's
+  // click to the trigger, which toggles: unfiltered, those add up to a close
+  // immediately followed by an open — the flicker this pins down. The seam
+  // cancels the dismissals a label of our own trigger causes, leaving the
+  // forwarded click to do the one toggle.
+  it('closes the menu when the label is clicked again — no reopen', async () => {
+    renderLabelled()
+    const user = userEvent.setup()
+    await user.click(screen.getByText('水果'))
+    expect(await screen.findByRole('option', { name: '苹果' })).not.toBeNull()
+
+    await user.click(screen.getByText('水果'))
+    await waitFor(() => {
+      expect(screen.queryByRole('option', { name: '苹果' })).toBeNull()
+    })
+    expect(screen.getByRole('combobox', { name: '水果' }).getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('a press outside still dismisses', async () => {
+    render(
+      <>
+        <button type="button">外面</button>
+        <Field>
+          <FieldLabel htmlFor="fruit">水果</FieldLabel>
+          <Select>
+            <SelectTrigger id="fruit"><SelectValue placeholder="选一个" /></SelectTrigger>
+            <SelectContent><SelectItem value="apple">苹果</SelectItem></SelectContent>
+          </Select>
+        </Field>
+      </>,
+    )
+    const user = userEvent.setup()
+    await user.click(screen.getByText('水果'))
+    expect(await screen.findByRole('option', { name: '苹果' })).not.toBeNull()
+
+    await user.click(screen.getByRole('button', { name: '外面' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('option', { name: '苹果' })).toBeNull()
+    })
   })
 })

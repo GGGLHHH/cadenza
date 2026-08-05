@@ -94,6 +94,12 @@ props 的方言整体换了 —— 这不是我们的选择，是 Base UI 的词
 
 ### Select
 
+- **修:弹层开着时点 `FieldLabel` 会「关掉又打开」**(闪烁)。标签指向的正是自家
+  触发器,不该算「外部按下」——Base UI 在弹层外按下就关(`outside-press`,同一次
+  手势松手时还有 `cancel-open`),而浏览器随即把标签的 click 转发给触发器、触发器
+  再翻转一次。封装层把这两个关闭 `cancel()` 掉(判据:`label.control === 触发器`,
+  隐式包裹的 `<label>` 一并覆盖),让转发的 click 独自完成开合。真正的外部点击
+  照常关闭。`InfiniteCombobox` 早有同款处理,这次是 Select 补齐
 - **默认在场(三态)成为家法,Select 打样**:不写 children,根组件用 `items`
   渲染完整默认组合(触发器+回显+清除+弹层+选项)。分组形态的 `items` 拍平渲染
   (Base UI 用法:该形态只喂标签解析,渲染分组是组合词汇——`SelectGroup`/
