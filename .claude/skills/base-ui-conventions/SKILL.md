@@ -240,6 +240,35 @@ LoadingOverlay)必须伪装成 Base UI 家族成员——公开 API 上分不出
     - 写了 children 的层完全归使用方(忘写部件也不补),没写的层保持默认——
       「逐层接管」,不是全有或全无。
 
+## 8 提升的三种形态:转出 / 包一层 / fork(2026-08 实测定形)
+
+提升一个 vendored 组件时先判形态,**别默认它是转出**。判据是「让公开面说实话,
+最少要改多少」:
+
+| 形态 | 什么时候 | 先例 |
+| --- | --- | --- |
+| **转出**(`export { X }` + 类型别名) | vendored 的 DOM、接线、类型都对 | `Spinner`、`Field`、`Switch`、`NativeSelect` |
+| **cast**(`X as (props: P) => ReactElement`) | 每个 prop 都靠 spread 到位,**只有类型**要修 | `InputGroupInput`、`Input`(压平的 `ComponentProps<'input'>`)、`Toggle`(cva 窄化 + 泛型) |
+| **薄包一层** | 要补默认 className / 合并被顶掉的 className | `Checkbox`(半选态样式)、`InputOTPSeparator`(className 写在 spread 前被整个顶掉) |
+| **fork**(seam 自建组合,直接建在 `@base-ui/react` 上) | vendored **渲染结构本身**错了,或它把 prop 吃掉不往下传 | `Slider`、`ToggleGroup`、`Combobox` |
+
+**fork 的三条实测判据**(全都不是 className 能救的):
+
+1. **结构算错**——`Slider` 按 `Array.isArray(value)` 数拇指,标量退回 `[min,max]`,
+   于是单值滑块渲染出**两个重叠的 thumb**:多一个 Tab 停靠点、多一个被朗读的 slider。
+   拇指在 vendored 内部渲染,seam 够不着。
+2. **prop 被吃掉**——`ToggleGroup` 自己声明 `orientation`、拿去画 flex 方向,
+   **却不往 Base UI 传**,composite 仍按横向漫游:看着是竖的,方向键还是 ← →。
+   seam 无论传什么都会被那次解构吃掉。
+3. **类型契约与落点矛盾到编译不过**——`Combobox` 的 `ComboboxInput` 声明函数
+   className 却路由到 `InputGroup`(纯 DOM div)。这类文件在 `tsconfig` 的
+   `exclude` 名单里,而 **exclude 只裁初始文件集,被 import 就照样类型检查**——
+   所以 seam **不能** `import '#primitives/combobox'`,只能自建。
+
+fork 的规矩:**类名照抄,行为只改被判定错的那一条**,并在 JSDoc 里写清「为什么不是转出」
+——一句话说明 vendored 哪里错、错了会怎样。fork 出来的文件从此不再跟随上游漂移,
+这个代价要在注释里认下来。
+
 ## 常见错误(基线实测)
 
 | 错误/借口 | 事实 |
@@ -266,6 +295,8 @@ LoadingOverlay)必须伪装成 Base UI 家族成员——公开 API 上分不出
 - 在 Base UI 的开放形状(`[key: string]: unknown`)里自选键名,而没查官方 demo 用的哪个键
   (先例:Group 的标题键是 `value`——`{ value: 'Fruits', items }`,不是 label)
 - 想给 vendored 文件加一行/改一个类型
+- 提升时没先过 §8 的形态判据,默认写成了转出——先问「vendored 的结构和转发对不对」
+- 打算 `import` 一个在 `tsconfig` `exclude` 名单里的 vendored 文件(exclude 拦不住 import)
 - 提升 vendored 组件时**照抄 shadcn 的裸名**(`ScrollBar`)——提升就是定形,
   名字要补成 `<Family><Part>`(`ScrollAreaScrollbar`,对齐 Base UI 的 `ScrollArea.Scrollbar`)
 - 公开组件的 props 是**内联匿名类型**、没有 `XxxProps` 导出(业务层想包一层就无从引用)

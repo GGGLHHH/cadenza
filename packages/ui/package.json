@@ -60,6 +60,7 @@
     "ahooks": "catalog:ui",
     "class-variance-authority": "catalog:ui",
     "clsx": "catalog:ui",
+    "input-otp": "catalog:ui",
     "tailwind-merge": "catalog:ui"
   },
   "devDependencies": {
@@ -69,7 +70,6 @@
     "cmdk": "catalog:ui",
     "date-fns": "catalog:ui",
     "embla-carousel-react": "catalog:ui",
-    "input-otp": "catalog:ui",
     "next-themes": "catalog:ui",
     "react": "catalog:react",
     "react-day-picker": "catalog:ui",

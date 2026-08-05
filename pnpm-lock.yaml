@@ -338,6 +338,9 @@ importers:
       clsx:
         specifier: catalog:ui
         version: 2.1.1
+      input-otp:
+        specifier: catalog:ui
+        version: 1.4.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       tailwind-merge:
         specifier: catalog:ui
         version: 3.6.0
@@ -360,9 +363,6 @@ importers:
       embla-carousel-react:
         specifier: catalog:ui
         version: 8.6.0(react@19.2.8)
-      input-otp:
-        specifier: catalog:ui
-        version: 1.4.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       next-themes:
         specifier: catalog:ui
         version: 0.4.6(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
