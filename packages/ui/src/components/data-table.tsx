@@ -8,7 +8,7 @@ import type { ScrollAreaScrollbars } from './scroll-area'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconChevronDown, IconChevronUp, IconSelector } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { createContext, use, useEffect, useMemo, useRef } from 'react'
+import { createContext, use, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { createChangeEventDetails, createGenericEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
 import { cn, dataAttr } from '#lib/utils'
@@ -661,6 +661,31 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     initialRect: { width: 800, height: effectiveMaxHeight ?? DEFAULT_MAX_HEIGHT },
   })
   const virtualItems = virtualizer.getVirtualItems()
+
+  // A new batch of rows starts at the top. Otherwise "next page" leaves the old
+  // page's offset on the new data — click it halfway down and you land halfway
+  // down page 2, with its first rows scrolled past.
+  //
+  // The table only ever sees `items`, never a page number, so the tell is the
+  // first row's id: appending the next page (infinite scroll) and refreshing in
+  // place (react-query's placeholderData) keep it, while paging, changing the
+  // page size, sorting and searching all replace it. Deleting the first row
+  // reads as a new batch too — a reset right after the user's own destructive
+  // action, against landing mid-page on every single page turn.
+  //
+  // Vertical only: the columns did not change, so a horizontal offset stays.
+  const firstRowId = displayRows[0]?.id
+  const previousFirstRowIdRef = useRef(firstRowId)
+  useLayoutEffect(() => {
+    if (previousFirstRowIdRef.current === firstRowId)
+      return
+    previousFirstRowIdRef.current = firstRowId
+    // Assigned, not `scrollTo`: the virtualizer listens to the scroll event
+    // either way, and a smooth-scroll option would animate through rows that
+    // are no longer there.
+    if (scrollRef.current !== null)
+      scrollRef.current.scrollTop = 0
+  }, [firstRowId])
   const windowRows = virtualized
     ? virtualItems.map(virtualItem => displayRows[virtualItem.index])
     : displayRows

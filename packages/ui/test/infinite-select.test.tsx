@@ -466,6 +466,43 @@ describe('infiniteSelect selection', () => {
     expect(screen.getAllByRole('option')).toHaveLength(2)
   })
 
+  it('a new result set scrolls the list back to the top, appending does not', () => {
+    const { container, rerender } = render(
+      <InfiniteSelect getOption={getOption} items={items}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    // jsdom has no layout, so scrollTop is a no-op there: give the viewport a
+    // real accessor and watch what the list writes to it.
+    const viewport = container.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]')
+    if (viewport === null)
+      throw new Error('no viewport')
+    let scrollTop = 240
+    Object.defineProperty(viewport, 'scrollTop', {
+      configurable: true,
+      get: () => scrollTop,
+      set: (next: number) => {
+        scrollTop = next
+      },
+    })
+
+    // Next page appended: same first option, so the reading position stays.
+    rerender(
+      <InfiniteSelect getOption={getOption} items={[...items, { id: 'c', label: 'Clara' }]}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    expect(scrollTop).toBe(240)
+
+    // A search replaces the results wholesale — back to the first row.
+    rerender(
+      <InfiniteSelect getOption={getOption} items={[{ id: 'd', label: 'Debussy' }]}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    expect(scrollTop).toBe(0)
+  })
+
   it('written children take the whole channel over — no implicit parts', () => {
     render(
       <InfiniteSelect getOption={getOption} items={items}>

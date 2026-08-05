@@ -8,7 +8,7 @@ import { Combobox } from '@base-ui/react/combobox'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck, IconSearch } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { createContext, use, useEffect, useMemo, useRef } from 'react'
+import { createContext, use, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
 import { cn, dataAttr } from '#lib/utils'
@@ -758,6 +758,20 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
     overscan: 8,
   })
   const virtualItems = virtualizer.getVirtualItems()
+
+  // A new batch of rows starts at the top — the same rule the table follows.
+  // Typing replaces the results wholesale, and keeping the old offset would
+  // drop the user into the middle of a fresh result set. The tell is the first
+  // option's id: loading the next page keeps it, a new search does not.
+  const firstItemId = items[0] === undefined ? undefined : getOption(items[0]).id
+  const previousFirstItemIdRef = useRef(firstItemId)
+  useLayoutEffect(() => {
+    if (previousFirstItemIdRef.current === firstItemId)
+      return
+    previousFirstItemIdRef.current = firstItemId
+    if (viewportRef.current !== null)
+      viewportRef.current.scrollTop = 0
+  }, [firstItemId])
 
   const renderOption = (item: T, index: number): ReactElement => {
     const option = getOption(item)

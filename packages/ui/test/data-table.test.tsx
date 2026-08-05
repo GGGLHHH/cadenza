@@ -489,6 +489,58 @@ describe('dataTable interactions', () => {
     expect(onChange).toHaveBeenLastCalledWith(null, expect.anything())
   })
 
+  // jsdom has no layout, so scrollTop is a no-op there: give the viewport a
+  // real accessor and watch what the table writes to it.
+  const trackScrollTop = (container: HTMLElement, initial: number): { get: () => number } => {
+    const viewport = container.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]')
+    if (viewport === null)
+      throw new Error('no viewport')
+    let scrollTop = initial
+    Object.defineProperty(viewport, 'scrollTop', {
+      configurable: true,
+      get: () => scrollTop,
+      set: (next: number) => {
+        scrollTop = next
+      },
+    })
+    return { get: () => scrollTop }
+  }
+
+  it('page turn: a new batch of rows scrolls the body back to the top', () => {
+    const { container, rerender } = render(
+      <DataTable aria-label="People" columns={columns} items={people} />,
+    )
+    const scroll = trackScrollTop(container, 240)
+
+    const nextPage: Person[] = [
+      { id: 'p4', name: 'Satie', role: 'Composer' },
+      { id: 'p5', name: 'Ravel', role: 'Composer' },
+    ]
+    rerender(<DataTable aria-label="People" columns={columns} items={nextPage} />)
+    expect(scroll.get()).toBe(0)
+  })
+
+  it('appending the next page keeps the scroll offset — only the first row tells them apart', () => {
+    const { container, rerender } = render(
+      <DataTable aria-label="People" columns={columns} items={people} />,
+    )
+    const scroll = trackScrollTop(container, 240)
+
+    // Infinite scroll appends; the first row is unchanged, so the offset stays.
+    rerender(
+      <DataTable
+        aria-label="People"
+        columns={columns}
+        items={[...people, { id: 'p4', name: 'Satie', role: 'Composer' }]}
+      />,
+    )
+    expect(scroll.get()).toBe(240)
+
+    // Same rows again (a refresh keeping its placeholder data): also no reset.
+    rerender(<DataTable aria-label="People" columns={columns} isLoading items={[...people]} />)
+    expect(scroll.get()).toBe(240)
+  })
+
   it('renders the loading-more indicator at the tail while fetching the next page', () => {
     render(
       <DataTable
