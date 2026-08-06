@@ -139,13 +139,14 @@ export function focusFirstInvalidControl(form: HTMLFormElement): void {
   })
 }
 
+// eslint-disable-next-line ts/explicit-function-return-type
 export function createFormHook<
   FieldComponents extends Record<string, ComponentType<any>> = Record<string, never>,
   FormComponents extends Record<string, ComponentType<any>> = Record<string, never>,
 >(options: {
   fieldComponents?: FieldComponents
   formComponents?: FormComponents
-} = {}): ReturnType<typeof createTanstackFormHook> {
+} = {}) {
   return createTanstackFormHook({
     fieldComponents: options.fieldComponents ?? ({} as FieldComponents),
     formComponents: options.formComponents ?? ({} as FormComponents),
