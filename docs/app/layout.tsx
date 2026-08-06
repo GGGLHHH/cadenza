@@ -3,6 +3,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { ThemeProvider } from 'next-themes'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { SiteHeader } from '@/components/site-header'
+import { Toaster } from '@/components/sonner'
 import { cn } from '@/lib/utils'
 import '@/app/globals.css'
 
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: { children: ReactNode }): React
             <SiteHeader />
             <main className="flex flex-1 flex-col">{children}</main>
           </div>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

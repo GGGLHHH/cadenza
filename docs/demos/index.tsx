@@ -107,6 +107,16 @@ const registry: Record<string, ComponentType> = {
   'tabs/controlled': lazy(async () => import('./tabs/controlled')),
   'tabs/disabled': lazy(async () => import('./tabs/disabled')),
   'tabs/keyboard-activation': lazy(async () => import('./tabs/keyboard-activation')),
+  'tanstack-form/basic': lazy(async () => import('./tanstack-form/basic')),
+  'tanstack-form/input': lazy(async () => import('./tanstack-form/input')),
+  'tanstack-form/textarea': lazy(async () => import('./tanstack-form/textarea')),
+  'tanstack-form/select': lazy(async () => import('./tanstack-form/select')),
+  'tanstack-form/checkbox': lazy(async () => import('./tanstack-form/checkbox')),
+  'tanstack-form/radio-group': lazy(async () => import('./tanstack-form/radio-group')),
+  'tanstack-form/switch': lazy(async () => import('./tanstack-form/switch')),
+  'tanstack-form/complex': lazy(async () => import('./tanstack-form/complex')),
+  'tanstack-form/array': lazy(async () => import('./tanstack-form/array')),
+  'tanstack-form/create-form-hook': lazy(async () => import('./tanstack-form/create-form-hook')),
   'utils/controllable-state': lazy(async () => import('./utils/controllable-state')),
 }
 

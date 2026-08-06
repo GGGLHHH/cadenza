@@ -65,6 +65,7 @@ catalogs:
     next: ^16.1.0
     rehype-pretty-code: ^0.14.1
     shiki: ^3.23.0
+    zod: ^4.4.3
   react:
     react: ^19.2.8
     react-dom: ^19.2.8

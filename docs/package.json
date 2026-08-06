@@ -11,6 +11,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@gedatou/cadenza-form": "workspace:*",
     "@gedatou/cadenza-ui": "workspace:*",
     "@gedatou/cadenza-utils": "workspace:*",
     "@orama/tokenizers": "catalog:docs",
@@ -24,7 +25,9 @@
     "react-dom": "catalog:react",
     "rehype-pretty-code": "catalog:docs",
     "shiki": "catalog:docs",
-    "tailwind-merge": "catalog:ui"
+    "sonner": "catalog:ui",
+    "tailwind-merge": "catalog:ui",
+    "zod": "catalog:docs"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "catalog:ui",

@@ -1,3 +1,8 @@
 {
-  "pages": ["index", "components", "utils"]
+  "pages": [
+    "index",
+    "components",
+    "forms",
+    "utils"
+  ]
 }

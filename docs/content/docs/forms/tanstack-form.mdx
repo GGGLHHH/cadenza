@@ -1,0 +1,445 @@
+---
+title: TanStack Form
+description: 用 @gedatou/cadenza-form 门面 + Field 家族搭表单 —— API 与 TanStack Form 一致，接线与错误展示时机是包默认
+---
+
+<ComponentPreview name="tanstack-form/basic" align="stretch" />
+
+本指南讲如何用 [TanStack Form](https://tanstack.com/form) 搭表单——但不直接装它，
+而是装 `@gedatou/cadenza-form`：一层门面，全量转发 TanStack Form 的 API，另外把
+表单惯例做成默认——aria 接线、错误展示时机、提交处理，都不再需要手写胶水。
+控件与布局来自本库的 [Field 家族](/docs/components/field)。
+
+## 使用
+
+```bash
+pnpm add @gedatou/cadenza-form
+```
+
+包内全量转发 `@tanstack/react-form`，只装这一个，所有 API 从同一入口 import：
+
+```tsx
+import {
+  fieldControlProps,
+  fieldErrors,
+  fieldInvalidState,
+  formProps,
+  useForm,
+} from '@gedatou/cadenza-form'
+```
+
+```tsx
+<form {...formProps(form)}>
+  <form.Field name="title">
+    {field => (
+      <Field>
+        <FieldLabel htmlFor={field.name}>标题</FieldLabel>
+        <Input
+          {...fieldControlProps(field)}
+          value={field.state.value}
+          onBlur={field.handleBlur}
+          onChange={event => field.handleChange(event.target.value)}
+        />
+        <FieldError id={fieldInvalidState(field).errorId} errors={fieldErrors(field)} />
+      </Field>
+    )}
+  </form.Field>
+</form>
+```
+
+`formProps(form)` 一次展开 `noValidate` + `onSubmit`（提交管线）。`noValidate` 是
+统一给的：schema 是唯一校验真源，而浏览器的原生约束校验（`type="email"`、
+`required`、`pattern`）会在 `submit` 事件派发**之前**拦截提交并弹原生气泡——
+门面的整条提交管线（计数、补校验、错误揭示、聚焦）都不会运行。手写
+`onSubmit={formSubmitHandler(form)}` 时务必自己补上 `noValidate`。
+
+## 思路
+
+表单状态归 TanStack Form，标记归 [Field 家族](/docs/components/field)，两者之间的
+胶水归门面：
+
+- `useForm` 管状态，`form.Field` 的 render prop 模式做受控绑定——与官方用法一字不差。
+- `fieldControlProps(field)` 一次展开 `id` / `name` / `aria-describedby` / `aria-invalid`
+  四条线；手写版本要在 `Field`、控件、`FieldError` 三处各接一遍。
+- `fieldErrors(field)` 带展示门禁：onChange 实时校验，错误信息等字段**被改过且失焦过**
+  （或表单提交过）才出现（见[显示错误](#显示错误)）。
+- `formProps(form)` 一次展开 `noValidate` 与提交处理（底层是 `formSubmitHandler`）：
+  `preventDefault`、失败后补跑完整校验、把错误字段标记为已 blur（让门禁放行展示）、
+  再把焦点送到第一个无效控件。
+- 校验用 zod（或任何 Standard Schema 实现），直接塞进 `validators`，零适配层。
+
+## 解剖
+
+一个字段的完整接线如下——`fieldControlProps` 展开的四条 aria 线、`fieldErrors`
+的门禁、`data-invalid` 的染色，就是母版教程里那三处手工接线的归宿：
+
+```tsx
+<form {...formProps(form)}>
+  <FieldGroup>
+    <form.Field name="title">
+      {(field) => {
+        const { errorId, invalid } = fieldInvalidState(field)
+        return (
+          <Field data-invalid={invalid || undefined}>
+            <FieldLabel htmlFor={field.name}>标题</FieldLabel>
+            <Input
+              {...fieldControlProps(field)}
+              value={field.state.value}
+              onBlur={field.handleBlur}
+              onChange={event => field.handleChange(event.target.value)}
+            />
+            <FieldDescription>一句话概括问题。</FieldDescription>
+            <FieldError id={errorId} errors={fieldErrors(field)} />
+          </Field>
+        )
+      }}
+    </form.Field>
+  </FieldGroup>
+  <Button type="submit">提交</Button>
+</form>
+```
+
+## 表单
+
+从零搭出页顶那个 bug 报告表单，一共四步。
+
+### 定义 schema
+
+先用 zod 定出表单的形状。zod 4 原生实现 Standard Schema，schema 直接进
+`validators`，不需要任何 adapter：
+
+```tsx
+import { z } from 'zod'
+
+const schema = z.object({
+  title: z.string().min(5, '标题至少 5 个字').max(32, '标题最多 32 个字'),
+  description: z.string().min(20, '描述至少 20 个字').max(100, '描述最多 100 个字'),
+})
+```
+
+### 配置表单
+
+`useForm` 从门面 import，选项与官方完全一致。本站惯例：schema 挂在
+`validators.onChange` 上实时校验——错误什么时候「显示」由门禁另管，不靠推迟校验：
+
+```tsx
+import { useForm } from '@gedatou/cadenza-form'
+import { toast } from 'sonner'
+
+const form = useForm({
+  defaultValues: { title: '', description: '' },
+  validators: { onChange: schema },
+  onSubmit: async ({ value }) => {
+    toast.success(`已收到「${value.title}」`)
+  },
+})
+```
+
+### 组装表单
+
+用 `form.Field` + Field 家族组装。完整源码：
+
+<ComponentSource name="tanstack-form/basic" />
+
+### 完成
+
+就这些。提交时 `formSubmitHandler` 会 `preventDefault` 并调用 `form.handleSubmit()`；
+校验通过则 `onSubmit` 拿到类型完整的表单值，不通过则所有错误字段被标记为已 blur、
+错误显示在各字段旁，焦点自动移到第一个 `aria-invalid` 的控件上。
+
+## 校验
+
+### 客户端校验
+
+schema 在每次输入时运行（`validators.onChange`），`canSubmit` / `isValid` 始终反映
+真实校验状态。错误的「显示」被门禁延后，但校验本身从不延后。
+
+### 校验模式
+
+TanStack Form 的 `validators` 支持多个通道，经门面原样可用：
+
+| 通道 | 触发时机 |
+| --- | --- |
+| `onChange` | 每次输入变化 |
+| `onBlur` | 字段失焦 |
+| `onSubmit` | 表单提交 |
+
+```tsx
+const form = useForm({
+  defaultValues: { title: '' },
+  validators: {
+    onChange: schema,
+    onBlur: schema,
+    onSubmit: schema,
+  },
+})
+```
+
+本站默认只挂 `onChange` 一个通道：实时校验保证 `canSubmit` 可信，展示时机交给
+门禁。官方另有 `revalidateLogic` 走「推迟校验本身」的路线，两者语义不同——那条
+路线下提交前 `isValid` 恒为 `true`。
+
+## 显示错误
+
+错误一律经 `fieldErrors(field)` 读取，它内置展示门禁 `fieldShouldShowError`——
+以下两个条件满足其一才把错误交给你渲染，否则返回空数组：
+
+| 条件 | 来源 |
+| --- | --- |
+| 字段被改过**且**失焦过 | `meta.isDirty && meta.isBlurred`（dirty 是粘性的：输入过再清空仍算改过） |
+| 表单提交过 | `form.state.submissionAttempts > 0` |
+
+dirty 条件的用意：整表 schema 校验会给**没碰过的字段**也写入错误，而任何点击按钮
+（提交、添加一行）都会让当前字段失焦——若只看失焦，用户还没输入就会挨骂。
+只有用户真动过的字段，失焦才揭示错误；没动过的字段统一等到提交时揭示。
+
+提交过之后表单进入**实时纠错模式**：一切已知错误实时可见，包括之后新增的字段
+（数组加行）——`formSubmitHandler(form)` 会在新字段登记时补跑一次校验，让它的
+错误立即出现，而不是等下一次无关输入来"唤醒"。
+
+围绕它的一族取值函数，全部走同一道门：
+
+- `fieldErrors(field)`——规整后的 `{ message }` 数组，直接喂给 `FieldError` 的
+  `errors` prop；没有可显示的错误时 `FieldError` 渲染为空。
+- `fieldControlProps(field)`——展开 `id` / `name` / `aria-describedby` /
+  `aria-invalid`；`aria-invalid` 同样受门禁控制，控件的红框与错误文字同步出现。
+- `fieldInvalidState(field)`——取 `{ errorId, invalid }`，给 `FieldError` 的 `id`
+  与 `Field` 的 `data-invalid` 用。
+
+绕过门禁的路径依然存在：直接读 `field.state.meta.errors`（官方原生 API）就没有
+任何延迟。门禁是惯例约束，靠「错误只经 `fieldErrors` 读」这条纪律成立。
+
+## 不同控件类型
+
+同一套接线适配 Field 家族的全部控件；差异只在受控 props 与 `id` 的落点，
+详见 [Field 家族](/docs/components/field)的标签通道说明。
+
+### Input
+
+`value` / `onChange` / `onBlur` 三线手写，其余交给 `fieldControlProps` 展开。
+
+<ComponentPreview name="tanstack-form/input" align="stretch" />
+
+### Textarea
+
+与 Input 完全同构——换控件不换写法。
+
+<ComponentPreview name="tanstack-form/textarea" align="stretch" />
+
+### Select
+
+受控走 `value` / `onValueChange`，`id` 落在 `SelectTrigger` 上。
+
+<ComponentPreview name="tanstack-form/select" align="stretch" />
+
+- 清除选择时 `onValueChange` 回 `null`，统一折回 `''` 再交给 `field.handleChange`。
+- `fieldControlProps` 的整体展开不适用（`name` 归 `Select` 根、`id` 归 trigger），
+  改用 `fieldInvalidState` 手工分发 `aria-invalid` 与 `aria-describedby`。
+
+### Checkbox
+
+勾选列表是 `mode="array"` 的数组字段，`pushValue` / `removeValue` 是 TanStack Form
+原生 API，经门面原样可用。
+
+<ComponentPreview name="tanstack-form/checkbox" align="stretch" />
+
+- 单个布尔勾选（如「同意条款」）不需要 `mode="array"`，直接
+  `checked={field.state.value}` + `onCheckedChange`，见[复杂表单](#复杂表单)。
+- 错误挂在 `FieldSet` 级，各项只接 `aria-invalid` / `aria-describedby`。
+
+### Radio Group
+
+受控在组上（`value` / `onValueChange`），`aria-invalid` 在各项上。
+
+<ComponentPreview name="tanstack-form/radio-group" align="stretch" />
+
+- 组本身接不到 `htmlFor`：给 `FieldLegend` 一个 `id`，在 `RadioGroup` 上用
+  `aria-labelledby` 指回去。
+
+### Switch
+
+与 Checkbox 同一契约：`checked` / `onCheckedChange`。
+
+<ComponentPreview name="tanstack-form/switch" align="stretch" />
+
+### 复杂表单
+
+文本、下拉、勾选混排，同一套接线；提交按钮的 pending 态来自
+[`useFormSubmitting`](#提交状态)。
+
+<ComponentPreview name="tanstack-form/complex" align="stretch" />
+
+## createFormHook
+
+字段外壳（`Field` + aria + 错误）在每个表单里长得都一样——用 `createFormHook`
+把它沉淀成组件，注册一次，处处 `<field.TextField>`：
+
+<ComponentPreview name="tanstack-form/create-form-hook" align="stretch" />
+
+```tsx
+import { createFormHook, useFieldContext } from '@gedatou/cadenza-form'
+
+function TextField({ label }: { label: string }) {
+  const field = useFieldContext<string>()
+  const { errorId, invalid } = fieldInvalidState(field)
+  return (
+    <Field data-invalid={invalid || undefined}>
+      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <Input
+        {...fieldControlProps(field)}
+        value={field.state.value}
+        onBlur={field.handleBlur}
+        onChange={event => field.handleChange(event.target.value)}
+      />
+      <FieldError id={errorId} errors={fieldErrors(field)} />
+    </Field>
+  )
+}
+
+const { useAppForm } = createFormHook({ fieldComponents: { TextField } })
+```
+
+与官方 `createFormHook` 的唯一差别：contexts 由包内单例自动注入，
+`fieldComponents` / `formComponents` 都可省略。`useFieldContext` /
+`useFormContext` 也由包导出，供字段组件取值。需要自定义 contexts 的场景直接用
+`@tanstack/react-form`。
+
+## 重置表单
+
+`form.reset()` 回到默认值。异步载入的默认值（编辑表单先渲染空表、数据到了再回填）
+用 `useFormReset` 吸掉样板——`defaultValues` 引用变化时整表回填：
+
+```tsx
+import { useFormReset } from '@gedatou/cadenza-form'
+
+const form = useForm({ defaultValues, onSubmit })
+useFormReset(form, defaultValues)
+```
+
+```tsx
+<Button type="button" variant="outline" onClick={() => form.reset()}>
+  重置
+</Button>
+```
+
+## 提交状态
+
+`useFormSubmitting(form)` 订阅 `isSubmitting`，直接喂给按钮的 `pending`：
+
+```tsx
+import { useFormSubmitting } from '@gedatou/cadenza-form'
+
+const submitting = useFormSubmitting(form)
+
+return <Button type="submit" pending={submitting}>提交</Button>
+```
+
+## 数组字段
+
+`mode="array"` 的数组字段管理（添加、删除、逐项校验）是 TanStack Form 的原生
+能力，经门面原样可用。
+
+<ComponentPreview name="tanstack-form/array" align="stretch" />
+
+### 数组结构
+
+父字段开 `mode="array"`，`field.state.value` 是数组本体：
+
+```tsx
+<form.Field name="emails" mode="array">
+  {field => (
+    <FieldGroup>
+      {field.state.value.map((_, index) => (
+        // 每个条目一个嵌套子字段
+      ))}
+    </FieldGroup>
+  )}
+</form.Field>
+```
+
+### 嵌套字段
+
+条目内的属性用括号寻址：`emails[${index}].address`。子字段照常走
+`fieldControlProps` / `fieldErrors`：
+
+```tsx
+<form.Field name={`emails[${index}].address`}>
+  {subField => (
+    <InputGroupInput
+      {...fieldControlProps(subField)}
+      value={subField.state.value}
+      onBlur={subField.handleBlur}
+      onChange={event => subField.handleChange(event.target.value)}
+    />
+  )}
+</form.Field>
+```
+
+### 添加条目
+
+`field.pushValue(item)`，到上限就禁用按钮：
+
+```tsx
+<Button
+  type="button"
+  variant="outline"
+  disabled={field.state.value.length >= 5}
+  onClick={() => void field.pushValue({ address: '' })}
+>
+  添加邮箱
+</Button>
+```
+
+### 删除条目
+
+`field.removeValue(index)`，只剩一条时收起删除键：
+
+```tsx
+{field.state.value.length > 1 && (
+  <InputGroupButton
+    aria-label={`删除第 ${index + 1} 个邮箱`}
+    onClick={() => void field.removeValue(index)}
+  >
+    <IconX aria-hidden />
+  </InputGroupButton>
+)}
+```
+
+### 数组校验
+
+数组本身与条目分别校验，都写在同一个 schema 里：
+
+```tsx
+const schema = z.object({
+  emails: z
+    .array(z.object({ address: z.email('请输入有效的邮箱地址') }))
+    .min(1, '至少填一个邮箱')
+    .max(5, '最多 5 个邮箱'),
+})
+```
+
+## API
+
+`@gedatou/cadenza-form` 的完整导出。官方 API 全量转发，下表只列门面新增的部分：
+
+| 导出 | 说明 |
+| --- | --- |
+| `createFormHook(options?)` | 覆盖官方同名导出：contexts 由包内单例注入，`fieldComponents` / `formComponents` 可省略，返回官方 `{ useAppForm, withForm, … }` |
+| `useFieldContext` / `useFormContext` | 包内单例 contexts 的取值 hook，供自定义字段组件使用 |
+| `formProps(form, options?)` | `<form>` 的展开助手：`{ noValidate: true, onSubmit: formSubmitHandler(form, options) }`——统一关掉原生约束校验（它会在 `submit` 事件之前拦截提交），接通提交管线 |
+| `formSubmitHandler(form, options?)` | `<form onSubmit>` 处理器：`preventDefault` + `stopPropagation`；失败提交后补跑一次完整校验（form-core 在字段级校验失败时会跳过表单级校验，新增字段会漏掉错误）、揭示错误字段（`revealFieldErrors`）并聚焦首个无效控件（`focusFirstError: false` 关闭）。也接受裸的 `handleSubmit` 回调，但该形态拿不到 form api，不含补校验与错误揭示 |
+| `revealFieldErrors(form)` | 把「有错误但未 blur」的字段标记为已 blur——展示门禁只依赖字段本地状态即可打开（`submissionAttempts` 住在表单 store，字段组件不订阅它） |
+| `focusFirstInvalidControl(form)` | 聚焦表单内首个非禁用的 `aria-invalid` 控件，rAF 调度 |
+| `fieldErrors(field)` | 过门禁后的 `{ message }` 数组，喂 `FieldError` 的 `errors` |
+| `fieldErrorMessage(field)` | 第一条错误的 message，未过门禁为 `undefined` |
+| `fieldHasError(field)` | 是否有可显示的错误 |
+| `fieldShouldShowError(field)` | 门禁本体：改过（dirty）且失焦过，或提交过 |
+| `fieldErrorId(name)` | 错误元素的 id：清洗非法字符后拼 `-error` |
+| `fieldInvalidState(field)` | `{ errorId, invalid }`，给 `FieldError` 的 `id` 与 `Field` 的 `data-invalid` |
+| `fieldControlProps(field)` | 展开 `id` / `name` / `aria-describedby` / `aria-invalid` 四线 |
+| `normalizeFieldErrors(errors)` | 递归拍平错误值：字符串与带 `message` 的对象统一成 `{ message }` |
+| `silentFieldUpdateOptions` | `setFieldValue` 第三参：不跑 listeners、不更新 meta、不校验 |
+| `validatingFieldUpdateOptions` | `setFieldValue` 第三参：只跳过 listeners，照常校验 |
+| `useFormReset(form, defaultValues)` | `defaultValues` 引用变化时整表回填 |
+| `useFormSubmitting(form)` | 订阅 `isSubmitting` |
+| `FormFieldError` / `AppFieldControlProps` | 错误条目与 aria 接线 props 的类型 |
