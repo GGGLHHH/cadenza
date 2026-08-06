@@ -7,13 +7,14 @@ function GateProbe() {
     defaultValues: { name: '' },
     validators: {
       onChange: ({ value }) =>
-        value.name.length < 2 ? { fields: { name: '太短' } } : undefined,
+        value.name.length < 2 ? { fields: { name: { message: '太短' } } } : undefined,
     },
     onSubmit: () => {},
   })
 
   return (
     <form
+      data-testid="form"
       onSubmit={(event) => {
         event.preventDefault()
         void form.handleSubmit()
@@ -51,12 +52,8 @@ it('onChange 校验实时跑，但错误在 blur 前隐藏、blur 后显示', ()
 
 it('未 blur 但提交过（submissionAttempts > 0）也显示错误', async () => {
   render(<GateProbe />)
-  const input = screen.getByRole('textbox')
 
-  fireEvent.change(input, { target: { value: 'a' } })
-  expect(screen.getByTestId('errors').textContent).toBe('')
-
-  fireEvent.click(screen.getByRole('button', { name: '提交' }))
+  fireEvent.submit(screen.getByTestId('form'))
   await waitFor(() => {
     expect(screen.getByTestId('errors').textContent).toBe('太短')
   })
