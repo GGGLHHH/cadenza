@@ -3,29 +3,41 @@ title: DataPagination
 description: offset 分页条 —— page / limit 独立受控，零文案设计，i18n 留在业务层
 ---
 
+<ComponentPreview name="data-pagination/basic" align="stretch" />
+
 offset 分页条：左侧摘要、右侧「每页条数选择器 + 页码指示 + 四个导航按钮」。
 组件自己**不产出任何可见文案** —— 页码指示默认是语言中立的 `3 / 13`，摘要、
 「每页」标签由外部注入，i18n 天然留在业务层。aria-label 有英文兜底（四个导航
 按钮，以及每页选择器在不传 `rowsPerPageLabel` 时的 `'Rows per page'`），
 从业务层传译文即可覆盖。
 
-`page` 和 `limit` 各自支持受控 / 非受控（`useControllableState` 语义：
-传 `page` 即受控，传 `defaultPage` 即非受控，两者互不影响）。
+## 使用
 
-## 基础用法
+```tsx
+import { DataPagination } from '@gedatou/cadenza-ui'
+```
 
-非受控：只给 `total` 和初始值，组件自持状态。摘要是渲染函数，
-收到 `{ page, limit, total, totalPages }`：
+```tsx
+<DataPagination
+  defaultLimit={20}
+  summary={({ total }) => `共 ${total} 条`}
+  total={137}
+/>
+```
 
-<ComponentPreview name="data-pagination/basic" align="stretch" />
+非受控：只给 `total` 和初始值，组件自持状态。`summary` 与 `pageIndicator`
+都是渲染函数，收到同一个 `DataPaginationState`：`{ page, limit, total, totalPages }`。
 
-## 受控与数据切片
+## 受控
 
 分页状态提到组件外，数据切片跟着状态走。改 `limit` 时记得把 `page` 归 1
 （旧页码在新页数下可能越界）。与 [DataTable](/docs/components/data-table#分页)
 组合就是这个形状：
 
 <ComponentPreview name="data-pagination/controlled" align="stretch" />
+
+`page` 和 `limit` 各自支持受控 / 非受控（[`useControllableState`](/docs/utils/use-controllable-state)
+语义：传 `page` 即受控，传 `defaultPage` 即非受控，两者互不影响）。
 
 ## 自定义文案
 
@@ -44,11 +56,8 @@ aria-label 从业务层传译文；`limitOptions={[]}` 去掉每页条数选择�
 - **`limit` 为 0 / NaN**（比如从 URL 参数解析而来）时总页数按 1 兜底，
   不会出现 `1 / Infinity` 和 NaN 按钮。
 
-## 键盘交互
-
-控件都是原生语义：导航按钮 <kbd>Tab</kbd> 聚焦、<kbd>Enter</kbd> /
-<kbd>Space</kbd> 触发，不可用时真实 `disabled`；每页条数是本库的 Select，
-<kbd>方向键</kbd> 选择、<kbd>Enter</kbd> 确认、<kbd>Esc</kbd> 关闭。
+钳位走的是和点击同一条回调：`onPageChange` 会拿到 `reason: 'missing'` 的
+`eventDetails`，`cancel()` 同样能拒绝它。
 
 ## Headless：useDataPaginationState
 
@@ -67,21 +76,58 @@ const { page, setPage, canNext } = useDataPaginationState({
 })
 ```
 
+`setPage` / `setLimit` 都接 `SetStateAction`（`setPage(p => p + 1)`），
+第二参是可选的 `eventDetails`，不传时 `reason` 为 `'none'`。
+
+## 什么时候用 DataPagination
+
+数页码的 offset 分页才用它。游标分页不数页码，也就没有「第几页 / 共几页」可显示 ——
+走 [DataTable](/docs/components/data-table#无限滚动) 的列表状态 props
+（`hasNextPage` / `onLoadMore`），弹层里的长列表同理，见
+[InfiniteSelect](/docs/components/infinite-select)。
+
+## 状态与 className
+
+分页条是纯 DOM 结构，自己**不挂状态属性** —— 导航按钮的不可用是真实的
+`disabled`（`canPrevious` / `canNext` 为假时），按状态改样式就用它。`className`
+是普通字符串，只落在根元素；没有 `...rest` 透传，其余属性到不了 DOM。
+
+内部部件各带一个 `data-slot`，需要从外部定位时当选择器用：
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `data-pagination` | 根元素，`className` 的落点 |
+| `data-pagination-summary` | 左侧摘要；不传 `summary` 时换成一个不带 slot 的空占位 div，把右侧顶到右边 |
+| `data-pagination-limit` | 每页条数选择器的触发器 |
+| `data-pagination-indicator` | 页码指示 |
+
+## 键盘交互
+
+控件都是原生语义：
+
+| 按键 | 效果 |
+| --- | --- |
+| `Tab` | 依次落到每页条数选择器与四个导航按钮；不可用的按钮是真实 `disabled`，直接跳过 |
+| `Enter` / `Space` | 触发当前聚焦的导航按钮 |
+| `方向键` / `Enter` / `Esc` | 每页条数是本库的 [Select](/docs/components/select#键盘交互)：方向键选择、Enter 确认、Esc 关闭 |
+
 ## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `total` | `number` | — | 总条数；`0` 视为未加载完，不触发钳位 |
-| `page` / `defaultPage` / `onPageChange` | `number` | `1` | 页码（受控 / 非受控） |
-| `limit` / `defaultLimit` / `onLimitChange` | `number` | `20` | 每页条数（受控 / 非受控） |
-| `limitOptions` | `number[]` | `[10, 20, 50, 100]` | 每页条数选项 |
-
+| `page` / `defaultPage` / `onPageChange` | `number` | `1` | 页码（受控 / 非受控）。回调第二参是 `DataPaginationChangeEventDetails`：`reason` 为 `'item-press'`（条内控件）/ `'missing'`（越界钳位）/ `'none'`（程序化 `setPage`），`cancel()` 拒绝这次变更 |
+| `limit` / `defaultLimit` / `onLimitChange` | `number` | `20` | 每页条数（受控 / 非受控），回调同上 |
+| `limitOptions` | `number[]` | `[10, 20, 50, 100]` | 每页条数选项；`[]` 整个选择器不渲染 |
 | `summary` | `(state) => ReactNode` | — | 左侧摘要；不传则该槽位收起 |
 | `rowsPerPageLabel` | `string` | — | 选择器前的可见标签（不传则不渲染），同时作为选择器的 aria-label；不传时 aria-label 兜底英文 `'Rows per page'`。是 `string` 不是 `ReactNode`——要富文本的内容走组合通道，一个「每页」标签不属于那种 |
 | `pageIndicator` | `(state) => ReactNode` | `page / totalPages` | 页码指示 |
-| `firstPageLabel` 等 4 个 | `string` | 英文 | 图标按钮的 aria-label，从业务层传译文 |
+| `firstPageLabel` / `previousPageLabel` / `nextPageLabel` / `lastPageLabel` | `string` | `'First page'` 等 | 四个图标按钮的 aria-label，从业务层传译文 |
 | `className` | `string` | — | 根元素类名 |
 
 `state` 即导出的 `DataPaginationState`：`{ page, limit, total, totalPages }`。
-`DataPaginationStateOptions` / `DataPaginationStateResult`（上文 headless hook
-的入参与返回值）也一并导出。
+`DataPaginationProps`、`DataPaginationStateOptions` / `DataPaginationStateResult`
+（[headless hook](#headlessusedatapaginationstate) 的入参与返回值）、
+`DataPaginationChangeEventReason` / `DataPaginationChangeEventDetails` 也一并导出。

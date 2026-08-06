@@ -3,6 +3,8 @@ title: InputGroup
 description: 带前后缀的输入框 —— 图标、文本、按钮和输入框共处一个边框，焦点环画在整组上
 ---
 
+<ComponentPreview name="input-group/basic" />
+
 一个输入框加若干附加物（图标、单位、按钮、快捷键提示），**共处同一个边框**，焦点环
 画在整组而不是输入框上。shadcn 的组合，原样收录 —— [SearchField](/docs/components/search-field)
 就是拿它搭的。
@@ -10,14 +12,61 @@ description: 带前后缀的输入框 —— 图标、文本、按钮和输入�
 输入框底下是 Base UI 的 `Input`，把它放进 Base UI 的 `Field.Root` 里就自动接线，
 不用往下传 props；按钮是 Base UI 的 `Button`，行与文本域是纯 DOM。
 
-**什么都不附加的时候用 [`Input`](/docs/components/input)**（多行用
-[`Textarea`](/docs/components/textarea)）。边框归这一行所有，所以 `InputGroupInput`
-自己是**没有边框**的 —— 单独拿出来用会是个裸输入框。一旦有东西要和输入框共用边框，
-再换过来。
+## 使用
+
+```tsx
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+  InputGroupTextarea,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<InputGroup>
+  <InputGroupInput aria-label="搜索" placeholder="搜索..." />
+  <InputGroupAddon>
+    <IconSearch aria-hidden />
+  </InputGroupAddon>
+</InputGroup>
+```
+
+## 组成
+
+一行只有两类角色：一个控件，若干 addon —— 按钮、文本、图标都装在 addon 里。
+
+```text
+InputGroup
+├── InputGroupInput 或 InputGroupTextarea
+└── InputGroupAddon          # 可以有多个，align 决定摆在哪
+    ├── InputGroupButton
+    ├── InputGroupText
+    └── 图标 / <kbd> / 任意节点
+```
+
+## 对齐
+
+`InputGroupAddon` 的 `align` 决定它摆在哪，默认 `inline-start`：
+
+| `align` | 位置 | 配谁 | 示例 |
+| --- | --- | --- | --- |
+| `inline-start`（默认） | 行首 | `InputGroupInput` | [图标](#图标)、[文本](#文本) |
+| `inline-end` | 行尾 | `InputGroupInput` | [按钮](#按钮)、[快捷键提示](#快捷键提示) |
+| `block-start` | 上方整行 | `InputGroupTextarea` | [文本域与底部工具条](#文本域与底部工具条) |
+| `block-end` | 下方整行 | `InputGroupTextarea` | 同上 |
+
+**配 `InputGroupInput` 用 `inline-*`，配 `InputGroupTextarea` 用 `block-*`。**
+`block-*` 会让 `InputGroup` 从一行变成竖排、高度随之放开，行内的两个值则不动布局。
+
+摆位置靠的是 CSS `order`，不是 DOM 顺序 —— 所以**装了按钮的 addon 写在控件之后**，
+Tab 进这一组才先落到输入框。纯图标、纯文本的 addon 不可聚焦，写在前面也一样。
 
 ## 图标
 
-`InputGroupAddon` 的 `align` 决定放行首还是行尾，默认 `inline-start`：
+`InputGroupAddon` 里直接放图标；默认在行首，`align="inline-end"` 换到行尾：
 
 <ComponentPreview name="input-group/icon" />
 
@@ -66,21 +115,46 @@ has-[[data-slot=input-group-control]:focus-visible]:ring-3
 文本输入框在鼠标点击时也会命中 `:focus-visible`（浏览器认定它预期要打字），所以点一下
 就有环 —— 这是原生行为，不是额外加的。
 
-## Props
+## 自定义控件
 
-顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+反过来说：环认的是那个属性，不是具体哪个组件。自己的控件挂上
+`data-slot="input-group-control"` 就接进同一套焦点管理 —— 第三方的自适应高度文本域
+这类都能这么塞进来：
 
-只有 `InputGroupInput` 的 `className` 是双形态（字符串，或 `(state) => string`）——
-它底下是 Base UI 的 `Input`。其余部件的 `className` 都是字符串：多数是纯 DOM
-元素，而 `InputGroupButton` 虽然底下是 Base UI 的 `Button`，类名却要穿过 `cva`
-（它会把函数直接丢掉），所以类型也如实收窄成字符串。
+```tsx
+import TextareaAutosize from 'react-textarea-autosize'
 
-### InputGroup
+<InputGroup>
+  <TextareaAutosize
+    className="flex-1 resize-none border-0 bg-transparent focus-visible:ring-0"
+    data-slot="input-group-control"
+  />
+  <InputGroupAddon align="block-end">
+    <InputGroupButton variant="default">发送</InputGroupButton>
+  </InputGroupAddon>
+</InputGroup>
+```
 
-一个 `role="group"` 的 `<div>`。边框、圆角、高度和焦点环都在它身上，没有自己的状态
-props —— 它靠 `:has()` 观察后代：
+自带的两个控件除了这个属性还压掉了自己的边框和环（`border-0` / `focus-visible:ring-0`），
+自定义控件也得照做，否则会看到两圈。
 
-| 选择器 | 效果 |
+## 什么时候用 InputGroup
+
+| 场景 | 用 |
+| --- | --- |
+| 输入框上什么都不附加 | [`Input`](/docs/components/input)，多行用 [`Textarea`](/docs/components/textarea) |
+| 图标、单位、按钮、快捷键提示要和输入框共用边框 | `InputGroup` |
+| 搜索框 | [`SearchField`](/docs/components/search-field) —— 拿这套部件搭的，清除按钮和 Escape 清空都已经接好 |
+
+边框归这一行所有，所以 `InputGroupInput` 自己是**没有边框**的 —— 单独拿出来用会是个
+裸输入框。一旦有东西要和输入框共用边框，再换过来。
+
+## 状态与 className
+
+`InputGroup` 没有自己的状态 props：状态挂在里面的控件上，样式画在外面的组上，中间
+靠 `:has()` 连起来。
+
+| 组上的选择器 | 效果 |
 | --- | --- |
 | `has-[[data-slot=input-group-control]:focus-visible]` | 画焦点环 |
 | `has-disabled` | 整组置灰 + 变底色 |
@@ -94,6 +168,33 @@ props —— 它靠 `:has()` 观察后代：
 `SearchField` 因此在只读时**不渲染**清除按钮；`hidden` 没用，`display: none` 的元素
 仍然会被 `:has(:disabled)` 命中。
 
+三个 `data-slot` 可以当选择器用：
+
+| `data-slot` | 挂在 |
+| --- | --- |
+| `input-group` | 组根，那个 `role="group"` 的 `<div>` |
+| `input-group-addon` | 每个 addon；旁边还有个 `data-align` 回显当前 `align` |
+| `input-group-control` | `InputGroupInput` / `InputGroupTextarea`，[焦点环](#焦点环怎么来的)的接线点 |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+只有 `InputGroupInput` 的 `className` 是双形态（字符串，或 `(state) => string`）——
+它底下是 Base UI 的 `Input`。其余部件的 `className` 都是字符串：多数是纯 DOM
+元素，而 `InputGroupButton` 虽然底下是 Base UI 的 `Button`，类名却要穿过 `cva`
+（它会把函数直接丢掉），所以类型也如实收窄成字符串。
+
+### InputGroup
+
+一个 `role="group"` 的 `<div>`。边框、圆角、高度和焦点环都在它身上，没有自己的状态
+props —— 它靠 `:has()` 观察后代，四条选择器见[状态与 className](#状态与-classname)。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名 |
+| 其余 | 原生 `<div>` 的 props | — | 透传 |
+
 ### InputGroupAddon
 
 | Prop | 类型 | 默认值 | 说明 |
@@ -101,8 +202,38 @@ props —— 它靠 `:has()` 观察后代：
 | `align` | `'inline-start' \| 'inline-end' \| 'block-start' \| 'block-end'` | `'inline-start'` | 行首 / 行尾 / 上方整行 / 下方整行 |
 | `className` | `string` | — | 类名 |
 
+一个 addon 里可以塞多个按钮和图标，它们横向排开：
+
+```tsx
+<InputGroupAddon align="inline-end">
+  <InputGroupButton>撤销</InputGroupButton>
+  <InputGroupButton>重做</InputGroupButton>
+</InputGroupAddon>
+```
+
 点击 addon 的空白处会把焦点送给组内的输入框（点在按钮上时不会）——
-这样整个边框范围内哪里都能点出焦点。
+这样整个边框范围内哪里都能点出焦点。为了焦点顺序，装了按钮的 addon 要写在控件之后，
+用 `align` 摆位置，见[对齐](#对齐)。
+
+### InputGroupButton
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `onClick` | `(event) => void` | — | 点击 |
+| `size` | `'xs' \| 'sm' \| 'icon-xs' \| 'icon-sm'` | `'xs'` | 纯图标用 `icon-*` |
+| `variant` | `Button` 的变体 | `'ghost'` | 默认是幽灵按钮，融进输入框 |
+| `disabled` | `boolean` | `false` | 禁用 |
+| `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | 表单里需要提交时改它 |
+| `className` | `string` | — | 类名 |
+
+纯图标按钮**必给 `aria-label`**。
+
+```tsx
+<InputGroupButton>订阅</InputGroupButton>
+<InputGroupButton aria-label="复制链接" size="icon-xs">
+  <IconCopy aria-hidden />
+</InputGroupButton>
+```
 
 ### InputGroupInput
 
@@ -125,19 +256,6 @@ props —— 它靠 `:has()` 观察后代：
 | 其余 | 原生 `<textarea>` 的 props | — | 透传 |
 
 同样带 `input-group-control`。组里有它时高度自动放开，不再固定成一行。
-
-### InputGroupButton
-
-| Prop | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `onClick` | `(event) => void` | — | 点击 |
-| `size` | `'xs' \| 'sm' \| 'icon-xs' \| 'icon-sm'` | `'xs'` | 纯图标用 `icon-*` |
-| `variant` | `Button` 的变体 | `'ghost'` | 默认是幽灵按钮，融进输入框 |
-| `disabled` | `boolean` | `false` | 禁用 |
-| `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | 表单里需要提交时改它 |
-| `className` | `string` | — | 类名 |
-
-纯图标按钮**必给 `aria-label`**。
 
 ### InputGroupText
 

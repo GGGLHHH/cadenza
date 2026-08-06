@@ -3,30 +3,81 @@ title: Input
 description: 单行文本框 —— 自带边框、自成一体；普通的 htmlFor 通道，外加 Base UI 的 onValueChange
 ---
 
+<ComponentPreview name="input/basic" />
+
 Base UI 的 `Input` 装进 shadcn 的 base-nova 盒子。**字段就只是一个字段**的时候用它 ——
 边框、圆角、焦点环都长在它自己身上。
 
-## 基础用法
+## 使用
 
-`Field` + `FieldLabel htmlFor` + `Input id` + `FieldDescription`：
+```tsx
+import { Field, FieldDescription, FieldLabel, Input } from '@gedatou/cadenza-ui'
+```
 
-<ComponentPreview name="input/basic" />
+```tsx
+<Input id="title" name="title" placeholder="夜之加斯帕" />
+```
+
+## Field
+
+`Field` + `FieldLabel htmlFor` + `Input id` + `FieldDescription`，就是 hero 里那个形态：
+
+```tsx
+<Field>
+  <FieldLabel htmlFor="title">作品名</FieldLabel>
+  <Input id="title" name="title" placeholder="夜之加斯帕" />
+  <FieldDescription>公开显示，之后可以改。</FieldDescription>
+</Field>
+```
 
 标签通道是**最普通的那条**：`id` 落在真正的 `<input>` 上，`FieldLabel htmlFor` 指过去，
 原生 `<label for>` 一次给出无障碍名和「点标签聚焦」。没有 box-only 控件（
 [Checkbox](/docs/components/checkbox) / [Switch](/docs/components/switch)）那种
-「id 其实在隐藏 input 上」的绕路，也不用补 `aria-label`。
+「id 其实在隐藏 input 上」的绕路，也不用补 `aria-label`。全库四条通道的总表在
+[Field](/docs/components/field#无障碍)。
 
-## 什么时候换 InputGroup
+一批字段排成一列、要不要套语义编组，都是 [Field](/docs/components/field) 家族
+（`FieldGroup` / `FieldSet`）的事，这一页不重复。
 
-**一旦有东西要和输入框共用边框就换 [InputGroup](/docs/components/input-group)** ——
-前置图标、行尾按钮、单位后缀、快捷键提示，任何一个都算。
+## 禁用
 
-因为边框的归属变了：在 `InputGroup` 里，**拥有边框和焦点环的是那一行**，
-`InputGroupInput` 自己一点边框都没有。所以这不是「给 `Input` 加个附加物」，
-而是换一个部件 —— 把附加物塞进 `Input` 旁边只会得到两个盒子。
+`disabled` 只管这一个输入框：忽略交互、变灰底、半透明，同时渲染 `data-disabled`。要让
+整列文字跟着变灰，按 [Field](/docs/components/field#状态与-classname) 的状态约定在
+`Field` 上**手动挂** `data-disabled` —— 纯 DOM 线不会替你联动。
 
-反过来说，只有一个光秃秃的输入框时不必上 `InputGroup`，`Input` 本身就是完整的。
+`readOnly` 是另一档：能聚焦、能选中复制，但改不动；和 `disabled` 不同，它照样参与提交。
+
+## 无效态
+
+控件挂 `aria-invalid`，字段那一列挂 `data-invalid` —— 两个属性各管一头：
+
+| 挂在哪 | 效果 |
+| --- | --- |
+| `Input` 的 `aria-invalid` | 输入框画出 destructive 边框与环 |
+| `Field` 的 `data-invalid` | 整列文字变 destructive 色，见 [Field](/docs/components/field#状态与-classname) |
+
+皮肤画的错误态挂在 **`aria-invalid`** 上而不是 `data-invalid`（和
+[InputGroup](/docs/components/input-group) 一致）：手动传 `aria-invalid` 就有红框红环，
+不需要 Base UI 的校验参与 —— 在本库里那条 `data-invalid` 线根本不会自己亮，原因见
+[状态与 className](#状态与-classname)。错误消息交给同一个 `Field` 里的
+[`FieldError`](/docs/components/field#校验与错误)。
+
+## 文件
+
+`type="file"` 就是原生的文件选择器，皮肤只替它把「选择文件」那个按钮收进输入框里 ——
+`file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground`：
+去掉浏览器默认的灰块边框，和输入框同高、同字色。
+
+```tsx
+<Field>
+  <FieldLabel htmlFor="score">总谱</FieldLabel>
+  <Input id="score" name="score" type="file" accept=".pdf,.musicxml" />
+</Field>
+```
+
+**文件输入只能非受控**：`value` 塞不进去（原生限制），文件从 `onChange` 的
+`event.target.files` 取。`onValueChange` 在这里也没用 —— 它的第一参给的是 `input.value`，
+对文件而言是 `C:\fakepath\…` 那个字符串。
 
 ## 值变化
 
@@ -42,6 +93,29 @@ Base UI 的 `Input` 装进 shadcn 的 base-nova 盒子。**字段就只是一个
 - `event` 是原生事件。
 - `cancel()` 在这里**没有接收方**：部件读完值就往下走，从不检查 `isCanceled`。
   要拦下一次输入，只能受控着不把新值写回。
+
+## 什么时候用 InputGroup
+
+要往输入框里加图标、文本或按钮时不改这一个，换
+[InputGroup](/docs/components/input-group)：**一旦有东西要和输入框共用边框就换** ——
+前置图标、行尾按钮、单位后缀、快捷键提示，任何一个都算。
+
+因为边框的归属变了：在 `InputGroup` 里，**拥有边框和焦点环的是那一行**，
+`InputGroupInput` 自己一点边框都没有。所以这不是「给 `Input` 加个附加物」，
+而是换一个部件 —— 把附加物塞进 `Input` 旁边只会得到两个盒子。搭好的搜索框直接用
+[SearchField](/docs/components/search-field)，不必自己拼。
+
+反过来说，只有一个光秃秃的输入框时不必上 `InputGroup`，`Input` 本身就是完整的；
+多行文本改用 [Textarea](/docs/components/textarea)。
+
+## 表单
+
+序列化走原生，封装层不插手：给了 `name` 就进 `FormData`，`disabled` 的字段不提交，
+`required` / `readOnly` / `autoComplete` 也都是原生那一套。控件渲染在 `<form>` 之外时，
+用原生 `form` 属性指出它属于哪张表单。
+
+提交前的校验同样是浏览器那套 —— Base UI 的字段校验只在它自己的 `Field.Root` 里跑，
+本库的 [Field](/docs/components/field) 是纯 DOM 线，见下节。
 
 ## 状态与 className
 
@@ -59,20 +133,21 @@ Base UI 的 `Input` 装进 shadcn 的 base-nova 盒子。**字段就只是一个
 
 除 `data-disabled` 外，这一组**只在 Base UI 的 `Field.Root` 里才会动** —— 本库的
 [Field](/docs/components/field) 不是它（那是纯 DOM 布局），所以在这里 `valid` 恒为
-`null`、其余四个恒为 `false`。
+`null`、其余四个恒为 `false`。错误态因此改挂 `aria-invalid`，见[无效态](#无效态)。
 
-皮肤画的错误态挂在 **`aria-invalid`** 上而不是 `data-invalid`（和
-[InputGroup](/docs/components/input-group) 一致）：手动传 `aria-invalid` 就有红框红环，
-不需要 Base UI 的校验参与。
+`data-slot="input"` 挂在真 `<input>` 上，需要从外部定位时当选择器用。函数 `className`
+为什么真能用，见下节。
 
 ## 为什么是一次 cast
 
 封装层没有包一层组件，只做了一次类型 cast —— 和 `InputGroupInput` 需要的是同一次。
 
-转正之前的 vendored 文件把 props 写成了 `ComponentProps<'input'>`，这一压平就抹掉了三样
-底下的 `Input` 其实认得的东西：**函数形态的 `className`**、**`onValueChange`**、以及
-**Base UI 自己重新声明的 `defaultValue`**（`BaseUIComponentProps` 先把原生那个摘掉了）。
-每个 prop 本来就是原样展开传下去的，运行时一直通着，**只有类型需要还原**。
+转正之前的 vendored 文件把 props 写成了 `ComponentProps<'input'>`，这一压平就抹掉了两样
+底下的 `Input` 其实认得的东西：**函数形态的 `className`**、和带 details 的
+**`onValueChange`**。`defaultValue` 不在其中 —— `BaseUIComponentProps` 确实先把原生那个
+摘掉了，但 `Input` 紧接着又声明回来，类型就是原生的 `ComponentProps<'input'>['defaultValue']`，
+压平它不损失什么。每个 prop 本来就是原样展开传下去的，运行时一直通着，
+**只有类型需要还原**。
 
 函数 `className` 是真能用的：本库的 `cn` 遇到函数会返回一个函数、等 state 到了再解析
 （clsx 是直接吞掉），所以你的类名照样排在封装层那组之后，冲突时你的赢。
@@ -94,6 +169,6 @@ Base UI 的 `Input` 装进 shadcn 的 base-nova 盒子。**字段就只是一个
 | `placeholder` | `string` | — | 占位符 |
 | `render` | `ReactElement \| (props, state) => ReactElement` | — | 换掉渲染的元素 |
 | `className` | `string \| ((state: InputState) => string \| undefined)` | — | 类名。排在封装层那组之后，冲突时你的赢 |
-| 其余 | Base UI `Input` 的 props（原生 `input` 属性 + `ref`） | — | 透传，`readOnly` / `required` / `autoComplete` 都在里面 |
+| 其余 | Base UI `Input` 的 props（原生 `input` 属性 + `ref`） | — | 透传，`readOnly` / `required` / `autoComplete` / `aria-invalid` / `form` 都在里面 |
 
 三个类型一并导出：`InputProps` / `InputState` / `InputChangeEventDetails`。

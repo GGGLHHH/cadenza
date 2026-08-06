@@ -3,6 +3,8 @@ title: LoadingOverlay
 description: 区域级磨砂加载覆盖层 —— 铺满最近的 relative 父容器，挡住指针、光标 wait，内容隐约可见
 ---
 
+<ComponentPreview name="loading-overlay/basic" />
+
 区域级的加载覆盖层：放进一个 **`relative` 的父容器**，默认 `absolute inset-0`
 铺满同宽高；半透明背景 + `backdrop-blur` 的磨砂玻璃，底下的内容隐约可见——
 语义是「内容还在、正在刷新」，不是空白骨架屏。
@@ -11,9 +13,20 @@ description: 区域级磨砂加载覆盖层 —— 铺满最近的 relative 父�
 （`motion-reduce` 豁免）。隐藏靠 `visibility` 一起过渡：退场时淡完才消失，
 消失后**离开无障碍树**——不会有幽灵的「Loading」播报，也不会挡任何点击。
 
-## 基础用法
+## 使用
 
-<ComponentPreview name="loading-overlay/basic" />
+```tsx
+import { LoadingOverlay } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<div className="relative overflow-hidden rounded-xl border p-4">
+  {/* 内容 */}
+  <LoadingOverlay loading={isLoading} />
+</div>
+```
+
+## 宿主容器
 
 父容器要记两件事：**`relative`**（忘了它，覆盖层会铺到更外层的定位祖先上去）；
 圆角容器再加 **`overflow-hidden`**。覆盖层自带 `rounded-[inherit]`——这不是装饰
@@ -21,19 +34,6 @@ description: 区域级磨砂加载覆盖层 —— 铺满最近的 relative 父�
 圆角能约束磨砂范围，否则四角会凸出方形缺口（在真实 Button 上放大验证过，宿主加
 transform / isolation 都救不了）。宿主的 `overflow-hidden` 负责另一半——把覆盖层
 画出的背景裁进宿主的可见形状。库内的内嵌实例（表格卡片、Button）都已按此处理。
-
-它就是库内加载态的**默认视觉**：[DataTable](/docs/components/data-table) 和
-[InfiniteSelect](/docs/components/infinite-select) 的一切 `isLoading`、
-[Button](/docs/components/button) 的 `pending`，渲染的都是这同一层
-（Button 的实例传 `rounded-none backdrop-blur-none`、磨砂改由标签的**内容滤镜**
-承担——按钮尺度下 backdrop 模糊核会沿边角涂出晕染，模糊内容本身观感相同而边缘
-像素级干净，这是真机放大验证过的结论）——
-首屏给最低高度防坍缩，刷新/进行中盖住旧内容（表格和下拉由业务层配 react-query 的
-`placeholderData` 保住旧数据即可触发）。内嵌实例的定制：表格和下拉走各自的
-slotted 标记部件 `DataTableLoadingOverlay` / `InfiniteSelectLoadingOverlay`
-（props 就是本组件的，`loading` 除外——那是基座的接线），样例见两个组件页的
-「加载中」小节；Button 的定制走「不传 `pending`、children 自己画」这条路，
-见 [Button](/docs/components/button) 页。
 
 ## 自定义内容
 
@@ -43,27 +43,52 @@ slotted 标记部件 `DataTableLoadingOverlay` / `InfiniteSelectLoadingOverlay`
 
 <ComponentPreview name="loading-overlay/custom" />
 
-## Props
+## 内嵌实例
 
-| Prop | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `loading` | `boolean` | `false` | 显示覆盖层。**内容面词汇**——和数据适配器的 `isLoading` 同义（这里是裸形容词：react-query 词形只在整体 spread 的适配器 props 上豁免）；动作面的「在途」用 Button 的 `pending` |
-| `children` | `ReactNode` | 居中 Spinner | 传了就完全替换默认内容 |
-| `className` | `string` | — | 类名。纯 div，不是 Base UI 部件，只收字符串；改磨砂程度（`backdrop-blur-*`）、背景浓度（`bg-background/*`）、`z-*` 都从这里 |
-| 其余 | 原生 `div` 属性 | — | 透传（含 `ref`） |
+它就是库内加载态的**默认视觉**：[DataTable](/docs/components/data-table) 和
+[InfiniteSelect](/docs/components/infinite-select) 的一切 `isLoading`、
+[Button](/docs/components/button) 的 `pending`，渲染的都是这同一层——
+首屏给最低高度防坍缩，刷新/进行中盖住旧内容（表格和下拉由业务层配 react-query 的
+`placeholderData` 保住旧数据即可触发）。
 
-**状态**
+Button 的实例传 `rounded-none backdrop-blur-none`、磨砂改由标签的**内容滤镜**
+承担——按钮尺度下 backdrop 模糊核会沿边角涂出晕染，模糊内容本身观感相同而边缘
+像素级干净，这是真机放大验证过的结论。
 
-| 状态 | 出现时机 |
-| --- | --- |
-| `data-loading` | `loading` 为真（自定义 CSS 的钩子，如 `data-loading:…`） |
+内嵌实例的定制：表格和下拉走各自的 slotted 标记部件
+`DataTableLoadingOverlay` / `InfiniteSelectLoadingOverlay`（props 就是本组件的，
+`loading` 除外——那是基座的接线），样例见两个组件页的「加载中」小节；Button 的
+定制走「不传 `pending`、children 自己画」这条路，见
+[Button](/docs/components/button) 页。
 
-## 边界与无障碍
+## 无障碍
 
 - **挡鼠标不挡键盘**：Tab 仍能聚焦到覆盖层底下的控件（Mantine / antd 同样如此）。
   要彻底封锁，给内容区上 [`inert`](https://developer.mozilla.org/docs/Web/HTML/Global_attributes/inert)
   ——那是调用方的决定，本组件不替你做。
 - 加载期间光标是 `wait`（覆盖层自带，含其内所有后代）。
 - 建议给被刷新的区域标 `aria-busy`，让辅助技术知道这块内容暂不可靠。
+
+## 状态与 className
+
+底下是纯 div，不是 Base UI 部件，没有任何 state：`className` 只收字符串，改磨砂
+程度（`backdrop-blur-*`）、背景浓度（`bg-background/*`）、`z-*` 都从这一个口子进。
+
+| 属性 | 效果 |
+| --- | --- |
+| `data-loading` | `loading` 为真时出现，自定义 CSS 的钩子（如 `data-loading:…`） |
+
+覆盖层带 `data-slot="loading-overlay"`，需要从外部定位时当选择器用。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `loading` | `boolean` | `false` | 显示覆盖层。**内容面词汇**——和数据适配器的 `isLoading` 同义（这里是裸形容词：react-query 词形只在整体 spread 的适配器 props 上豁免）；动作面的「在途」用 [Button](/docs/components/button) 的 `pending` |
+| `children` | `ReactNode` | 居中 Spinner | 传了就完全替换默认内容，见[自定义内容](#自定义内容) |
+| `className` | `string` | — | 类名。纯 div，不是 Base UI 部件，只收字符串；能改什么见[状态与 className](#状态与-classname) |
+| 其余 | 原生 `div` 属性 | — | 透传（含 `ref`） |
 
 `LoadingOverlayProps` 类型一并导出。

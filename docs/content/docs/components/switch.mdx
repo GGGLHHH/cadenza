@@ -3,6 +3,8 @@ title: Switch
 description: 开关 —— Base UI Switch.Root 原样转正，box-only、没有 indeterminate，size 是 shadcn 加的
 ---
 
+<ComponentPreview name="switch/basic" />
+
 Base UI 的 `Switch.Root`，在 shadcn 的 base-nova 轨道里**原样转正** —— 封装层没有加行为，
 只加了一个 `size`。
 
@@ -11,25 +13,50 @@ Base UI 的 `Switch.Root`，在 shadcn 的 base-nova 轨道里**原样转正** �
 （**box-only**），文字塞进 `children` 会被挤进轨道里 —— 所以文字走同级的
 [`FieldLabel`](/docs/components/field)，由 `htmlFor` 指过来。
 
-## 基础用法
+## 使用
 
-`Field orientation="horizontal"` + `Switch` 的 `id` + `FieldLabel htmlFor`：
+```tsx
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  Switch,
+} from '@gedatou/cadenza-ui'
+```
 
-<ComponentPreview name="switch/basic" />
+```tsx
+<Field orientation="horizontal">
+  <Switch id="notify" name="notify" />
+  <FieldLabel htmlFor="notify">邮件通知</FieldLabel>
+</Field>
+```
+
+## 标签
+
+`Field orientation="horizontal"` + `Switch` 的 `id` + `FieldLabel htmlFor`，一条线就够。
 
 `id` 落在**隐藏的那个 `<input>` 上**（可见的轨道拿的是生成 id），所以一个 `htmlFor`
 一条线管两件事：原生 `<label for>` 把点击转发给那个 input —— 这才是切换开关的那一下；
 Base UI 再把 label 的 id 反过来镜像到轨道上当 `aria-labelledby` —— 这才是屏幕阅读器
 读到的名字。不需要第二个 `aria-label`，封装层也不用补点击接线。这条通道的来龙去脉写在
-[Checkbox](/docs/components/checkbox) 那页，两边完全一样。
+[Checkbox](/docs/components/checkbox#标签) 那页，两边完全一样；全库四条通道的总表在
+[Field](/docs/components/field#无障碍)。
 
-## 尺寸
+## 描述
 
-`size` 是 **shadcn 加的，不是 Base UI 的** —— `Switch.Root` 上没有这个 prop。它镜像成
-根元素的 `data-size`，轨道按它取宽高，滑块再从 `group-data-[size=…]` 取自己的尺寸和
-位移：一个属性，两处生效。
+带描述时用 `FieldContent` 把「标签 + 描述」装成一列，和 Checkbox 同一个写法 ——
+hero 就是这个形态：
 
-<ComponentPreview name="switch/sizes" />
+```tsx
+<Field orientation="horizontal">
+  <Switch id="notify" name="notify" defaultChecked />
+  <FieldContent>
+    <FieldLabel htmlFor="notify">排练提醒</FieldLabel>
+    <FieldDescription>有新的排练安排时给你发一封邮件。</FieldDescription>
+  </FieldContent>
+</Field>
+```
 
 ## 受控
 
@@ -53,16 +80,40 @@ Base UI 再把 label 的 id 反过来镜像到轨道上当 `aria-labelledby` —
 />
 ```
 
-## 表单序列化
+## 表单
 
 原生的，和 Checkbox 一样：给了 `name`，隐藏 input 在开着时提交 `value`（不传就是 `"on"`），
 关着时提交 `uncheckedValue` —— 默认什么都不提交。开关渲染在 `<form>` 之外时用 `form`
 指回表单 id。
 
-## 什么时候用 Switch，什么时候用 Checkbox
+## 禁用
 
-行为上两者只差一件事：**Switch 没有 `indeterminate`** —— 开关只有开和关，没有第三态。
-剩下的差别全在这个可供性*读起来*是什么：
+`disabled` 让开关不响应交互并降到半透明；`readOnly` 是另一档 —— 能聚焦，但拨不动。
+
+两个都只管控件自己那一格。要让整列文字跟着变灰，按 [Field](/docs/components/field)
+的状态约定在 `Field` 上手动挂 `data-disabled`。
+
+## 无效态
+
+控件挂 `aria-invalid`，字段那一列挂 `data-invalid`：
+
+| 挂在哪 | 效果 |
+| --- | --- |
+| `Switch` 的 `aria-invalid` | 轨道画出 destructive 边框与环 |
+| `Field` 的 `data-invalid` | 整列文字变 destructive 色，见 [Field](/docs/components/field#状态与-classname) |
+
+## 尺寸
+
+`size` 是 **shadcn 加的，不是 Base UI 的** —— `Switch.Root` 上没有这个 prop。它镜像成
+根元素的 `data-size`，轨道按它取宽高，滑块再从 `group-data-[size=…]` 取自己的尺寸和
+位移：一个属性，两处生效。
+
+<ComponentPreview name="switch/sizes" />
+
+## 什么时候用 Switch
+
+行为上 Switch 和 Checkbox 只差一件事：**Switch 没有 `indeterminate`** —— 开关只有开和关，
+没有第三态。剩下的差别全在这个可供性*读起来*是什么：
 
 | 控件 | 读作 | 典型场景 |
 | --- | --- | --- |
@@ -71,6 +122,29 @@ Base UI 再把 label 的 id 反过来镜像到轨道上当 `aria-labelledby` —
 
 判断方法很直接：拨完就该看见效果的用 Switch；要等表单提交才生效、或者需要「部分选中」的，
 用 [Checkbox](/docs/components/checkbox)。
+
+## 状态与 className
+
+`className` 通到的是 Base UI 的 slot，所以**函数形态有效**：
+`(state: SwitchState) => string | undefined`；`style` 同样双形态。左列是挂在根元素上的
+`data-*`（Tailwind 直接当变体写），右列是同一状态在函数形态里的名字。
+
+| `data-*` | 出现时机 | `SwitchState` 里的名字 |
+| --- | --- | --- |
+| `data-checked` / `data-unchecked` | 开 / 关，两者恒有其一 | `checked` |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-readonly` | `readOnly` | `readOnly` |
+| `data-required` | `required` | `required` |
+| `data-size` | 恒在，值是 `default` / `sm` | —（shadcn 加的，不进 state） |
+
+`SwitchState` 还带着 Field 那几个字段（`valid` / `touched` / `dirty` / `filled` /
+`focused`，对应 `data-valid` / `data-touched` 等）—— 但它们只在 Base UI 的 `Field.Root`
+里才会动，而本库的 [`Field`](/docs/components/field) 是纯 DOM 的，不是它。要让整列文字
+跟着控件变灰 / 变红，还是按 Field 那页的约定在 `Field` 上手动挂 `data-disabled` /
+`data-invalid`，见[禁用](#禁用)与[无效态](#无效态)。
+
+根元素带 `data-slot="switch"`，滑块带 `data-slot="switch-thumb"`，需要从外部定位时
+当选择器用。
 
 ## Props
 
@@ -86,35 +160,15 @@ Base UI 再把 label 的 id 反过来镜像到轨道上当 `aria-labelledby` —
 | `disabled` | `boolean` | `false` | 不响应交互 |
 | `readOnly` | `boolean` | `false` | 可聚焦，但拨不动 |
 | `required` | `boolean` | `false` | 提交表单前必须打开 |
-| `value` | `string` | `'on'` | 开着时提交的值 |
+| `value` | `string` | — | 开着时提交的值；不给就是原生的 `"on"`（浏览器对无 `value` 的 checkbox 的行为，不是 Base UI 给的默认值） |
 | `uncheckedValue` | `string` | — | 关着时提交的值；不传则关着时不提交任何值 |
 | `form` | `string` | — | 隐藏 input 归属的表单 id，开关渲染在表单外时用 |
 | `inputRef` | `React.Ref<HTMLInputElement>` | — | 拿到隐藏的 `<input>` |
 | `size` | `'default' \| 'sm'` | `'default'` | **shadcn 的，不是 Base UI 的**；镜像成 `data-size` |
 | `nativeButton` | `boolean` | `false` | 用 `render` 换成原生 `<button>` 时置 `true` |
 | `render` | `ReactElement \| (props, state) => ReactElement` | — | 替换根元素本身 |
-| `className` | `string \| ((state: SwitchState) => string \| undefined)` | — | 类名。底下是 Base UI 部件，所以**函数形态有效**，参数是 `SwitchState` |
+| `className` | `string \| ((state: SwitchState) => string \| undefined)` | — | 类名，双形态，见[状态与 className](#状态与-classname) |
 | `style` | `CSSProperties \| ((state: SwitchState) => CSSProperties \| undefined)` | — | 同上，双形态 |
-| 其余 | 原生 `span` 属性 | — | 透传到轨道（含 `ref`、`aria-invalid` —— 后者画出 destructive 边框与环） |
-
-**状态**：左列是挂在根元素上的 `data-*`（Tailwind 直接当变体写），右列是同一状态在
-`className` 函数形态里的名字。
-
-| `data-*` | 出现时机 | `SwitchState` 里的名字 |
-| --- | --- | --- |
-| `data-checked` / `data-unchecked` | 开 / 关，两者恒有其一 | `checked` |
-| `data-disabled` | `disabled` | `disabled` |
-| `data-readonly` | `readOnly` | `readOnly` |
-| `data-required` | `required` | `required` |
-| `data-size` | 恒在，值是 `default` / `sm` | —（shadcn 加的，不进 state） |
-
-`SwitchState` 还带着 Field 那几个字段（`valid` / `touched` / `dirty` / `filled` /
-`focused`，对应 `data-valid` / `data-touched` 等）—— 但它们只在 Base UI 的 `Field.Root`
-里才会动，而本库的 [`Field`](/docs/components/field) 是纯 DOM 的，不是它。要让整列文字
-跟着控件变灰 / 变红，还是按 Field 那页的约定在 `Field` 上手动挂 `data-disabled` /
-`data-invalid`。
-
-根元素带 `data-slot="switch"`，滑块带 `data-slot="switch-thumb"`，需要从外部定位时
-当选择器用。
+| 其余 | Base UI `Switch.Root` 的 props（`span` 的原生属性 + `ref`） | — | 透传到轨道；`aria-invalid` 画出 destructive 边框与环 |
 
 `SwitchProps` / `SwitchState` / `SwitchChangeEventDetails` 三个类型一并导出。

@@ -3,6 +3,8 @@ title: Checkbox
 description: box-only 的复选框 —— id 落在隐藏 input 上，一条 htmlFor 同时管点击与无障碍名
 ---
 
+<ComponentPreview name="checkbox/basic" />
+
 Base UI 的 `Checkbox.Root` 装进 shadcn 的 base-nova 盒子。封装层只补了一件事：
 [半选态的样子](#半选)。
 
@@ -10,13 +12,28 @@ Base UI 的 `Checkbox.Root` 装进 shadcn 的 base-nova 盒子。封装层只补
 `<input type="checkbox">` —— 所以根元素**就是**那个方块，再没有别的。文字得交给
 同级的 `FieldLabel`（见 [Field](/docs/components/field)）。
 
-## 基础用法
+## 使用
 
-`Field orientation="horizontal"` + `Checkbox id` + `FieldLabel htmlFor`；要带描述时，
-用 `FieldContent` 装「标签 + 描述」那一列：
+```tsx
+import {
+  Checkbox,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from '@gedatou/cadenza-ui'
+```
 
-<ComponentPreview name="checkbox/basic" />
+```tsx
+<Field orientation="horizontal">
+  <Checkbox id="terms" name="terms" />
+  <FieldLabel htmlFor="terms">同意条款</FieldLabel>
+</Field>
+```
 
+## 标签
+
+`Field orientation="horizontal"` + `Checkbox id` + `FieldLabel htmlFor`，
 **一条 `htmlFor` 把两件事都买下了**，值得知道为什么 —— 因为 `id` 并没有落在看上去的
 那个地方：
 
@@ -29,12 +46,30 @@ Base UI 的 `Checkbox.Root` 装进 shadcn 的 base-nova 盒子。封装层只补
 `input.labels`，把 label 的 id 镜像到方块上当 `aria-labelledby` —— 屏幕阅读器读到的
 名字由此而来。不需要第二个 `aria-label`，封装层也不用补任何点击接线。
 
-压根没有可见文字时（比如表格里每行一个）才给 `aria-label`。
+压根没有可见文字时（比如[表格](#表格)里每行一个）才给 `aria-label`。
 
-上面第二个是禁用的：控件自己的 `disabled` 只管控件的视觉，要让整列文字跟着变灰，
-按 [Field](/docs/components/field) 的状态约定在 `Field` 上手动挂 `data-disabled`。
+全库四条标签通道的总表在 [Field](/docs/components/field#无障碍)，box-only 是其中一条，
+[Switch](/docs/components/switch) 和 [RadioGroupItem](/docs/components/radio-group)
+与它同类。
+
+## 受控
+
+受控三件套是 `checked` / `defaultChecked` / `onCheckedChange`：
+
+<ComponentPreview name="checkbox/controlled" />
+
+回调的第二参是真的 `ChangeEventDetails`（导出名 `CheckboxChangeEventDetails`）：
+
+- `reason` **恒为 `'none'`** —— 上游给复选框就没派第二种 reason，别指望靠它分辨来源。
+- `cancel()` 会被尊重：调了它，组件内部那份状态就不推进。
+
+受控时显示的本来就是你的 `checked`，`cancel()` 拦下的是组件内部那份看不见的状态；
+非受控（只给 `defaultChecked`）时，那份状态就是显示的那份，于是 `cancel()` 直接把这
+一下勾选拦住 —— demo 里第二个框就是这样，不写任何外部 state 也取消不掉。
 
 ## 半选
+
+「全选」框的那一档：勾了一部分时既不算勾上、也不算没勾。
 
 <ComponentPreview name="checkbox/indeterminate" />
 
@@ -55,25 +90,63 @@ Base UI 另有一个 `parent` prop 专做这件事，但它必须待在 `Checkbo
 自己渲染的，没有可替换的 children，只能走 CSS。这条修复同样落在
 [DataTable](/docs/components/data-table) 的表头全选上。
 
-## 受控
+## 无效态
 
-<ComponentPreview name="checkbox/controlled" />
+控件挂 `aria-invalid`，字段那一列挂 `data-invalid` —— 两个属性各管一头：
 
-受控三件套是 `checked` / `defaultChecked` / `onCheckedChange`。回调的第二参是真的
-`ChangeEventDetails`（导出名 `CheckboxChangeEventDetails`）：
+| 挂在哪 | 效果 |
+| --- | --- |
+| `Checkbox` 的 `aria-invalid` | 方块画出 destructive 边框与环 |
+| `Field` 的 `data-invalid` | 整列文字变 destructive 色，见 [Field](/docs/components/field#状态与-classname) |
 
-- `reason` **恒为 `'none'`** —— 上游给复选框就没派第二种 reason，别指望靠它分辨来源。
-- `cancel()` 会被尊重：调了它，组件内部那份状态就不推进。
+勾上之后**边框**会回到 primary（`aria-invalid:aria-checked:border-primary`）—— 只有边框：
+那圈 `ring-destructive/20` 没有对应的 `aria-checked` 规则，所以勾中的无效框是 primary 边框
+配 destructive 的环，仍然在提示有问题。错误消息本身交给同一个 `Field` 里的 `FieldError` 说。
 
-受控时显示的本来就是你的 `checked`，`cancel()` 拦下的是组件内部那份看不见的状态；
-非受控（只给 `defaultChecked`）时，那份状态就是显示的那份，于是 `cancel()` 直接把这
-一下勾选拦住 —— demo 里第二个框就是这样，不写任何外部 state 也取消不掉。
+## 描述
+
+带描述时用 `FieldContent` 把「标签 + 描述」装成一列 —— hero 里第一个字段就是这个形态
+（那个还带了 `defaultChecked`）：
+
+```tsx
+<Field orientation="horizontal">
+  <Checkbox id="newsletter" name="newsletter" />
+  <FieldContent>
+    <FieldLabel htmlFor="newsletter">乐季简报</FieldLabel>
+    <FieldDescription>新的场次开票时给你发一封邮件。</FieldDescription>
+  </FieldContent>
+</Field>
+```
+
+横排的 `Field` 就是一行 flex，标签和描述直接摆进去会左右并排；`FieldContent` 是专门
+装这一列文本的弹性列（见 [Field](/docs/components/field)）。没有描述就不需要它。
 
 ## 表单
 
 序列化走原生：给了 `name`，那个隐藏 input 就参与提交 —— 勾着时提交 `value`（不给
 `value` 就是原生的 `"on"`），没勾时提交 `uncheckedValue`，默认什么都不提交，和原生
-复选框一致。
+复选框一致。控件渲染在 `<form>` 之外时，用 `form` 指出它属于哪张表单。
+
+## 禁用
+
+控件自己的 `disabled` 只管控件的视觉，要让整列文字跟着变灰，按
+[Field](/docs/components/field) 的状态约定在 `Field` 上手动挂 `data-disabled` ——
+hero 里第二个字段就是这么写的。
+
+`readOnly` 是另一档：能聚焦、读得到，但勾不动也取消不掉。
+
+## 分组
+
+一列复选框就是多个 `Field` 排进一个 `FieldGroup`；要给整组一个名字，再套一层
+`FieldSet` + `FieldLegend`（语义是原生 `fieldset` / `legend`）—— [半选](#半选)那个
+demo 就是这个结构。分组是布局的事，全部由 [Field](/docs/components/field) 家族承担；
+Base UI 的 `CheckboxGroup` 本库没有提升。
+
+## 表格
+
+[DataTable](/docs/components/data-table) 的选择列渲染的就是这个 Checkbox：每行一个，
+表头那个「全选」用的正是上面那套 `checked` + `indeterminate` 的算法。行里那个没有可见
+文字，所以名字走 `aria-label`。
 
 ## 状态与 className
 
@@ -92,10 +165,8 @@ Base UI 另有一个 `parent` prop 专做这件事，但它必须待在 `Checkbo
 `focused`）。它们**只在 Base UI 的 `Field.Root` 里才会动** —— 本库的 `Field` 不是它
 （那是纯 DOM 布局），所以在这里这组值不会变。
 
-## 选择列
-
-[DataTable](/docs/components/data-table) 的选择列渲染的就是这个 Checkbox：每行一个，
-表头那个「全选」用的正是上面那套 `checked` + `indeterminate` 的算法。
+根元素带 `data-slot="checkbox"`，里面那个对勾指示器带 `data-slot="checkbox-indicator"`，
+需要从外部定位时当选择器用。
 
 ## Props
 

@@ -3,18 +3,32 @@ title: Textarea
 description: 多行文本框 —— 一个纯 textarea，跟着内容长高，下限 min-h-16
 ---
 
+<ComponentPreview name="textarea/basic" />
+
 一个纯 `<textarea>`，从上到下都是它自己 —— **没有任何 Base UI 部件**。
 
 这决定了它的全部脾气：`className` 老实是 `string`（没有 `(state) => string` 那一形态，
-也没有 `data-*` 状态表），**没有 `onValueChange`**（值变化只有原生 `onChange`，自己从
-`event.target.value` 取），也**没有 [Input](/docs/components/input) 那条
+也没有 Base UI 那张 `data-*` 状态表），**没有 `onValueChange`**（值变化只有原生
+`onChange`，自己从 `event.target.value` 取），也**没有 [Input](/docs/components/input) 那条
 `Field.Root` context 线** —— 放进 Base UI 的 `Field.Root` 里它不会自动接线。
 
-标签通道还是最普通的那条：`FieldLabel htmlFor` → `id`。
+## 使用
 
-## 基础用法
+```tsx
+import { Field, FieldLabel, Textarea } from '@gedatou/cadenza-ui'
+```
 
-<ComponentPreview name="textarea/basic" />
+```tsx
+<Field>
+  <FieldLabel htmlFor="notes">曲目说明</FieldLabel>
+  <Textarea id="notes" name="notes" placeholder="节目单上会印这一段。" />
+</Field>
+```
+
+标签通道还是最普通的那条：`id` 落在真正的 `<textarea>` 上，`FieldLabel htmlFor` 指过去，
+原生 `<label for>` 一次给出无障碍名和「点标签聚焦」，不用补 `aria-label`。四条通道的总表在
+[Field 的无障碍一节](/docs/components/field#无障碍)。要带辅助文字就再加一个
+`FieldDescription`，就是页首那个例子。
 
 ## 高度
 
@@ -24,11 +38,43 @@ description: 多行文本框 —— 一个纯 textarea，跟着内容长高，�
 下限是 `min-h-16`（4rem）—— 空着的时候不至于塌成一条缝。要改下限传 `min-block-*`
 （比如 `min-block-32`），要封顶就传 `max-block-*`，到顶之后才开始滚。
 
-## 在 InputGroup 里
+## 禁用
 
-要配工具条、字数统计、发送按钮时，用
-[`InputGroupTextarea`](/docs/components/input-group) 而不是这一个：**那一行才拥有边框**，
-把自带边框的 `Textarea` 放进去会得到两层框。
+`disabled` 只管控件自己：灰底、`not-allowed`、半透明。要让**整列文字**（标签、描述）
+一起变灰，在外层 `Field` 上挂 `data-disabled` —— 两个属性各管一头，
+见[状态与 className](#状态与-classname)。
+
+## 无效态
+
+皮肤画的错误态挂在 **`aria-invalid`** 上（和 [Input](/docs/components/input)、
+[InputGroup](/docs/components/input-group) 一致）：手动传 `aria-invalid` 就有红框红环，
+不需要任何校验逻辑参与。整列文字变红同样是外层 `Field` 的 `data-invalid`。
+
+错误消息本身交给 [`FieldError`](/docs/components/field#校验与错误)：给它一个 `id`、
+让 `<Textarea>` 的 `aria-describedby` 指过去 —— 这条线没有 context 替你接。
+
+## 什么时候用 InputGroup
+
+一旦有东西要和输入框**共用边框** —— 底部工具条、字数统计、行内发送按钮 —— 就换
+[`InputGroupTextarea`](/docs/components/input-group#文本域与底部工具条)：**那一行才拥有
+边框**，把自带边框的 `Textarea` 放进去会得到两层框。
+
+不共用边框的就不必上 `InputGroup`：想在文本域下面放一个提交按钮，`Field` 里
+`Textarea` 后面直接跟一个 [`Button`](/docs/components/button) 就够，没有任何机关。
+
+## 状态与 className
+
+底下是纯 DOM，没有 Base UI 的 state：`className` 只收字符串。下面这些属性也不会自己
+出现，**都是你手动挂的**：
+
+| 属性 | 挂在 | 效果 |
+| --- | --- | --- |
+| `disabled` | `Textarea` | 灰底、`not-allowed`、半透明 |
+| `aria-invalid` | `Textarea` | 红边框 + 红焦点环 |
+| `data-disabled` | 外层 `Field` | 标签等文字降为半透明 |
+| `data-invalid` | 外层 `Field` | 整列文字变 destructive 色 |
+
+元素自带 `data-slot="textarea"`，需要从外部定位时当选择器用。
 
 ## Props
 

@@ -3,25 +3,100 @@ title: Spinner
 description: 旋转的加载指示 —— role="status" 的语义化 svg，尺寸颜色全走 className
 ---
 
-一个旋转的 `IconLoader`，带 `role="status"`。尺寸默认 `size-4`、颜色继承文字色，
-两者都从 `className` 改：
-
 <ComponentPreview name="spinner/basic" />
 
-[Button](/docs/components/button) 的 `pending` 默认组合就是它 ——
-那里以 `aria-hidden` 装饰性注入：spinner 只是装饰，状态由按钮自己的
-`aria-busy` 说。
+一个旋转的 `IconLoader`（`animate-spin`），带 `role="status"`。底下是纯 svg，
+不是 Base UI 部件 —— 没有任何 state，`className` 只收字符串，其余原生 svg
+属性（含 `ref`）原样透传。尺寸默认 `size-4`、颜色继承文字色，两者都从
+`className` 改。
 
-## Props
+它也是全库加载反馈的那颗零件：[Button](/docs/components/button) 的 `pending`、
+[LoadingOverlay](/docs/components/loading-overlay) 的默认内容、
+[DataTable](/docs/components/data-table) 与
+[InfiniteSelect](/docs/components/infinite-select) 的「加载更多」行，中间转的
+都是它。
 
-| Prop | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `aria-label` | `string` | `'Loading'` | `role="status"` 的无障碍名。默认值只进 aria、不上屏（家法的英文兜底），传译文即覆盖 |
-| `className` | `string` | — | 类名。底下是纯 svg，不是 Base UI 部件，只收字符串；尺寸用逻辑工具类（`block-6 inline-6`——它们在产物里排在内建 `size-4` 之后，同特异性下覆盖生效）、文字色类改颜色 |
-| 其余 | 原生 `svg` 属性 | — | 透传（含 `ref`） |
+## 使用
+
+```tsx
+import { Spinner } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Spinner />
+```
+
+## 尺寸
+
+改尺寸用**逻辑工具类**：`block-6 inline-6` 给一个固定大小，
+`block-[1em] inline-[1em]` 让它跟着所在处的字号走（Button 的 pending 用的就是
+后者）。上面的 hero 三档演示的就是这条。
+
+为什么不是再写一个 `size-*`：`size-4` 是烘进组件的类，同族的工具类特异性一样，
+谁赢只看产物里的先后，不保险；逻辑工具类（`block-*` / `inline-*`）在生成的样式表里
+排在物理的 `size-*` 之后，所以覆盖稳定生效。
+
+颜色同理走 `className` 的文字色类（`text-primary`…）—— 不传就继承所在处的文字色。
+
+每个 spinner 带 `data-slot="spinner"`，需要从外部按容器统一定位（比如让某一片区域
+里的所有 spinner 一起变大）时当选择器用。
+
+## Button
+
+[Button](/docs/components/button) 的 `pending` 默认组合就是它：标签原地被磨砂融开，
+spinner 浮在暗纱上，按钮宽度不变。
+
+<ComponentPreview name="button/pending" />
+
+这里 spinner 以 **`aria-hidden`** 装饰性注入：spinner 只是装饰，状态由按钮自己的
+`aria-busy` 说。颜色写死 `text-foreground` 而不是继承 —— 按钮里继承来的是标签色，
+会让 spinner 和被磨砂的标签糊在一起。两种注入方式的分界见[无障碍](#无障碍)。
+
+## 无障碍
 
 两种用法的边界：**独立出现**（页面区块加载中）保留 `role="status"` 让它自己播报；
 **装饰性出现**（塞进已有自身状态语义的组件里）传 `aria-hidden`，别让两个 live region
 抢话。
+
+库内两边都有例子：
+
+| 位置 | 怎么注入 |
+| --- | --- |
+| [LoadingOverlay](/docs/components/loading-overlay) 的默认内容 | 裸 `<Spinner />`，自己播报。覆盖层隐藏时 `visibility` 跟着过渡一起走，它会退出无障碍树，不留幽灵播报 |
+| [Button](/docs/components/button) 的 `pending` | `aria-hidden`，按钮自己挂 `aria-busy` |
+| [DataTable](/docs/components/data-table) / [InfiniteSelect](/docs/components/infinite-select) 的「加载更多」行 | `aria-hidden`，它在那里是个记号不是一句话 |
+
+`aria-label` 默认是英文 `'Loading'` —— 家法的英文兜底（同 `SearchField` 的
+`'Search'`、`DataPagination` 的 `'Rows per page'`）：只进 aria、不上屏，传译文即覆盖，
+因为底下的 svg 在默认值之后才展开 props。
+
+## 什么时候用 Spinner
+
+裸 `Spinner` 只负责画一个转圈。「一整片在加载」这件事另有组件，别拿它硬凑：
+
+| 要做的事 | 用 |
+| --- | --- |
+| 一小块地方标个「在转」（行尾、自定义槽位、你自己的布局里） | `Spinner` |
+| 一整片内容不可用：盖住、挡指针、两个方向交叉淡入 | [LoadingOverlay](/docs/components/loading-overlay) |
+| 一个动作在飞（提交、保存） | [Button](/docs/components/button) 的 `pending` |
+| 表格 / 下拉的分页与刷新 | [DataTable](/docs/components/data-table)、[InfiniteSelect](/docs/components/infinite-select) 自带，槽位可换 |
+
+动作面只有 `pending`、内容面只有 `loading`，两个词是对应词不是别名 —— 选组件时先认
+自己在哪一面。
+
+**换图标没有 prop 口子**：图标写死是 `IconLoader`，它躺在 vendored 的 shadcn 源码里
+（`src/primitives` 有逐字节校验，不从那里改）。要别的图标就直接放你自己的 svg ——
+上面几个消费点收的都是 `children`（`LoadingOverlay` 的 children、`DataTable` 与
+`InfiniteSelect` 的加载槽位），不认 `Spinner` 这个具体类型。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `aria-label` | `string` | `'Loading'` | `role="status"` 的无障碍名。默认值只进 aria、不上屏（家法的英文兜底），传译文即覆盖；装饰性场合改传 `aria-hidden`，见[无障碍](#无障碍) |
+| `className` | `string` | — | 类名。底下是纯 svg，不是 Base UI 部件，只收字符串；尺寸用逻辑工具类、颜色用文字色类，写法见[尺寸](#尺寸) |
+| 其余 | 原生 `svg` 属性 | — | 透传（含 `ref`） |
 
 `SpinnerProps` 类型一并导出。

@@ -3,18 +3,58 @@ title: Radio Group
 description: 一组互斥选项 —— 值住在 group 上、item 只带 value，组自己的名字要手写
 ---
 
+<ComponentPreview name="radio-group/basic" />
+
 一组互斥选项。**值住在 group 上**（`value` / `defaultValue` / `onValueChange`），
 一个 `RadioGroupItem` 就是一个选项、只带自己的 `value`。行为全部由 Base UI 承担：
 方向键漫游、移到哪选中哪、隐藏 `<input type="radio">` 的原生序列化都是它的事。
 
-## 基础用法
+## 使用
 
-`FieldSet` + `FieldLegend` 给整组命名，每一项用一个 `Field orientation="horizontal"`
-装「方框 + 文字」：
+```tsx
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  RadioGroup,
+  RadioGroupItem,
+} from '@gedatou/cadenza-ui'
+```
 
-<ComponentPreview name="radio-group/basic" />
+```tsx
+<FieldSet>
+  <FieldLegend id="voice">声部</FieldLegend>
+  <RadioGroup aria-labelledby="voice" defaultValue="alto" name="voice">
+    <Field orientation="horizontal">
+      <RadioGroupItem id="voice-soprano" value="soprano" />
+      <FieldLabel htmlFor="voice-soprano">女高音</FieldLabel>
+    </Field>
+    <Field orientation="horizontal">
+      <RadioGroupItem id="voice-alto" value="alto" />
+      <FieldLabel htmlFor="voice-alto">女中音</FieldLabel>
+    </Field>
+  </RadioGroup>
+</FieldSet>
+```
 
-## 两件命名的事，只有一件是自动的
+## 组成
+
+两个对外部件，`FieldSet` / `FieldLegend` / `Field` / `FieldLabel` 来自
+[Field](/docs/components/field) 家族：
+
+```text
+RadioGroup
+├── RadioGroupItem
+└── RadioGroupItem
+```
+
+## 标签
+
+两件命名的事，只有一件是自动的：
 
 | 给谁起名 | 怎么接 | 要不要手写 |
 | --- | --- | --- |
@@ -35,6 +75,23 @@ context 里把名字接过来，但本库的 `FieldSet` / `FieldLegend` 走的�
 **纯 DOM** 线（`fieldset` / `legend` 元素，不带任何 context）—— 两条线不相通，
 所以不写 `aria-labelledby` 的组就是一个没有名字的组。给 `FieldLegend` 一个 `id`、
 组上 `aria-labelledby` 指过去即可；没有可见 legend 时用 `aria-label`。
+
+## 描述
+
+某一项要带描述时，用 `FieldContent` 把「标签 + 描述」装成一列，和
+[Checkbox](/docs/components/checkbox#描述) 同一个写法：
+
+```tsx
+<Field orientation="horizontal">
+  <RadioGroupItem id="voice-alto" value="alto" />
+  <FieldContent>
+    <FieldLabel htmlFor="voice-alto">女中音</FieldLabel>
+    <FieldDescription>需要能稳定唱到 F3。</FieldDescription>
+  </FieldContent>
+</Field>
+```
+
+整组的描述放在 `FieldLegend` 之后、`RadioGroup` 之前的 `FieldDescription` 里。
 
 ## 受控
 
@@ -60,22 +117,35 @@ context 里把名字接过来，但本库的 `FieldSet` / `FieldLegend` 走的�
 
 非受控就换成 `defaultValue`，其余照旧。
 
-单独禁用一项就在那个 `RadioGroupItem` 上写 `disabled`；要让那一行的文字也跟着变灰，
-按 [Field](/docs/components/field) 的状态约定给它所在的 `Field` 挂 `data-disabled` ——
-控件的 `disabled` 只管控件自己的视觉。
+## 表单
 
-## 表单序列化是原生的
-
-给 group 一个 `name`，每一项的隐藏 `<input type="radio">` 共用它，选中的那一项按
-原生规则提交 —— `FormData` 直接拿得到，不用额外接线。值不是字符串时会被序列化成
-字符串写进 DOM（数字 `45` 提交成 `"45"`）。组渲染在 `<form>` 外面时，用 `form`
+序列化是原生的：给 group 一个 `name`，每一项的隐藏 `<input type="radio">` 共用它，
+选中的那一项按原生规则提交 —— `FormData` 直接拿得到，不用额外接线。值不是字符串时会被
+序列化成字符串写进 DOM（数字 `45` 提交成 `"45"`）。组渲染在 `<form>` 外面时，用 `form`
 指出它属于哪张表单。
 
-## 泛型：值不会退化成 any
+## 禁用
 
-两个部件在封装层里被**重新声明成泛型函数**，而不是直接转出 —— 转正前的那层
-包装把 props 写成了 `Props<any>`，照搬会让每个调用方的 `value` 和 `onValueChange`
-都拿到 `any`。所以下面两种写法都成立，默认 `Value = string`：
+整组禁用就在 `RadioGroup` 上写 `disabled`，它会传给每一项。
+
+单独禁用一项就在那个 `RadioGroupItem` 上写 `disabled`；要让那一行的文字也跟着变灰，
+按 [Field](/docs/components/field) 的状态约定给它所在的 `Field` 挂 `data-disabled` ——
+控件的 `disabled` 只管控件自己的视觉。禁用项在键盘导航里会被跳过，见
+[键盘交互](#键盘交互)。
+
+`readOnly` 是另一档：能聚焦、改不动。
+
+## 无效态
+
+和 Checkbox 同一套：项上挂 `aria-invalid` 画出 destructive 边框与环，`Field` 上挂
+`data-invalid` 让那一列文字变色（见 [Field](/docs/components/field#状态与-classname)）。
+整组的错误消息放在组后面的一个 `FieldError` 里。
+
+## 泛型
+
+**值不会退化成 `any`。** 两个部件在封装层里被**重新声明成泛型函数**，而不是直接转出 ——
+转正前的那层包装把 props 写成了 `Props<any>`，照搬会让每个调用方的 `value` 和
+`onValueChange` 都拿到 `any`。所以下面两种写法都成立，默认 `Value = string`：
 
 ```tsx
 <RadioGroup<number> value={minutes} onValueChange={setMinutes}>  // 显式指定
@@ -84,6 +154,36 @@ context 里把名字接过来，但本库的 `FieldSet` / `FieldLegend` 走的�
 
 `RadioGroupItem` 各自推断自己 `value` 的类型 —— 让它和组对上是调用方的事，
 类型系统不会替你把两边绑在一起。
+
+## 状态与 className
+
+两个部件的 `className` 一律双形态：字符串，或 `(state) => string | undefined` 的函数
+（参数就是各自的状态表）。
+
+**RadioGroup**
+
+| 状态 | 出现时机 | 函数 className 里的名字 |
+| --- | --- | --- |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-readonly` | `readOnly` | `readOnly` |
+| `data-required` | `required` | `required` |
+
+**RadioGroupItem**
+
+| 状态 | 出现时机 | 函数 className 里的名字 |
+| --- | --- | --- |
+| `data-checked` / `data-unchecked` | 是不是当前选中项 | `checked` |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-readonly` | `readOnly` | `readOnly` |
+| `data-required` | `required` | `required` |
+
+`RadioGroupState` 是 `disabled` / `readOnly` / `required`，外加 Field 那一组
+（`valid` / `touched` / `dirty` / `filled` / `focused`）；`RadioGroupItemState` 在这些
+之上多一个 `checked`。Field 那一组**只在 Base UI 自己的 `Field.Root` 里才会动**，
+而本库的 `Field` 不是它，所以它们停在默认值上。
+
+组带 `data-slot="radio-group"`，项带 `data-slot="radio-group-item"`，项里那个圆点带
+`data-slot="radio-group-indicator"` —— 圆点由部件自己渲染，不用写 children。
 
 ## 键盘交互
 
@@ -94,13 +194,12 @@ context 里把名字接过来，但本库的 `FieldSet` / `FieldLegend` 走的�
 | `Space` | 选中当前项 |
 | `Enter` | **不选中** —— 上游按原生 radio 的读法把它拦掉了 |
 
-禁用项在方向键导航中被跳过（上面 demo 里从「45 分钟」按 ↓ 会直接落到「30 分钟」，
-越过禁用的「90 分钟」绕回开头）。`Home` / `End` 没有接。
+禁用项在方向键导航中被跳过（[受控](#受控)那个 demo 里从「45 分钟」按 ↓ 会直接落到
+「30 分钟」，越过禁用的「90 分钟」绕回开头）。`Home` / `End` 没有接。
 
 ## Props
 
-`className` 一律双形态：字符串，或 `(state) => string | undefined` 的函数
-（参数就是各自的状态表）。
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
 
 ### RadioGroup
 
@@ -116,19 +215,7 @@ context 里把名字接过来，但本库的 `FieldSet` / `FieldLegend` 走的�
 | `required` | `boolean` | `false` | 必填（回显为 `aria-required`） |
 | `inputRef` | `Ref<HTMLInputElement>` | — | 拿到当前生效的那个隐藏 input |
 | `className` | `string \| ((state: RadioGroupState) => string \| undefined)` | — | 类名 |
-| 其余 | 原生 `div` 属性 | — | 透传 —— `aria-labelledby` 就是从这里进去的 |
-
-`RadioGroupState`：`disabled` / `readOnly` / `required`，外加 Field 那一组
-（`valid` / `touched` / `dirty` / `filled` / `focused`）—— 后者只在 Base UI 自己的
-`Field.Root` 里才会动，而本库的 `Field` 不是它，所以它们停在默认值上。
-
-**状态**
-
-| 状态 | 出现时机 | 函数 className 里的名字 |
-| --- | --- | --- |
-| `data-disabled` | `disabled` | `disabled` |
-| `data-readonly` | `readOnly` | `readOnly` |
-| `data-required` | `required` | `required` |
+| 其余 | Base UI `RadioGroup` 的 props（`div` 的原生属性 + `ref`） | — | 透传 —— `aria-labelledby` 就是从这里进去的 |
 
 ### RadioGroupItem
 
@@ -142,18 +229,7 @@ context 里把名字接过来，但本库的 `FieldSet` / `FieldLegend` 走的�
 | `inputRef` | `Ref<HTMLInputElement>` | — | 拿到这一项的隐藏 input |
 | `nativeButton` | `boolean` | `false` | 用 `render` 换成真 `<button>` 时才打开 |
 | `className` | `string \| ((state: RadioGroupItemState) => string \| undefined)` | — | 类名 |
-| 其余 | 原生 `span` 属性 | — | 透传（根元素是 `span`，隐藏 input 是它的兄弟） |
-
-**状态**
-
-| 状态 | 出现时机 | 函数 className 里的名字 |
-| --- | --- | --- |
-| `data-checked` / `data-unchecked` | 是不是当前选中项 | `checked` |
-| `data-disabled` | `disabled` | `disabled` |
-| `data-readonly` | `readOnly` | `readOnly` |
-| `data-required` | `required` | `required` |
-
-选中的圆点由部件自己渲染，不用写 children。
+| 其余 | Base UI `Radio.Root` 的 props（`span` 的原生属性 + `ref`） | — | 透传（根元素是 `span`，隐藏 input 是它的兄弟） |
 
 五个类型也一并导出：`RadioGroupProps` / `RadioGroupState` /
 `RadioGroupChangeEventDetails` / `RadioGroupItemProps` / `RadioGroupItemState`。

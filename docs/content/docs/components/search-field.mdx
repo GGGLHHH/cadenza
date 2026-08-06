@@ -3,42 +3,51 @@ title: SearchField
 description: 带去抖查询的搜索字段 —— 输入框、清除按钮、Escape 与 Enter 语义都由封装层自己接
 ---
 
+<ComponentPreview name="search-field/basic" />
+
 搜索字段。Base UI 没有搜索字段这个部件，所以行为整套由封装层拥有：输入框是
 `type="search"`（`role="searchbox"` 由此而来），Escape 清空，Enter 触发 `onSubmit`，
 清除按钮清空并退出去抖。各个 part 靠 context 认领这些行为，写在哪都能接上。
 
 叫 **`SearchField`** 而不是 SearchInput，因为它是一个*字段*：根元素持有文本、查询值、
-禁用与只读，输入框只是它的一个 part。
+禁用与只读，输入框只是它的一个 part。除了字段本身，我们只加一件事：**去抖后的查询值**。
 
-除了字段本身，我们只加一件事：**去抖后的查询值**。
+## 使用
 
-## 基础用法
+```tsx
+import {
+  InputGroupAddon,
+  InputGroupButton,
+  SearchField,
+  SearchFieldClear,
+  SearchFieldInput,
+  useSearchQuery,
+} from '@gedatou/cadenza-ui'
+```
 
-打字时 `value` 每次按键都更新，`queryValue` 要等停顿 `debounceMs`（默认 300）
-才落定，并且**已归一化** —— 首尾空白去掉、空串变成 `undefined`，可以直接丢进
-请求或写进 URL：
+```tsx
+<SearchField
+  aria-label="搜索作曲家"
+  placeholder="搜索作曲家..."
+  onQueryValueChange={setQuery}
+/>
+```
 
-<ComponentPreview name="search-field/basic" />
+## 组成
 
-这个拆分和 [InfiniteCombobox](/docs/components/infinite-select) 是同一套词汇：
-`value` 是给输入框看的，`queryValue` 是给数据层看的。两者分开，输入才不会每敲一个
-字就打一次请求。
+不传 `children` 就是默认组合（放大镜 + 输入框 + 清除按钮）：
 
-## 受控
+```text
+SearchField                 ← 持有文本、查询值、禁用与只读
+└── InputGroup              ← 边框、圆角、焦点环都画在这一行上
+    ├── InputGroupAddon     ← 放大镜
+    ├── SearchFieldInput    ← type="search"，Escape / Enter 在这里接
+    └── SearchFieldClear    ← 自带 InputGroupAddon 外壳，空时隐藏
+```
 
-`value` + `onValueChange` 把文本交给外部 state，组件只负责渲染 ——
-从字段之外填入或清空就靠这个：
-
-<ComponentPreview name="search-field/controlled" />
-
-去抖值同样可以受控（`queryValue` + `onQueryValueChange`），两组互不影响：
-只受控文本时去抖值仍由内部管，反之亦然。
-
-## 组合式
-
-不传 `children` 就是默认组合（放大镜 + 输入框 + 清除按钮）。传了就完全接管内部结构，
-自己摆放各个 part。摆放用的是 shadcn 的 [`InputGroup`](#inputgroup) 一族本身，
-不是改了名的转发壳。下面在尾部加了一个快捷键提示，有内容时让位给清除按钮：
+传了 `children` 就完全接管内部结构，自己摆放各个 part。摆放用的是 shadcn 的
+[`InputGroup`](/docs/components/input-group) 一族本身，不是改了名的转发壳。下面在尾部
+加了一个快捷键提示，有内容时让位给清除按钮：
 
 <ComponentPreview name="search-field/composition" />
 
@@ -46,12 +55,46 @@ description: 带去抖查询的搜索字段 —— 输入框、清除按钮、Es
 从 context 拿文本、handler 和无障碍名，`SearchFieldClear` 从 context 拿清除动作
 和禁用态。摆放顺序随你，接线不受影响。
 
-## 禁用与只读
+`SearchField` 自己只导出两个 part，因为只有这两个真的加了东西：`SearchFieldInput`
+盖掉浏览器原生的搜索清除按钮，`SearchFieldClear` 接了「空时隐藏」。其余结构直接用
+`InputGroup` 一族：`InputGroup` / `InputGroupAddon` / `InputGroupButton` /
+`InputGroupInput` / `InputGroupText` / `InputGroupTextarea`，它们自己也是本库的公开组件。
 
-`disabled` 整个字段不可用（清除按钮一并失效），`readOnly` 则保留焦点与选中、
-只是不能改。只读时**不渲染清除按钮** —— 值本来就改不了，清除也就无从谈起：
+边框、圆角和焦点环都画在 `InputGroup` 上：环靠
+`has-[[data-slot=input-group-control]:focus-visible]` 感知内部控件，
+控件自身的环则被 `focus-visible:ring-0` 压掉，整组只有一圈。
+`InputGroupAddon` 的 `align` 决定放行首还是行尾。
 
-<ComponentPreview name="search-field/disabled" />
+文本输入框在鼠标点击时也会命中 `:focus-visible`（浏览器认定它预期要打字），
+所以点一下就有环 —— 这是原生行为，不是我们额外加的。
+我们没有为它们套一层改名的壳 —— 那样只会遮住它们的出处。
+
+## 标签
+
+通道是 [Field](/docs/components/field#无障碍) 四条里最普通的那条 —— `id` 落在真正的
+`<input>` 上；只是**默认组合没有 `id` 落点**：根是个 `<div>`，传给它的 `id` 就停在
+那个 div 上，到不了输入框。于是两种写法：
+
+| 场景 | 写法 |
+| --- | --- |
+| 没有可见标签 | 根上传 `aria-label` —— 它经 context 转发给输入框，**不会**留在根 `div` 上 |
+| 要可见 `FieldLabel` | 走[组合式](#组成)，`id` 传给 `SearchFieldInput`，`FieldLabel htmlFor` 指过去 |
+
+清除按钮自己的无障碍名是另一件事，见 [SearchFieldClear](#searchfieldclear)。
+
+## 去抖查询
+
+打字时 `value` 每次按键都更新，`queryValue` 要等停顿 `debounceMs`（默认 300）
+才落定，并且**已归一化** —— 首尾空白去掉、空串变成 `undefined`，可以直接丢进
+请求或写进 URL。上面 hero 里那个 demo 把这个时间差直接显示了出来。
+
+这个拆分和 [InfiniteCombobox](/docs/components/infinite-select) 是同一套词汇：
+`value` 是给输入框看的，`queryValue` 是给数据层看的。两者分开，输入才不会每敲一个
+字就打一次请求。
+
+`debounceMs` **挂载时读取一次**，之后改动不生效 —— 和 `defaultValue` 同一个约定。
+清除则是显式动作，**不走去抖**，立即生效：点了清除还要等 300ms 才掉筛选，读起来是
+卡顿而不是平滑。
 
 ## 去抖状态 hook
 
@@ -69,12 +112,85 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | 字段 | 说明 |
 | --- | --- |
 | `value` | 原始文本，与输入框同步 |
-| `setValue(text)` | 写入文本并重新计时 |
+| `setValue(text)` | 写入文本并重新计时。省略 `eventDetails` 时 `reason` 是 `'none'` |
 | `queryValue` | 落定后的查询值：已 trim，空白时是 `undefined` |
-| `resetSearch()` | 同时清空两者，并取消尚未触发的去抖 |
+| `resetSearch()` | 同时清空两者，并取消尚未触发的去抖。省略 `eventDetails` 时 `reason` 是 `'imperative-action'` |
 
-清除是显式动作，所以 `resetSearch()` **不走去抖**，立即生效 ——
-点了清除还要等 300ms 才掉筛选，读起来是卡顿而不是平滑。
+它接的就是 `SearchField` 那套受控 props（`SearchQueryOptions`）—— 把同一批 props
+传给组件是它的简写形式。
+
+## 受控
+
+`value` + `onValueChange` 把文本交给外部 state，组件只负责渲染 ——
+从字段之外填入或清空就靠这个：
+
+<ComponentPreview name="search-field/controlled" />
+
+去抖值同样可以受控（`queryValue` + `onQueryValueChange`），两组互不影响：
+只受控文本时去抖值仍由内部管，反之亦然。
+
+两个回调的 `eventDetails.cancel()` 各管各的那一层：拒掉文本那次变更，去抖那次也就
+不会发生；只拒去抖那次，输入框照常显示新文本、查询值停在原处。
+
+## 表单
+
+根是个 `<div>` 而不是 `<form>`：`onSubmit` 是**我们的 Enter 回调**，和原生表单提交
+没有关系。它和 `onChange` 一样被从 div 的 props 里剔掉、永远不会到达元素 —— 同名的
+原生 handler 签名对不上，留着只会让类型逼你写一个两边都满足的回调。
+
+序列化仍然走原生，只是落点在输入框上：`name` 要传给 `SearchFieldInput`，也就是走
+[组合式](#组成)那条路 —— 传给根的 `name` 只会留在那个 `div` 上。多数搜索框压根不参与
+序列化，`<form role="search">` 里才需要这一步。
+
+## 禁用
+
+`disabled` 整个字段不可用（清除按钮一并失效），`readOnly` 则保留焦点与选中、
+只是不能改。只读时**不渲染清除按钮** —— 值本来就改不了，清除也就无从谈起：
+
+<ComponentPreview name="search-field/disabled" />
+
+自己组合时记得也把只读这一档处理掉，别只用 `hidden`：`InputGroup` 对**任何** disabled
+后代都会整体变灰（`has-disabled:opacity-50`），于是一个只读字段会长得跟禁用的一样 ——
+而 `display: none` 的元素仍然会被 `:has(:disabled)` 命中，藏起来没用，得不渲染。
+
+## 什么时候用 SearchField
+
+三个都是「打字」的控件，先挑对再看用法：
+
+| 组件 | 什么时候 |
+| --- | --- |
+| **SearchField** | 查询是**自由文本**，交给服务端或某张表的筛选，没有候选列表要选中 |
+| [Combobox](/docs/components/combobox) / [InfiniteCombobox](/docs/components/infinite-select) | 打字是为了**从列表里选中一项**，最后拿到的是选中值而不是文本 |
+| [`useSearchQuery`](#去抖状态-hook) | 要同一套去抖查询，但输入框长在别处（表格工具条、URL 同步），不渲染这个字段 |
+
+## 状态与 className
+
+根元素是纯 `<div>`，`className` 就是字符串 —— 类型上不假装有函数形态。要按状态改样式
+就用下表左列的 `data-*`（`data-disabled:opacity-50`，Tailwind 直接当变体写），默认组合
+自己也是这么隐藏清除按钮的。只有 `SearchFieldInput` 的 `className` 是双形态，它底下是
+Base UI 的 `Input`。
+
+右列是同一状态在函数 `children` 里的名字：
+
+| 状态 | 出现时机 | 函数 children 里的名字 |
+| --- | --- | --- |
+| `data-empty` | 字段没有内容（清除按钮靠它显隐） | `empty` |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-readonly` | `readOnly` | `readOnly` |
+
+封装层自渲染的三个部件各带一个 `data-slot`：
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `search-field` | 根 `div`。它同时是 `group/search-field`，状态就是靠这个 group 名往下传 —— 清除按钮用 `group-data-empty/search-field:hidden` 藏起来，[组合式](#组成)里的快捷键提示反过来用 `group-data-empty/search-field:inline` 露出来 |
+| `search-field-clear-addon` | 清除按钮自带的 `InputGroupAddon` 外壳（`align="inline-end"`），显隐规则挂在它身上 |
+| `search-field-clear` | 清除按钮本身 |
+
+**`SearchFieldInput` 没有自己的 `data-slot`，也别给它传一个。** 它身上的
+`data-slot="input-group-control"` 是接线契约不是标记 —— `InputGroup` 的焦点环正是靠
+`has-[[data-slot=input-group-control]:focus-visible]` 画出来的。而 `InputGroupInput`
+是先写属性、后展开 props，所以外面传一个同名属性会把契约值顶掉，焦点环就此静默消失：
+不报错，只是不再出现。
 
 ## 键盘交互
 
@@ -87,53 +203,42 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 ## Props
 
 顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
-每个部件的 Props 表后面跟一张**状态**表，左列是挂在 DOM 上的 `data-*`（Tailwind
-直接当变体写），右列是同一状态在函数 children 里的名字。
-
-根元素是纯 `<div>`，`className` 就是字符串 —— 类型上不假装有函数形态。要按状态改样式
-就用状态表左列的 `data-*`（`data-disabled:opacity-50`），默认组合自己也是这么隐藏
-清除按钮的。只有 `SearchFieldInput` 的 `className` 是双形态，它底下是 Base UI 的 `Input`。
+状态属性与两条 `className` 通道见[状态与 className](#状态与-classname)。
 
 ### SearchField
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `aria-label` | `string` | — | 这个字段的无障碍名，没有可见 `Label` 时**必给** |
+| `aria-label` | `string` | — | 这个字段的无障碍名，没有可见 `Label` 时**必给**，见[标签](#标签) |
 | `defaultValue` | `string` | `''` | 非受控初始文本 |
-| `value` | `string` | — | 受控文本 |
-| `onValueChange` | `(value, eventDetails) => void` | — | 每次文本变化触发。`eventDetails.reason` 说明来源（`input-change` / `clear-press` / `escape-key`），`cancel()` 拒绝这次变更 |
-| `clearable` | `boolean` | `true` | 清除按钮总开关——`false` 连显式组合的 `SearchFieldClear` 一并关掉。Escape 清空不受它管（那是 search 输入框自己的键盘语义） |
 | `defaultQueryValue` | `string` | — | 非受控初始查询值 |
+| `value` | `string` | — | 受控文本 |
 | `queryValue` | `string` | — | 受控查询值 |
-| `onQueryValueChange` | `(value, eventDetails) => void` | — | 去抖后触发，已 trim、空白归一为 `undefined` |
+| `onValueChange` | `(value, eventDetails) => void` | — | 每次文本变化触发。`eventDetails.reason` 说明来源（`input-change` / `clear-press` / `escape-key` / `imperative-action` / `none`），`cancel()` 拒绝这次变更 |
+| `onQueryValueChange` | `(value, eventDetails) => void` | — | 去抖后触发，已 trim、空白归一为 `undefined`。拿到的是**另一份** `eventDetails`（reason 与 event 相同），`cancel()` 只挡这一层 |
 | `onSubmit` | `(value, eventDetails) => void` | — | 按 Enter 时触发，参数是当前原始文本。第二参是 `SearchFieldSubmitEventDetails`——**generic 详情、无 `cancel()`**（提交不写任何内部状态，没有可跳过的东西），`reason` 为 `'keyboard'` |
-
-| `debounceMs` | `number` | `300` | 去抖间隔。**挂载时读取一次**，之后改动不生效（同 `defaultValue` 的约定）|
-| `placeholder` | `string` | — | 默认组合里输入框的占位符 |
+| `clearable` | `boolean` | `true` | 清除按钮总开关——`false` 连显式组合的 `SearchFieldClear` 一并关掉。Escape 清空不受它管（那是 search 输入框自己的键盘语义） |
+| `debounceMs` | `number` | `300` | 去抖间隔。**挂载时读取一次**，之后改动不生效（同 `defaultValue` 的约定） |
 | `disabled` | `boolean` | `false` | 禁用整个字段 |
 | `readOnly` | `boolean` | `false` | 只读：可聚焦、可选中，不可改 |
+| `placeholder` | `string` | — | 默认组合里输入框的占位符 |
 | `children` | `ReactNode \| (state) => ReactNode` | 默认组合 | 传了就完全接管内部结构。函数形态收到状态表右列那三个状态，外加 `defaultChildren`（默认组合，可扩展） |
 | `className` | `string` | — | 根元素类名 |
-| 其余 | 原生 `<div>` 的 props | — | 透传到根元素 |
+| 其余 | 原生 `<div>` 的 props（含 `ref`） | — | 透传到根元素 |
 
-**状态**
-
-| 状态 | 出现时机 | 函数 children 里的名字 |
-| --- | --- | --- |
-| `data-empty` | 字段没有内容（清除按钮靠它显隐） | `empty` |
-| `data-disabled` | `disabled` | `disabled` |
-| `data-readonly` | `readOnly` | `readOnly` |
-
-`children` 是双形态的：ReactNode，或 `(state) => ReactNode` 的函数——参数就是上表
-右列那三个状态，**外加 `defaultChildren`（默认组合本身）**。函数形态是**完全接管**：
-什么都不自动注入；但要扩展而不是重造时，把 `defaultChildren` 渲染出来再往旁边加即可：
+`children` 是双形态的：ReactNode，或 `(state) => ReactNode` 的函数——参数就是
+[状态表](#状态与-classname)右列那三个状态，**外加 `defaultChildren`（默认组合本身）**。
+函数形态是**完全接管**：什么都不自动注入；但要扩展而不是重造时，把 `defaultChildren`
+渲染出来再往旁边加即可：
 
 ```tsx
 <SearchField aria-label="搜索">
   {({ defaultChildren }) => (
     <>
       {defaultChildren}
-      <FilterButton />
+      <InputGroupAddon align="inline-end">
+        <InputGroupButton aria-label="筛选"><IconFilter /></InputGroupButton>
+      </InputGroupAddon>
     </>
   )}
 </SearchField>
@@ -141,37 +246,20 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 
 默认组合自己也在用这套能力（只读时收起清除按钮），接管后这些状态原样到你手上。
 
-### InputGroup 一族
-
-组合式写法里的外壳、图标位、额外按钮全部来自 shadcn 的 `InputGroup`，它自己也是
-本库的公开组件：`InputGroup` / `InputGroupAddon` / `InputGroupButton` /
-`InputGroupInput` / `InputGroupText` / `InputGroupTextarea`。
-
-边框、圆角和焦点环都画在 `InputGroup` 上：环靠
-`has-[[data-slot=input-group-control]:focus-visible]` 感知内部控件，
-控件自身的环则被 `focus-visible:ring-0` 压掉，整组只有一圈。
-`InputGroupAddon` 的 `align` 决定放行首还是行尾。
-
-文本输入框在鼠标点击时也会命中 `:focus-visible`（浏览器认定它预期要打字），
-所以点一下就有环 —— 这是原生行为，不是我们额外加的。
-我们没有为它们套一层改名的壳 —— 那样只会遮住它们的出处。
-
 ### SearchFieldInput
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `placeholder` | `string` | — | 占位符 |
 | `className` | `string \| (state) => string` | — | 类名 |
-| 其余 | Base UI `Input` 的 props | — | 透传 |
+| 其余 | Base UI `Input` 的 props（含 `ref`） | — | 透传 |
 
 不需要 `value` / `onValueChange` / `aria-label` —— 三者都从字段的 context 拿。
-`type="search"`、Escape 清空、Enter 提交也都在这里接好。原生的
+`type="search"`、Escape 清空、Enter 提交也都在这里接好，而且**顶不掉** —— 两个 handler
+都串在 spread 之后：你的 `onChange` 在字段写完文本之后跑，你的 `onKeyDown` 在我们之前跑，
+`preventDefault()` 了才轮不到 Escape / Enter。原生的
 `::-webkit-search-cancel-button` 已经隐掉，免得和我们的清除按钮重复。
-
-**别给它传 `data-slot`。** 它身上的 `data-slot="input-group-control"` 是接线契约不是标记 ——
-`InputGroup` 的焦点环正是靠 `has-[[data-slot=input-group-control]:focus-visible]`
-画出来的。而 `InputGroupInput` 是先写属性、后展开 props，所以外面传一个同名属性会把
-契约值顶掉，焦点环就此静默消失：不报错，只是不再出现。
+`data-slot` 是唯一**不能**传的那个，原因见[状态与 className](#状态与-classname)。
 
 ### SearchFieldClear
 
@@ -180,17 +268,15 @@ const { value, setValue, queryValue, resetSearch } = useSearchQuery({
 | `children` | `ReactNode` | ✕ | 换图标从这里传 |
 | `aria-label` | `string` | `'Clear search'` | 按钮的无障碍名。默认值是 aria-only 的英文兜底（同 `'Search'` / `'Loading'` 的家法），业务层传译文覆盖 |
 | `className` | `string` | — | 类名 |
+| 其余 | `InputGroupButton` 的 props | — | 透传到按钮 |
 
 清除行为**不用接**：它从字段的 context 里拿清除动作和禁用态。字段为空时它跟随根组件
 的 `data-empty` 隐藏，只读时默认组合直接不渲染它。它也不占 Tab 停留点
-（`tabIndex={-1}`）—— 键盘用户用 Escape。
+（`tabIndex={-1}`）—— 键盘用户用 Escape。`clearable={false}` 时它整个返回 `null`。
 
-自己组合时记得也把只读这一档处理掉，别只用 `hidden`：`InputGroup` 对**任何** disabled
-后代都会整体变灰（`has-disabled:opacity-50`），于是一个只读字段会长得跟禁用的一样 ——
-而 `display: none` 的元素仍然会被 `:has(:disabled)` 命中，藏起来没用，得不渲染。
+组合式用到的 `InputGroup` 部件，props 见 [InputGroup](/docs/components/input-group)。
 
-`SearchField` 自己只导出两个 part，因为只有这两个真的加了东西：`SearchFieldInput`
-盖掉浏览器原生的搜索清除按钮，`SearchFieldClear` 接了「空时隐藏」。
-其余结构直接用 `InputGroup` 一族。
-
-`SearchFieldProps` / `SearchQueryOptions` / `SearchQueryState` 三个类型也一并导出。
+八个类型一并导出：`SearchFieldProps` / `SearchFieldState` /
+`SearchQueryOptions` / `SearchQueryState` / `SearchFieldChangeEventReason` /
+`SearchFieldChangeEventDetails` / `SearchFieldSubmitEventReason` /
+`SearchFieldSubmitEventDetails`。

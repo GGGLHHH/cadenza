@@ -3,26 +3,104 @@ title: Combobox
 description: 在浏览器里过滤的组合框 —— 整份列表住在 items 里，Base UI 随输入收窄
 ---
 
+<ComponentPreview name="combobox/basic" />
+
 一个会过滤列表的文本框。**整份列表就在 `items` 里**，你打字，Base UI 拿这份数组
 在浏览器里收窄，`ComboboxList` 的 render 函数收到的永远是收窄之后的那一份。
 
-所以先挑对组件：
+列表在服务端、要分页，就别在这里想办法把 `items` 灌满 —— 那是另一个组件的活，
+见[什么时候用 Combobox](#什么时候用-combobox)。
 
-| | **Combobox** | [**InfiniteCombobox**](/docs/components/infinite-select) |
-| --- | --- | --- |
-| 列表在哪 | 内存里，一整份 `items` | 服务端，一页一页来 |
-| 谁过滤 | Base UI（`Intl.Collator` 的包含匹配） | 你的接口 —— 关键词发过去，它决定返回什么 |
-| 合适的量级 | 几十到几百条，一次给全 | 上不封顶，滚到底再要下一页 |
-| 要接的线 | 没有，给数组就行 | 取数适配器、分页、loading / error 槽位 |
+## 使用
 
-列表在服务端、要分页，就别在这里想办法把 `items` 灌满 —— 那是另一个组件的活。
+```tsx
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxPopup,
+  InputGroupAddon,
+} from '@gedatou/cadenza-ui'
+```
 
-## 基础用法
+```tsx
+<Combobox<string> id="composer" items={composers}>
+  <ComboboxInput placeholder="搜索作曲家" />
+  <ComboboxPopup>
+    <ComboboxEmpty>没有匹配的作曲家</ComboboxEmpty>
+    <ComboboxList>
+      {(composer: string) => (
+        <ComboboxItem key={composer} value={composer}>{composer}</ComboboxItem>
+      )}
+    </ComboboxList>
+  </ComboboxPopup>
+</Combobox>
+```
 
-`ComboboxInput` 是那一行文本框，`ComboboxPopup` 是浮层，
-`ComboboxList` 的 children 写成 render 函数就把每一项渲染成 `ComboboxItem`：
+`id` 写在根上就够了：Base UI 把它路由给 `ComboboxInput` 里那个 `<input>`，
+[Field](/docs/components/field) 的 `FieldLabel htmlFor` 直接指过去。
 
-<ComponentPreview name="combobox/basic" />
+## 组成
+
+`ComboboxInput` 是那一行文本框，`ComboboxPopup` 是浮层，`ComboboxList` 的 children
+写成 render 函数就把每一项渲染成 `ComboboxItem`。三种形态：
+
+### 单行
+
+一行文本框配一份平列表，见页首示例与[使用](#使用)：
+
+```text
+Combobox
+├── ComboboxInput
+└── ComboboxPopup
+    ├── ComboboxEmpty
+    └── ComboboxList
+        ├── ComboboxItem
+        └── ComboboxItem
+```
+
+### 带 chips
+
+`multiple` 之后输入框那一行换成 chips 行，见[多选](#多选)：
+
+```text
+Combobox
+├── ComboboxChips
+│   └── ComboboxValue
+│       ├── ComboboxChip
+│       └── ComboboxChipsInput
+└── ComboboxPopup
+    ├── ComboboxEmpty
+    └── ComboboxList
+        ├── ComboboxItem
+        └── ComboboxItem
+```
+
+### 分组与 Collection
+
+每一组的条目由 `ComboboxGroup` 里的 `ComboboxCollection` 渲染，组之间可以插一条
+`ComboboxSeparator`，见[分组](#分组)：
+
+```text
+Combobox
+├── ComboboxInput
+└── ComboboxPopup
+    ├── ComboboxEmpty
+    └── ComboboxList
+        ├── ComboboxGroup
+        │   ├── ComboboxGroupLabel
+        │   └── ComboboxCollection
+        │       ├── ComboboxItem
+        │       └── ComboboxItem
+        ├── ComboboxSeparator
+        └── ComboboxGroup
+            ├── ComboboxGroupLabel
+            └── ComboboxCollection
+                ├── ComboboxItem
+                └── ComboboxItem
+```
 
 `ComboboxItem` 的 `value` 就是选中后落进 combobox 值里的东西。
 
@@ -30,8 +108,46 @@ description: 在浏览器里过滤的组合框 —— 整份列表住在 items �
 数据判定「空」的，逐个手写 `ComboboxItem` 而不给 `items` 时它不会亮。它必须一直挂在
 DOM 里（自身带 `aria-live` 播报），所以别条件渲染它本身，要换内容就换它的 children。
 
-`id` 写在根上就够了：Base UI 把它路由给 `ComboboxInput` 里那个 `<input>`，
-[Field](/docs/components/field) 的 `FieldLabel htmlFor` 直接指过去。
+## 多选
+
+`multiple` 之后值整体换型成数组，输入框那一行也换人：`ComboboxChips` 是带边框的那一行，
+里面每个选中项是一个 `ComboboxChip`，末尾跟一个没有边框的 `ComboboxChipsInput`：
+
+<ComponentPreview name="combobox/multiple" />
+
+**chips 那一行要自己交给弹层当锚点。** 默认弹层贴着输入框，而这里输入框只是行里的一小
+截，选多了还会换行把整行撑高。所以给 `ComboboxChips` 一个 ref，把同一个 ref 交给
+`ComboboxPopup` 的 `anchor` —— 弹层跟着整行走。封装层认得这件事：给了 `anchor` 时弹层
+上会多一个 `data-chips`，要按这个分支调样式时当选择器用。
+
+chip 的删除按下标走（`selectedValue.filter((_, i) => i !== index)`，下标是它在
+`ComboboxChips` 里的渲染顺序），所以**chips 的顺序必须和值的顺序一致** —— 用
+`ComboboxValue` 的函数 children 遍历当前值来渲染，顺序天然对齐。
+
+`ComboboxChip` 默认自带那个 ✕（`removable={false}` 关掉，只留键盘删）；chips 之间怎么
+走见[键盘交互](#键盘交互)。
+
+## 可清除
+
+清除按钮**不是一直在**：Base UI 只在「有东西可清」时才把它挂上 DOM，而「有东西」按
+选择模式分三种：
+
+| 选择模式 | 「有东西可清」指什么 |
+| --- | --- |
+| 单选（默认） | **选中了值**（`selectedValue != null`） |
+| `multiple` | **有 chip** —— 选中数组非空 |
+| `selectionMode="none"` | 输入框里**有文字** |
+
+第三种是上游 `Autocomplete` 那个根的模式，本库的 `Combobox` 只把 `multiple` 翻成
+`'multiple'` / `'single'`，没有第三档。
+
+要点在第一行：**单选时你只打了字、还没从列表里选，清除不出现，箭头仍在。** 正是这个
+条件挂载让箭头和清除**共用一个位置** —— `ComboboxInput` 给箭头挂了一条
+`group-has-data-[slot=combobox-clear]/input-group:hidden`：行里一旦出现了清除按钮，
+箭头就自己让开。两个都要关掉就 `trigger={false}` / `clearable={false}`。
+
+点清除会把文本清空、把选中值清成 `null`（多选是 `[]`），
+`reason` 是 `'clear-press'`，然后焦点回到输入框。
 
 ## 分组
 
@@ -59,65 +175,48 @@ context，才知道该遍历哪一组；没有它 `ComboboxCollection` 会去遍
 `ComboboxGroupLabel` 是**组的标题**，不是控件的标签 —— 控件的标签在
 [Field](/docs/components/field) 那边。这也是移植时改名的原因，见[名字这一节](#这份是封装层自己的移植)。
 
-## 多选与 chips
+## 自定义条目
 
-`multiple` 之后值整体换型成数组，输入框那一行也换人：`ComboboxChips` 是带边框的那一行，
-里面每个选中项是一个 `ComboboxChip`，末尾跟一个没有边框的 `ComboboxChipsInput`：
+条目是对象时，给根一对 `itemToString*` 把它翻成字符串 —— 一份给人看，一份给表单提交：
 
-<ComponentPreview name="combobox/multiple" />
+```tsx
+interface Composer { id: string, name: string }
 
-**chips 那一行要自己交给弹层当锚点。** 默认弹层贴着输入框，而这里输入框只是行里的一小
-截，选多了还会换行把整行撑高。所以给 `ComboboxChips` 一个 ref，把同一个 ref 交给
-`ComboboxPopup` 的 `anchor` —— 弹层跟着整行走。封装层认得这件事：给了 `anchor` 时弹层
-上会多一个 `data-chips="true"`，宽度下限从「输入框宽 + 一点」改成「锚点同宽」。
+const COMPOSERS: Composer[] = [
+  { id: 'bach', name: '巴赫' },
+  { id: 'mozart', name: '莫扎特' },
+]
 
-chip 的删除按下标走（`selectedValue.filter((_, i) => i !== index)`，下标是它在
-`ComboboxChips` 里的渲染顺序），所以**chips 的顺序必须和值的顺序一致** —— 用
-`ComboboxValue` 的函数 children 遍历当前值来渲染，顺序天然对齐。
+<Combobox<Composer>
+  items={COMPOSERS}
+  itemToStringLabel={composer => composer.name}
+  itemToStringValue={composer => composer.id}
+>
+  <ComboboxInput placeholder="搜索作曲家" />
+  <ComboboxPopup>
+    <ComboboxEmpty>没有匹配的作曲家</ComboboxEmpty>
+    <ComboboxList>
+      {(composer: Composer) => (
+        <ComboboxItem key={composer.id} value={composer}>{composer.name}</ComboboxItem>
+      )}
+    </ComboboxList>
+  </ComboboxPopup>
+</Combobox>
+```
 
-键盘：输入框里光标在最左端时按 `←` 跳到最后一个 chip，chips 之间 `←` / `→` 移动
-（RTL 下左右对调），`Backspace` / `Delete` 删掉当前这个，打字则跳回输入框。
-`ComboboxChip` 默认自带那个 ✕（`removable={false}` 关掉，只留键盘删）。
+形状恰好是 `{ value, label }` 的话上游自动认，两个都可以不写；比较不按引用时给
+`isItemEqualToValue`。
 
-## ComboboxClear 什么时候才挂上
+**泛型不退化。** `Combobox<Value, Multiple>` 两个类型参数一路走到回调上：
 
-清除按钮**不是一直在**：Base UI 只在「有东西可清」时才把它挂上 DOM，而「有东西」按
-选择模式分三种：
+```tsx
+<Combobox<string> onValueChange={value => …}>          // value: string | null
+<Combobox<string, true> multiple onValueChange={…}>    // value: string[]
+```
 
-| 选择模式 | 「有东西可清」指什么 |
-| --- | --- |
-| 单选（默认） | **选中了值**（`selectedValue != null`） |
-| `multiple` | **有 chip** —— 选中数组非空 |
-| `selectionMode="none"` | 输入框里**有文字** |
-
-第三种是上游 `Autocomplete` 那个根的模式，本库的 `Combobox` 只把 `multiple` 翻成
-`'multiple'` / `'single'`，没有第三档。
-
-要点在第一行：**单选时你只打了字、还没从列表里选，清除不出现，箭头仍在。** 正是这个
-条件挂载让箭头和清除**共用一个位置** —— `ComboboxInput` 给箭头挂了一条
-`group-has-data-[slot=combobox-clear]/input-group:hidden`：行里一旦出现了清除按钮，
-箭头就自己让开。两个都要关掉就 `trigger={false}` / `clearable={false}`。
-
-点清除会把文本清空、把选中值清成 `null`（多选是 `[]`），
-`reason` 是 `'clear-press'`，然后焦点回到输入框。
-
-## className 落在那一行
-
-`ComboboxInput` 不是一个 `<input>`，它自己组装了一整行 —— 一个
-[InputGroup](/docs/components/input-group)，里面装着真正的 input、箭头和清除按钮。
-于是有一条要记住：
-
-- **`className` 落在那一行**（`InputGroup`，纯 DOM），所以它老实是 `string`，
-  没有 Base UI 的函数形态；
-- **其余 props 都进里面那个 `<input>`** —— `placeholder`、`aria-label`、`onKeyDown`、
-  `ref` 都是给它的。
-
-Base UI 写的那些 `data-*`（`data-popup-open` / `data-disabled` / `data-list-empty`…）
-也在里面那个 `<input>` 上，不在行上。想按状态给整行上色，用 `has-*` 选择器
-（比如 `has-data-[popup-open]:border-ring`），别指望行自己带这些属性。
-
-上游 vendored 的那版把这里搞错了 —— 它声明了 Base UI 的函数 `className` 却路由到
-`InputGroup`，见[下一节](#这份是封装层自己的移植)。
+`Multiple` 是第二个参数，单选时省略即可。注意 TS 不做部分类型参数推断 —— 想写
+`multiple` 就得把两个都写出来（`<Combobox<string, true> multiple>`），
+只写第一个的话第二个会退回默认的 `false`，`multiple` 那行就报错了。
 
 ## 受控
 
@@ -141,21 +240,52 @@ Base UI 写的那些 `data-*`（`data-popup-open` / `data-disabled` / `data-list
 不给 `inputValue` 也不给 `defaultInputValue` 时，单选的文本由选中值推导，
 所以挂载时框里就印着当前选中项。
 
-## 泛型不退化
+## 无效态
 
-`Combobox<Value, Multiple>` 两个类型参数一路走到回调上：
+`aria-invalid` 和其余 props 一样进里面那个 `<input>`，**整行跟着变红**：`InputGroup`
+用 `has-[[data-slot][aria-invalid=true]]:` 认它，而里面那个输入框把自己的环压掉了
+（`aria-invalid:ring-0`），所以只有一圈。
 
 ```tsx
-<Combobox<string> onValueChange={value => …}>          // value: string | null
-<Combobox<string, true> multiple onValueChange={…}>    // value: string[]
+<ComboboxInput aria-invalid aria-describedby="composer-error" />
 ```
 
-`Multiple` 是第二个参数，单选时省略即可。注意 TS 不做部分类型参数推断 —— 想写
-`multiple` 就得把两个都写出来（`<Combobox<string, true> multiple>`），
-只写第一个的话第二个会退回默认的 `false`，`multiple` 那行就报错了。
+多选那一行同理：`aria-invalid` 给 `ComboboxChipsInput`，`ComboboxChips` 用
+`has-aria-invalid:` 变红。要让**整列文字**（标签、描述）也进错误态，在
+[`Field`](/docs/components/field) 上挂 `data-invalid` —— 本库的 `Field` 是纯 DOM 的，
+不是 Base UI 那个 `Field.Root`，所以控件身上那批 `data-valid` / `data-invalid`
+在这里不会动，见[状态与 className](#状态与-classname)。
 
-`value` 是对象时给 `itemToStringLabel` / `itemToStringValue` 把它翻成字符串
-（形状恰好是 `{ value, label }` 的话上游自动认），比较不按引用时给 `isItemEqualToValue`。
+## 禁用
+
+**整控件禁用写在根上**：`<Combobox disabled>`。
+
+封装层不再往下转发它 —— Base UI 的 `Input` 自己就把
+`fieldDisabled || comboboxDisabled || disabledProp` 解析好、写在它渲染的元素上，
+而 render 元素自己的 props 会赢下这次合并：vendored 那版转发了一个默认 `disabled = false`，
+正好把根算出来的那份顶掉，于是根上写了 `disabled`、框还能打字、行也不变灰。箭头和清除
+各自从根的状态里读（`useStore(store, selectors.disabled)`），你自己传的 `disabled`
+照旧从展开里过去。
+
+`ComboboxInput` 上的 `disabled` 只禁**这个输入框**；`ComboboxItem` 上的 `disabled`
+只禁那一行，键盘导航跳过它。
+
+## Input Group
+
+`ComboboxInput` 组装出来的那一行**就是一个** [`InputGroup`](/docs/components/input-group)，
+所以往它的 children 里塞 `InputGroupAddon` 就能加前置图标、单位后缀：
+
+```tsx
+<ComboboxInput placeholder="搜索作曲家">
+  <InputGroupAddon>
+    <IconSearch />
+  </InputGroupAddon>
+</ComboboxInput>
+```
+
+children 在 DOM 上排在箭头/清除那个 addon 之后，但那个 addon 是 `align="inline-end"`
+（带 `order-last`），所以**画出来**仍在最右；addon 默认的 `align="inline-start"` 带
+`order-first`，图标落在行首。
 
 ## 这份是封装层自己的移植
 
@@ -174,11 +304,78 @@ Base UI 写的那些 `data-*`（`data-popup-open` / `data-disabled` / `data-list
 
 顺带一个默认值也变了：vendored 的 `showClear` 默认 `false`，封装层的 `clearable`
 默认 **`true`**，取的是 [Select](/docs/components/select)「清除默认在场」那个意思。
-但只取了一半:Select 的 `clearable` 住在根上、是连显式组合的清除一并关掉的**总开关**，
+但只取了一半：Select 的 `clearable` 住在根上、是连显式组合的清除一并关掉的**总开关**，
 这里的 `clearable` 住在 `ComboboxInput` 上、只管**它自己那套默认组合**渲不渲染那颗按钮 ——
 你手写的 `<ComboboxClear />` 不受它影响。
 
 除此之外全是 Base UI 的，原样透传。
+
+## 什么时候用 Combobox
+
+先挑对组件：
+
+| | **Combobox** | [**InfiniteCombobox**](/docs/components/infinite-select) |
+| --- | --- | --- |
+| 列表在哪 | 内存里，一整份 `items` | 服务端，一页一页来 |
+| 谁过滤 | Base UI（`Intl.Collator` 的包含匹配） | 你的接口 —— 关键词发过去，它决定返回什么 |
+| 合适的量级 | 几十到几百条，一次给全 | 上不封顶，滚到底再要下一页 |
+| 要接的线 | 没有，给数组就行 | 取数适配器、分页、loading / error 槽位 |
+
+列表在服务端、要分页，就别在这里想办法把 `items` 灌满 —— 那是另一个组件的活。
+不用打字过滤、选项固定的，用 [Select](/docs/components/select)。
+
+## 状态与 className
+
+`ComboboxInput` 是唯一的例外，先说清楚：它不是一个 `<input>`，它自己组装了一整行 ——
+一个 [InputGroup](/docs/components/input-group)，里面装着真正的 input、箭头和清除按钮。
+于是有一条要记住：
+
+- **`className` 落在那一行**（`InputGroup`，纯 DOM），所以它老实是 `string`，
+  没有 Base UI 的函数形态；
+- **其余 props 都进里面那个 `<input>`** —— `placeholder`、`aria-label`、`onKeyDown`、
+  `ref` 都是给它的。
+
+Base UI 写的那些 `data-*`（`data-popup-open` / `data-disabled` / `data-list-empty`…）
+也在里面那个 `<input>` 上，不在行上。想按状态给整行上色，用 `has-*` 选择器
+（比如 `has-data-[popup-open]:border-ring`），别指望行自己带这些属性。
+上游 vendored 的那版把这里搞错了 —— 它声明了 Base UI 的函数 `className` 却路由到
+`InputGroup`，见[上一节](#这份是封装层自己的移植)。
+
+**其余部件都通到 Base UI 的 slot**，所以函数形态成立：`(state) => string | undefined`，
+state 的字段就是[Props](#props) 里各部件那张 `data-*` 表。这些 state 的类型名住在上游
+（`Combobox.Item.State` 之类），封装层只转出根的 `ComboboxState`。
+
+每个部件都带 `data-slot="combobox-*"`，需要从外部定位时当选择器用。其中两个是**接线
+契约、不只是标记**：`ComboboxClear` 的 `data-slot="combobox-clear"` 是箭头那条隐藏规则
+认的东西（见[可清除](#可清除)），`ComboboxChip` 里那颗 ✕ 是
+`data-slot="combobox-chip-remove"`，chip 靠它把右内边距收掉。传一个同名属性进去会把
+契约值顶掉：不报错，只是规则不再命中。
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| `↓` / `↑` | 在列表里移动高亮；走到头是否绕回输入框看 `loopFocus`（默认绕）。`grid` 时方向键按行列走 |
+| `Enter` | 选中当前高亮项 |
+| `Escape` | 关闭弹层（`reason: 'escape-key'`） |
+| `←`（光标在输入框最左端） | 跳到最后一个 chip |
+| `←` / `→`（在 chip 上） | 在 chips 之间移动（RTL 下左右对调） |
+| `Backspace` / `Delete`（在 chip 上） | 删掉当前这个 chip |
+| 任意字符（在 chip 上） | 跳回输入框继续打字 |
+
+后四行只在 `multiple` + `ComboboxChips` 的那一行里成立，见[多选](#多选)。
+
+## 导出的类型
+
+`ComboboxProps` / `ComboboxState` / `ComboboxChangeEventDetails` /
+`ComboboxValueProps` / `ComboboxTriggerProps` / `ComboboxClearProps` /
+`ComboboxInputProps` / `ComboboxPopupProps` / `ComboboxListProps` /
+`ComboboxItemProps` / `ComboboxGroupProps` / `ComboboxGroupLabelProps` /
+`ComboboxCollectionProps` / `ComboboxEmptyProps` / `ComboboxSeparatorProps` /
+`ComboboxChipsProps` / `ComboboxChipProps` / `ComboboxChipsInputProps`。
+
+`ComboboxState` 是根的 state —— 而根不渲染 DOM，那个类型是**空对象**，别指望从它
+读到什么；部件各自的 state 类型住在上游（`Combobox.Item.State` 之类）。
 
 ## Props
 
@@ -202,15 +399,15 @@ Base UI 写的那些 `data-*`（`data-popup-open` / `data-disabled` / `data-list
 | `onOpenChange` | `(open: boolean, eventDetails: ComboboxChangeEventDetails) => void` | — | 开合变化 |
 | `onOpenChangeComplete` | `(open: boolean) => void` | — | 进出场动画结束后 |
 | `onItemHighlighted` | `(value: Value \| undefined, eventDetails) => void` | — | 高亮项变化；`reason` 是 `'keyboard'` / `'pointer'` / `'none'` |
-| `multiple` | `boolean` | `false` | 多选；开了之后值整体变成数组 |
-| `disabled` | `boolean` | `false` | 忽略用户交互 |
+| `multiple` | `boolean` | `false` | 多选；开了之后值整体变成数组，见[多选](#多选) |
+| `disabled` | `boolean` | `false` | 忽略用户交互，见[禁用](#禁用) |
 | `readOnly` | `boolean` | `false` | 不能改选中 |
 | `required` | `boolean` | `false` | 提交前必须有值 |
 | `filter` | `null \| ((itemValue, query, itemToString?) => boolean)` | `Intl.Collator` 的包含匹配 | 换掉过滤规则；给 `null` 就是**不过滤** |
 | `filteredItems` | `readonly Value[] \| readonly Group[]` | — | 自己在外面过滤好的结果；给了就不再走内部过滤（配上游的 `useFilter()`） |
 | `limit` | `number` | `-1` | 最多渲染多少项，`-1` 不限 |
 | `locale` | `Intl.LocalesArgument` | 运行时区域 | 过滤用的字符串比较区域 |
-| `itemToStringLabel` | `(itemValue: Value) => string` | — | 对象值 → 显示用的字符串（`{ value, label }` 形状自动认） |
+| `itemToStringLabel` | `(itemValue: Value) => string` | — | 对象值 → 显示用的字符串（`{ value, label }` 形状自动认），见[自定义条目](#自定义条目) |
 | `itemToStringValue` | `(itemValue: Value) => string` | — | 对象值 → 提交用的字符串 |
 | `isItemEqualToValue` | `(itemValue: Value, value: Value) => boolean` | `Object.is` | 对象值不按引用相等时给它 |
 | `openOnInputClick` | `boolean` | `true` | 点输入框就展开 |
@@ -227,6 +424,7 @@ Base UI 写的那些 `data-*`（`data-popup-open` / `data-disabled` / `data-list
 | `autoComplete` | `string` | — | 浏览器自动填充提示，落到隐藏 input 上 |
 | `inputRef` | `Ref<HTMLInputElement>` | — | 拿到隐藏的那个 `<input>` |
 | `actionsRef` | `RefObject<{ unmount: () => void } \| null>` | — | 命令式动作；外部控制的关闭动画播完后调 `unmount()` |
+| 其余 | Base UI `Combobox.Root` 的 props | — | 透传 |
 
 ### ComboboxInput
 
@@ -235,11 +433,11 @@ Base UI 写的那些 `data-*`（`data-popup-open` / `data-disabled` / `data-list
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `trigger` | `boolean` | `true` | 渲染那个下拉箭头。输入框住在弹层里时关掉 |
-| `clearable` | `boolean` | `true` | 渲染清除按钮。它只在「有东西可清」时才挂上，见[上文](#comboboxclear-什么时候才挂上) |
-| `disabled` | `boolean` | — | 只禁这个输入框。**整控件禁用写在根上**（`<Combobox disabled>`）—— 封装层不再往下转发它，输入框、箭头、清除各自从根的状态里读，转发反而会把根算出来的那份顶掉 |
-| `children` | `ReactNode` | — | 追加到行里。DOM 上排在箭头/清除之后，但那个 addon 带 `order-last`，所以**画出来**仍在最右 |
+| `clearable` | `boolean` | `true` | 渲染清除按钮。它只在「有东西可清」时才挂上，见[可清除](#可清除) |
+| `disabled` | `boolean` | — | 只禁这个输入框。**整控件禁用写在根上**，见[禁用](#禁用) |
+| `children` | `ReactNode` | — | 追加到行里，见 [Input Group](#input-group) |
 | `render` | `ReactElement \| (props, state) => ReactElement` | — | 排在封装层那个 `InputGroupInput` 之后：传了就把它换掉 |
-| `className` | `string` | — | **那一行**（`InputGroup`）的类名。纯 DOM，只收字符串 |
+| `className` | `string` | — | **那一行**（`InputGroup`）的类名。纯 DOM，只收字符串，见[状态与 className](#状态与-classname) |
 | 其余 | Base UI `Combobox.Input` 的 props（`input` 的原生属性 + `ref`） | — | 透传给里面那个 `<input>` |
 
 **状态**（都在里面那个 `<input>` 上，不在行上）
@@ -279,9 +477,11 @@ Portal + Positioner + Popup 一整套。定位那几个 props 是从 Positioner 
 | `data-side` / `data-align` | 实际贴的那一边、实际对齐 |
 | `data-empty` | 过滤结果为空 |
 | `data-instant` | 这一次不要动画 |
-| `data-chips` | **封装层加的**，值是 `"true"` / `"false"` 字符串：给了 `anchor` 就是 `"true"`，宽度下限改成与锚点同宽 |
+| `data-chips` | **封装层加的**：给了 `anchor` 就挂上（空串值），没给就不挂 |
 
-宽度默认跟随锚点（`inline-(--anchor-width)`），高度上限是 `--available-height`。
+宽度默认跟随锚点（`inline-(--anchor-width)`），下限再宽一点点
+（`calc(var(--anchor-width) + --spacing(7))`，给箭头和清除留位），
+高度上限是 `--available-height`。
 
 ### ComboboxItem
 
@@ -316,22 +516,8 @@ Portal + Positioner + Popup 一整套。定位那几个 props 是从 Positioner 
 | `ComboboxEmpty` | `div` | — | 过滤结果为空时现身，靠根上的 `items` 判定。自带播报，别条件渲染它本身 |
 | `ComboboxSeparator` | `div` | `orientation` | 分隔线 |
 | `ComboboxTrigger` | `button` | `disabled` | 那个下拉箭头。`ComboboxInput` 默认已经渲染了一个，单独用才写它。状态 `data-popup-open` / `data-pressed` / `data-disabled` / `data-readonly` / `data-popup-side` / `data-list-empty` / `data-placeholder` |
-| `ComboboxClear` | `button` | `disabled`、`keepMounted` | 清除。条件挂载规则见[上文](#comboboxclear-什么时候才挂上)；`keepMounted` 让它一直在 DOM 里。状态 `data-visible` / `data-popup-open` / `data-disabled` |
+| `ComboboxClear` | `button` | `disabled`、`keepMounted` | 清除。条件挂载规则见[可清除](#可清除)；`keepMounted` 让它一直在 DOM 里。状态 `data-visible` / `data-popup-open` / `data-disabled` |
 | `ComboboxValue` | 不渲染元素 | `placeholder`、`children: ReactNode \| ((value) => ReactNode)` | 当前值。函数 children 拿到选中值 —— 多选渲染 chips 就靠它 |
 | `ComboboxChips` | `div`（有 chip 时 `role="toolbar"`） | — | 多选那一行。给它 ref 并交给 `ComboboxPopup` 的 `anchor` |
 | `ComboboxChip` | `div` | `removable`（默认 `true`） | 一个选中项。`removable` 关掉就只剩键盘删。状态 `data-disabled` |
 | `ComboboxChipsInput` | `input` | — | chips 之间那个没有边框的输入框 |
-
-除 `ComboboxInput` 外，每个部件的 `className` 都通到 Base UI 的 slot，所以函数形态
-成立：`(state) => string | undefined`，state 的字段就是上面各自那张表。这些 state 的
-类型名住在上游（`Combobox.Item.State` 之类），封装层只转出根的 `ComboboxState` ——
-而根不渲染 DOM，那个类型是**空对象**，别指望从它读到什么。
-
-## 导出的类型
-
-`ComboboxProps` / `ComboboxState` / `ComboboxChangeEventDetails` /
-`ComboboxValueProps` / `ComboboxTriggerProps` / `ComboboxClearProps` /
-`ComboboxInputProps` / `ComboboxPopupProps` / `ComboboxListProps` /
-`ComboboxItemProps` / `ComboboxGroupProps` / `ComboboxGroupLabelProps` /
-`ComboboxCollectionProps` / `ComboboxEmptyProps` / `ComboboxSeparatorProps` /
-`ComboboxChipsProps` / `ComboboxChipProps` / `ComboboxChipsInputProps`。

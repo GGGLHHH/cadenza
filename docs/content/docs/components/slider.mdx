@@ -3,6 +3,8 @@ title: Slider
 description: 滑块 —— 一个值一个拇指，Value 泛型不退化，onValueCommitted 才是该挂请求的那个
 ---
 
+<ComponentPreview name="slider/basic" />
+
 Base UI 的 `Slider` 装进 shadcn 的 base-nova 皮肤。**一个值一个拇指**：`defaultValue={40}`
 渲染一个，`defaultValue={[25, 75]}` 渲染两个，同一个组件两种形态。
 
@@ -13,11 +15,24 @@ Base UI 的 `Slider` 装进 shadcn 的 base-nova 皮肤。**一个值一个拇�
 （`value ?? defaultValue`，用 `??` 不用 `||` —— `0` 是个正经的值，falsy 判断会把它
 漏进默认分支、数错拇指）。
 
-## 基础用法
+有一条边界：非受控时 Base UI 只在挂载那一次读 `defaultValue`，所以挂载之后再改它的
+**形状**（标量 ↔ 数组，或换个长度），拇指数会动而 Base UI 那份值不动，叠在一起的那对
+就回来了。挂载后改 `defaultValue` 本来就是 React 会告警的误用；受控的 `value` 一路跟得住。
 
-<ComponentPreview name="slider/basic" />
+## 使用
 
-## 标签怎么给
+```tsx
+import { Field, FieldDescription, FieldTitle, Slider } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Field>
+  <FieldTitle id="volume">主音量</FieldTitle>
+  <Slider aria-labelledby="volume" defaultValue={40} name="volume" />
+</Field>
+```
+
+## 标签
 
 `Slider` 的根渲染的是 `<div role="group">`，**不是一个可 label 的元素**；真正带
 `role="slider"` 的，是每个拇指里那个视觉隐藏的 `<input type="range">`。所以标签这条线
@@ -40,21 +55,37 @@ Base UI 的 `Slider.Thumb` 的 `id` 也是落在拇指那个 `div` 上，里面 
 
 压根没有可见文字时（工具条里的一根音量条）才写 `aria-label`。
 
+全库四条标签通道的总表在 [Field](/docs/components/field#无障碍)，滑块是唯一
+「接不上 `htmlFor`」的那条。
+
 ## 区间
+
+数组里放两个值，就是一个区间：
 
 <ComponentPreview name="slider/range" />
 
-数组里有几个值就有几个拇指，**编号从 0 起**，`data-index` 写在每个拇指上。渲染前值会
-被 clamp 到 `[min, max]` 并按升序排列。
+渲染前值会被 clamp 到 `[min, max]` 并按升序排列。
 
 正好两个值时，Base UI 给两个拇指默认的 `aria-valuetext` 是 `"180 start range"` /
-`"680 end range"` —— 三个以上就只播报数字本身。
+`"680 end range"`。
+
+要它们始终隔开一点，用 `minStepsBetweenValues`（单位是**步**，不是值：
+`step={20} minStepsBetweenValues={1}` 就是至少差 20）。
+
+## 多个拇指
+
+数组里有几个值就有几个拇指，两个以上同理：
+
+<ComponentPreview name="slider/multiple" />
+
+拇指**编号从 0 起**，`data-index` 写在每个拇指上。三个以上时 Base UI 不再给
+`aria-valuetext`（除非你传了 `format`），屏幕阅读器读的就是 `aria-valuenow` 那个数字本身
+—— `start range` / `end range` 那套只在正好两个值时出现。
 
 两个拇指撞上时的行为由 `thumbCollisionBehavior` 决定：`'push'`（默认，推着走）、
-`'swap'`（交换位置）、`'none'`（顶住不动，多出来的位移丢弃）。要它们始终隔开一点，
-用 `minStepsBetweenValues`。
+`'swap'`（交换位置）、`'none'`（顶住不动，多出来的位移丢弃）。
 
-## 泛型不退化
+## 泛型
 
 签名是 `Slider<Value extends number | readonly number[] = number>`，**泛型跟着你传的
 值走**：
@@ -67,6 +98,23 @@ Base UI 的 `Slider.Thumb` 的 `id` 也是落在拇指那个 `div` 上，里面 
 
 也就是说回调拿到的不是 `number | readonly number[]`，不用在每个调用点先窄化一次再用。
 `SliderProps` 同样带这个泛型（默认 `number`）。
+
+## 方向
+
+`orientation="vertical"` 把轨道立起来：
+
+<ComponentPreview name="slider/vertical" />
+
+`data-orientation` 在根、控件、轨道、指示条、拇指上一起翻成 `vertical`，封装层的默认样式
+跟着换轴：轨道变竖条，控件拿 `block-full` 撑满外面给的高度，再用 `min-block-40` 兜一个
+最小高度 —— 不给高度也不至于塌成 0。
+
+## 受控
+
+受控三件套是 `value` / `defaultValue` / `onValueChange`，和别处一样：给 `value` 就是受控，
+给 `defaultValue` 就是非受控，两个都不给按 `min` 起步。
+
+要挂请求的不是 `onValueChange`，是它旁边那个 `onValueCommitted` —— 见下。
 
 ## 拖动中与落定
 
@@ -96,6 +144,9 @@ Base UI 的 `Slider.Thumb` 的 `id` 也是落在拇指那个 `div` 上，里面 
 | `'input-change'` | 隐藏的 range input 自己发出 change（表单集成、辅助技术直接改值） |
 | `'none'` | 没有具体交互来源 |
 
+区间滑块想知道**动的是哪个拇指**时，`SliderChangeEventDetails` 上还有一个
+`activeThumbIndex`（编号同 `data-index`）；落定那份没有这个字段。
+
 **昂贵的那件事挂 `onValueCommitted`。** 一趟拖动会把 `onValueChange` 打成几十上百次，
 拿它发请求就是几十上百个请求。
 
@@ -111,11 +162,16 @@ new FormData(form).getAll('price') // ['180', '680']
 
 `form` 指定拥有这些 input 的表单 id，控件渲染在 `<form>` 之外时用。
 
-## 方向
+## 禁用
 
-`orientation="vertical"` 时 `data-orientation` 在根、控件、轨道、指示条、拇指上一起翻成
-`vertical`，封装层的默认样式跟着换轴：轨道变竖条，控件拿 `block-full` 撑满外面给的高度，
-再用 `min-block-40` 兜一个最小高度 —— 不给高度也不至于塌成 0。
+`disabled` 让控件忽略用户交互，整条一起变淡 —— 这一下是 `Slider.Control` 上的
+`data-disabled:opacity-50` 做的，轨道、指示条、拇指跟着一起半透明。
+
+上游把 `disabled:pointer-events-none disabled:opacity-50` 写在**拇指**上，那两条在这里是
+死的：拇指是个 `div`，`:disabled` 只会命中嵌在它里面那个隐藏的 `<input type="range">`，
+永远匹配不到拇指本身。封装层因此没有照抄这两条。
+
+光标变成 `not-allowed`，来源见[光标](#光标)。
 
 ## 拇指贴边
 
@@ -164,18 +220,32 @@ CSS 里 `pointer` 的语义是「指示一个链接」，`grab` / `grabbing` 才
 
 ### 从外面改样式
 
-三个部件由封装层自己渲染，没有对外的组合位（写进 `children` 的东西不会出现）。要改样式
-就用 `data-slot` 选择器：
+根以下的部件全部由封装层自己渲染，没有对外的组合位（写进 `children` 的东西不会出现）。
+要改样式就用 `data-slot` 选择器：
 
 | `data-slot` | 是什么 |
 | --- | --- |
 | `slider` | 根，`<div role="group">` |
+| `slider-control` | 负责命中与拖拽的那层（Base UI 的 `Slider.Control`），拇指排在它里面 |
 | `slider-track` | 轨道，那条底槽 |
 | `slider-range` | 已选中那一截（Base UI 的 `Slider.Indicator`） |
 | `slider-thumb` | 拇指，一个值一个 |
 
-夹在中间的 `Slider.Control`（负责命中与拖拽的那层）没有 `data-slot`，它带的是 Base UI
-自己的 `data-base-ui-slider-control`。
+## 键盘交互
+
+焦点落在拇指上（每个拇指一个 Tab 停靠点）之后：
+
+| 按键 | 效果 |
+| --- | --- |
+| `↑` / `→` | 加一个 `step` |
+| `↓` / `←` | 减一个 `step` |
+| `Shift` + 方向键 | 改用 `largeStep`（默认 `10`） |
+| `PageUp` / `PageDown` | 同样走 `largeStep`，不用按 Shift |
+| `Home` | 跳到 `min`；区间里是「前一个拇指 + `minStepsBetweenValues × step`」 |
+| `End` | 跳到 `max`；区间里是「后一个拇指 − `minStepsBetweenValues × step`」 |
+
+键盘每按一下都当场落定一次（`reason` 是 `'keyboard'`），和拖动只在松手时落定一次不同 ——
+见[拖动中与落定](#拖动中与落定)。
 
 ## Props
 

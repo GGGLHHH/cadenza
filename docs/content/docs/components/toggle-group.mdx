@@ -3,22 +3,60 @@ title: ToggleGroup
 description: 共享一个值的一组 toggle —— value 永远是数组，orientation 交回 Base UI，视觉与方向键不再打架
 ---
 
+<ComponentPreview name="toggle-group/basic" />
+
 一组相关的 [Toggle](/docs/components/toggle)，共享同一个值。组合就是全部 API：
 `ToggleGroup` 里放若干 `ToggleGroupItem`，每一项的 `value` 就是它在组里的身份。
-
-根元素是 `role="group"`，所以 **`aria-label` 必给** —— 它是这组按钮的无障碍名；
-组里每一项仍然各是一个 `<button aria-pressed>`，只有图标时照旧各自补 `aria-label`。
-
-## 基础用法
-
-<ComponentPreview name="toggle-group/basic" />
 
 **`value` 永远是数组**，单选也不例外 —— `multiple`（默认 `false`）决定的只是
 「同时能有几项在里面」，不是值的形状。所以单选时 `defaultValue={['start']}`，
 拿到的回调参数是 `['center']` 这样的单元素数组；再点一次已经按下的那项会把它松开，
 数组变成 `[]`（一项都不选是合法状态）。
 
-## 分段控件
+根元素是 `role="group"`，所以 **`aria-label` 必给** —— 它是这组按钮的无障碍名；
+组里每一项仍然各是一个 `<button aria-pressed>`，只有图标时照旧各自补 `aria-label`。
+
+## 使用
+
+```tsx
+import { ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<ToggleGroup aria-label="对齐方式" defaultValue={['start']}>
+  <ToggleGroupItem aria-label="左对齐" value="start"><IconAlignLeft /></ToggleGroupItem>
+  <ToggleGroupItem aria-label="居中" value="center"><IconAlignCenter /></ToggleGroupItem>
+</ToggleGroup>
+```
+
+## 组成
+
+两个部件，没有第三个：
+
+```text
+ToggleGroup
+├── ToggleGroupItem
+└── ToggleGroupItem
+```
+
+组内请用 `ToggleGroupItem` 而不是 `Toggle`：后者也读得到组的 context、功能上照样切换，
+但它拿不到分段、间距、圆角合并那一整组样式。
+
+## 变体与尺寸
+
+`variant` 和 `size` 写在**组**上，经 context 发给每一项，这样整条控件不会长短不一。
+优先级是最普通的那种：**项 → 组 → 库的默认值**。组上设一次，整条控件就统一了；
+个别项要与众不同，在那一项上写就行，会盖过组。
+
+（转正之前的 vendored 版本是反的：它读 `context.size || size`，而项自己的 `size` 有默认值
+`'default'`，所以组一旦设了那个旋钮，项就再也盖不过去。封装层把项的默认值撤到解析那一步，
+才换回正常的优先级。）
+
+两档 `variant`（`default` / `outline`）和三档 `size` 长什么样，见
+[Toggle 的变体与尺寸](/docs/components/toggle#变体与尺寸)—— 同一套 `toggleVariants`，
+组只负责把它下发下去。
+
+## 间距
 
 <ComponentPreview name="toggle-group/segmented" />
 
@@ -27,11 +65,33 @@ description: 共享一个值的一组 toggle —— value 永远是数组，orie
 于是中间项去掉圆角、首尾各补回外侧那一边的圆角，`outline` 变体里相邻的两条边框合并成
 一条 —— 一条真正的分段控件。焦点态自带 `z-10`，焦点环不会被隔壁那项压住。
 
+间距本身是靠一个 `--gap` CSS 变量下发的，封装层把它**合并**进你传的 `style`（函数形态
+也认），而不是整份替换 —— 否则组上写一个 `style` 就会把 gap 抹平，`data-spacing` 却还
+报着旧值。
+
+## 方向
+
+<ComponentPreview name="toggle-group/vertical" />
+
+`orientation="vertical"` 时组竖排，方向键**同时**换成上下 —— 这一条现在是一件事，
+以前是两件：
+
+> vendored 那版自己声明了一个 `orientation` prop，拿它画 flex 方向、也自己写
+> `data-orientation`，**却从不把它传给 Base UI**。于是 Base UI 的 composite 一直按
+> 默认的横向导航：一个**看着是竖的**组，方向键还是走 ← / →，↑ / ↓ 什么都不做。
+> 封装层这里是自建组合而不是转出，`orientation` 直接交给 Base UI，`data-orientation`
+> 由它按自己的 state 写，布局类读的正是同一个属性 —— 视觉和键盘不可能再对不上。
+
+完整按键表见[键盘交互](#键盘交互)。
+
 ## 多选
 
 <ComponentPreview name="toggle-group/multiple" />
 
-`multiple` 打开后同时可以按下多项，数组按点击顺序增删。
+`multiple` 打开后同时可以按下多项，数组按点击顺序增删。值的形状不变 —— 还是那个数组，
+只是里面同时能有几项变了。上面这个 demo 顺带演示了[受控](#受控)写法。
+
+## 受控
 
 受控三件套是 `value` / `defaultValue` / `onValueChange`。回调第二参是真的
 `ChangeEventDetails`（导出名 `ToggleGroupChangeEventDetails`）：`reason` **恒为
@@ -50,16 +110,46 @@ const [marks, setMarks] = useState<Mark[]>(['bold'])
 只是别指望它去校验每一项：`ToggleGroupItem` 的 `value` 是各自推断的，组的泛型管不到
 它们 —— 拼错一个字母 TypeScript 不会拦，回调里就多出一个业务代码不认识的值。
 
-## 方向与键盘
+## 什么时候用 ToggleGroup
 
-`orientation="vertical"` 时组竖排，方向键**同时**换成上下 —— 这一条现在是一件事，
-以前是两件：
+单选的 ToggleGroup 语义上**依然是一组按钮**（`role="group"` + 各自的 `aria-pressed`），
+不是 radiogroup：它表达「当前生效的是哪个模式」，而且允许一个都不选。要表达「这道题
+必须选一个、而且要跟着表单提交」，用 [RadioGroup](/docs/components/radio-group)。
 
-> vendored 那版自己声明了一个 `orientation` prop，拿它画 flex 方向、也自己写
-> `data-orientation`，**却从不把它传给 Base UI**。于是 Base UI 的 composite 一直按
-> 默认的横向导航：一个**看着是竖的**组，方向键还是走 ← / →，↑ / ↓ 什么都不做。
-> 封装层这里是自建组合而不是转出，`orientation` 直接交给 Base UI，`data-orientation`
-> 由它按自己的 state 写，布局类读的正是同一个属性 —— 视觉和键盘不可能再对不上。
+几个 toggle 彼此无关（加粗、显示网格线、静音）时不必组队 —— 各写各的
+[Toggle](/docs/components/toggle) 就好；组的意义是共享一个值和一次 Tab 停留。
+
+## 状态与 className
+
+`className` 在这里**函数形态是有效的** —— 和 [Toggle](/docs/components/toggle#状态与-classname)
+不同。区别在路由：`Toggle` 把你的 className 交给 `cva`（内部是 clsx，遇函数静默丢掉），
+而这两个部件只用 cva 取变体类，你的 className 是经本库的 `cn` 合并的 —— `cn` 遇到函数
+会返回一个函数、等 state 到了再解析。所以 `(state) => string` 照常可用，
+下面两张表里的 `data-*` 也照常可用，两条路都通。
+
+**ToggleGroup**
+
+| `data-*` | 出现时机 |
+| --- | --- |
+| `data-orientation` | 恒在，值是 `horizontal` / `vertical`（Base UI 按自己的 state 写，布局类读的就是它） |
+| `data-multiple` | `multiple` |
+| `data-disabled` | 整组 `disabled` |
+| `data-spacing` | 恒在，值是 `spacing`（封装层写的，项靠 `group-data-*` 读它） |
+| `data-variant` / `data-size` | 只在组上设了对应的 prop 时出现（封装层写的） |
+
+**ToggleGroupItem**
+
+| `data-*` | 出现时机 |
+| --- | --- |
+| `data-pressed` | 这一项的 `value` 在组的数组里。同时 `aria-pressed="true"`，默认底色由后者画 |
+| `data-disabled` | 单项 `disabled`，或整组 `disabled` |
+| `data-variant` / `data-size` / `data-spacing` | 恒在，是最终生效的那一档（封装层写的） |
+
+根元素带 `data-slot="toggle-group"`，每一项带 `data-slot="toggle-group-item"`。
+`ToggleGroupState`（`disabled` / `multiple` / `orientation`）与 `ToggleGroupItemState`
+就是两处函数形态 `className` 各自收到的那个参数。
+
+## 键盘交互
 
 | 按键 | 行为 |
 | --- | --- |
@@ -72,34 +162,6 @@ const [marks, setMarks] = useState<Mark[]>(['bold'])
 方向键走到头会绕回另一端，这是 Base UI 的 `loopFocus`（默认 `true`），不想要就传
 `false`。禁用的项在以上所有导航里都会被跳过 —— 它渲染的是原生 `disabled`，本来就拿
 不到焦点。
-
-## variant / size 的下发
-
-`variant` 和 `size` 写在**组**上，经 context 发给每一项，这样整条控件不会长短不一。
-优先级是最普通的那种：**项 → 组 → 库的默认值**。组上设一次，整条控件就统一了；
-个别项要与众不同，在那一项上写就行，会盖过组。
-
-（转正之前的 vendored 版本是反的：它读 `context.size || size`，而项自己的 `size` 有默认值
-`'default'`，所以组一旦设了那个旋钮，项就再也盖不过去。封装层把项的默认值撤到解析那一步，
-才换回正常的优先级。）
-
-组内请用 `ToggleGroupItem` 而不是 `Toggle`：后者也读得到组的 context、功能上照样切换，
-但它拿不到分段、间距、圆角合并那一整组样式。
-
-`className` 在这里**函数形态是有效的** —— 和 [Toggle](/docs/components/toggle#按状态改样式)
-不同。区别在路由：`Toggle` 把你的 className 交给 `cva`（内部是 clsx，遇函数静默丢掉），
-而这两个部件只用 cva 取变体类，你的 className 是经本库的 `cn` 合并的 —— `cn` 遇到函数
-会返回一个函数、等 state 到了再解析。所以 `(state) => string` 照常可用，
-状态表里的 `data-*` 也照常可用，两条路都通。
-
-## 什么时候用 ToggleGroup
-
-单选的 ToggleGroup 语义上**依然是一组按钮**（`role="group"` + 各自的 `aria-pressed`），
-不是 radiogroup：它表达「当前生效的是哪个模式」，而且允许一个都不选。要表达「这道题
-必须选一个、而且要跟着表单提交」，用 [RadioGroup](/docs/components/radio-group)。
-
-几个 toggle 彼此无关（加粗、显示网格线、静音）时不必组队 —— 各写各的
-[Toggle](/docs/components/toggle) 就好；组的意义是共享一个值和一次 Tab 停留。
 
 ## Props
 
@@ -121,21 +183,8 @@ const [marks, setMarks] = useState<Mark[]>(['bold'])
 | `size` | `'default' \| 'sm' \| 'lg'` | — | 同上 |
 | `spacing` | `number` | `2` | 项间距（spacing 单位）。`0` 融成一条分段控件 |
 | `render` | `ReactElement \| (props, state) => ReactElement` | — | 换掉渲染的元素 |
-| `className` | `string \| ((state: ToggleGroupState) => string \| undefined)` | — | 类名。函数形态有效（走 `cn` 不走 cva） |
+| `className` | `string \| ((state: ToggleGroupState) => string \| undefined)` | — | 类名。函数形态有效（走 `cn` 不走 cva），见[状态与 className](#状态与-classname) |
 | 其余 | Base UI `ToggleGroup` 的 props（`div` 的原生属性 + `ref`） | — | 透传 |
-
-**状态**
-
-| `data-*` | 出现时机 |
-| --- | --- |
-| `data-orientation` | 恒在，值是 `horizontal` / `vertical`（Base UI 按自己的 state 写，布局类读的就是它） |
-| `data-multiple` | `multiple` |
-| `data-disabled` | 整组 `disabled` |
-| `data-spacing` | 恒在，值是 `spacing`（封装层写的，项靠 `group-data-*` 读它） |
-| `data-variant` / `data-size` | 只在组上设了对应的 prop 时出现（封装层写的） |
-
-`ToggleGroupState` 一并导出（`disabled` / `multiple` / `orientation`）—— 它就是函数形态
-`className` 收到的那个参数。
 
 ### ToggleGroupItem
 
@@ -153,16 +202,5 @@ const [marks, setMarks] = useState<Mark[]>(['bold'])
 | `className` | `string \| ((state: ToggleGroupItemState) => string \| undefined)` | — | 类名。函数形态有效；排在变体类之后，冲突时你的赢 |
 | 其余 | Base UI `Toggle` 的 props（`button` 的原生属性 + `ref`） | — | 透传；`type` 恒为 `"button"` |
 
-**状态**
-
-| `data-*` | 出现时机 |
-| --- | --- |
-| `data-pressed` | 这一项的 `value` 在组的数组里。同时 `aria-pressed="true"`，默认底色由后者画 |
-| `data-disabled` | 单项 `disabled`，或整组 `disabled` |
-| `data-variant` / `data-size` / `data-spacing` | 恒在，是最终生效的那一档（封装层写的） |
-
-根元素带 `data-slot="toggle-group"`，每一项带 `data-slot="toggle-group-item"`。
-
 `ToggleGroupProps` / `ToggleGroupItemProps` / `ToggleGroupState` /
-`ToggleGroupItemState` / `ToggleGroupChangeEventDetails` 五个类型一并导出 ——
-两个 State 就是各自函数形态 `className` 收到的那个参数。
+`ToggleGroupItemState` / `ToggleGroupChangeEventDetails` 五个类型一并导出。

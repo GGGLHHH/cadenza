@@ -3,6 +3,8 @@ title: DataTable
 description: 原生 table 语义的数据表格 —— 列定义驱动 + 组合式插槽 + 分页 / 无限滚动 / 虚拟化
 ---
 
+<ComponentPreview name="data-table/basic" align="stretch" />
+
 数据表格家族。底下是**原生 `<table>`**：排序按钮、行复选框都是可聚焦的原生控件，
 `aria-sort` 说明当前排序方向，`<th scope="row">` 让读屏按行名播报。你只提供一个
 **列定义数组**和数据，不写 JSX 表格结构。
@@ -12,16 +14,58 @@ description: 原生 table 语义的数据表格 —— 列定义驱动 + 组合�
 每个 demo 下方都附完整源码（View Code 展开、右上角复制）；异步接口用 Promise
 模拟（300–500ms 随机延时），mock 数据源在 `demos/lib` 里。
 
-## 基础用法
+## 使用
+
+```tsx
+import {
+  DataPagination,
+  DataTable,
+  DataTableEmpty,
+  DataTableError,
+  DataTableLoadingMore,
+  DataTableLoadingOverlay,
+  DataTableRetry,
+  DataTableStatus,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<DataTable
+  aria-label="作曲家"
+  columns={[
+    { id: 'name', header: '姓名', cell: person => person.name, rowHeader: true },
+    { id: 'role', header: '角色', cell: person => person.role },
+  ]}
+  items={people}
+/>
+```
 
 列定义是普通对象：`id` 是列标识，`header` 是表头内容，`cell` 收到行数据和行号、返回单元格内容。
-
-<ComponentPreview name="data-table/basic" align="stretch" />
+`aria-label` 必填 —— 表格是一整块区域，没有 `FieldLabel htmlFor` 那样的落点，可访问名只能从这里给。
 
 两个约定：
 
 - `rowHeader` 标记「代表这一行」的列（读屏播报行时念它），不标时默认第一列。
 - 行的 key 默认取 `item.id`；数据没有 `id` 字段时传 `getRowId`。
+
+## 组成
+
+`DataTable` 自己就是完整的表格；其余部件都是可选的**状态插槽**，经 `children`
+通道组合进去，只负责出文案（见[插槽](#插槽)）：
+
+```text
+DataTable
+├── DataTableEmpty              空态
+├── DataTableError              错误
+│   └── DataTableRetry          重试按钮（自己接基座的 onRetry）
+├── DataTableLoadingOverlay     定制加载磨砂（标记部件，原地不渲染）
+└── DataTableLoadingMore        「加载更多」文案（标记部件，原地不渲染）
+
+DataTableStatus                 空 / 错误共用的 role="status" 容器，单独导出
+```
+
+分页器 [DataPagination](/docs/components/data-pagination) 不在这棵树里 ——
+它是独立组件，放在表格下方由你组合，见[分页](#分页)。
 
 ## 表头固定
 
@@ -84,8 +128,8 @@ description: 原生 table 语义的数据表格 —— 列定义驱动 + 组合�
 
 复选框永远是明确的选择入口 —— 这正是 `selectionColumn` 的用武之地。
 
-**行可点时它也进 Tab 序**,Enter / Space 与点击走同一条路径:不开
-`selectionColumn` 时点行是唯一的选中手势,只认鼠标等于把键盘用户挡在门外。
+**行可点时它也进 Tab 序**，Enter / Space 与点击走同一条路径：不开
+`selectionColumn` 时点行是唯一的选中手势，只认鼠标等于把键盘用户挡在门外。
 
 两个细节：
 
@@ -230,7 +274,7 @@ props、内建守卫（`total=0` 不钳位、`limit` 非法兜底）与自定义
 
 <ComponentPreview name="data-table/infinite" align="stretch" />
 
-行区默认就有 480px 的高度上限（见「表头固定」），无限滚动需要的那个会滚动的容器
+行区默认就有 480px 的高度上限（见[表头固定](#表头固定)），无限滚动需要的那个会滚动的容器
 因此天然存在；要更高更矮就传 `maxHeight`。加载更多的指示渲染在滚动流末尾（默认一个 Spinner，用
 `DataTableLoadingMore` 换成自己的文案）：预取提前触发，
 停在顶部的用户根本看不到它。
@@ -262,8 +306,9 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 
 1. **行高固定**为 `rowHeight`（默认 40px）——虚拟化靠固定行高换取零测量、零跳动；
    单元格内容更高时必须同步调大它。内容真正不定高时开 `dynamicRowHeight`，
-   见「动态行高」。
-2. **读屏的作用域变窄**：DOM 里只有那几十行，读屏播报的行数以窗口为准。
+   见[动态行高](#动态行高)。
+2. **读屏的作用域变窄**：DOM 里只有那几十行，读屏播报的行数以窗口为准；
+   浏览器的页内查找、全选同样只够得着可见的那些行。
 3. 因此**几百行以内不建议开**——不开时整张表都在 DOM 里，而几百行根本不构成
    性能问题。
 
@@ -274,7 +319,7 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 给列设置 `width` 可以避免滚动时列宽随窗口内容轻微抖动（自动布局的表格列宽
 由可见内容决定）。
 
-虚拟化与无限滚动**可以同时开**，而且页数无上限时应该同时开——见「无限滚动」
+虚拟化与无限滚动**可以同时开**，而且页数无上限时应该同时开——见[无限滚动](#无限滚动)
 一节的说明。
 
 ## 动态行高
@@ -290,16 +335,35 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 代价：滚动中实测值替换估算值时滚动条会有轻微校正跳动，且每行多一份测量
 开销——**行高均匀时用固定行高**，把 `dynamicRowHeight` 留给真正不定高的表。
 
-## 导出的类型
+## 状态与 className
 
-| 类型 | 说明 |
+这个家族底下没有 Base UI 的 state：`className` 处处是普通字符串，属性是封装层
+手动挂上去的。外层卡片回显三个列表状态，行与表头回显各自的语义：
+
+| 属性 | 挂在 | 效果 |
+| --- | --- | --- |
+| `data-loading` | 外层卡片 | `isLoading`，磨砂覆盖层同时出现 |
+| `data-empty` | 外层卡片 | 没有行（且不在加载 / 错误中），`DataTableEmpty` 同时出现 |
+| `data-error` | 外层卡片 | `isError`，`DataTableError` 同时出现 |
+| `data-selected` | 行 `<tr>` | 该行在选择集里，背景为 muted |
+| `aria-sort` | 可排序列的 `<th>` | 当前排序方向（`ascending` / `descending` / `none`） |
+
+> 行的选中态**不是** `data-state="selected"`。那是 Radix 的词汇，本库不写
+> `data-state`；行上是 `data-selected`，和 Base UI、库里其余部分一个口径。
+> 从 shadcn 的表格样式抄类名过来时会踩这一脚。
+
+封装层自渲染的部件都带 `data-slot`，需要从外部定位时当选择器用：
+
+| data-slot | 是什么 |
 | --- | --- |
-| `DataTableColumn<T>` | 列定义：`{ id, header, cell, rowHeader?, sortable?, pinned?, width?, minWidth?, maxWidth?, className? }` |
-| `DataTableColumnWidth` | 列宽：px 数字或百分比字符串（如 `'50%'`） |
-| `DataTableProps<T>` | `DataTable` 完整 props，业务层包一层时直接复用 |
-| `DataTableSelectionProps<T>` | 便利层选择的判别联合（单选 `value?: string` / 多选 `value?: string[]`，`onValueChange` 签名随之切换） |
-| `DataPaginationProps` / `DataPaginationState` | 分页器 props 与 `summary` / `pageIndicator` 收到的状态 |
-| `SortDescriptor` / `Selection` / `Key` | 本库自己的集合词汇，排序与选择回调的类型 |
+| `data-table` | 外层卡片容器（`className` 落在它身上） |
+| `data-table-grid` | 真正的 `<table>` |
+| `data-table-row` | 行 `<tr>` |
+| `data-table-sort-button` | 表头里的排序按钮 |
+| `data-table-status` | 空 / 错误共用的 `role="status"` 容器 |
+| `data-table-retry` | `DataTableRetry` 的按钮 |
+| `data-table-load-more` | 滚动流末尾的加载行 |
+| `data-table-spacer` | 虚拟化的上下填充行 |
 
 ## 键盘交互
 
@@ -314,9 +378,22 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 > 换到原生 `<table>` 之后没有了 —— 这是这次迁移里唯一一处明确的无障碍退步，
 > 换来的是和 shadcn / Radix 生态一致的表格语义。
 
+## 导出的类型
+
+| 类型 | 说明 |
+| --- | --- |
+| `DataTableColumn<T>` | 列定义：`{ id, header, cell, rowHeader?, sortable?, pinned?, width?, minWidth?, maxWidth?, className? }` |
+| `DataTableColumnWidth` | 列宽：px 数字或百分比字符串（如 `'50%'`） |
+| `DataTableProps<T>` | `DataTable` 完整 props，业务层包一层时直接复用 |
+| `DataTableSelectionProps<T>` | 便利层选择的判别联合（单选 `value?: string` / 多选 `value?: string[]`，`onValueChange` 签名随之切换） |
+| `DataPaginationProps` / `DataPaginationState` | 分页器 props 与 `summary` / `pageIndicator` 收到的状态 |
+| `SortDescriptor` / `Selection` / `Key` | 本库自己的集合词汇，排序与选择回调的类型 |
+
 ## Props
 
 ### DataTable
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
@@ -324,22 +401,35 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | `columns` | `DataTableColumn<T>[]` | — | 列定义 |
 | `items` | `T[]` | — | 行数据 |
 | `getRowId` | `(item: T) => string` | 取 `item.id` | 行 key 提取 |
-| `isLoading` / `isError` / `onRetry` | — | — | `isLoading` 统一渲染内建磨砂覆盖层（首屏给最低高度）；`isError` / `onRetry` 驱动错误插槽，见「插槽」 |
-| `hasNextPage` / `isFetchingNextPage` / `onLoadMore` | — | — | 无限滚动，见上文 |
+| `isLoading` / `isError` / `onRetry` | — | — | `isLoading` 统一渲染内建磨砂覆盖层（首屏给最低高度）；`isError` / `onRetry` 驱动错误插槽，见[插槽](#插槽) |
+| `hasNextPage` / `isFetchingNextPage` / `onLoadMore` | — | — | 无限滚动，见[无限滚动](#无限滚动) |
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
 | `selectionMode` | `'none' \| 'single' \| 'multiple'` | `'none'` | 行选择模式 |
-| `value` / `defaultValue` / `onValueChange` | `string` \| `string[]` | — | 便利层选择（跨页存档），签名随 `selectionMode` 切换，见「行选择与行动作」 |
+| `value` / `defaultValue` / `onValueChange` | `string` \| `string[]` | — | 便利层选择（跨页存档），签名随 `selectionMode` 切换，见[行选择与行动作](#行选择与行动作) |
 | `selectedKeys` / `onSelectionChange` | — | — | 原始选择透传。便利层激活时前者被忽略；`onSelectionChange` 仍触发，仅作观察 |
-| `selectionColumn` | `boolean` | `false` | 合成复选框列（行勾选 + 表头全选），见「行选择与行动作」 |
+| `selectionColumn` | `boolean` | `false` | 合成复选框列（行勾选 + 表头全选），见[行选择与行动作](#行选择与行动作) |
 | `selectAllLabel` / `selectRowLabel` | `string` | `'Select all rows'` / `'Select row'` | 复选框的无障碍名，英文兜底，业务层传译文 |
 | `sortDescriptor` / `onSortChange` | `SortDescriptor` | — | 排序意图（受控） |
 | `onRowAction` | `(item: T) => void` | — | 行激活，回调收行对象 |
-| `maxHeight` | `number` | `480` | 行区高度**上限**（不是高度）。见「表头固定」；传 `Infinity` 取消上限 |
+| `maxHeight` | `number` | `480` | 行区高度**上限**（不是高度）。见[表头固定](#表头固定)；传 `Infinity` 取消上限 |
 | `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | 滚动条可见性：常显 / hover 与滚动时显示 / 常隐 |
 | `virtualized` | `boolean` | `false` | TanStack Virtual 行虚拟化，大数据集用 |
 | `rowHeight` | `number` | `40` | 虚拟化行的固定高度；`dynamicRowHeight` 下为初始估算 |
-| `dynamicRowHeight` | `boolean` | `false` | 虚拟化行按内容实测高度（估算 + 校正），见「动态行高」 |
+| `dynamicRowHeight` | `boolean` | `false` | 虚拟化行按内容实测高度（估算 + 校正），见[动态行高](#动态行高) |
 | `className` | `string` | — | 外层卡片容器的附加类（落在普通 div，不支持函数形式） |
 | `children` | `ReactNode` | — | 状态插槽通道 |
+
+### 插槽部件
+
+都是纯 DOM 部件，接受对应元素的原生 props（`className` 是字符串）。
+
+| 部件 | props | 说明 |
+| --- | --- | --- |
+| `DataTableEmpty` | `ComponentProps<'div'>` | 空态；无行时才渲染 |
+| `DataTableError` | `ComponentProps<'div'>` | 错误态；`isError` 时才渲染 |
+| `DataTableRetry` | `ButtonProps` | 重试按钮；自己接 `onRetry`，没有则不渲染 |
+| `DataTableStatus` | `ComponentProps<'div'>` | 上面两者共用的 `role="status"` 容器 |
+| `DataTableLoadingOverlay` | `DataTableLoadingOverlayProps`（`LoadingOverlayProps` 去掉 `loading`） | 标记部件，定制磨砂 |
+| `DataTableLoadingMore` | `DataTableLoadingMoreProps`（= `ComponentProps<'tr'>`） | 标记部件，「加载更多」文案 |
 
 `DataPagination` 的 props 见[它自己的页面](/docs/components/data-pagination#props)。

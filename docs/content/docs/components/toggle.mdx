@@ -3,29 +3,42 @@ title: Toggle
 description: 会保持按下的按钮 —— 真的 button + aria-pressed，名字走 children，variant/size 是 shadcn 的 cva 旋钮
 ---
 
+<ComponentPreview name="toggle/basic" />
+
 Base UI 的 `Toggle` 装进 shadcn 的 base-nova 皮肤。封装层**没有加行为** —— 每个 prop
-都是一次普通展开就到底下的部件，它只在类型上动了两处：把 `className` 窄化成字符串
-（见[按状态改样式](#按状态改样式)），以及保住 `value` 那个 `Value` 泛型不塌成 `string`。
+都是一次普通展开就到底下的部件；它只做两件事：把**按下**和**悬停**在视觉上分开
+（见[状态与 className](#状态与-classname)），以及在类型上动两处 —— 把 `className`
+窄化成字符串，并保住 `value` 那个 `Value` 泛型不塌成 `string`。
 
 它是一个**真的 `<button aria-pressed>`**：根元素就是那颗按钮，键盘激活（`Enter` /
 `Space`）、`disabled`、`hover` / `focus-visible` 伪类全部是原生的。
 
-## 基础用法
+## 使用
 
-<ComponentPreview name="toggle/basic" />
+```tsx
+import { Toggle } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Toggle aria-label="加粗" defaultPressed>
+  <IconBold />
+</Toggle>
+```
+
+## 标签
 
 **名字走 `children`**，因为按钮的可访问名就是它自己的内容 —— 所以这里
 **没有 [Checkbox](/docs/components/checkbox) / [Switch](/docs/components/switch)
 那条 `id` + `FieldLabel htmlFor` 的通道**，封装层也不需要提供：那两个是 box-only 的
 （根元素是方块 / 轨道，文字塞不进去，只能挂在同级的 label 上），而 Toggle 的文字本来
-就在按钮里。
+就在按钮里。有可见文字就直接写进 `children`，图标和文字并排也一样（hero 里第三颗
+就是）。
 
 只有图标、没有可见文字时补 `aria-label` —— 和 [Button](/docs/components/button) 的
-`icon-*` 档同一条规矩。图标自己不用调尺寸：cva 里给未显式指定尺寸的 `svg` 兜了
-`size-4`（`size="sm"` 时是 `size-3.5`）。
+`icon-*` 档同一条规矩。
 
-按下的那层底色由 `aria-pressed` 那条选择器画：`default` 变体没按下时是全透明的，
-`outline` 变体则不论按没按都有一圈边框。
+反过来说，**别给它挂 `FieldLabel`**：那会盖掉按钮自己的文字当无障碍名，
+[Field](/docs/components/field#无障碍) 那页的通道表也因此不收 Toggle。
 
 ## 变体与尺寸
 
@@ -33,7 +46,11 @@ Base UI 的 `Toggle` 装进 shadcn 的 base-nova 皮肤。封装层**没有加�
 
 `variant` 和 `size` 是 **shadcn 的 cva 旋钮，不是 Base UI 的** —— `Toggle` 上没有这两个
 prop。三档高度分别是 `h-7` / `h-8` / `h-9`，并各配一个同尺寸的 `min-w-*`，所以纯图标
-形态天然是方的。
+形态天然是方的。图标自己不用调尺寸：cva 里给未显式指定尺寸的 `svg` 兜了
+`size-4`（`size="sm"` 时是 `size-3.5`）。
+
+两个 `variant` 的差别在没按下的时候：`default` 是全透明的，`outline` 则不论按没按都有
+一圈边框。
 
 `toggleVariants` 也一并导出，需要把别的元素画成 toggle 的样子时直接调用。
 
@@ -62,20 +79,6 @@ prop。三档高度分别是 `h-7` / `h-8` / `h-9`，并各配一个同尺寸的
 只给 `defaultPressed` 时，那份状态就是显示的那份，于是 `cancel()` 直接把这一下按压
 拦住。这条和 [Checkbox](/docs/components/checkbox#受控) / Switch 完全同源。
 
-## 按状态改样式
-
-`className` **只收字符串**：vendored 层把它灌进 `cva`，函数会被静默丢掉 —— 元素照样
-拿到变体类，只有你写的那一份凭空消失。类型因此把这条路封了（和
-[Button](/docs/components/button) 同一条路、同一处窄化）。
-
-要按状态换样式，用 Base UI 写在按钮上的 `data-*`，Tailwind 直接当变体写：
-
-```tsx
-<Toggle aria-label="加粗" className="data-pressed:text-primary">
-  <IconBold />
-</Toggle>
-```
-
 ## 什么时候用 Toggle
 
 **单个 Toggle 是按钮，不是表单字段**：它没有 `name`，`value` 也不渲染到 DOM 上，
@@ -94,6 +97,38 @@ prop。三档高度分别是 `h-7` / `h-8` / `h-9`，并各配一个同尺寸的
 若干个相关的 toggle 共享一个值时用 [ToggleGroup](/docs/components/toggle-group) ——
 `value` 就是在那里派上用场的（它标识这颗 toggle 在组的 value 数组里的身份）。
 
+## 状态与 className
+
+`className` **只收字符串**：vendored 层把它灌进 `cva`，函数会被静默丢掉 —— 元素照样
+拿到变体类，只有你写的那一份凭空消失。类型因此把这条路封了（和
+[Button](/docs/components/button) 同一条路、同一处窄化）。
+
+要按状态换样式，用 Base UI 写在按钮上的 `data-*`，Tailwind 直接当变体写：
+
+```tsx
+<Toggle aria-label="加粗" className="data-pressed:text-primary">
+  <IconBold />
+</Toggle>
+```
+
+| `data-*` | `ToggleState` 里的名字 | 出现时机 |
+| --- | --- | --- |
+| `data-pressed` | `pressed` | 按下。同一时刻 `aria-pressed="true"`；cva 的底色挂在 `aria-pressed` 上，封装层那组挂在 `data-pressed` 上，两条选择器同时命中 |
+| `data-disabled` | `disabled` | `disabled` |
+
+（`ToggleState` 类型照常导出，但因为 `className` 是字符串，这里拿不到函数形态的出口。）
+
+悬停、按下瞬间、焦点没有 data 属性 —— 原生 `<button>` 上直接用 `hover:` / `active:` /
+`focus-visible:` / `disabled:` 伪类，覆盖全部输入模态。根元素带 `data-slot="toggle"`，
+需要从外部定位时当选择器用。
+
+**按下和悬停不能长一个样，这是封装层唯一的一笔。** base-nova 两边都画 `bg-muted`，
+而这个主题里 `--muted` / `--accent` / `--secondary` 是同一个值，换 token 分不开。
+所以封装层：没按下时的 hover 降成半强度（同变体同 twMerge 组，替换掉 vendored 的
+`hover:bg-muted` 而不是叠加）；按下保持实心，并用 `data-pressed:hover:` 重述一遍，
+免得已按下的按钮被那层淡色冲掉；按下另加一圈 inset ring —— 灰阶里单靠填充强度只差
+约 1.5% 亮度，这圈环才是一眼能看出来的那一下，而且调用方改掉背景色它也还在。
+
 ## Props
 
 顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
@@ -104,26 +139,14 @@ prop。三档高度分别是 `h-7` / `h-8` / `h-9`，并各配一个同尺寸的
 | `pressed` | `boolean` | — | 受控按下态 |
 | `onPressedChange` | `(pressed: boolean, eventDetails: ToggleChangeEventDetails) => void` | — | 按下态变化回调。`reason` 恒为 `'none'`，`cancel()` 拒绝这次变更 |
 | `disabled` | `boolean` | `false` | 渲染原生 `disabled`：不响应交互、不可聚焦 |
-| `value` | `Value`（默认 `string`） | — | **只在 [ToggleGroup](/docs/components/toggle-group) 里有意义**：它是这颗 toggle 在组 value 数组里的身份。独立使用时不用给，也不会出现在 DOM 上 |
+| `value` | `Value extends string`（默认 `string`） | — | **只在 [ToggleGroup](/docs/components/toggle-group) 里有意义**：它是这颗 toggle 在组 value 数组里的身份。独立使用时不用给，也不会出现在 DOM 上 |
 | `variant` | `'default' \| 'outline'` | `'default'` | shadcn 的 cva 旋钮 |
 | `size` | `'default' \| 'sm' \| 'lg'` | `'default'` | 同上；`h-8` / `h-7` / `h-9` |
 | `nativeButton` | `boolean` | `true` | 关掉它才能用 `render` 换成非 `<button>` 元素 |
 | `render` | `ReactElement \| (props, state) => ReactElement` | — | 换掉渲染的元素 |
 | `children` | `ReactNode` | — | 内容，同时就是它的无障碍名 |
-| `className` | `string` | — | 类名。**只收字符串**，见[上一节](#按状态改样式) |
-| 其余 | 原生 `button` 属性 | — | 透传（含 `ref`、`aria-label`）。`type` 和 `form` 除外：Base UI 把它们吞掉，按钮恒为 `type="button"` |
-
-**状态**：Base UI 挂在按钮上的 `data-*`，右列是同一状态在 `ToggleState` 里的名字
-（类型导出，但因为 `className` 是字符串，这里拿不到函数形态的出口）。
-
-| `data-*` | `ToggleState` 里的名字 | 出现时机 |
-| --- | --- | --- |
-| `data-pressed` | `pressed` | 按下。同一时刻 `aria-pressed="true"`，默认底色由后者画 |
-| `data-disabled` | `disabled` | `disabled` |
-
-悬停、按下瞬间、焦点没有 data 属性 —— 原生 `<button>` 上直接用 `hover:` / `active:` /
-`focus-visible:` / `disabled:` 伪类，覆盖全部输入模态。根元素带 `data-slot="toggle"`，
-需要从外部定位时当选择器用。
+| `className` | `string` | — | 类名。**只收字符串**，见[状态与 className](#状态与-classname) |
+| 其余 | Base UI `Toggle` 的 props（`button` 的原生属性 + `ref`，含 `aria-label`） | — | 透传。`type` 和 `form` 除外：Base UI 把它们吞掉，按钮恒为 `type="button"` |
 
 `ToggleProps` / `ToggleState` / `ToggleChangeEventDetails` 三个类型与
 `toggleVariants` 一并导出。
