@@ -1,15 +1,15 @@
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactElement } from 'react'
 import {
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FieldLegend,
+  FieldLabel as FieldLabelPrimitive,
+  FieldLegend as FieldLegendPrimitive,
   FieldSeparator,
   FieldSet,
-  FieldTitle,
+  FieldTitle as FieldTitlePrimitive,
 } from '#primitives/field'
 
 /**
@@ -46,20 +46,78 @@ import {
  * `FieldTitle` is `FieldLabel` for groups with no single control to point at: it
  * is a `div`, not a `label`, but keeps `data-slot="field-label"` so the family's
  * layout selectors still match it.
+ *
+ * The three label-shaped parts (`FieldLabel`, `FieldLegend`, `FieldTitle`) are
+ * the seam's thin wrap over the vendored ones: they add a `required` prop that
+ * suffixes a red asterisk. The mark is visual only (`aria-hidden`) — the
+ * semantic requiredness belongs on the control (`required` / `aria-required`).
  */
 export type FieldProps = ComponentProps<typeof Field>
 export type FieldContentProps = ComponentProps<typeof FieldContent>
 export type FieldDescriptionProps = ComponentProps<typeof FieldDescription>
 export type FieldErrorProps = ComponentProps<typeof FieldError>
 export type FieldGroupProps = ComponentProps<typeof FieldGroup>
-export type FieldLegendProps = ComponentProps<typeof FieldLegend>
 export type FieldSeparatorProps = ComponentProps<typeof FieldSeparator>
 export type FieldSetProps = ComponentProps<typeof FieldSet>
-export type FieldTitleProps = ComponentProps<typeof FieldTitle>
+
+export interface FieldLegendProps extends ComponentProps<typeof FieldLegendPrimitive> {
+  /** 必填的视觉标记:文案后缀一个红色星号(`aria-hidden`)。语义必填走控件的 `required`/`aria-required`。 */
+  required?: boolean
+}
+export interface FieldTitleProps extends ComponentProps<typeof FieldTitlePrimitive> {
+  /** 必填的视觉标记:文案后缀一个红色星号(`aria-hidden`)。语义必填走控件的 `required`/`aria-required`。 */
+  required?: boolean
+}
 // FieldLabel bottoms out in a plain <label>, so its props carry the ref already —
 // unlike the React Aria Label this used to wrap, which declared the ref on the
 // component type and needed it restated here.
-export type FieldLabelProps = ComponentProps<typeof FieldLabel>
+export interface FieldLabelProps extends ComponentProps<typeof FieldLabelPrimitive> {
+  /** 必填的视觉标记:文案后缀一个红色星号(`aria-hidden`)。语义必填走控件的 `required`/`aria-required`。 */
+  required?: boolean
+}
+
+// 两种排版语境的间距统一到 2px:FieldLabel/FieldTitle 是 flex gap-2(8px),
+// 星号用 -ms-1.5 抵到 2px;FieldLegend 是行内流(0px),用 ms-0.5 补到 2px
+function RequiredMark({ className }: { className: string }): ReactElement {
+  return (
+    <span
+      aria-hidden
+      className={`
+        text-destructive select-none
+        ${className}
+      `}
+    >
+      *
+    </span>
+  )
+}
+
+export function FieldLabel({ children, required, ...props }: FieldLabelProps): ReactElement {
+  return (
+    <FieldLabelPrimitive {...props}>
+      {children}
+      {required === true && <RequiredMark className="-ms-1.5" />}
+    </FieldLabelPrimitive>
+  )
+}
+
+export function FieldLegend({ children, required, ...props }: FieldLegendProps): ReactElement {
+  return (
+    <FieldLegendPrimitive {...props}>
+      {children}
+      {required === true && <RequiredMark className="ms-0.5" />}
+    </FieldLegendPrimitive>
+  )
+}
+
+export function FieldTitle({ children, required, ...props }: FieldTitleProps): ReactElement {
+  return (
+    <FieldTitlePrimitive {...props}>
+      {children}
+      {required === true && <RequiredMark className="-ms-1.5" />}
+    </FieldTitlePrimitive>
+  )
+}
 
 export {
   Field,
@@ -67,9 +125,6 @@ export {
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel,
-  FieldLegend,
   FieldSeparator,
   FieldSet,
-  FieldTitle,
 }
