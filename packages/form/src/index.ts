@@ -1,7 +1,15 @@
 import type { AnyFieldApi, UpdateMetaOptions } from '@tanstack/react-form'
-import type { SyntheticEvent } from 'react'
+import type { ComponentType, SyntheticEvent } from 'react'
+import {
+  createFormHookContexts,
+  createFormHook as createTanstackFormHook,
+} from '@tanstack/react-form'
 
 export * from '@tanstack/react-form'
+
+const { fieldContext, formContext, useFieldContext, useFormContext } = createFormHookContexts()
+
+export { useFieldContext, useFormContext }
 
 export interface FormFieldError { message?: string }
 
@@ -128,5 +136,20 @@ export function focusFirstInvalidControl(form: HTMLFormElement): void {
 
     const invalidControl = form.querySelector<HTMLElement>(INVALID_FORM_CONTROL_SELECTOR)
     invalidControl?.focus()
+  })
+}
+
+export function createFormHook<
+  FieldComponents extends Record<string, ComponentType<any>> = Record<string, never>,
+  FormComponents extends Record<string, ComponentType<any>> = Record<string, never>,
+>(options: {
+  fieldComponents?: FieldComponents
+  formComponents?: FormComponents
+} = {}): ReturnType<typeof createTanstackFormHook> {
+  return createTanstackFormHook({
+    fieldComponents: options.fieldComponents ?? ({} as FieldComponents),
+    formComponents: options.formComponents ?? ({} as FormComponents),
+    fieldContext,
+    formContext,
   })
 }
