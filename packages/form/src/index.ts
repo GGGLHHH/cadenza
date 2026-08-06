@@ -1,1 +1,94 @@
+import type { AnyFieldApi, UpdateMetaOptions } from '@tanstack/react-form'
+
 export * from '@tanstack/react-form'
+
+export interface FormFieldError { message?: string }
+
+export interface AppFieldControlProps {
+  'aria-describedby': string
+  'aria-invalid': boolean
+  'id': string
+  'name': string
+}
+
+export const silentFieldUpdateOptions: UpdateMetaOptions = {
+  dontRunListeners: true,
+  dontUpdateMeta: true,
+  dontValidate: true,
+}
+
+export const validatingFieldUpdateOptions: UpdateMetaOptions = {
+  dontRunListeners: true,
+}
+
+export function fieldErrors(field: AnyFieldApi): FormFieldError[] {
+  if (!fieldShouldShowError(field)) {
+    return []
+  }
+
+  return normalizeFieldErrors(field.state.meta.errors)
+}
+
+export function fieldHasError(field: AnyFieldApi): boolean {
+  return fieldErrors(field).length > 0
+}
+
+export function fieldErrorMessage(field: AnyFieldApi): string | undefined {
+  return fieldErrors(field)[0]?.message
+}
+
+export function fieldShouldShowError(field: AnyFieldApi): boolean {
+  return field.state.meta.isBlurred || field.form.state.submissionAttempts > 0
+}
+
+export function fieldErrorId(fieldName: string): string {
+  return `${fieldName.replaceAll(/[^\w-]/g, '-')}-error`
+}
+
+export function fieldInvalidState(field: AnyFieldApi): {
+  errorId: string
+  invalid: boolean
+} {
+  return {
+    errorId: fieldErrorId(field.name as string),
+    invalid: fieldHasError(field),
+  }
+}
+
+export function fieldControlProps(field: AnyFieldApi): AppFieldControlProps {
+  const { errorId, invalid } = fieldInvalidState(field)
+
+  return {
+    'id': field.name as string,
+    'name': field.name as string,
+    'aria-describedby': errorId,
+    'aria-invalid': invalid,
+  }
+}
+
+export function normalizeFieldErrors(errors: unknown[]): FormFieldError[] {
+  return errors.flatMap((error) => {
+    if (Array.isArray(error)) {
+      return normalizeFieldErrors(error)
+    }
+
+    if (typeof error === 'string') {
+      return [{ message: error }]
+    }
+
+    if (isErrorWithMessage(error)) {
+      return [{ message: error.message }]
+    }
+
+    return []
+  })
+}
+
+function isErrorWithMessage(error: unknown): error is FormFieldError {
+  return (
+    typeof error === 'object'
+    && error !== null
+    && 'message' in error
+    && typeof (error as FormFieldError).message === 'string'
+  )
+}
