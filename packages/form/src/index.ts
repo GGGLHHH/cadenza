@@ -178,9 +178,6 @@ export function formSubmitHandler(
   }
 }
 
-// 提交后把「有错误但未 blur」的字段标记为已 blur:错误展示门禁只依赖字段本地
-// 状态就能打开 —— submissionAttempts 住在表单 store 里,字段组件不订阅它,
-// 已 touched 的错误字段在提交时可能没有任何字段级写入、不会重渲染
 // <form {...formProps(form)}>:noValidate + 提交管线一次接齐。noValidate 统一在
 // 这里给 —— 原生约束校验(type="email"/required/pattern)会在 submit 事件派发之前
 // 拦截提交并弹原生气泡,门面提交管线完全不运行;schema 是唯一校验真源
@@ -194,6 +191,9 @@ export function formProps(
   }
 }
 
+// 提交后把「有错误但未 blur」的字段标记为已 blur:错误展示门禁只依赖字段本地
+// 状态就能打开 —— submissionAttempts 住在表单 store 里,字段组件不订阅它,
+// 已 touched 的错误字段在提交时可能没有任何字段级写入、不会重渲染
 export function revealFieldErrors(form: AnyFormApi): void {
   for (const [name, meta] of Object.entries(form.state.fieldMeta)) {
     if (meta !== undefined && meta.errors.length > 0 && !meta.isBlurred) {
@@ -242,4 +242,56 @@ export function useFormReset<TFormData>(
 
 export function useFormSubmitting(form: AnyFormApi): boolean {
   return useSelector(form.store, state => state.isSubmitting)
+}
+
+interface StandardSchemaIssueLike {
+  path?: readonly (PropertyKey | { key: PropertyKey })[] | undefined
+}
+
+interface StandardSchemaLike {
+  '~standard': {
+    validate: (value: unknown) =>
+      | { issues?: readonly StandardSchemaIssueLike[] | undefined }
+      | Promise<unknown>
+  }
+}
+
+// 「必填」在本惯例里是行为性的:空值/默认值过不了校验的字段就是必填。
+// 对 emptyValues 同步跑一次 schema,出错字段的路径集合即必填集,
+// 路径格式与 tanstack 字段名一致(a.b、items[0].c),直接喂
+// FieldLabel/FieldLegend/FieldTitle 的 required。
+// 边界:默认值本身合法的字段(如默认开启的开关)与仅跨字段成立的必填
+// (确认密码)探针测不出——那类标记手动传 required。
+export function requiredFields(schema: StandardSchemaLike, emptyValues: unknown): Set<string> {
+  const result = schema['~standard'].validate(emptyValues)
+  if (result instanceof Promise) {
+    throw new TypeError('cadenza-form: requiredFields only supports synchronous schemas.')
+  }
+
+  const names = new Set<string>()
+  for (const issue of result.issues ?? []) {
+    const name = formatIssuePath(issue.path)
+    if (name !== '') {
+      names.add(name)
+    }
+  }
+  return names
+}
+
+function formatIssuePath(path: StandardSchemaIssueLike['path']): string {
+  if (path === undefined) {
+    return ''
+  }
+
+  let name = ''
+  for (const segment of path) {
+    const key = typeof segment === 'object' ? segment.key : segment
+    if (typeof key === 'number') {
+      name += `[${key}]`
+    }
+    else {
+      name += name === '' ? String(key) : `.${String(key)}`
+    }
+  }
+  return name
 }
