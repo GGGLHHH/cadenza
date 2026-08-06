@@ -3,6 +3,8 @@ title: Field
 description: 表单字段的布局家族 —— 标签、描述、错误、编组、分隔，纯 DOM、控件无关，一切字段解剖的地基
 ---
 
+<ComponentPreview name="field/basic" />
+
 表单字段的布局家族，转正自 shadcn。**全部是纯 DOM**：`className` 处处是
 字符串、没有 render props，也不含任何控件逻辑 —— 控件放什么进来它不管。
 
@@ -11,39 +13,92 @@ description: 表单字段的布局家族 —— 标签、描述、错误、编�
 输入元素上，`FieldLabel htmlFor` 指向它，无障碍名和「点文字聚焦/切换」
 都由这条关联给出。
 
-## 先查这张表：你的控件走哪条通道
+## 使用
 
-`htmlFor` 能不能接上，取决于控件把 `id` 放在哪个元素上——而这一点各家不同。
-全库的控件只有四种情况：
+```tsx
+import { Field, FieldDescription, FieldLabel, Input } from '@gedatou/cadenza-ui'
+```
 
-| 通道 | `id` 落在 | 谁属于这一类 | 写法 |
-| --- | --- | --- | --- |
-| **普通** | 真正的 `<input>` / `<textarea>` | [Input](/docs/components/input)、[Textarea](/docs/components/textarea)、[InputOTP](/docs/components/input-otp)、[ComboboxInput](/docs/components/combobox)、`InputGroupInput` | `FieldLabel htmlFor` → 控件 `id` |
-| **触发器** | 一个真 `<button>` | [Select](/docs/components/select)、[InfiniteCombobox](/docs/components/infinite-select) | 同上；浏览器还会把点击转发过去**打开弹层** |
-| **box-only** | **隐藏的** `<input>`（可见的方框另有生成 id） | [Checkbox](/docs/components/checkbox)、[Switch](/docs/components/switch)、[RadioGroupItem](/docs/components/radio-group) | 同上；通常配 `orientation="horizontal"` |
-| **接不上** | 没有可被标记的元素 | [Slider](/docs/components/slider)、`RadioGroup` 整组 | 改用 `aria-labelledby` 指向 `FieldTitle` 的 `id` |
+```tsx
+<Field>
+  <FieldLabel htmlFor="title">作品名</FieldLabel>
+  <Input id="title" placeholder="夜之加斯帕" />
+  <FieldDescription>公开显示，之后可以改。</FieldDescription>
+</Field>
+```
 
-前三类**写法完全一样**，差别只在原理（和为什么不用补第二份 `aria-label`）；
-第四类是唯一要换写法的。
+## 组成
 
-[Toggle / ToggleGroup](/docs/components/toggle) 不在表内：它们是自带文字的
-`<button>`，名字来自 children 或 `aria-label`，压根不需要 `FieldLabel`——
-真给它挂一个反而会**盖掉**按钮自己的文字当无障碍名。
+三层解剖，每层都可以单独用。
 
-## 基础用法
+### Field
 
-`Field`（一列）+ `FieldLabel` + 控件 + `FieldDescription`：
+单个字段：标签、控件、辅助文字与校验，见 [Input](#input) 起的逐控件示例：
 
-<ComponentPreview name="field/basic" />
+```text
+Field
+├── FieldLabel
+├── <控件>
+├── FieldDescription
+└── FieldError
+```
 
-## 配 Input / Textarea
+### FieldGroup
 
-最普通的那条通道，没有任何机关：`id` 落在真元素上，`htmlFor` 指过去。
+相关字段排成一批，分段处加 `FieldSeparator`，见 [Field Group](#field-group)：
 
-<ComponentPreview name="field/text" />
+```text
+FieldGroup
+├── Field
+├── FieldSeparator
+└── Field
+```
 
-什么都不附加时用 [`Input`](/docs/components/input)（多行用
-[`Textarea`](/docs/components/textarea)）；**一旦有东西要和输入框共用边框**
+### FieldSet [#composition-fieldset]
+
+带名字的语义编组（原生 `fieldset` / `legend`），通常装一个 `FieldGroup`，
+见 [Fieldset](#fieldset)：
+
+```text
+FieldSet
+├── FieldLegend
+├── FieldDescription
+└── FieldGroup
+    ├── Field
+    └── Field
+```
+
+## 解剖
+
+一个典型字段的结构：
+
+```tsx
+<Field>
+  <FieldLabel htmlFor="input-id">标签</FieldLabel>
+  {/* Input、Select、Checkbox 等控件 */}
+  <FieldDescription>可选的辅助文字。</FieldDescription>
+  <FieldError>校验消息。</FieldError>
+</Field>
+```
+
+- `Field` 是单个字段的核心容器，渲染 `role="group"`。
+- `FieldContent` 是装「标签 + 描述」的弹性列；没有描述就不需要它。
+- 相关字段用 `FieldGroup` 包起来；语义编组用 `FieldSet` + `FieldLegend`。
+
+## 表单
+
+家族自己不做序列化：纯 DOM、不含任何表单逻辑，提交走控件各自的原生通道 ——
+控件给了 `name` 就进 `FormData`，细节在各控件页的「表单」一节。校验错误的
+展示见[校验与错误](#校验与错误)：`FieldError` 的 `errors` 数组直接吃
+TanStack Form 这类表单库吐出来的形状。
+
+## Input
+
+最普通的那条通道，没有任何机关：`id` 落在真正的 `<input>` 上，`htmlFor` 指过去：
+
+<ComponentPreview name="field/input" />
+
+什么都不附加时用 [`Input`](/docs/components/input)；**一旦有东西要和输入框共用边框**
 （前置图标、行尾按钮、单位后缀）就换 [`InputGroup`](/docs/components/input-group)——
 边框归那一行所有，`InputGroupInput` 自己是没有边框的。换了之后 `id` 仍然落在
 里面那个输入框上，标签这条线一个字都不用改。
@@ -52,10 +107,20 @@ description: 表单字段的布局家族 —— 标签、描述、错误、编�
 [ComboboxInput](/docs/components/combobox) 也在这一类里：底下都是一个真
 `<input>`，`id` 直接落上去。
 
-## 配 Select
+## Textarea
+
+和 [Input](#input) 同一条通道：`id` 落在真正的 `<textarea>` 上：
+
+<ComponentPreview name="field/textarea" />
+
+要带底部工具条时见 [InputGroup](/docs/components/input-group) 的文本域一节。
+
+## Select
 
 `Select` 的根元素不渲染 DOM，触发器才是真正的控件 —— 所以 `id` 落在
-`SelectTrigger` 上，`FieldLabel htmlFor` 指过去。
+`SelectTrigger` 上，`FieldLabel htmlFor` 指过去：
+
+<ComponentPreview name="field/select" />
 
 **一条通道全包了。** 触发器是个真 `<button>`，所以原生 `<label for>` 既给它命名，
 又由浏览器把点击转发过去把弹层打开：
@@ -64,30 +129,29 @@ description: 表单字段的布局家族 —— 标签、描述、错误、编�
 | --- | --- |
 | `FieldLabel htmlFor` → `SelectTrigger id` | 无障碍名 **+** 点文字开合弹层 |
 
-<ComponentPreview name="field/select" />
-
-**标签就是控件**：弹层开着时再点标签是关掉它,一次干净的开合。这需要封装层
-补一刀 —— Base UI 在弹层外按下就判定关闭(`outside-press`,同一次手势松手时
-还有 `cancel-open`),而浏览器紧接着把标签的 click 转发给触发器、触发器再翻转
-一次,两下相加就是「关掉又打开」的闪烁。指向自家触发器的 `<label>` 不算「外部」,
-封装层把这两个关闭 `cancel()` 掉,让转发的那次 click 独自完成开合。
-`InfiniteCombobox` 同理(它的弹层同样非模态)。
+**标签就是控件**：弹层开着时再点标签是关掉它，一次干净的开合。这需要封装层
+补一刀 —— Base UI 在弹层外按下就判定关闭（`outside-press`，同一次手势松手时
+还有 `cancel-open`），而浏览器紧接着把标签的 click 转发给触发器、触发器再翻转
+一次，两下相加就是「关掉又打开」的闪烁。指向自家触发器的 `<label>` 不算「外部」，
+封装层把这两个关闭 `cancel()` 掉，让转发的那次 click 独自完成开合。
+`InfiniteCombobox` 同理（它的弹层同样非模态）。
 
 > 0.2（React Aria 底座）这里要写两遍文案：它在触发器上挂了自己的 `aria-labelledby`，
 > 在无障碍名计算里压过原生 `<label for>`，所以必须另给一个 `aria-label`；而且
 > `usePress` 不认没有指针序列的裸 click，「点标签展开」还得封装层自己补。
 > 升级时把那个多余的 `aria-label` 删掉即可。
 
-Checkbox / Switch / RadioGroupItem 是另一种情况 —— 见下面
-[配 Checkbox / Switch / RadioGroup](#配-checkbox--switch--radiogroup)。
+Checkbox / Switch / RadioGroupItem 是另一种情况 —— 见下面 [Checkbox](#checkbox)。
 
-## 配 InfiniteCombobox
+## InfiniteCombobox
 
-触发器是**你自己传进去的元素**（`children`），所以 `id` 没法像 `Select` 那样由你
-写在部件上 —— Base UI 会给它派一个没人猜得到的生成 id。用 `triggerId` 把 `id`
-交给它：
+触发器是**你自己传进去的元素**（`children`），`id` 没法像 `Select` 那样写在
+部件上 —— 用 `triggerId` 把它交给 Base UI：
 
 <ComponentPreview name="field/infinite-combobox" />
+
+不给 `triggerId` 时，Base UI 会给触发器派一个没人猜得到的生成 id —— 这正是
+`htmlFor` 在这里没有现成落点的原因。
 
 **这里同样不需要额外的 `aria-label`** —— 原生 `<label for>` 直接生效，和 `Select`
 一样。顺带一提，`InfiniteCombobox` 那个 `aria-label` prop 命名的是**弹层里的列表**
@@ -105,41 +169,17 @@ Checkbox / Switch / RadioGroupItem 是另一种情况 —— 见下面
 
 点标签同样**会展开**弹层，和 `Select` 一样：触发器是真按钮，浏览器把点击转发过去。
 
-## 配 Checkbox / Switch / RadioGroup
+## Slider
 
-[Checkbox](/docs/components/checkbox) / [Switch](/docs/components/switch) /
-[RadioGroupItem](/docs/components/radio-group) 是 **box-only**：根元素就是那个
-16px 方块 / 轨道本身，文字塞进 children 会被挤进方块里，所以同样得走外部
-`FieldLabel`。和上面两个触发器类控件比，只有三处不同：
-
-| | 触发器类（Select / InfiniteCombobox） | box-only（Checkbox / Switch / Radio） |
-| --- | --- | --- |
-| `orientation` | `vertical`（标签在上） | **`horizontal`**（控件在前、文字在后） |
-| `id` 落在 | 触发器,一个真 `<button>` | **隐藏的 `<input>`** 上 |
-| 带描述时 | 描述直接跟在控件后 | 用 **`FieldContent`** 把「标签 + 描述」装成一列 |
-
-<ComponentPreview name="field/box-controls" />
-
-命名这条线仍然是同一条：`FieldLabel htmlFor` → 控件 `id`，一条通道同时给出无障碍名
-和「点文字切换」。原理略有不同 —— 原生 `<label for>` 指的是那个隐藏 input，点击由
-浏览器转发过去完成切换；而屏幕阅读器读的是可见的方框，它的名字由 Base UI 反查
-`input.labels`、把 label 的 id 镜像成 `aria-labelledby` 得来。两头都不用你补第二份文案。
-
-**只有一处要手接：`RadioGroup` 整组的名字。** 组渲染出来是个裸的 `role="radiogroup"`
-div，Base UI 只从**它自己的** `Field.Root` / `Fieldset.Legend` context 里取名字，而这里的
-`FieldSet` / `FieldLegend` 是 shadcn 纯 DOM 线 —— 两条线不相通。给 `FieldLegend` 一个
-`id`、组上 `aria-labelledby` 指过去，就像上面 demo 那样。
-
-## 配 Slider
-
-**唯一接不上 `htmlFor` 的一类。** `Slider` 的根是 `role="group"` 的 `div`，
-原生 `<label for>` 只认可被标记的元素（input / select / textarea / button 那些），
-指向一个 `div` 等于没指；而拇指里的 `<input type="range">` 拿的是内部生成的 id，
-你猜不到、也没有口子塞进去。
-
-所以改用 **`aria-labelledby`**，指向 [`FieldTitle`](#props) 的 `id`：
+**唯一接不上 `htmlFor` 的一类** —— 改用 `aria-labelledby`，指向
+[`FieldTitle`](#props) 的 `id`：
 
 <ComponentPreview name="field/slider" />
+
+接不上的原因：`Slider` 的根是 `role="group"` 的 `div`，原生 `<label for>` 只认
+可被标记的元素（input / select / textarea / button 那些），指向一个 `div` 等于
+没指；而拇指里的 `<input type="range">` 拿的是内部生成的 id，你猜不到、也没有
+口子塞进去。
 
 `FieldTitle` 正是为这种场合存在的——它是个 `div` 而不是 `label`，专给「没有单一
 控件可指」的编组当标题，`data-slot` 仍是 `field-label`，所以布局规则照常命中。
@@ -148,27 +188,66 @@ div，Base UI 只从**它自己的** `Field.Root` / `Fieldset.Legend` context �
 input** 上，`aria-label` 只命名根那一组、拇指仍然是匿名的。有可见文字就用前者，
 没有可见文字（比如工具栏里一个孤零零的滑块）才用后者。
 
-`RadioGroup` **整组的名字**也走这条通道，原因不同：那个组是真的
-`role="radiogroup"`，但 Base UI 只从它自己的 `Field.Root` / `Fieldset.Legend`
-context 里取名字，和这里的纯 DOM 线不相通——见上面
-[配 Checkbox / Switch / RadioGroup](#配-checkbox--switch--radiogroup)。
+`RadioGroup` **整组的名字**也走这条通道，原因不同 —— 见下面 [Radio](#radio)。
 
-## 编组
+## Fieldset
 
 一批相关字段用 `FieldSet` + `FieldLegend` 命名（语义是原生
-`fieldset` / `legend`），`FieldGroup` 负责排布与间距：
+`fieldset` / `legend`）：
 
 <ComponentPreview name="field/fieldset" />
 
-## 分隔
+## Checkbox
 
-`FieldSeparator` 分隔两段；有 children 时文字压在分隔线中央：
+box-only 的代表：根元素**就是**控件本身（Checkbox 的 16px 方块、Switch 的
+轨道），文字塞进 children 会被挤进控件里，所以走外部 `FieldLabel`：
+
+<ComponentPreview name="field/checkbox" />
+
+和上面的触发器类控件（Select / InfiniteCombobox）比，只有三处不同：
+
+| | 触发器类（Select / InfiniteCombobox） | box-only（Checkbox / Radio / Switch） |
+| --- | --- | --- |
+| `orientation` | `vertical`（标签在上） | **`horizontal`**（控件在前、文字在后） |
+| `id` 落在 | 触发器，一个真 `<button>` | **隐藏的 `<input>`** 上 |
+| 带描述时 | 描述直接跟在控件后 | 用 **`FieldContent`** 把「标签 + 描述」装成一列 |
+
+命名这条线仍然是同一条：`FieldLabel htmlFor` → 控件 `id`，一条通道同时给出无障碍名
+和「点文字切换」。原理略有不同 —— 原生 `<label for>` 指的是那个隐藏 input，点击由
+浏览器转发过去完成切换；而屏幕阅读器读的是可见的方框，它的名字由 Base UI 反查
+`input.labels`、把 label 的 id 镜像成 `aria-labelledby` 得来。两头都不用你补第二份文案。
+
+## Radio
+
+**组的名字是唯一要手接的**：
+
+<ComponentPreview name="field/radio" />
+
+每一项和 [Checkbox](#checkbox) 同类，`htmlFor` → 隐藏 input 照常；但组渲染
+出来是个裸的 `role="radiogroup"` div，Base UI 只从**它自己的**
+`Field.Root` / `Fieldset.Legend` context 里取名字，而这里的 `FieldSet` /
+`FieldLegend` 是 shadcn 纯 DOM 线 —— 两条线不相通。给 `FieldLegend` 一个
+`id`、组上 `aria-labelledby` 指过去，就像上面 demo 那样。
+
+## Switch
+
+和 [Checkbox](#checkbox) 完全同类：`id` 落在隐藏的 `<input>` 上，一条
+`htmlFor` 给出名字和「点文字切换」；带描述时同样用 `FieldContent`：
+
+<ComponentPreview name="field/switch" />
+
+## Field Group
+
+`FieldGroup` 把字段排成一批；分段处加 `FieldSeparator`，有 children 时文字
+压在分隔线中央：
 
 <ComponentPreview name="field/separator" />
 
-## 方向
+## 响应式布局
 
-`orientation` 三个值：
+`orientation` 三个值；`responsive` 窄时纵排、宽时左右分栏：
+
+<ComponentPreview name="field/responsive" />
 
 | 值 | 布局 | 用途 |
 | --- | --- | --- |
@@ -179,57 +258,218 @@ context 里取名字，和这里的纯 DOM 线不相通——见上面
 `responsive` 的断点看的是 `FieldGroup` 的**容器宽度**（`@container`
 查询），不是视口 —— 同一段代码放进侧栏就自动回到纵向。宽屏下**长大的
 是左列**（控件贴右），所以左列要用 `FieldContent` 装「标签 + 描述」的
-文本块 —— 光放一个裸 `FieldLabel`，拉伸出来的就全是空白：
+文本块 —— 光放一个裸 `FieldLabel`，拉伸出来的就全是空白。
 
-<ComponentPreview name="field/responsive" />
+## 校验与错误
 
-## 错误展示
-
-`FieldError` 负责展示**外部校验错误**（`role="alert"`）。`errors` 数组
-就是表单库吐出来的形状（`{ message?: string }[]`，TanStack Form 的
-`field.state.meta.errors` 直接对上）：重复消息去重，单条平铺，多条渲染
-成列表；`children` 优先于 `errors`；没内容就整个不渲染。
+`FieldError` 展示**外部校验错误**（`role="alert"`），`errors` 数组直接吃
+表单库吐出来的形状：
 
 <ComponentPreview name="field/error" />
 
-两个要点：
+`errors` 的形状是 `{ message?: string }[]`（TanStack Form 的
+`field.state.meta.errors` 直接对上）：重复消息去重，单条平铺，多条渲染
+成列表；`children` 优先于 `errors`；没内容就整个不渲染。
 
+- **`Field` 上挂 `data-invalid`**，整列文字进入错误态；控件自己再挂
+  `aria-invalid` 给辅助技术 —— 两个属性各管一头，见[状态与 className](#状态与-classname)。
 - **`aria-describedby` 手动接**：给 `FieldError` 一个 `id`，控件的
   `aria-describedby` 指过去。这条通道没有 context 替你接线 —— 换来的是
   它在任何解剖里都能用，不绑定任何一个字段组件。
 - **nullish 条目先过滤**：`undefined` 在去重时也占一个槽位，一条真消息
   加一个 `undefined` 会渲染成单项列表而不是平铺文本。
 
-## 状态约定
+## 无障碍
 
-控件自身的 `disabled` / `invalid` 只管控件的视觉。要让整列文字跟着
-变灰 / 变红，在 `Field` 上手动挂 data 属性：
+标签是家族的核心无障碍通道。`htmlFor` 能不能接上，取决于控件把 `id` 放在
+哪个元素上——而这一点各家不同。全库的控件只有四种情况：
+
+| 通道 | `id` 落在 | 谁属于这一类 | 写法 |
+| --- | --- | --- | --- |
+| **普通** | 真正的 `<input>` / `<textarea>` | [Input](/docs/components/input)、[Textarea](/docs/components/textarea)、[InputOTP](/docs/components/input-otp)、[ComboboxInput](/docs/components/combobox)、`InputGroupInput` | `FieldLabel htmlFor` → 控件 `id` |
+| **触发器** | 一个真 `<button>` | [Select](/docs/components/select)、[InfiniteCombobox](/docs/components/infinite-select) | 同上；浏览器还会把点击转发过去**打开弹层** |
+| **box-only** | **隐藏的** `<input>`（可见的方框另有生成 id） | [Checkbox](/docs/components/checkbox)、[Switch](/docs/components/switch)、[RadioGroupItem](/docs/components/radio-group) | 同上；通常配 `orientation="horizontal"` |
+| **接不上** | 没有可被标记的元素 | [Slider](/docs/components/slider)、`RadioGroup` 整组 | 改用 `aria-labelledby` 指向 `FieldTitle` 的 `id` |
+
+前三类**写法完全一样**，差别只在原理（和为什么不用补第二份 `aria-label`）；
+第四类是唯一要换写法的。
+
+[Toggle / ToggleGroup](/docs/components/toggle) 不在表内：它们是自带文字的
+`<button>`，名字来自 children 或 `aria-label`，压根不需要 `FieldLabel`——
+真给它挂一个反而会**盖掉**按钮自己的文字当无障碍名。
+
+另外三条：
+
+- `FieldSet` + `FieldLegend` 给键盘与辅助技术用户编组语义（原生
+  `fieldset` / `legend`）。
+- `Field` 渲染 `role="group"`，但纯 DOM 线**不替控件接组名** ——
+  `RadioGroup` 那样的组要手动 `aria-labelledby`，见 [Radio](#radio)。
+- `FieldSeparator` 省着用，让屏幕阅读器听到清晰的分段。
+
+## 状态与 className
+
+这是纯 DOM 家族：底下没有 Base UI 的 state，`className` 处处是普通字符串；
+下表两个状态属性不会自己出现 —— 都是你手动挂的（家族自动输出的
+`data-orientation` / `data-variant` 是配置回显，不是状态）。控件自身的 `disabled` / `invalid`
+只管控件的视觉，要让整列文字跟着变灰 / 变红，在 `Field` 上挂：
 
 | Field 上的属性 | 效果 |
 | --- | --- |
 | `data-disabled` | 标签等文字降为半透明 |
 | `data-invalid` | 整列文字变 destructive 色 |
 
+每个部件都带 `data-slot="field-*"`（`FieldTitle` 也是 `field-label`），需要
+从外部定位时当选择器用。
+
 ## Props
 
-所有部件都接受对应 DOM 元素的原生 props（`className` 是字符串）。特有的：
+所有部件都接受对应 DOM 元素的原生 props（`className` 是字符串）。
 
-| 部件 | 元素 | 特有 props |
+### FieldSet
+
+渲染语义 `fieldset` 的容器，带间距预设。
+
+| Prop | 类型 | 默认值 |
 | --- | --- | --- |
-| `Field` | `div`（`role="group"`） | `orientation`：`'vertical' \| 'horizontal' \| 'responsive'`，默认 `vertical` |
-| `FieldGroup` | `div` | — |
-| `FieldLabel` | 原生 `label` | `htmlFor`（关联通道）；`ref` 指向 `label` 元素 |
-| `FieldContent` | `div` | 横排时容纳标签 + 描述的列容器 |
-| `FieldTitle` | `div` | 非 `label` 场景的标题（无关联语义） |
-| `FieldDescription` | `p` | — |
-| `FieldError` | `div`（`role="alert"`） | `errors?: Array<{ message?: string } \| undefined>`；`children` 优先 |
-| `FieldSet` | `fieldset` | — |
-| `FieldLegend` | `legend` | `variant`：`'legend' \| 'label'`（字号），默认 `legend` |
-| `FieldSeparator` | `div` | `children` 压在分隔线中央 |
+| `className` | `string` | — |
 
-每个部件都带 `data-slot="field-*"`，需要从外部定位时当选择器用。
+```tsx
+<FieldSet>
+  <FieldLegend>配送</FieldLegend>
+  <FieldGroup>{/* 字段 */}</FieldGroup>
+</FieldSet>
+```
 
-十个部件的 props 类型也一并导出：`FieldProps` / `FieldContentProps` /
+### FieldLegend
+
+`FieldSet` 的 legend。`label` 变体把字号对齐到标签 —— 给单选组命名、嵌套
+`FieldSet` 这类场合用。
+
+| Prop | 类型 | 默认值 |
+| --- | --- | --- |
+| `variant` | `'legend' \| 'label'` | `'legend'` |
+| `className` | `string` | — |
+
+```tsx
+<FieldLegend variant="label">通知偏好</FieldLegend>
+```
+
+### FieldGroup
+
+堆叠 `Field` 的布局容器；容器查询在它身上，`responsive` 方向靠它生效。
+
+| Prop | 类型 | 默认值 |
+| --- | --- | --- |
+| `className` | `string` | — |
+
+```tsx
+<FieldGroup>
+  <Field>{/* … */}</Field>
+  <Field>{/* … */}</Field>
+</FieldGroup>
+```
+
+### Field
+
+单个字段的核心容器（`div`，`role="group"`）：方向、错误态样式、间距。
+
+| Prop | 类型 | 默认值 |
+| --- | --- | --- |
+| `orientation` | `'vertical' \| 'horizontal' \| 'responsive'` | `'vertical'` |
+| `data-invalid` / `data-disabled` | `boolean` | — |
+| `className` | `string` | — |
+
+```tsx
+<Field orientation="horizontal">
+  <Switch id="remember" />
+  <FieldLabel htmlFor="remember">记住我</FieldLabel>
+</Field>
+```
+
+### FieldContent
+
+标签与控件并排时装「标签 + 描述」的弹性列；没有描述就不需要。
+
+| Prop | 类型 | 默认值 |
+| --- | --- | --- |
+| `className` | `string` | — |
+
+```tsx
+<Field orientation="horizontal">
+  <Checkbox id="notifications" />
+  <FieldContent>
+    <FieldLabel htmlFor="notifications">通知</FieldLabel>
+    <FieldDescription>邮件、短信与推送。</FieldDescription>
+  </FieldContent>
+</Field>
+```
+
+### FieldLabel
+
+原生 `label`；`ref` 指向 `label` 元素。
+
+| Prop | 类型 | 默认值 |
+| --- | --- | --- |
+| `htmlFor` | `string` | — |
+| `className` | `string` | — |
+
+```tsx
+<FieldLabel htmlFor="email">邮箱</FieldLabel>
+```
+
+### FieldTitle
+
+非 `label` 场景的标题（`div`，无关联语义），配 `aria-labelledby` 用，
+见 [Slider](#slider)。
+
+| Prop | 类型 | 默认值 |
+| --- | --- | --- |
+| `className` | `string` | — |
+
+```tsx
+<FieldTitle id="volume-label">主音量</FieldTitle>
+<Slider aria-labelledby="volume-label" defaultValue={60} />
+```
+
+### FieldDescription
+
+辅助文字（`p`）。
+
+| Prop | 类型 | 默认值 |
+| --- | --- | --- |
+| `className` | `string` | — |
+
+```tsx
+<FieldDescription>不会公开显示。</FieldDescription>
+```
+
+### FieldSeparator
+
+`FieldGroup` 里的分隔线；`children` 压在分隔线中央。
+
+| Prop | 类型 | 默认值 |
+| --- | --- | --- |
+| `className` | `string` | — |
+
+```tsx
+<FieldSeparator>或者</FieldSeparator>
+```
+
+### FieldError
+
+无障碍错误容器（`div`，`role="alert"`）；接受 `children` 或 `errors` 数组，
+契约细节见[校验与错误](#校验与错误)。
+
+| Prop | 类型 | 默认值 |
+| --- | --- | --- |
+| `errors` | `Array<{ message?: string } \| undefined>` | — |
+| `className` | `string` | — |
+
+```tsx
+<FieldError errors={field.state.meta.errors} />
+```
+
+十个部件的 props 类型一并导出：`FieldProps` / `FieldContentProps` /
 `FieldDescriptionProps` / `FieldErrorProps` / `FieldGroupProps` /
 `FieldLabelProps` / `FieldLegendProps` / `FieldSeparatorProps` /
 `FieldSetProps` / `FieldTitleProps`。
