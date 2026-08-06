@@ -52,6 +52,7 @@ it('useFormSubmitting：跟随 isSubmitting', async () => {
   })
   expect(result.current.submitting).toBe(true)
 
+  // handleSubmit 的校验链是异步的：等 onSubmit 真正被调用、resolveSubmit 被赋值
   await waitFor(() => expect(resolveSubmit).toBeDefined())
 
   await act(async () => {
