@@ -3,7 +3,7 @@ import type { ComponentType, SyntheticEvent } from 'react'
 import {
   createFormHookContexts,
   createFormHook as createTanstackFormHook,
-  useStore,
+  useSelector,
 } from '@tanstack/react-form'
 import { useEffect } from 'react'
 
@@ -167,5 +167,5 @@ export function useFormReset<TFormData>(
 }
 
 export function useFormSubmitting(form: AnyFormApi): boolean {
-  return useStore(form.store, state => state.isSubmitting)
+  return useSelector(form.store, state => state.isSubmitting)
 }
