@@ -76,7 +76,14 @@ export function Button({
       className={cn(pending !== undefined && 'relative overflow-hidden', className)}
       disabled={disabled || pending}
       focusableWhenDisabled={pending === true && disabled !== true}
-      type={type === 'submit' && pending === true ? 'button' : type}
+      // Spread, not `type={…}`: passing an explicit undefined wins the merge
+      // and strips Base UI's own `type="button"`, leaving a bare <button> that
+      // any surrounding form treats as its submit button. The pending guard
+      // below would not catch that either — it only sees an explicit
+      // `type="submit"`.
+      {...(type === undefined
+        ? {}
+        : { type: type === 'submit' && pending === true ? 'button' : type })}
       {...props}
       // Derived from `pending`, so after the spread: a caller cannot half-set
       // the state by passing one of these on its own.
@@ -149,7 +156,11 @@ export function LinkButton({ className, disabled, href, size, variant, ...props 
       className={cn('data-disabled:opacity-50', className)}
       disabled={disabled}
       nativeButton={false}
-      render={<a href={disabled === true ? undefined : href} {...props} />}
+      // `role={undefined}` strips the `role="button"` Base UI writes on every
+      // non-native button. This one navigates, so it has to keep announcing as
+      // a link — otherwise a screen reader calls it a button and its user has
+      // no reason to expect a new page. Render-element props win the merge.
+      render={<a href={disabled === true ? undefined : href} role={undefined} {...props} />}
       size={size}
       variant={variant}
     />

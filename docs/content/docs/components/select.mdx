@@ -267,12 +267,10 @@ macOS select 的做法），关着时就是普通贴边下拉。本库把它**�
 每个部件都带自己的 `data-slot`（`select-trigger` / `select-value` /
 `select-content` / `select-group` / `select-label` / `select-item` /
 `select-separator` / `select-clear` / `select-empty`），需要从外部定位时当选择器用。
-但其中**两个是接线契约，不是标记**，别给这两个部件传自己的 `data-slot`：
-
-| `data-slot` | 谁靠它命中 |
-| --- | --- |
-| `select-value` | `SelectTrigger` 的布局规则（`*:data-[slot=select-value]:…`） |
-| `select-item` | 焦点高亮规则 |
+其中 `select-value` **是接线契约，不是标记**，别给它传自己的 `data-slot` ——
+`SelectTrigger` 的布局规则靠 `*:data-[slot=select-value]:…` 命中它，换掉就静默失效。
+其余几个只是标记，改了不会弄坏什么（选中项的高亮走的是 `focus:bg-accent`，
+不读 `data-slot`）。
 
 ## 键盘交互
 

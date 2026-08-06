@@ -141,18 +141,16 @@ DOM 里退出动画才放得完）；没用这个特性的按钮渲染裸 childr
 
 <ComponentPreview name="button/link" />
 
-代价要认下来：`nativeButton={false}` 这条路上 Base UI 会给元素挂上
-**`role="button"`**（非原生路径的固定属性，实测渲染出来就是
-`<a href="…" role="button" tabindex="0">`），辅助技术于是把它读成按钮而不是链接
-——它不进链接列表，Space 也能激活它。shadcn 母版为此干脆禁掉了
-`<Button render={<a />} nativeButton={false} />` 这种写法。
+**它仍然是个链接。** `nativeButton={false}` 这条路上 Base UI 会给元素挂
+`role="button"`，辅助技术就会把它读成按钮、不再收进链接列表 —— shadcn 母版为此
+干脆禁掉了 `<Button render={<a />} nativeButton={false} />` 这种写法。封装层在
+render 元素上传 `role={undefined}` 把它摘掉了（render 元素的 props 赢下合并），
+所以这里拿到的是「链接语义 + 完整禁用契约」，不用二选一。
 
-于是两条路各有代价，按需要挑：
+真要读作按钮（一个不导航、只触发动作的 `<a>`）就自己传回来：`role="button"`
+排在后面，会盖过封装层这一手。
 
-| 写法 | 拿到 | 失去 |
-| --- | --- | --- |
-| `LinkButton` | 完整的禁用契约（摘 `href`、`tabIndex={-1}`、吞激活、置灰） | 链接语义（读作「按钮」） |
-| `buttonVariants` + 普通 `<a>` | 纯正的链接语义 | 禁用契约要自己写 |
+只要变体外观、其余全部自理时，用 `buttonVariants` 配普通 `<a>`：
 
 ```tsx
 <a className={buttonVariants({ variant: 'outline' })} href="/docs">文档</a>
@@ -198,7 +196,7 @@ focus-visible 直接用 CSS 伪类，在原生 `<button>` 上它们覆盖了全�
 | `onClick` | `(e: MouseEvent) => void` | — | 原生点击；`disabled`（含 `pending`）时不触发 |
 | `disabled` | `boolean` | `false` | 禁用（渲染原生 `disabled` 属性） |
 | `pending` | `boolean` | `false` | 进行中：阻断激活但保持可聚焦、打 `data-pending` / `aria-busy`。默认视觉是同一个 LoadingOverlay（真覆盖：标签留在暗纱下，Spinner 浮在纱上；按钮尺度不模糊），见[进行中](#进行中) |
-| `type` | `'button' \| 'submit' \| 'reset'` | — | 不传就**不渲染 `type` 属性**，在 `<form>` 里按 HTML 默认充当提交按钮；不想提交就显式写 `type="button"`。`pending` 期间显式的 `'submit'` 会被改写成 `'button'`（改写只认显式值，所以要它生效就得写出来） |
+| `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | 默认不提交表单（Base UI 的默认，封装层不再用 `undefined` 把它顶掉）。要提交就写 `type="submit"`；`pending` 期间它会被改写成 `'button'`，免得兄弟输入框里一个回车提交掉这个按钮正在提交的表单 |
 | `variant` | `'default' \| 'secondary' \| 'outline' \| 'ghost' \| 'destructive' \| 'link'` | `'default'` | 变体 |
 | `size` | `'xs' \| 'sm' \| 'default' \| 'lg' \| 'icon-xs' \| 'icon-sm' \| 'icon' \| 'icon-lg'` | `'default'` | 尺寸 |
 | `focusableWhenDisabled` | `boolean` | `false` | 禁用时仍可聚焦（改用 `aria-disabled`）。`pending` 自己就是这么实现的 |

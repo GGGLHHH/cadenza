@@ -47,6 +47,17 @@ it('a pending submit button stops submitting', () => {
   expect(screen.getByRole('button').getAttribute('type')).toBe('button')
 })
 
+it('defaults to type="button", so a form does not take it for its submit button', () => {
+  render(<Button>保存</Button>)
+  expect(screen.getByRole('button').getAttribute('type')).toBe('button')
+})
+
+it('leaves a LinkButton announcing as a link', () => {
+  render(<LinkButton href="/a">打开</LinkButton>)
+  // Base UI writes role="button" on every non-native button; this one navigates.
+  expect(screen.getByRole('link').getAttribute('role')).toBeNull()
+})
+
 it('renders no spinner at rest', () => {
   render(<Button>保存</Button>)
   expect(screen.getByRole('button').querySelector('[data-slot="spinner"]')).toBeNull()

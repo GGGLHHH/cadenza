@@ -237,7 +237,7 @@ export function ComboboxPopup({
               inline-(--anchor-width) max-block-(--available-height)
               max-inline-(--available-width)
               min-inline-[calc(var(--anchor-width)+(--spacing(7)))]
-              data-[chips=true]:min-inline-(--anchor-width)
+              data-chips:min-inline-(--anchor-width)
               data-[side=bottom]:slide-in-from-top-2
               data-[side=inline-end]:slide-in-from-left-2
               data-[side=inline-start]:slide-in-from-right-2
