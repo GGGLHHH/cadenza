@@ -92,6 +92,7 @@ export function Slider<Value extends number | readonly number[] = number>({
         data-slot="slider-control"
         className={`
           relative flex touch-none items-center select-none inline-full
+          data-dragging:cursor-grabbing
           data-disabled:opacity-50
           data-vertical:flex-col data-vertical:block-full
           data-vertical:inline-auto data-vertical:min-block-40
@@ -115,16 +116,27 @@ export function Slider<Value extends number | readonly number[] = number>({
           />
         </SliderPrimitive.Track>
         {Array.from({ length: thumbCount }, (_, index) => (
+          // `grab`, not the library-wide `pointer`: a thumb is dragged, not
+          // clicked, and that is what the CSS keyword means. `data-dragging`
+          // rather than `:active` — the drag outlives the press on the thumb.
+          //
+          // No `disabled:` variants here. Upstream carries
+          // `disabled:pointer-events-none disabled:opacity-50` on this element,
+          // where they are dead: the thumb is a `div`, and `:disabled` only
+          // ever matches the hidden `input[type=range]` nested inside it. The
+          // dimming comes from the Control's `data-disabled:opacity-50` above,
+          // and the blocked cursor from the library-wide disabled rule in
+          // `styles.css` — which is unlayered, so it outranks `cursor-grab`.
           <SliderPrimitive.Thumb
             className={`
-              relative block shrink-0 rounded-full border border-ring bg-white
-              ring-ring/50 transition-[color,box-shadow] select-none block-3
-              inline-3
+              relative block shrink-0 cursor-grab rounded-full border
+              border-ring bg-white ring-ring/50 transition-[color,box-shadow]
+              select-none block-3 inline-3
               after:absolute after:-inset-2
               hover:ring-3
               focus-visible:ring-3 focus-visible:outline-hidden
               active:ring-3
-              disabled:pointer-events-none disabled:opacity-50
+              data-dragging:cursor-grabbing
             `}
             data-slot="slider-thumb"
             key={index}

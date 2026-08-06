@@ -812,12 +812,32 @@
    Native apps do behave that way; the web does not, and an arrow over a button
    reads as "not clickable" to most people. So we put it back.
 
-   Scoped to buttons and tabs on purpose. Menu items, listbox options, combobox
-   entries and calendar cells keep the arrow that `cursor-default` gives them
-   upstream — those imitate native menus, where a hand would be the odd one out.
+   Matching on role, not just tag name, because Base UI renders every control
+   that isn't a button as a `span` or `div`: Checkbox is `span[role=checkbox]`,
+   Switch `span[role=switch]`, RadioGroupItem `span[role=radio]`. Those three
+   are box-only — the box IS the entire click target — so an arrow over them
+   reads as "not clickable" on the one pixel area the user has to hit.
+
+   A DataTable row is clickable only when `activate` is passed, which is also
+   the only thing that gives the row a tabindex — hence the attribute as the
+   predicate, so plain rows keep the arrow.
+
+   Menu items, listbox options, combobox entries and calendar cells are left
+   out on purpose: they keep the arrow that `cursor-default` gives them
+   upstream, imitating native menus, where a hand would be the odd one out.
+   The Slider is out too — a thumb is dragged, not clicked, so it asks for
+   `grab` instead; that one lives in the seam with the rest of its styling.
 
    Sits above the disabled rules so that on equal specificity, disabled wins. */
-:where(button, [role="button"], [role="tab"]):not(
+:where(
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="checkbox"],
+  [role="switch"],
+  [role="radio"],
+  tr[data-slot="data-table-row"][tabindex]
+):not(
   :disabled,
   [aria-disabled="true"],
   [data-disabled]:not([data-disabled="false"])

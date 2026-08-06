@@ -122,6 +122,27 @@ new FormData(form).getAll('price') // ['180', '680']
 封装层把 `thumbAlignment` 从 Base UI 的 `'center'` 改成了 `'edge'`：值走到两端时整个拇指
 内缩在控件里，而不是一半探到轨道外面去。要回原来的行为，自己传 `thumbAlignment="center"`。
 
+## 光标
+
+拇指是 `cursor-grab`，拖动中翻成 `grabbing`；轨道保持箭头。全库其它可点控件走的是
+`pointer`（那条策略在 `styles.css` 里，按 tag 与 role 命中），滑块**有意不在其中** ——
+CSS 里 `pointer` 的语义是「指示一个链接」，`grab` / `grabbing` 才是「可抓取 / 正在抓取」，
+而拇指是拖的不是点的。上游 shadcn、Base UI 与 Radix 的官方示例对滑块一条 cursor 都不写，
+原生 `<input type="range">` 在 Chrome 也是箭头 —— 这一条是封装层自己加的。
+
+拖动态挂在 `data-dragging` 而不是 `:active` 上：拖拽会活过拇指上的那一下按压，指针移开
+拇指时 `:active` 就断了。同一个属性也挂在控件上，所以拖快了指针甩出拇指，光标依然是
+`grabbing`。
+
+禁用时是 `not-allowed`，来自全库那条禁用规则 —— 它**不分层**，所以压得过
+`cursor-grab` 这个 utility，不需要在滑块这边再写一遍。
+
+要换成别的光标，走 `data-slot` 选择器（`className` 落在根上，够不到拇指）：
+
+```css
+[data-slot='slider-thumb'] { cursor: pointer; }
+```
+
 ## 状态与 className
 
 `className` 通到的是 Base UI 的 slot，所以函数形态成立：`(state) => string | undefined`。
