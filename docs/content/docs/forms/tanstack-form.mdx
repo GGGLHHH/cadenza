@@ -226,6 +226,17 @@ dirty 条件的用意：整表 schema 校验会给**没碰过的字段**也写�
 
 <ComponentPreview name="tanstack-form/textarea" align="stretch" />
 
+### NumberField
+
+值原生就是 `number | null`——受控走 `value` / `onValueChange`，不需要字符串转换。
+
+<ComponentPreview name="tanstack-form/number-field" align="stretch" />
+
+- 清空输入回 `null`，schema 用 `.nullable().refine(v => v !== null, '必填文案')` 表达必填。
+- `id` / `name` 写在根上即可（Base UI 会把 `id` 路由给真输入框，`htmlFor` 直连）；
+  `aria-invalid` / `aria-describedby` / `onBlur` 组合到 `NumberFieldInput` 上，
+  组框的 invalid 环随之点亮。
+
 ### Select
 
 受控走 `value` / `onValueChange`，`id` 落在 `SelectTrigger` 上。
@@ -264,10 +275,28 @@ dirty 条件的用意：整表 schema 校验会给**没碰过的字段**也写�
 
 ### 复杂表单
 
-文本、下拉、勾选混排，同一套接线；提交按钮的 pending 态来自
-[`useFormSubmitting`](#提交状态)。
+控件全家 × zod 常见形态的综合示例——一套门面接线贯穿所有绑定。
 
 <ComponentPreview name="tanstack-form/complex" align="stretch" />
+
+覆盖的 zod 形态，可按需取用：
+
+- **必填文本**：`z.string().min(n, '…')`（姓名、密码）
+- **邮箱**：`z.email('…')`，配 InputGroup 图标前缀
+- **数字控件**：NumberField 的值原生是 `number | null`，
+  `z.number().int().min().max().nullable().refine(v => v !== null, '必填文案')`，
+  无需字符串转换（年龄）
+- **字符串转数字**：用普通文本框收数字时走
+  `z.string().transform(Number).pipe(z.number({ error: '…' }).int().min().max())`，
+  NaN 由 `z.number` 兜住。注意 validators **只校验不转换**——转换产物在提交时用
+  `schema.parse(value)` 取
+- **跨字段校验**：`.superRefine()` + `path: ['confirmPassword']`，错误落在指定字段上（确认密码）
+- **可选限长**：`z.string().max(n)`，允许留空（简介）
+- **单选必选**：`z.string().min(1, '请选择…')`（Select 声部、RadioGroup 经验）
+- **多选下限**：`z.array(z.string()).min(1, '…')`，`mode="array"` + Checkbox 列表（排练时段）
+- **数字范围**：`z.number().min(n)` 配 Slider（每周时长）
+- **必须勾选**：`z.boolean().refine(Boolean, '…')`（同意守则）
+- **无校验字段**：`z.boolean()` 照常参与提交（排练提醒 Switch）
 
 ## createFormHook
 

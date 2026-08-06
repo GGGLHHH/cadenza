@@ -1,0 +1,159 @@
+---
+title: NumberField
+description: 步进钮夹着数字输入框——输入、方向键、± 按钮、Intl 格式化与 min/max/step 一体
+---
+
+<ComponentPreview name="number-field/basic" />
+
+数字输入的完整控件，基于 Base UI 的 `NumberField` 组合。中间是真 `<input>`：
+可以直接打字，也可以用方向键、两侧的 ± 按钮步进；`format` 走
+`Intl.NumberFormatOptions`，显示带格式、值始终是纯数字。
+
+## 使用
+
+```tsx
+import { NumberField } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<NumberField defaultValue={4} min={0} max={99} />
+```
+
+不写 children 就有完整默认组合。标签走普通通道：根上的 `id` 由 Base UI 直接
+路由到内层输入框，`FieldLabel htmlFor` 直连；没有可见标签时传 `aria-label`，
+默认组合会转交给输入框。
+
+## 组成
+
+一行式组框，四个部件；写了 children 默认组合整层让位。
+
+```text
+NumberField
+└─ NumberFieldGroup
+   ├─ NumberFieldDecrement
+   ├─ NumberFieldInput
+   └─ NumberFieldIncrement
+```
+
+步进钮不写 children 时渲染默认的加减图标，并自带上游的英文
+`aria-label`（Increase / Decrease）、`tabIndex={-1}`——键盘路径是输入框的
+方向键。要本地化按钮名，组合时覆盖：
+
+```tsx
+<NumberField defaultValue={4}>
+  <NumberFieldGroup>
+    <NumberFieldDecrement aria-label="减少" />
+    <NumberFieldInput />
+    <NumberFieldIncrement aria-label="增加" />
+  </NumberFieldGroup>
+</NumberField>
+```
+
+## 受控
+
+`value` / `defaultValue` / `onValueChange(value, details)`——受控空值是
+`null`（清空输入时回它）；`details.reason` 区分变更来源。交互落定后另有
+`onValueCommitted(value, details)`，开销大的动作挂它。
+
+<ComponentPreview name="number-field/controlled" />
+
+## 格式化
+
+`format` 收 `Intl.NumberFormatOptions`，`locale` 缺省跟随运行时；显示与值
+分离——展示带货币符号，`onValueChange` 拿到的仍是纯数字。
+
+<ComponentPreview name="number-field/format" />
+
+## 表单
+
+有 `name` 才渲染隐藏 input，值随表单原生提交。与 TanStack Form 的绑定见
+[表单指南](/docs/forms/tanstack-form#numberfield)。
+
+## 键盘交互
+
+焦点在输入框上时：
+
+| 按键 | 效果 |
+| --- | --- |
+| `↑` / `↓` | ± `step`（默认 1） |
+| `Shift + ↑/↓` | ± `largeStep`（默认 10） |
+| `Alt + ↑/↓` | ± `smallStep`（默认 0.1） |
+| `Home` / `End` | 跳到 `min` / `max` |
+
+## 状态与 className
+
+各部件外化 Base UI Field 生态的状态词表（空串存在型）：
+
+| 属性 | 出现时机 |
+| --- | --- |
+| `data-disabled` | `disabled` 时，所有部件同步 |
+| `data-invalid` / `data-valid` | 校验态确定后（进 Base UI Field 生态时） |
+| `data-dirty` / `data-touched` / `data-filled` / `data-focused` | 交互推进时 |
+| `data-scrubbing` | 滚轮/scrub 拖动中（`allowWheelScrub`） |
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `number-field` | 根容器 |
+| `number-field-group` | 一行式组框，边框/焦点环/invalid 环画在这里 |
+| `number-field-input` | 真输入框 |
+| `number-field-decrement` / `number-field-increment` | 步进钮 |
+
+`className` 处处到达 Base UI 槽位，函数形态 `(state) => string` 可用。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### NumberField
+
+根部件，管全部状态；不写 children 渲染默认组合。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultValue` | `number` | — | 非受控初始值 |
+| `value` | `number \| null` | — | 受控值；`null` 表示空 |
+| `onValueChange` | `(value: number \| null, details) => void` | — | 变更回调，details 可取消 |
+| `onValueCommitted` | `(value: number \| null, details) => void` | — | 交互落定后触发，details 无 cancel |
+| `min` / `max` | `number` | — | 值域 |
+| `step` | `number \| 'any'` | `1` | 步进幅度 |
+| `largeStep` / `smallStep` | `number` | `10` / `0.1` | Shift / Alt 步进幅度 |
+| `snapOnStep` | `boolean` | `false` | 步进时吸附到 step 倍数 |
+| `allowWheelScrub` | `boolean` | `false` | 聚焦且悬停时允许滚轮改值 |
+| `allowOutOfRange` | `boolean` | `false` | 允许直接输入越界值（交给原生校验） |
+| `format` | `Intl.NumberFormatOptions` | — | 显示格式化 |
+| `locale` | `Intl.LocalesArgument` | 运行时 | 格式化区域 |
+| `required` / `disabled` / `readOnly` | `boolean` | `false` | 表单态 |
+| `name` / `form` | `string` | — | 表单序列化；有 `name` 才渲染隐藏 input |
+| `id` | `string` | — | 落到内层输入框上，供 `htmlFor` 直连 |
+| `placeholder` | `string` | — | 默认组合的输入框占位；组合时写在 `NumberFieldInput` 上 |
+| 其余 | Base UI `NumberField.Root` 的 props（`div` 原生属性 + ref） | — | 透传 |
+
+### NumberFieldGroup / NumberFieldInput
+
+组框与真输入框，纯透传：Base UI 对应部件的 props（各自元素原生属性 + ref），
+seam 只补默认样式。
+
+### NumberFieldDecrement
+
+减号步进钮；不写 children 渲染默认减号图标，`aria-label` 上游默认 Decrease。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | 减号图标 | 自定义按钮内容 |
+| 其余 | Base UI `NumberField.Decrement` 的 props（`button` 原生属性 + ref） | — | 透传 |
+
+### NumberFieldIncrement
+
+加号步进钮；不写 children 渲染默认加号图标，`aria-label` 上游默认 Increase。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | 加号图标 | 自定义按钮内容 |
+| 其余 | Base UI `NumberField.Increment` 的 props（`button` 原生属性 + ref） | — | 透传 |
+
+12 个类型一并导出：`NumberFieldProps` / `NumberFieldState` /
+`NumberFieldChangeEventDetails` / `NumberFieldCommitEventDetails` /
+`NumberFieldGroupProps` / `NumberFieldGroupState` / `NumberFieldInputProps` /
+`NumberFieldInputState` / `NumberFieldIncrementProps` /
+`NumberFieldIncrementState` / `NumberFieldDecrementProps` /
+`NumberFieldDecrementState`。
