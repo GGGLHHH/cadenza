@@ -1,10 +1,10 @@
 import type { ComponentProps, ReactElement } from 'react'
 import { cn } from '#lib/utils'
 import {
-  InputOTPGroup,
+  InputOTPGroup as InputOTPGroupPrimitive,
   InputOTP as InputOTPPrimitive,
   InputOTPSeparator as InputOTPSeparatorPrimitive,
-  InputOTPSlot,
+  InputOTPSlot as InputOTPSlotPrimitive,
 } from '#primitives/input-otp'
 
 /**
@@ -16,8 +16,8 @@ import {
  * read. Grouping stays composition: `InputOTPGroup` and `InputOTPSlot`.
  */
 export type InputOTPProps = Omit<ComponentProps<typeof InputOTPPrimitive>, 'render'>
-export type InputOTPGroupProps = ComponentProps<typeof InputOTPGroup>
-export type InputOTPSlotProps = ComponentProps<typeof InputOTPSlot>
+export type InputOTPGroupProps = ComponentProps<typeof InputOTPGroupPrimitive>
+export type InputOTPSlotProps = ComponentProps<typeof InputOTPSlotPrimitive>
 export type InputOTPSeparatorProps = ComponentProps<typeof InputOTPSeparatorPrimitive>
 
 /**
@@ -63,7 +63,47 @@ export type InputOTPSeparatorProps = ComponentProps<typeof InputOTPSeparatorPrim
  */
 export const InputOTP = InputOTPPrimitive as (props: InputOTPProps) => ReactElement
 
-export { InputOTPGroup, InputOTPSlot }
+/**
+ * Wrapped rather than re-exported: the vendored invalid recipe is keyed on
+ * `has-aria-invalid` (an invalid element *inside the group*), but the real
+ * `aria-invalid` lands on the one true `<input>` — a *sibling* of the groups
+ * inside the container. These `in-[...]` variants bridge the container's
+ * `:has(input[aria-invalid])` state onto the vendored hooks' exact recipe,
+ * so form wiring on the input lights the boxes like every other control.
+ */
+export function InputOTPGroup({ className, ...props }: InputOTPGroupProps): ReactElement {
+  return (
+    <InputOTPGroupPrimitive
+      className={cn(
+        `
+          in-[.cn-input-otp:has(input[aria-invalid="true"])]:ring-3
+          in-[.cn-input-otp:has(input[aria-invalid="true"])]:ring-destructive/20
+          dark:in-[.cn-input-otp:has(input[aria-invalid="true"])]:ring-destructive/40
+        `,
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+export function InputOTPSlot({ className, ...props }: InputOTPSlotProps): ReactElement {
+  return (
+    <InputOTPSlotPrimitive
+      className={cn(
+        `
+          in-[.cn-input-otp:has(input[aria-invalid="true"])]:border-destructive
+          data-[active=true]:in-[.cn-input-otp:has(input[aria-invalid="true"])]:border-destructive
+          data-[active=true]:in-[.cn-input-otp:has(input[aria-invalid="true"])]:ring-destructive/20
+          dark:in-[.cn-input-otp:has(input[aria-invalid="true"])]:border-destructive/50
+          dark:data-[active=true]:in-[.cn-input-otp:has(input[aria-invalid="true"])]:ring-destructive/40
+        `,
+        className,
+      )}
+      {...props}
+    />
+  )
+}
 
 /**
  * The gap between two `InputOTPGroup`s.
