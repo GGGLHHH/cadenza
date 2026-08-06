@@ -698,6 +698,17 @@ Base UI `Combobox.Item`）
 `data-slot="infinite-select-item"`。`renderItem` 换掉的是它的**内容**，外壳、
 键盘导航和选择接线都还在，所以它的那些状态照常可用，见[状态与 className](#状态与-classname)。
 
+### InfiniteSelectActionsProvider
+
+不是插槽，是动作上下文的手动入口：把 `value` 喂给它，里面的 footer 部件就能拿到
+`useInfiniteSelectActions()`。便利层已经自动提供了一份，只有把 footer 摆到弹层之外
+时才需要自己写，见[动作上下文](#动作上下文)。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `value` | `InfiniteSelectActions<T>` | — | 必填。`{ selectedItems, selectedIds, clear, close }` |
+| `children` | `ReactNode` | — | 消费这份上下文的子树 |
+
 ### 状态插槽与 footer
 
 这几个部件都没有自己的 props（除了 `className` 和原生属性透传），文案由 `children`
@@ -715,6 +726,7 @@ Base UI `Combobox.Item`）
 | `InfiniteSelectLoadingMore` | 标记部件：同一位置的另一分支，翻页时渲染（不写也有默认 Spinner） | 提升后为 `infinite-select-load-more` |
 | `InfiniteSelectClear` | 总是 | `infinite-select-clear` |
 | `InfiniteSelectClose` | 总是 | `infinite-select-close` |
+| `InfiniteSelectStatus` | 空 / 错误两个插槽最终都渲染进它；单独导出供你复用排版 | `infinite-select-status` |
 
 空 / 错误两个状态插槽共用一个 `role="status"` 的容器，所以变化会被读屏播报一次，
 而不是两种写法各播一次。
