@@ -48,8 +48,14 @@ export function fieldErrorMessage(field: AnyFieldApi): string | undefined {
   return fieldErrors(field)[0]?.message
 }
 
+// 只骂动过的字段:整表 onChange 校验会给未碰过的字段写入错误,dirty 条件挡住
+// 「点按钮夺焦/结构性操作触发校验」这类误伤;dirty 是粘性的(输入过再清空仍算动过)。
+// 提交过则全部放行 —— revealFieldErrors 的 isBlurred 写入只作重渲染载体
 export function fieldShouldShowError(field: AnyFieldApi): boolean {
-  return field.state.meta.isBlurred || field.form.state.submissionAttempts > 0
+  return (
+    (field.state.meta.isDirty && field.state.meta.isBlurred)
+    || field.form.state.submissionAttempts > 0
+  )
 }
 
 export function fieldErrorId(fieldName: string): string {
@@ -111,20 +117,88 @@ interface FormSubmitHandlerOptions {
 const INVALID_FORM_CONTROL_SELECTOR
   = '[aria-invalid="true"]:not(:disabled):not([aria-disabled="true"])'
 
+// 提交过的表单处于实时纠错模式,但新字段(数组加行)的登记晚于最近一次校验分发,
+// meta 落后于真相且无人再触发校验 —— 监听 fieldMeta 键集,新键出现即补跑一次
+// change 校验。WeakSet 保证每个 form 实例只挂一次订阅,订阅随 form 一同回收
+const lateFieldValidationForms = new WeakSet<AnyFormApi>()
+
+function ensureLateFieldValidation(form: AnyFormApi): void {
+  if (lateFieldValidationForms.has(form)) {
+    return
+  }
+  lateFieldValidationForms.add(form)
+
+  let knownFields = new Set(Object.keys(form.state.fieldMeta))
+  form.store.subscribe(() => {
+    const fields = Object.keys(form.state.fieldMeta)
+    const hasNewField = fields.some(name => !knownFields.has(name))
+    knownFields = new Set(fields)
+
+    if (hasNewField && form.state.submissionAttempts > 0) {
+      queueMicrotask(() => {
+        void form.validate('change')
+      })
+    }
+  })
+}
+
 export function formSubmitHandler(
-  handleSubmit: () => Promise<void> | void,
+  form: AnyFormApi | (() => Promise<void> | void),
   { focusFirstError = true }: FormSubmitHandlerOptions = {},
 ): (event: SyntheticEvent<HTMLFormElement>) => void {
+  const formApi = typeof form === 'function' ? undefined : form
+  const handleSubmit = typeof form === 'function' ? form : () => form.handleSubmit()
+
+  if (formApi !== undefined) {
+    ensureLateFieldValidation(formApi)
+  }
+
   return (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault()
     event.stopPropagation()
-    const form = event.currentTarget
+    const formElement = event.currentTarget
 
-    void Promise.resolve(handleSubmit()).finally(() => {
-      if (focusFirstError) {
-        focusFirstInvalidControl(form)
-      }
-    })
+    void Promise.resolve(handleSubmit())
+      .then(async () => {
+        // handleSubmit 在字段级校验失败时会整体跳过表单级校验(form-core 行为),
+        // 新注册、尚未被校验过的字段因此拿不到错误 —— 失败提交后补跑一次完整校验
+        if (formApi !== undefined && !formApi.state.isValid) {
+          await formApi.validate('submit')
+        }
+      })
+      .finally(() => {
+        if (formApi !== undefined) {
+          revealFieldErrors(formApi)
+        }
+
+        if (focusFirstError) {
+          focusFirstInvalidControl(formElement)
+        }
+      })
+  }
+}
+
+// 提交后把「有错误但未 blur」的字段标记为已 blur:错误展示门禁只依赖字段本地
+// 状态就能打开 —— submissionAttempts 住在表单 store 里,字段组件不订阅它,
+// 已 touched 的错误字段在提交时可能没有任何字段级写入、不会重渲染
+// <form {...formProps(form)}>:noValidate + 提交管线一次接齐。noValidate 统一在
+// 这里给 —— 原生约束校验(type="email"/required/pattern)会在 submit 事件派发之前
+// 拦截提交并弹原生气泡,门面提交管线完全不运行;schema 是唯一校验真源
+export function formProps(
+  form: AnyFormApi,
+  options?: FormSubmitHandlerOptions,
+): { noValidate: true, onSubmit: (event: SyntheticEvent<HTMLFormElement>) => void } {
+  return {
+    noValidate: true,
+    onSubmit: formSubmitHandler(form, options),
+  }
+}
+
+export function revealFieldErrors(form: AnyFormApi): void {
+  for (const [name, meta] of Object.entries(form.state.fieldMeta)) {
+    if (meta !== undefined && meta.errors.length > 0 && !meta.isBlurred) {
+      form.setFieldMeta(name, previous => ({ ...previous, isBlurred: true }))
+    }
   }
 }
 

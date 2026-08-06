@@ -47,6 +47,9 @@ it('使用方注入的 field 组件经包内单例 contexts 拿到字段，门�
   expect(input.getAttribute('aria-describedby')).toBe('name-error')
   expect(input.getAttribute('aria-invalid')).toBe('false')
 
+  // 输入过再清空:dirty 是粘性的,失焦后按门禁显示错误
+  fireEvent.change(input, { target: { value: 'x' } })
+  fireEvent.change(input, { target: { value: '' } })
   fireEvent.blur(input)
   expect(screen.getByTestId('message').textContent).toBe('必填')
   expect(input.getAttribute('aria-invalid')).toBe('true')
