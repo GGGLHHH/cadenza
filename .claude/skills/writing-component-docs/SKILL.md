@@ -21,7 +21,10 @@ curl -sf https://raw.githubusercontent.com/shadcn-ui/ui/main/apps/v4/content/doc
   [词典](#词典母版节名--本站节名)翻译;只删
   [本站没有的节](#本站没有的节shadcn-有这里不写);本库深度节按
   [插入点](#本库深度节的插入点)加入。
-- **404(本库独有组件,如 InfiniteSelect / DataTable / SearchField)→ 用通用骨架。**
+- **404(本库独有组件,如 InfiniteSelect / SearchField)→ 用通用骨架。**
+- **重名不等于同一个东西。** 母版开头若自称是「how to build your own」这类教程
+  (shadcn 的 data-table 就是:它明说不提供组件,只教你用 TanStack Table 手搓),
+  那它不是母版,按 404 处理走通用骨架。判据是母版的开篇,不是文件名。
 - **母版必须读全文再动笔。** field 的母版 400 多行,只读开头得出的「骨架」缺了
   主体的十几个节 —— 本条就是为那次事故立的。
 
