@@ -1,4 +1,5 @@
 import type { AnyFieldApi, UpdateMetaOptions } from '@tanstack/react-form'
+import type { SyntheticEvent } from 'react'
 
 export * from '@tanstack/react-form'
 
@@ -91,4 +92,41 @@ function isErrorWithMessage(error: unknown): error is FormFieldError {
     && 'message' in error
     && typeof (error as FormFieldError).message === 'string'
   )
+}
+
+interface FormSubmitHandlerOptions {
+  focusFirstError?: boolean
+}
+
+const INVALID_FORM_CONTROL_SELECTOR
+  = '[aria-invalid="true"]:not(:disabled):not([aria-disabled="true"])'
+
+export function formSubmitHandler(
+  handleSubmit: () => Promise<void> | void,
+  { focusFirstError = true }: FormSubmitHandlerOptions = {},
+): (event: SyntheticEvent<HTMLFormElement>) => void {
+  return (event: SyntheticEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const form = event.currentTarget
+
+    void Promise.resolve(handleSubmit()).finally(() => {
+      if (focusFirstError) {
+        focusFirstInvalidControl(form)
+      }
+    })
+  }
+}
+
+export function focusFirstInvalidControl(form: HTMLFormElement): void {
+  const schedule = window.requestAnimationFrame?.bind(window) ?? window.setTimeout.bind(window)
+
+  schedule(() => {
+    if (!form.isConnected) {
+      return
+    }
+
+    const invalidControl = form.querySelector<HTMLElement>(INVALID_FORM_CONTROL_SELECTOR)
+    invalidControl?.focus()
+  })
 }
