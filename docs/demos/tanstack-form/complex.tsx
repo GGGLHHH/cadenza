@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import type { Person } from '../lib/people'
 import {
   fieldControlProps,
   fieldErrors,
@@ -21,10 +22,16 @@ import {
   FieldSeparator,
   FieldSet,
   FieldTitle,
+  InfiniteCombobox,
+  InfiniteSelectLoadingMore,
   Input,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
   NumberField,
   NumberFieldDecrement,
   NumberFieldGroup,
@@ -41,10 +48,16 @@ import {
   Slider,
   Switch,
   Textarea,
+  useInfiniteComboboxState,
 } from '@gedatou/cadenza-ui'
 import { IconMail } from '@tabler/icons-react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import { selectSlots } from '../infinite-select/slots'
+import { DemoButton } from '../lib/demo-button'
+import { getOption } from '../lib/people'
+import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 
 // 综合示例:控件全家 × zod 常见形态 —— 必填/邮箱/数字 coerce/跨字段 superRefine/
 // 可选限长/数组 min/布尔 refine/滑杆范围,同一套门面接线贯穿
@@ -69,6 +82,7 @@ const WEEKDAYS = [
 const schema = z
   .object({
     email: z.email('请输入有效的邮箱地址'),
+    smsCode: z.string().regex(/^\d{6}$/, '请输入 6 位数字验证码'),
     password: z.string().min(8, '密码至少 8 位'),
     confirmPassword: z.string(),
     fullName: z.string().min(2, '姓名至少 2 个字'),
@@ -81,6 +95,7 @@ const schema = z
       .refine(value => value !== null, '请填写年龄'),
     bio: z.string().max(100, '简介最多 100 字'),
     voicePart: z.string().min(1, '请选择声部'),
+    composerId: z.string().nullable().refine(value => value !== null, '请选择作曲家'),
     experience: z.string().min(1, '请选择经验水平'),
     weekdays: z.array(z.string()).min(1, '至少选一个排练时段'),
     weeklyHours: z.number().min(2, '每周至少投入 2 小时'),
@@ -99,12 +114,14 @@ const schema = z
 
 const DEFAULT_VALUES = {
   email: '',
+  smsCode: '',
   password: '',
   confirmPassword: '',
   fullName: '',
   age: null as number | null,
   bio: '',
   voicePart: '',
+  composerId: null as string | null,
   experience: '',
   weekdays: [] as string[],
   weeklyHours: 0,
@@ -117,6 +134,9 @@ const DEFAULT_VALUES = {
 const REQUIRED = requiredFields(schema, DEFAULT_VALUES)
 
 export default function ComplexDemo(): ReactElement {
+  const comboboxState = useInfiniteComboboxState()
+  const composerList = useFakeInfiniteList(comboboxState.queryValue)
+  const [pickedComposer, setPickedComposer] = useState<Person | null>(null)
   const form = useForm({
     defaultValues: DEFAULT_VALUES,
     validators: { onChange: schema },
@@ -136,6 +156,7 @@ export default function ComplexDemo(): ReactElement {
         ),
       })
       formApi.reset()
+      setPickedComposer(null)
     },
   })
   const submitting = useFormSubmitting(form)
@@ -169,6 +190,36 @@ export default function ComplexDemo(): ReactElement {
                         onChange={event => field.handleChange(event.target.value)}
                       />
                     </InputGroup>
+                    <FieldError id={errorId} errors={fieldErrors(field)} />
+                  </Field>
+                )
+              }}
+            </form.Field>
+            <form.Field name="smsCode">
+              {(field) => {
+                const { errorId, invalid } = fieldInvalidState(field)
+                return (
+                  <Field data-invalid={invalid || undefined}>
+                    <FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>短信验证码</FieldLabel>
+                    <InputOTP
+                      {...fieldControlProps(field)}
+                      maxLength={6}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={field.handleChange}
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                      </InputOTPGroup>
+                      <InputOTPSeparator />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
                     <FieldError id={errorId} errors={fieldErrors(field)} />
                   </Field>
                 )
@@ -329,6 +380,43 @@ export default function ComplexDemo(): ReactElement {
                         </SelectGroup>
                       </SelectPopup>
                     </Select>
+                  </Field>
+                )
+              }}
+            </form.Field>
+            <form.Field name="composerId">
+              {(field) => {
+                const { errorId, invalid } = fieldInvalidState(field)
+                return (
+                  <Field data-invalid={invalid || undefined}>
+                    <FieldLabel htmlFor="signup-composer-trigger" required={REQUIRED.has(field.name)}>
+                      最喜欢的作曲家
+                    </FieldLabel>
+                    <InfiniteCombobox<Person>
+                      getOption={getOption}
+                      list={composerList}
+                      name={field.name}
+                      searchPlaceholder="搜索作曲家…"
+                      state={comboboxState}
+                      triggerId="signup-composer-trigger"
+                      value={field.state.value}
+                      onValueChange={(item) => {
+                        setPickedComposer(item)
+                        field.handleChange(item?.id ?? null)
+                      }}
+                    >
+                      <DemoButton
+                        aria-describedby={errorId}
+                        aria-invalid={invalid}
+                        className="justify-start inline-full"
+                      >
+                        {pickedComposer ? pickedComposer.name : '选择作曲家'}
+                      </DemoButton>
+                      {selectSlots}
+                      <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
+                    </InfiniteCombobox>
+                    <FieldDescription>表单持久化的是 id,不是对象。</FieldDescription>
+                    <FieldError id={errorId} errors={fieldErrors(field)} />
                   </Field>
                 )
               }}

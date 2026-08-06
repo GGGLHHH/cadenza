@@ -301,6 +301,29 @@ const REQUIRED = requiredFields(schema, DEFAULT_VALUES)
 
 <ComponentPreview name="tanstack-form/switch" align="stretch" />
 
+### InputOTP
+
+验证码输入也是表单控件——协议是 React DOM 的：`onChange` 直接收**字符串**，
+可以把 `field.handleChange` 原样递过去。
+
+<ComponentPreview name="tanstack-form/input-otp" align="stretch" />
+
+- `id` 落在横跨所有格子的隐形真 input 上，`fieldControlProps` 整体展开照常成立。
+- 校验用 `z.string().regex(/^\d{6}$/, '…')` 这类长度+字符约束。
+
+### InfiniteSelect / InfiniteCombobox
+
+异步分页选择同样是表单控件，绑定有三个专属要点。
+
+<ComponentPreview name="tanstack-form/infinite-combobox" align="stretch" />
+
+- **表单持久化 id，不是对象**：单选的受控 `value` 是 `string | null`，而
+  `onValueChange` 回传的是对象——表单里存 id（未加载页的预选项只有 id 没有对象），
+  展示文案用局部 state 存对象。
+- `triggerId` 是 `FieldLabel htmlFor` 的落点；`name` 会在**触发器旁**（弹层外）
+  渲染隐藏 input，弹层关闭不影响序列化。
+- schema 用 `z.string().nullable().refine(v => v !== null, '…')` 表达必选。
+
 ### 复杂表单
 
 控件全家 × zod 常见形态的综合示例——一套门面接线贯穿所有绑定。
@@ -324,6 +347,9 @@ const REQUIRED = requiredFields(schema, DEFAULT_VALUES)
 - **多选下限**：`z.array(z.string()).min(1, '…')`，`mode="array"` + Checkbox 列表（排练时段）
 - **数字范围**：`z.number().min(n)` 配 Slider（每周时长）
 - **必须勾选**：`z.boolean().refine(Boolean, '…')`（同意守则）
+- **格式约束**：`z.string().regex(/^\d{6}$/, '…')` 配 InputOTP（短信验证码）
+- **异步选择存 id**：`z.string().nullable().refine(v => v !== null, '…')` 配
+  InfiniteCombobox——表单持久化 id，展示对象走局部 state（最喜欢的作曲家）
 - **无校验字段**：`z.boolean()` 照常参与提交（排练提醒 Switch）
 
 ## createFormHook
