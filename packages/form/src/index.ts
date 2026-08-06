@@ -1,9 +1,11 @@
-import type { AnyFieldApi, UpdateMetaOptions } from '@tanstack/react-form'
+import type { AnyFieldApi, AnyFormApi, UpdateMetaOptions } from '@tanstack/react-form'
 import type { ComponentType, SyntheticEvent } from 'react'
 import {
   createFormHookContexts,
   createFormHook as createTanstackFormHook,
+  useStore,
 } from '@tanstack/react-form'
+import { useEffect } from 'react'
 
 export * from '@tanstack/react-form'
 
@@ -153,4 +155,17 @@ export function createFormHook<
     fieldContext,
     formContext,
   })
+}
+
+export function useFormReset<TFormData>(
+  form: { reset: (values?: TFormData) => void },
+  defaultValues: TFormData,
+): void {
+  useEffect(() => {
+    form.reset(defaultValues)
+  }, [form, defaultValues])
+}
+
+export function useFormSubmitting(form: AnyFormApi): boolean {
+  return useStore(form.store, state => state.isSubmitting)
 }
