@@ -363,7 +363,11 @@ box-only 的代表：根元素**就是**控件本身（Checkbox 的 16px 方块�
 | Prop | 类型 | 默认值 |
 | --- | --- | --- |
 | `variant` | `'legend' \| 'label'` | `'legend'` |
+| `required` | `boolean` | — |
 | `className` | `string` | — |
+
+`required` 在文案后缀一个红色星号（`aria-hidden`，仅视觉）——语义必填走控件的
+`required`/`aria-required`；与 zod 的联动见[表单指南](/docs/forms/tanstack-form#必填标记)。
 
 ```tsx
 <FieldLegend variant="label">通知偏好</FieldLegend>
@@ -426,10 +430,14 @@ box-only 的代表：根元素**就是**控件本身（Checkbox 的 16px 方块�
 | Prop | 类型 | 默认值 |
 | --- | --- | --- |
 | `htmlFor` | `string` | — |
+| `required` | `boolean` | — |
 | `className` | `string` | — |
 
+`required` 在文案后缀一个红色星号（`aria-hidden`，仅视觉）——语义必填走控件的
+`required`/`aria-required`；与 zod 的联动见[表单指南](/docs/forms/tanstack-form#必填标记)。
+
 ```tsx
-<FieldLabel htmlFor="email">邮箱</FieldLabel>
+<FieldLabel htmlFor="email" required>邮箱</FieldLabel>
 ```
 
 ### FieldTitle
@@ -439,6 +447,7 @@ box-only 的代表：根元素**就是**控件本身（Checkbox 的 16px 方块�
 
 | Prop | 类型 | 默认值 |
 | --- | --- | --- |
+| `required` | `boolean` | — |
 | `className` | `string` | — |
 
 ```tsx

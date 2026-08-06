@@ -209,6 +209,34 @@ dirty 条件的用意：整表 schema 校验会给**没碰过的字段**也写�
 绕过门禁的路径依然存在：直接读 `field.state.meta.errors`（官方原生 API）就没有
 任何延迟。门禁是惯例约束，靠「错误只经 `fieldErrors` 读」这条纪律成立。
 
+## 必填标记
+
+「必填」在本站惯例里是**行为性**的：空值过不了校验的字段就是必填——不是 zod 的
+`optional()` 结构（必填的 `z.string().min(1)` 与可留空的 `z.string().max(100)`
+在结构上都"非 optional"，TanStack Form 本身也没有必填概念）。所以联动走探针：
+`requiredFields(schema, defaultValues)` 对默认值同步跑一次 schema，出错字段的
+路径集合就是必填集，直接喂给 `FieldLabel` / `FieldLegend` / `FieldTitle` 的
+`required`（红色星号，`aria-hidden`——读屏的必填语义走控件的 `aria-required`）：
+
+```tsx
+const DEFAULT_VALUES = { title: '', bio: '' }
+const REQUIRED = requiredFields(schema, DEFAULT_VALUES)
+```
+
+```tsx
+<FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>
+  标题
+</FieldLabel>
+```
+
+探针测不出的两类，手动补 `required`：
+
+- **仅跨字段成立**的必填（确认密码这类 `superRefine`）——空对空是相等的；
+- **默认值本身合法**的字段（默认开启的开关）——用户不可能失败它，通常也不必标。
+
+[复杂表单](#复杂表单)整表接的就是这套：简介（可留空）与提醒开关没有星号，
+其余全部由探针自动标出，确认密码手动补。
+
 ## 不同控件类型
 
 同一套接线适配 Field 家族的全部控件；差异只在受控 props 与 `id` 的落点，
@@ -467,6 +495,7 @@ const schema = z.object({
 | `fieldInvalidState(field)` | `{ errorId, invalid }`，给 `FieldError` 的 `id` 与 `Field` 的 `data-invalid` |
 | `fieldControlProps(field)` | 展开 `id` / `name` / `aria-describedby` / `aria-invalid` 四线 |
 | `normalizeFieldErrors(errors)` | 递归拍平错误值：字符串与带 `message` 的对象统一成 `{ message }` |
+| `requiredFields(schema, emptyValues)` | 行为性必填探针：对空值同步跑一次 schema，出错字段路径集合（与 `field.name` 同格式），喂标签部件的 `required`；跨字段必填与合法默认值测不出，手动补 |
 | `silentFieldUpdateOptions` | `setFieldValue` 第三参：不跑 listeners、不更新 meta、不校验 |
 | `validatingFieldUpdateOptions` | `setFieldValue` 第三参：只跳过 listeners，照常校验 |
 | `useFormReset(form, defaultValues)` | `defaultValues` 引用变化时整表回填 |

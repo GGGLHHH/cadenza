@@ -4,6 +4,7 @@ import {
   fieldErrors,
   fieldInvalidState,
   formProps,
+  requiredFields,
   useForm,
   useFormSubmitting,
 } from '@gedatou/cadenza-form'
@@ -27,9 +28,13 @@ const schema = z.object({
   description: z.string().min(20, '描述至少 20 个字').max(100, '描述最多 100 个字'),
 })
 
+const DEFAULT_VALUES = { title: '', description: '' }
+// 行为性必填探针:空值过不了校验的字段,标签自动带红星
+const REQUIRED = requiredFields(schema, DEFAULT_VALUES)
+
 export default function BasicDemo(): ReactElement {
   const form = useForm({
-    defaultValues: { title: '', description: '' },
+    defaultValues: DEFAULT_VALUES,
     validators: { onChange: schema },
     onSubmit: async ({ formApi, value }) => {
       await new Promise(resolve => setTimeout(resolve, 800))
@@ -60,7 +65,7 @@ export default function BasicDemo(): ReactElement {
             const { errorId, invalid } = fieldInvalidState(field)
             return (
               <Field data-invalid={invalid || undefined}>
-                <FieldLabel htmlFor={field.name}>标题</FieldLabel>
+                <FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>标题</FieldLabel>
                 <Input
                   {...fieldControlProps(field)}
                   value={field.state.value}
@@ -80,7 +85,7 @@ export default function BasicDemo(): ReactElement {
             const { errorId, invalid } = fieldInvalidState(field)
             return (
               <Field data-invalid={invalid || undefined}>
-                <FieldLabel htmlFor={field.name}>描述</FieldLabel>
+                <FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>描述</FieldLabel>
                 <Textarea
                   {...fieldControlProps(field)}
                   value={field.state.value}

@@ -4,6 +4,7 @@ import {
   fieldErrors,
   fieldInvalidState,
   formProps,
+  requiredFields,
   useForm,
   useFormSubmitting,
 } from '@gedatou/cadenza-form'
@@ -96,22 +97,28 @@ const schema = z
     }
   })
 
+const DEFAULT_VALUES = {
+  email: '',
+  password: '',
+  confirmPassword: '',
+  fullName: '',
+  age: null as number | null,
+  bio: '',
+  voicePart: '',
+  experience: '',
+  weekdays: [] as string[],
+  weeklyHours: 0,
+  notifications: true,
+  agreeTerms: false,
+}
+
+// 行为性必填探针:空值过不了校验的字段自动带红星;
+// 简介(可留空)与提醒(默认合法)不会被标,确认密码是跨字段必填,探针测不出,手动补
+const REQUIRED = requiredFields(schema, DEFAULT_VALUES)
+
 export default function ComplexDemo(): ReactElement {
   const form = useForm({
-    defaultValues: {
-      email: '',
-      password: '',
-      confirmPassword: '',
-      fullName: '',
-      age: null as number | null,
-      bio: '',
-      voicePart: '',
-      experience: '',
-      weekdays: [] as string[],
-      weeklyHours: 0,
-      notifications: true,
-      agreeTerms: false,
-    },
+    defaultValues: DEFAULT_VALUES,
     validators: { onChange: schema },
     onSubmit: async ({ formApi, value }) => {
       await new Promise(resolve => setTimeout(resolve, 800))
@@ -147,7 +154,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>邮箱</FieldLabel>
+                    <FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>邮箱</FieldLabel>
                     <InputGroup>
                       <InputGroupAddon>
                         <IconMail aria-hidden />
@@ -172,7 +179,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>密码</FieldLabel>
+                    <FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>密码</FieldLabel>
                     <Input
                       {...fieldControlProps(field)}
                       value={field.state.value}
@@ -192,7 +199,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>确认密码</FieldLabel>
+                    <FieldLabel htmlFor={field.name} required>确认密码</FieldLabel>
                     <Input
                       {...fieldControlProps(field)}
                       value={field.state.value}
@@ -217,7 +224,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>姓名</FieldLabel>
+                    <FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>姓名</FieldLabel>
                     <Input
                       {...fieldControlProps(field)}
                       value={field.state.value}
@@ -236,7 +243,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>年龄</FieldLabel>
+                    <FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>年龄</FieldLabel>
                     <NumberField
                       id={field.name}
                       name={field.name}
@@ -269,7 +276,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>简介（可选）</FieldLabel>
+                    <FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>简介（可选）</FieldLabel>
                     <Textarea
                       {...fieldControlProps(field)}
                       value={field.state.value}
@@ -295,7 +302,7 @@ export default function ComplexDemo(): ReactElement {
                 return (
                   <Field orientation="responsive" data-invalid={invalid || undefined}>
                     <FieldContent>
-                      <FieldLabel htmlFor={field.name}>声部</FieldLabel>
+                      <FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>声部</FieldLabel>
                       <FieldError id={errorId} errors={fieldErrors(field)} />
                     </FieldContent>
                     <Select
@@ -331,7 +338,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <FieldSet data-invalid={invalid || undefined}>
-                    <FieldLegend id="experience-legend" variant="label">
+                    <FieldLegend id="experience-legend" variant="label" required={REQUIRED.has(field.name)}>
                       经验水平
                     </FieldLegend>
                     <RadioGroup
@@ -367,7 +374,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <FieldSet data-invalid={invalid || undefined}>
-                    <FieldLegend variant="label">排练时段</FieldLegend>
+                    <FieldLegend variant="label" required={REQUIRED.has(field.name)}>排练时段</FieldLegend>
                     <FieldDescription>可多选。</FieldDescription>
                     <FieldGroup>
                       {WEEKDAYS.map(day => (
@@ -404,7 +411,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldTitle id="weekly-hours-label">
+                    <FieldTitle id="weekly-hours-label" required={REQUIRED.has(field.name)}>
                       每周可投入（
                       {field.state.value}
                       {' '}
@@ -428,7 +435,7 @@ export default function ComplexDemo(): ReactElement {
               {field => (
                 <Field orientation="horizontal">
                   <FieldContent>
-                    <FieldLabel htmlFor={field.name}>排练提醒</FieldLabel>
+                    <FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>排练提醒</FieldLabel>
                     <FieldDescription>
                       无校验的字段:排期变化时发邮件提醒。
                     </FieldDescription>
@@ -459,7 +466,7 @@ export default function ComplexDemo(): ReactElement {
                   onCheckedChange={checked => field.handleChange(checked)}
                 />
                 <FieldContent>
-                  <FieldLabel htmlFor={field.name}>同意排练守则</FieldLabel>
+                  <FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>同意排练守则</FieldLabel>
                   <FieldDescription>准时出勤，请假提前一天说。</FieldDescription>
                   <FieldError id={errorId} errors={fieldErrors(field)} />
                 </FieldContent>
