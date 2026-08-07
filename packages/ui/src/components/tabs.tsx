@@ -167,6 +167,7 @@ export function TabsIndicator({ className }: TabsIndicatorProps): ReactElement {
     }
     // A resize that did not move the target must not re-render — and this is
     // also what stops the every-render effect below from looping.
+    // eslint-disable-next-line react/set-state-in-effect
     setBox(prev => prev !== null
       && prev.x === next.x && prev.y === next.y
       && prev.width === next.width && prev.height === next.height
@@ -228,6 +229,7 @@ export function TabsIndicator({ className }: TabsIndicatorProps): ReactElement {
     if (box === null)
       return
     ref.current?.getBoundingClientRect()
+    // eslint-disable-next-line react/set-state-in-effect
     setHasPlaced(true)
   }, [box])
 

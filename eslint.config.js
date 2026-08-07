@@ -91,4 +91,15 @@ export default antfu(
       ignore: ['typeset', 'typeset-table'],
     }],
   },
+}).append({
+  name: 'cadenza/composition-mechanism',
+  files: ['packages/ui/src/**'],
+  rules: {
+    // Marker-part detection (findComposedPart) walks children with
+    // Children.toArray, and trigger wiring clones an id onto the caller's
+    // element — deliberate house mechanisms, each documented at its site. The
+    // "fragile code" these rules guard against IS the mechanism here.
+    'react/no-children-to-array': 'off',
+    'react/no-clone-element': 'off',
+  },
 })

@@ -305,7 +305,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
   // Base UI: `undefined` belongs to "uncontrolled", and a controlled single
   // select clears with `null`.
   const isValueControlled = props.value !== undefined
-  const [internalValue, setSelectedValue] = useState<string | string[] | null>(
+  const [internalValue, setInternalValue] = useState<string | string[] | null>(
     props.defaultValue ?? (isMultiple ? [] : null),
   )
   const selectedValue = isValueControlled ? props.value : internalValue
@@ -335,9 +335,16 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
       selectedItemsCacheRef.current.set(id, item)
   }
 
-  const selectedItems = useMemo(() => selectedIds
-    .map(id => selectedItemsCacheRef.current.get(id))
-    .filter((entry): entry is T => entry !== undefined), [selectedIds, list.items])
+  const selectedItems = useMemo(
+    () => selectedIds
+      .map(id => selectedItemsCacheRef.current.get(id))
+      .filter((entry): entry is T => entry !== undefined),
+    // `list.items` is deliberate, not exhaustive-deps noise: the cache above
+    // fills during render, and a new page landing is exactly when a selected id
+    // may become resolvable — nothing else re-runs this memo for it.
+    // eslint-disable-next-line react/exhaustive-deps
+    [selectedIds, list.items],
+  )
 
   useEffect(() => {
     const wasOpen = prevOpenRef.current
@@ -360,7 +367,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
         eventDetails,
       )
       if (!eventDetails.isCanceled)
-        setSelectedValue(ids)
+        setInternalValue(ids)
       hasChangedRef.current = false
     }
 
@@ -375,7 +382,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
           hasChangedRef.current = false
       }
     }
-  }, [deferredEnabled, props, setSelectedValue, state.open])
+  }, [deferredEnabled, props, setInternalValue, state.open])
 
   // Set below, where the trigger's id is resolved — a ref because the handler
   // is created before that and must still see the current value.
@@ -429,15 +436,15 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
       props.onValueChange?.([], [], eventDetails)
       if (eventDetails.isCanceled)
         return
-      setSelectedValue([])
+      setInternalValue([])
     }
     else {
       props.onValueChange?.(null, eventDetails)
       if (eventDetails.isCanceled)
         return
-      setSelectedValue(null)
+      setInternalValue(null)
     }
-  }, [deferredEnabled, props, setSelectedValue])
+  }, [deferredEnabled, props, setInternalValue])
 
   // Provider value memoised (the house rule) with stable callbacks, so the
   // footer parts do not re-render with every keystroke in the search field.
@@ -573,7 +580,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
                     props.onValueChange?.(items, ids, eventDetails)
                     if (eventDetails.isCanceled)
                       return
-                    setSelectedValue(ids)
+                    setInternalValue(ids)
                   }}
                 >
                   {panelChildren}
@@ -587,7 +594,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
                     props.onValueChange?.(item, eventDetails)
                     if (eventDetails.isCanceled)
                       return
-                    setSelectedValue(item === null ? null : getOption(item).id)
+                    setInternalValue(item === null ? null : getOption(item).id)
                     if (closeOnSelect)
                       state.setOpen(false, eventDetails)
                   }}
