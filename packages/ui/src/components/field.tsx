@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
+import { cn } from '#lib/utils'
 import {
   Field,
   FieldContent,
@@ -76,12 +77,13 @@ export interface FieldLabelProps extends ComponentProps<typeof FieldLabelPrimiti
   required?: boolean
 }
 
-// 两种排版语境的间距统一到 2px:FieldLabel/FieldTitle 是 flex gap-2(8px),
-// 星号用 -ms-1.5 抵到 2px;FieldLegend 是行内流(0px),用 ms-0.5 补到 2px
-function RequiredMark({ className }: { className: string }): ReactElement {
+// 两种排版语境的间距统一到 gap-2(8px):FieldLabel/FieldTitle 是 flex gap-2,
+// 星号作为 flex 项吃原生 gap;FieldLegend 是行内流,用 ms-2 补齐
+function RequiredMark({ className }: { className?: string }): ReactElement {
   return (
     <span
       aria-hidden
+      data-slot="field-required-mark"
       className={`
         text-destructive select-none
         ${className}
@@ -92,29 +94,48 @@ function RequiredMark({ className }: { className: string }): ReactElement {
   )
 }
 
-export function FieldLabel({ children, required, ...props }: FieldLabelProps): ReactElement {
+export function FieldLabel({ children, className, required, ...props }: FieldLabelProps): ReactElement {
   return (
-    <FieldLabelPrimitive {...props}>
+    <FieldLabelPrimitive
+      className={cn(`
+        in-[[data-slot=field]:has([aria-required=true])]:not-has-data-[slot=field-required-mark]:after:text-destructive
+        in-[[data-slot=field]:has([aria-required=true])]:not-has-data-[slot=field-required-mark]:after:content-["*"/""]
+      `, className)}
+      {...props}
+    >
       {children}
-      {required === true && <RequiredMark className="-ms-1.5" />}
+      {required === true && <RequiredMark />}
     </FieldLabelPrimitive>
   )
 }
 
-export function FieldLegend({ children, required, ...props }: FieldLegendProps): ReactElement {
+export function FieldLegend({ children, className, required, ...props }: FieldLegendProps): ReactElement {
   return (
-    <FieldLegendPrimitive {...props}>
+    <FieldLegendPrimitive
+      className={cn(`
+        in-[[data-slot=field-set]:has(>[aria-required=true])]:not-has-data-[slot=field-required-mark]:after:ms-2
+        in-[[data-slot=field-set]:has(>[aria-required=true])]:not-has-data-[slot=field-required-mark]:after:text-destructive
+        in-[[data-slot=field-set]:has(>[aria-required=true])]:not-has-data-[slot=field-required-mark]:after:content-["*"/""]
+      `, className)}
+      {...props}
+    >
       {children}
-      {required === true && <RequiredMark className="ms-0.5" />}
+      {required === true && <RequiredMark className="ms-2" />}
     </FieldLegendPrimitive>
   )
 }
 
-export function FieldTitle({ children, required, ...props }: FieldTitleProps): ReactElement {
+export function FieldTitle({ children, className, required, ...props }: FieldTitleProps): ReactElement {
   return (
-    <FieldTitlePrimitive {...props}>
+    <FieldTitlePrimitive
+      className={cn(`
+        in-[[data-slot=field]:has([aria-required=true])]:not-has-data-[slot=field-required-mark]:after:text-destructive
+        in-[[data-slot=field]:has([aria-required=true])]:not-has-data-[slot=field-required-mark]:after:content-["*"/""]
+      `, className)}
+      {...props}
+    >
       {children}
-      {required === true && <RequiredMark className="-ms-1.5" />}
+      {required === true && <RequiredMark />}
     </FieldTitlePrimitive>
   )
 }
