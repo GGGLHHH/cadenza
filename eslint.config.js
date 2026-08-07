@@ -29,6 +29,9 @@ export default antfu(
       'docs/.next',
       'docs/.source',
       'docs/next-env.d.ts',
+      // Vendored external skills managed by the skills CLI (`npx skills update`
+      // overwrites them); .claude/skills/zod is a symlink into it.
+      '.agents',
       // Deliberately broken tailwind classes — run it explicitly with --no-ignore.
       'eslint-fixtures',
       // Vendored shadcn source, kept byte-identical to upstream so `shadcn add
