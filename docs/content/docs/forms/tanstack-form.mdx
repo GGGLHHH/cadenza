@@ -510,6 +510,37 @@ const schema = z.object({
 })
 ```
 
+## 分步表单
+
+[复杂表单](#复杂表单)的分步版：一个 `useForm` 贯穿五步，[Stepper](/docs/components/stepper)
+受控展示进度——值住在 form store 里，步骤切换只是卸载字段组件，输入与校验状态都
+不丢。每一步的推进都要过一段 200–500ms 的异步确认，期间当前步的指示器转 Spinner：
+
+<ComponentPreview name="tanstack-form/multi-step" align="stretch" />
+
+分步的全部要点在「前进」这一下：
+
+- **「下一步」是本步的提交尝试，不是表单提交。** 真提交会让 `submissionAttempts > 0`
+  全表开闸（见[显示错误](#显示错误)的门禁第二条）——后面步骤的字段一渲染就带着
+  错误挨骂。所以中间步不碰 `handleSubmit`。
+- **先补跑校验，再看本步。** 没动过的字段此前没有任何校验记录，`form.validate('change')`
+  强制分发一遍；然后只检查本步字段的 `getFieldMeta(name).errors`——其余字段的错误
+  照常被门禁挡住，不受影响。跨字段校验照常工作：确认密码的 `superRefine` 错误落在
+  第一步自己的字段上。
+- **有错就手动开闸：** 对本步的错误字段 `setFieldMeta` 标记 `isDirty` + `isBlurred`
+  （门禁第一条），错误与红框只在这些字段上出现，再用 `focusFirstInvalidControl`
+  把焦点送过去。语义上这就是把「试图前进」当作该步的提交尝试。
+- **异步推进用一个 `advancing` 状态锁整面。** 本地校验过了才发异步确认；期间
+  「下一步」`pending`、Stepper `loading`（当前步转 Spinner）、trigger 与「上一步」
+  一并拦下。`pending` 不是装饰而是防误交：「下一步」与「提交」渲染在同一个位置
+  （React 还会复用同一个 button 节点），推进完成的瞬间，快速双击的第二击就落在
+  「提交」上——没有 `pending` 拦着，表单就被误交了。
+- **回头随便走，前进必须过关。** Stepper 受控在外部 `step` 上；`onValueChange` 里
+  对 `next > step` 与 `advancing` 期间的点击调 `eventDetails.cancel()`，点已完成的
+  步骤则直接放行。
+- **真正的提交只在最后一步**，`formProps(form)` 照常接管：失败揭示 + 聚焦 + 提交
+  管线全部是包默认。
+
 ## API
 
 `@gedatou/cadenza-form` 的完整导出。官方 API 全量转发，下表只列门面新增的部分：
