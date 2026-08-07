@@ -1,10 +1,10 @@
 'use client'
 
-import type { ComponentProps, ReactElement } from 'react'
+import type { ComponentProps, CSSProperties, ReactElement } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck } from '@tabler/icons-react'
-import { createContext, use, useCallback, useMemo } from 'react'
+import { createContext, use, useCallback, useEffect, useMemo, useRef } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { cn, dataAttr } from '#lib/utils'
 import { Spinner } from './spinner'
@@ -25,6 +25,21 @@ import { Spinner } from './spinner'
  * off the state the items externalise as data attributes (`data-active`,
  * `data-completed`, `data-disabled`, `data-loading`) through the
  * `group/stepper` and `group/stepper-item` channels.
+ *
+ * Advancing is choreographed, not flashed — CSS transitions in a fixed
+ * 450ms window, shadcn's tempo: the checkmark lands (0–150ms), the
+ * separator fill sweeps across (150–300ms), the next ring lights up
+ * (300–450ms). Retreating mirrors it: ring dims, fill drains, checkmark
+ * yields to the number. Multi-step jumps CASCADE inside the same window —
+ * one wave leaves the step you were on and arrives segment by segment, the
+ * beat dividing evenly so the total never grows. The schedule is one rule:
+ * every part's `transition-delay` is its distance from the wave's
+ * origin (the previously active step, which the root remembers and each
+ * item turns into the `--stepper-beat` (duration) and `--stepper-ring-delay`
+ * / `--stepper-line-delay` variables its parts read). Distance covers direction too — origin sits on
+ * the other side on the way back — so a single base-state delay serves
+ * both entering and leaving every state. `motion-reduce` drops all of it
+ * to instant swaps.
  */
 
 /** Why the active step changed. */
@@ -32,8 +47,17 @@ export type StepperChangeEventReason = 'trigger-press' | 'none'
 
 export type StepperChangeEventDetails = ChangeEventDetails<StepperChangeEventReason>
 
+/**
+ * The choreography's total budget, shadcn's tempo: however many steps a jump
+ * crosses, the whole wave fits in this window. A jump over n steps has 2n+1
+ * beats (n+1 rings, n lines), so a single step keeps the familiar 3 x 150ms.
+ */
+const CHOREOGRAPHY_MS = 450
+
 interface StepperContextValue {
   activeStep: number
+  /** Where the current advance animation started — the previously active step. */
+  previousStep: number
   setValue: (step: number, eventDetails: StepperChangeEventDetails) => void
 }
 
@@ -132,7 +156,21 @@ export function Stepper({
     [onValueChange, setActiveStep],
   )
 
-  const context = useMemo(() => ({ activeStep, setValue }), [activeStep, setValue])
+  // The cascade's origin: the step that was active before this one. Read at
+  // render time, synced after commit — and because the context only recomputes
+  // when activeStep changes, unrelated re-renders keep the origin (and every
+  // in-flight transition-delay) stable until the next real step change.
+  const previousRef = useRef(activeStep)
+  const previousStep = previousRef.current
+  useEffect(() => {
+    previousRef.current = activeStep
+  })
+
+  const context = useMemo(
+    () => ({ activeStep, previousStep, setValue }),
+    // eslint-disable-next-line react/exhaustive-deps -- previousStep is derived from activeStep's history
+    [activeStep, setValue],
+  )
 
   const defaultChildren = steps === undefined
     ? null
@@ -178,9 +216,10 @@ export function StepperItem({
   disabled = false,
   loading = false,
   step,
+  style,
   ...props
 }: StepperItemProps): ReactElement {
-  const { activeStep } = useStepperContext()
+  const { activeStep, previousStep } = useStepperContext()
   const active = activeStep === step
   const context = useMemo<StepperItemContextValue>(() => ({
     step,
@@ -189,6 +228,17 @@ export function StepperItem({
     disabled,
     loading: loading && active,
   }), [active, activeStep, completed, disabled, loading, step])
+
+  // The cascade schedule (see the family JSDoc): delay = distance from the
+  // wave's origin. The ring counts full steps; the line counts from its entry
+  // end — its start edge going forward, its far end (step + 1) coming back.
+  const forward = activeStep >= previousStep
+  const span = Math.max(1, Math.abs(activeStep - previousStep))
+  const beat = CHOREOGRAPHY_MS / (2 * span + 1)
+  const ringDelay = Math.round(Math.abs(step - previousStep) * 2 * beat)
+  const lineDelay = Math.round(
+    (Math.max(0, forward ? step - previousStep : previousStep - step - 1) * 2 + 1) * beat,
+  )
 
   return (
     <StepperItemContext value={context}>
@@ -202,6 +252,14 @@ export function StepperItem({
         data-disabled={dataAttr(disabled)}
         data-loading={dataAttr(context.loading)}
         data-slot="stepper-item"
+        // Merged, not replaced: the variables are this part's wiring, the rest
+        // of the style object stays the caller's.
+        style={{
+          '--stepper-beat': `${Math.round(beat)}ms`,
+          '--stepper-ring-delay': `${ringDelay}ms`,
+          '--stepper-line-delay': `${lineDelay}ms`,
+          ...style,
+        } as CSSProperties}
         {...props}
       />
     </StepperItemContext>
@@ -245,6 +303,12 @@ export function StepperTrigger({ className, onClick, ...props }: StepperTriggerP
  * they can default): the step number, swapped for a checkmark once completed
  * and a spinner while loading. `children` replaces the number slot; the
  * checkmark and spinner are the part's own semantic and stay.
+ *
+ * Its beats in the advance choreography (see the family JSDoc) all read one
+ * clock: `--stepper-ring-delay`, the item's distance from the wave's origin.
+ * The checkmark lands the moment the wave arrives, the ring lights up with
+ * it, and on the way back everything waits its mirrored turn — no per-state
+ * delays, the distance already encodes the direction.
  */
 export function StepperIndicator({ children, className, ...props }: StepperIndicatorProps): ReactElement {
   const item = useStepperItemContext()
@@ -252,21 +316,27 @@ export function StepperIndicator({ children, className, ...props }: StepperIndic
     <span
       className={cn(`
         relative flex shrink-0 items-center justify-center rounded-full bg-muted
-        text-xs font-medium text-muted-foreground transition-colors block-6
-        inline-6
+        text-xs font-medium text-muted-foreground transition-colors
+        [transition-delay:var(--stepper-ring-delay)] duration-(--stepper-beat)
+        block-6 inline-6
         group-data-completed/stepper-item:bg-primary
         group-data-completed/stepper-item:text-primary-foreground
         group-data-active/stepper-item:bg-primary
         group-data-active/stepper-item:text-primary-foreground
+        motion-reduce:transition-none
       `, className)}
       data-slot="stepper-indicator"
       {...props}
     >
+      {/* The number mirrors the checkmark's timing so the swap stays one
+          gesture in both directions (the checkmark overlays it meanwhile). */}
       <span
         className={`
-          transition-transform
+          transition-transform [transition-delay:var(--stepper-ring-delay)]
+          duration-(--stepper-beat)
           group-data-completed/stepper-item:scale-0
           group-data-loading/stepper-item:scale-0
+          motion-reduce:transition-none
         `}
       >
         {children ?? item.step}
@@ -274,8 +344,11 @@ export function StepperIndicator({ children, className, ...props }: StepperIndic
       <IconCheck
         aria-hidden
         className={`
-          absolute scale-0 transition-transform block-4 inline-4
+          absolute scale-0 transition-transform
+          [transition-delay:var(--stepper-ring-delay)] duration-(--stepper-beat)
+          block-4 inline-4
           group-data-completed/stepper-item:scale-100
+          motion-reduce:transition-none
         `}
       />
       {/* aria-hidden: the loading announcement is the caller's (spinner.tsx JSDoc). */}
@@ -285,16 +358,21 @@ export function StepperIndicator({ children, className, ...props }: StepperIndic
 }
 
 /**
- * The line between steps. Decorative (`aria-hidden`); follows its item's
- * `data-completed` for colour, and the root's orientation for direction.
+ * The line between steps: a muted track with a primary fill that SWEEPS in
+ * from the start edge on completion (and drains back on retreat) — the middle
+ * beat of the advance choreography, on the item's `--stepper-line-delay`
+ * clock (its distance from the wave's origin, counted from whichever end the
+ * wave enters). The fill is a scale transform from the logical start (top
+ * when vertical, mirrored under RTL); the 2px cross-axis growth it carries
+ * along is imperceptible. Decorative (`aria-hidden`), so it takes no
+ * children.
  */
 export function StepperSeparator({ className, ...props }: StepperSeparatorProps): ReactElement {
   return (
     <div
       aria-hidden
       className={cn(`
-        m-0.5 bg-muted transition-colors
-        group-data-completed/stepper-item:bg-primary
+        relative m-0.5 bg-muted
         group-data-horizontal/stepper:flex-1
         group-data-horizontal/stepper:block-0.5
         group-data-vertical/stepper:block-12
@@ -302,7 +380,19 @@ export function StepperSeparator({ className, ...props }: StepperSeparatorProps)
       `, className)}
       data-slot="stepper-separator"
       {...props}
-    />
+    >
+      <span
+        className={`
+          absolute inset-0 origin-left scale-0 bg-primary transition-transform
+          [transition-delay:var(--stepper-line-delay)] duration-(--stepper-beat)
+          ease-out
+          group-data-completed/stepper-item:scale-100
+          group-data-vertical/stepper:origin-top
+          motion-reduce:transition-none
+          rtl:origin-right
+        `}
+      />
+    </div>
   )
 }
 

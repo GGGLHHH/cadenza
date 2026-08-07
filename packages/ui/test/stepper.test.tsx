@@ -57,6 +57,19 @@ describe('stepper', () => {
     expect(items[0].querySelector('[data-slot="spinner"]')).toBeNull()
   })
 
+  it('multi-step jumps cascade: each item schedules its delay by distance from the previous step', () => {
+    const { container, rerender } = render(<Stepper steps={4} value={1} />)
+    rerender(<Stepper steps={4} value={4} />)
+
+    const items = [...container.querySelectorAll<HTMLElement>('[data-slot="stepper-item"]')]
+    // Wave origin is step 1, the 450ms budget split over 2×3+1 beats (~64.3ms):
+    // rings arrive two beats per step crossed, lines one beat behind their ring.
+    expect(items.map(item => item.style.getPropertyValue('--stepper-ring-delay')))
+      .toEqual(['0ms', '129ms', '257ms', '386ms'])
+    expect(items.map(item => item.style.getPropertyValue('--stepper-line-delay')))
+      .toEqual(['64ms', '193ms', '321ms', '450ms'])
+  })
+
   it('composed items own the structure; indicator children replace the number slot', () => {
     render(
       <Stepper defaultValue={2}>
