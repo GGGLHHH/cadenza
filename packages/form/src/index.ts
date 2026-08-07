@@ -18,6 +18,8 @@ export interface FormFieldError { message?: string }
 export interface AppFieldControlProps {
   'aria-describedby': string
   'aria-invalid': boolean
+  /** 语义必填,自动推导(见 fieldRequired);可选字段省略该属性,不渲染 aria-required="false" 噪声。 */
+  'aria-required'?: true
   'id': string
   'name': string
 }
@@ -75,12 +77,16 @@ export function fieldInvalidState(field: AnyFieldApi): {
 export function fieldControlProps(field: AnyFieldApi): AppFieldControlProps {
   const { errorId, invalid } = fieldInvalidState(field)
 
-  return {
+  const props: AppFieldControlProps = {
     'id': field.name as string,
     'name': field.name as string,
     'aria-describedby': errorId,
     'aria-invalid': invalid,
   }
+  if (fieldRequired(field)) {
+    props['aria-required'] = true
+  }
+  return props
 }
 
 export function normalizeFieldErrors(errors: unknown[]): FormFieldError[] {
@@ -294,4 +300,43 @@ function formatIssuePath(path: StandardSchemaIssueLike['path']): string {
     }
   }
   return name
+}
+
+// 自动推导版:所需的 schema 与空值表单自己都有 —— validators.onChange 若是
+// Standard Schema,就对 defaultValues 探针一次(每个 form 实例缓存一次)。
+// validators 是纯函数、或 schema 是异步的,都无从推导:静默返回空集,不炸渲染
+const formRequiredFields = new WeakMap<AnyFormApi, Set<string>>()
+
+function requiredFieldsOf(form: AnyFormApi): Set<string> {
+  const cached = formRequiredFields.get(form)
+  if (cached !== undefined) {
+    return cached
+  }
+
+  const schema = (form.options as {
+    validators?: { onChange?: unknown }
+  }).validators?.onChange
+
+  let derived: Set<string>
+  try {
+    derived = isStandardSchema(schema)
+      ? requiredFields(schema, form.options.defaultValues)
+      : new Set<string>()
+  }
+  catch {
+    derived = new Set<string>()
+  }
+  formRequiredFields.set(form, derived)
+  return derived
+}
+
+function isStandardSchema(value: unknown): value is StandardSchemaLike {
+  return typeof value === 'object' && value !== null && '~standard' in value
+}
+
+// 内部:字段是否必填,从表单自带的 schema 与默认值自动推导,唯一消费者是
+// fieldControlProps 的 aria-required —— 红星由 Field 家族的 CSS 对该属性响应,
+// 不再有独立的 JS 导出(方案 A,用户裁定 2026-08-06)
+function fieldRequired(field: AnyFieldApi): boolean {
+  return requiredFieldsOf(field.form).has(field.name as string)
 }
