@@ -67,6 +67,7 @@ export default function RadioGroupDemo(): ReactElement {
                 <FieldDescription>之后随时可以升降级。</FieldDescription>
                 <RadioGroup
                   aria-labelledby="plan-legend"
+                  aria-required
                   name={field.name}
                   value={field.state.value}
                   onValueChange={value => field.handleChange(String(value))}

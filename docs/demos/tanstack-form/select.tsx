@@ -82,6 +82,7 @@ export default function SelectDemo(): ReactElement {
                     id={field.name}
                     aria-describedby={errorId}
                     aria-invalid={invalid}
+                    aria-required
                     className="min-inline-[120px]"
                   >
                     <SelectValue placeholder="选一个声部" />

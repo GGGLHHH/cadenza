@@ -59,8 +59,8 @@ import {
 胶水归门面：
 
 - `useForm` 管状态，`form.Field` 的 render prop 模式做受控绑定——与官方用法一字不差。
-- `fieldControlProps(field)` 一次展开 `id` / `name` / `aria-describedby` / `aria-invalid`
-  四条线；手写版本要在 `Field`、控件、`FieldError` 三处各接一遍。
+- `fieldControlProps(field)` 一次展开 `id` / `name` / `aria-describedby` / `aria-invalid` /
+  `aria-required` 五条线；手写版本要在 `Field`、控件、`FieldError` 三处各接一遍。
 - `fieldErrors(field)` 带展示门禁：onChange 实时校验，错误信息等字段**被改过且失焦过**
   （或表单提交过）才出现（见[显示错误](#显示错误)）。
 - `formProps(form)` 一次展开 `noValidate` 与提交处理（底层是 `formSubmitHandler`）：
@@ -202,7 +202,8 @@ dirty 条件的用意：整表 schema 校验会给**没碰过的字段**也写�
 - `fieldErrors(field)`——规整后的 `{ message }` 数组，直接喂给 `FieldError` 的
   `errors` prop；没有可显示的错误时 `FieldError` 渲染为空。
 - `fieldControlProps(field)`——展开 `id` / `name` / `aria-describedby` /
-  `aria-invalid`；`aria-invalid` 同样受门禁控制，控件的红框与错误文字同步出现。
+  `aria-invalid` / `aria-required`；`aria-invalid` 同样受门禁控制，控件的红框与
+  错误文字同步出现。
 - `fieldInvalidState(field)`——取 `{ errorId, invalid }`，给 `FieldError` 的 `id`
   与 `Field` 的 `data-invalid` 用。
 
@@ -213,29 +214,37 @@ dirty 条件的用意：整表 schema 校验会给**没碰过的字段**也写�
 
 「必填」在本站惯例里是**行为性**的：空值过不了校验的字段就是必填——不是 zod 的
 `optional()` 结构（必填的 `z.string().min(1)` 与可留空的 `z.string().max(100)`
-在结构上都"非 optional"，TanStack Form 本身也没有必填概念）。所以联动走探针：
-`requiredFields(schema, defaultValues)` 对默认值同步跑一次 schema，出错字段的
-路径集合就是必填集，直接喂给 `FieldLabel` / `FieldLegend` / `FieldTitle` 的
-`required`（红色星号，`aria-hidden`——读屏的必填语义走控件的 `aria-required`）：
+在结构上都"非 optional"，TanStack Form 本身也没有必填概念）。
+
+联动**没有专属 API**——信号是 Web 标准属性 `aria-required`：`fieldControlProps`
+从表单自带的 schema 与默认值推导（每表单探针一次），必填时带出 `aria-required`；
+Field 家族的 CSS 对它响应，红星是纯样式投影（`content: "*" / ""`，读屏静默）：
 
 ```tsx
-const DEFAULT_VALUES = { title: '', bio: '' }
-const REQUIRED = requiredFields(schema, DEFAULT_VALUES)
+<FieldLabel htmlFor={field.name}>标题</FieldLabel>
+<Input {...fieldControlProps(field)} … />   {/* 必填时自动 aria-required,红星随之点亮 */}
 ```
 
-```tsx
-<FieldLabel htmlFor={field.name} required={REQUIRED.has(field.name)}>
-  标题
-</FieldLabel>
-```
+不走展开的控件，把 `aria-required` 手写在它的合法承载者上（与你本就手写
+`aria-invalid` 的位置相同）：Select 的 trigger、RadioGroup 根、Slider 根、
+Checkbox / Switch 本体。组标题（`FieldLegend`）由「组控件是 `FieldSet` 直接
+子级且带 `aria-required`」点亮——RadioGroup 场景自动成立。
 
-探针测不出的两类，手动补 `required`：
+跨字段必填（确认密码）推导测不出：把 `aria-required` 手写在控件上（语义本来
+就该在那里），红星随 CSS 自动跟上。默认值本身合法的字段（默认开启的开关）
+不会被标——用户不可能失败它。
 
-- **仅跨字段成立**的必填（确认密码这类 `superRefine`）——空对空是相等的；
-- **默认值本身合法**的字段（默认开启的开关）——用户不可能失败它，通常也不必标。
+两处 **ARIA 真空角**用标签部件的 `required` prop 兜底（prop 星在场时 CSS 星
+自动让位，不会双开）：
 
-[复杂表单](#复杂表单)整表接的就是这套：简介（可留空）与提醒开关没有星号，
-其余全部由探针自动标出，确认密码手动补。
+- **Checkbox 多选组**的组标题——`group` role 不合法承载 `aria-required`，逐项
+  设置又是语义谎言；
+- **InfiniteCombobox** 的 label——触发器是 `button` role，同样不承载。
+
+不经表单的场景仍可用底层的 `requiredFields(schema, emptyValues)` 自己算，或
+直接用标签的 `required` prop。[复杂表单](#复杂表单)整表接的就是这套：简介
+（可留空）与提醒开关没有星号，其余全部由 `aria-required` 点亮，仅两处真空角
+走 prop。
 
 ## 不同控件类型
 
@@ -519,9 +528,9 @@ const schema = z.object({
 | `fieldShouldShowError(field)` | 门禁本体：改过（dirty）且失焦过，或提交过 |
 | `fieldErrorId(name)` | 错误元素的 id：清洗非法字符后拼 `-error` |
 | `fieldInvalidState(field)` | `{ errorId, invalid }`，给 `FieldError` 的 `id` 与 `Field` 的 `data-invalid` |
-| `fieldControlProps(field)` | 展开 `id` / `name` / `aria-describedby` / `aria-invalid` 四线 |
+| `fieldControlProps(field)` | 展开 `id` / `name` / `aria-describedby` / `aria-invalid` / `aria-required` 五线（必填自动推导，可选字段省略该属性） |
 | `normalizeFieldErrors(errors)` | 递归拍平错误值：字符串与带 `message` 的对象统一成 `{ message }` |
-| `requiredFields(schema, emptyValues)` | 行为性必填探针：对空值同步跑一次 schema，出错字段路径集合（与 `field.name` 同格式），喂标签部件的 `required`；跨字段必填与合法默认值测不出，手动补 |
+| `requiredFields(schema, emptyValues)` | 底层必填探针：对空值同步跑一次 schema，出错字段路径集合（与 `field.name` 同格式）。表单内不需要它——`fieldControlProps` 的 `aria-required` 已内置同一推导，红星由 Field 家族 CSS 对该属性响应 |
 | `silentFieldUpdateOptions` | `setFieldValue` 第三参：不跑 listeners、不更新 meta、不校验 |
 | `validatingFieldUpdateOptions` | `setFieldValue` 第三参：只跳过 listeners，照常校验 |
 | `useFormReset(form, defaultValues)` | `defaultValues` 引用变化时整表回填 |

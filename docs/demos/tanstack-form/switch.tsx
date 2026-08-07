@@ -63,6 +63,7 @@ export default function SwitchDemo(): ReactElement {
                   <FieldError id={errorId} errors={fieldErrors(field)} />
                 </FieldContent>
                 <Switch
+                  aria-required
                   id={field.name}
                   name={field.name}
                   checked={field.state.value}

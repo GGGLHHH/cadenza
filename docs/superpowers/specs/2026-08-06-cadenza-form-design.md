@@ -43,7 +43,7 @@ xchangeai-web（`/Users/ggg/wuhan/xchangeai-web`）基于 `@tanstack/react-form`
 | 错误族 | `fieldErrors(field)` | 过门禁后返回 `FormFieldError[]`，未过门禁返回 `[]` |
 | 错误族 | `fieldHasError(field)`、`fieldErrorMessage(field)` | 派生自 `fieldErrors` |
 | 错误族 | `fieldShouldShowError(field)` | `(meta.isDirty && meta.isBlurred) \|\| form.state.submissionAttempts > 0`。实施期勘误（用户裁定）：原为 xchangeai 的 `isBlurred \|\| attempts > 0`——整表校验会给未碰过的字段写错误，而点按钮（提交/数组加行）会夺焦触发 blur，组合导致未输入的字段被误伤；dirty 条件（粘性）把失焦揭示限定在用户真动过的字段，未动过的统一等提交揭示 |
-| 错误族 | `fieldErrorId(name)`、`fieldInvalidState(field)`、`fieldControlProps(field)` | aria 接线：`{ id, name, 'aria-describedby', 'aria-invalid' }` |
+| 错误族 | `fieldErrorId(name)`、`fieldInvalidState(field)`、`fieldControlProps(field)` | aria 接线：`{ id, name, 'aria-describedby', 'aria-invalid', 'aria-required'? }`（实施期勘误：aria-required 由必填推导自动带出，可选字段省略） |
 | 错误族 | `normalizeFieldErrors(errors)` | 递归拍平；string → `{message}`；带 message 对象保留；其余丢弃 |
 | 常量 | `silentFieldUpdateOptions` | `{ dontRunListeners: true, dontUpdateMeta: true, dontValidate: true }` |
 | 常量 | `validatingFieldUpdateOptions` | `{ dontRunListeners: true }` |

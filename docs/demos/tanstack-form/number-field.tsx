@@ -78,6 +78,7 @@ export default function NumberFieldDemo(): ReactElement {
                     <NumberFieldInput
                       aria-describedby={errorId}
                       aria-invalid={invalid}
+                      aria-required
                       placeholder="1–99"
                       onBlur={field.handleBlur}
                     />

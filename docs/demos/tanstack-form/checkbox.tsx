@@ -62,7 +62,7 @@ export default function CheckboxDemo(): ReactElement {
             const { errorId, invalid } = fieldInvalidState(field)
             return (
               <FieldSet data-invalid={invalid || undefined}>
-                <FieldLegend variant="label">乐季任务</FieldLegend>
+                <FieldLegend variant="label" required>乐季任务</FieldLegend>
                 <FieldDescription>认领的任务有更新时会通知你。</FieldDescription>
                 <FieldGroup>
                   {TASKS.map(task => (

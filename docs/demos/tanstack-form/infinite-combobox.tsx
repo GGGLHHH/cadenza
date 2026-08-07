@@ -67,7 +67,7 @@ export default function InfiniteComboboxDemo(): ReactElement {
             const { errorId, invalid } = fieldInvalidState(field)
             return (
               <Field data-invalid={invalid || undefined}>
-                <FieldLabel htmlFor="composer-trigger">最喜欢的作曲家</FieldLabel>
+                <FieldLabel htmlFor="composer-trigger" required>最喜欢的作曲家</FieldLabel>
                 <InfiniteCombobox<Person>
                   getOption={getOption}
                   list={list}
