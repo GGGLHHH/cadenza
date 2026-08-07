@@ -1,7 +1,7 @@
 {
   "name": "@gedatou/cadenza-ui",
   "type": "module",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Accessible React components — Base UI behaviour, shadcn base-nova styling",
   "license": "MIT",
   "homepage": "https://cadenza-ui-docs.vercel.app",
