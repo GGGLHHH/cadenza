@@ -123,6 +123,10 @@ const registry: Record<string, ComponentType> = {
   'tanstack-form/complex': lazy(async () => import('./tanstack-form/complex')),
   'tanstack-form/array': lazy(async () => import('./tanstack-form/array')),
   'tanstack-form/create-form-hook': lazy(async () => import('./tanstack-form/create-form-hook')),
+  'stepper/basic': lazy(async () => import('./stepper/basic')),
+  'stepper/composition': lazy(async () => import('./stepper/composition')),
+  'stepper/controlled': lazy(async () => import('./stepper/controlled')),
+  'stepper/vertical': lazy(async () => import('./stepper/vertical')),
   'utils/controllable-state': lazy(async () => import('./utils/controllable-state')),
 }
 

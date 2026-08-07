@@ -1,0 +1,162 @@
+---
+title: Stepper
+description: 分步流程的指示与导航 —— 数字指示器、完成打 ✓、异步前进转 Spinner，trigger 可点击跳步
+---
+
+<ComponentPreview name="stepper/basic" />
+
+分步组件。Base UI 没有 stepper，行为整套由封装层拥有，API 形状对齐 Origin UI 的
+stepper 家族：根持有当前步（从 1 起），受控三件套 `value` / `defaultValue` /
+`onValueChange`；每一步派生自己的状态 —— 在当前步之前就是 `completed`（指示器换 ✓），
+等于当前步就是 `active`，`loading` 只在当前步生效（指示器转 Spinner）。
+
+`StepperTrigger` 是真按钮：点击跳到那一步，当前步带 `aria-current="step"`。
+不写 children 时，`steps={4}` 一行渲染出完整的默认组合（数字指示器 + 连线）；
+手写组合时七个部件全部可用，状态经 `data-*` 外化，样式随便接。
+
+## 使用
+
+```tsx
+import { Stepper } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Stepper defaultValue={2} steps={4} />
+```
+
+## 组成
+
+不传 `children` 就是默认组合（每步一个数字指示器，步间连线）；写了 `children`
+结构完全归你，`steps` 与根上的 `loading` 只喂默认组合：
+
+```text
+<Stepper>                    根:持有当前步,写 data-orientation
+  <StepperItem>              一步:派生 active / completed / loading,外化为 data-*
+    <StepperTrigger>         真按钮:点击跳到本步,active 时带 aria-current="step"
+      <StepperIndicator>     数字徽章:完成换 ✓,加载换 Spinner
+      <StepperTitle>         步骤名(可选)
+      <StepperDescription>   说明(可选)
+    </StepperTrigger>
+    <StepperSeparator>       步间连线(装饰,aria-hidden)
+  </StepperItem>
+</Stepper>
+```
+
+`StepperItem` 靠必填的 `step`（1 起）与根的 `value` 配对；连线写在 item 内部、
+trigger 之后，非末项加上（见下面的组合示例）。
+
+## 标题与描述
+
+标题与描述放进 trigger，整块文字都可以点击跳步：
+
+<ComponentPreview name="stepper/composition" />
+
+## 受控
+
+把 `value` 交给外部 state，「上一步 / 下一步」按钮与 trigger 点击都汇到同一个地方；
+异步前进时把 `loading` 递给组件，当前步的指示器就转 Spinner：
+
+<ComponentPreview name="stepper/controlled" />
+
+`onValueChange(value, eventDetails)` 的第二参永远存在：`eventDetails.reason` 说明这次
+变更从哪来（`'trigger-press'` 点击了某步的 trigger；`'none'` 程序性变更），
+`eventDetails.cancel()` 拒绝这次变更 —— 组件先跑你的回调、查到取消就跳过内部写入，
+受控与非受控下都成立。
+
+## 方向
+
+`orientation="vertical"` 竖排，连线随之转为竖线，默认组合同样适用：
+
+<ComponentPreview name="stepper/vertical" />
+
+## 什么时候用 Stepper
+
+和 [Tabs](/docs/components/tabs) 长得像（一排 trigger），分工不同：Tabs 是**平级视图**的
+切换 —— 带内容面板、方向键漫游、无先后语义；Stepper 是**有序流程**的进度 —— 没有面板
+（步骤内容自己排），completed 随当前步自动派生，每个 trigger 都是普通的 Tab 停靠点。
+要「第几步、走到哪了」用 Stepper，要「几个视图挑一个看」用 Tabs。
+
+## 状态与 className
+
+全家族渲染纯 DOM（div / button / span / h3 / p），`className` 就是字符串 ——
+类型上不假装有函数形态。按状态改样式用下表的 `data-*` 当 Tailwind 变体写，
+部件自己的默认视觉（指示器换 ✓、连线变色）也是同一通道：
+
+| 属性 | 挂在哪 | 出现时机 |
+| --- | --- | --- |
+| `data-orientation` | 根 | 恒在，值为 `horizontal` \| `vertical` |
+| `data-active` | item | 该步等于当前步 |
+| `data-completed` | item | 该步在当前步之前，或显式传了 `completed` |
+| `data-disabled` | item、trigger | `disabled` |
+| `data-loading` | item | 传了 `loading` 且该步是当前步 |
+
+布尔属性是 Base UI 的空串存在型（`data-active=""`），直接 `data-active:` 当变体写。
+根是 `group/stepper`、item 是 `group/stepper-item`，部件内部就是靠这两个 group 名
+接状态的（如 `group-data-completed/stepper-item:bg-primary`）。七个部件各带
+`data-slot`：`stepper` / `stepper-item` / `stepper-trigger` / `stepper-indicator` /
+`stepper-separator` / `stepper-title` / `stepper-description`。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### Stepper
+
+根元素。持有当前步，把它经 context 交给 items：
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultValue` | `number` | `1` | 非受控初始步（1 起） |
+| `value` | `number` | — | 受控当前步 |
+| `onValueChange` | `(value: number, eventDetails: StepperChangeEventDetails) => void` | — | 每次跳步都带 [eventDetails](#受控)，`cancel()` 可拒改 |
+| `steps` | `number` | — | 默认组合的步数；写了 `children` 则忽略 |
+| `loading` | `boolean` | — | 默认组合专用：当前步标记为加载中 |
+| `orientation` | `'horizontal' \| 'vertical'` | `'horizontal'` | 排布方向 |
+| `className` | `string` | — | — |
+| 其余 | `ComponentProps<'div'>`（原生 `defaultValue` 已被占用） | — | 透传 |
+
+### StepperItem
+
+一步。从根派生状态并全部外化为 `data-*`：
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `step` | `number` | 必填 | 本步的序号（1 起），与根的 `value` 配对 |
+| `completed` | `boolean` | `false` | 强制完成态；当前步之前的步自动完成，不用传 |
+| `disabled` | `boolean` | `false` | 禁用本步（trigger 一并禁用） |
+| `loading` | `boolean` | `false` | 加载态 —— 只在本步是当前步时生效 |
+| 其余 | `ComponentProps<'div'>` | — | 透传 |
+
+### StepperTrigger
+
+真 `<button type="button">`。点击把本步设为当前步（`reason: 'trigger-press'`），
+active 时带 `aria-current="step"`，禁用随 item。你传的 `onClick` 先跑，
+`preventDefault()` 可拦下跳步：
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| 其余 | `ComponentProps<'button'>` | — | 透传 |
+
+### StepperIndicator
+
+数字徽章，默认视觉不用写：空闲显示步骤数字，完成换 ✓，加载换 Spinner。
+`children` 只替换数字那一格 —— ✓ 与 Spinner 是部件自己的语义，保留：
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | 步骤数字 | 空闲态显示的内容 |
+| 其余 | `ComponentProps<'span'>` | — | 透传 |
+
+### StepperSeparator / StepperTitle / StepperDescription
+
+纯样式部件，各收对应元素的原生 props：
+
+| 部件 | 底座 | 说明 |
+| --- | --- | --- |
+| `StepperSeparator` | `div`（`aria-hidden`） | 步间连线：跟着所在 item 的 `data-completed` 变色，随根方向变横竖 |
+| `StepperTitle` | `h3` | 步骤名 |
+| `StepperDescription` | `p` | 说明行 |
+
+9 个类型一并导出：`StepperProps` / `StepperItemProps` / `StepperTriggerProps` /
+`StepperIndicatorProps` / `StepperSeparatorProps` / `StepperTitleProps` /
+`StepperDescriptionProps` / `StepperChangeEventReason` / `StepperChangeEventDetails`。
