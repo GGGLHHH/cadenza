@@ -1,25 +1,10 @@
 catalogMode: prefer
 ignoreWorkspaceRootCheck: true
-minimumReleaseAgeExclude:
-  - '@types/node@25.9.0'
-  - tsx@4.22.2
-  - bumpp@12.0.0
-  - '@vitejs/plugin-react@6.0.5'
-  - '@eslint-react/ast@5.18.1'
-  - '@eslint-react/core@5.18.1'
-  - '@eslint-react/eslint-plugin@5.18.1'
-  - '@eslint-react/eslint@5.18.1'
-  - '@eslint-react/jsx@5.18.1'
-  - '@eslint-react/shared@5.18.1'
-  - '@eslint-react/var@5.18.1'
-  - eslint-plugin-react-dom@5.18.1
-  - eslint-plugin-react-jsx@5.18.1
-  - eslint-plugin-react-naming-convention@5.18.1
-  - eslint-plugin-react-rsc@5.18.1
-  - eslint-plugin-react-web-api@5.18.1
-  - eslint-plugin-react-x@5.18.1
-  - '@base-ui/react@1.7.0'
-  - '@base-ui/utils@0.3.2'
+# 关掉发布冷却期。原先靠 minimumReleaseAgeExclude 逐版本开洞,每次升级都要回来补版本号,
+# 漏补的症状是「新发布的库版本装不下来」。设成 0 后那份枚举成了不可达配置,一并删掉。
+# 代价:冷却期本是防「刚发布的恶意/被劫持版本」的供应链缓冲,关掉等于对所有依赖都不再等。
+# 要收回来就改成分钟数(如 1440),届时需重新用 minimumReleaseAgeExclude 开洞——该字段只吃精确版本,没有通配写法。
+minimumReleaseAge: 0
 shellEmulator: true
 trustPolicy: no-downgrade
 # semver@6.3.1 (published 2023-07-10) lost provenance relative to earlier releases.
