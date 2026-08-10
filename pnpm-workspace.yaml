@@ -42,50 +42,50 @@ overrides:
 
 catalogs:
   cli:
-    '@antfu/eslint-config': ^9.2.0
-    '@antfu/ni': ^30.3.0
-    '@eslint-react/eslint-plugin': ^5.18.1
-    bumpp: ^12.1.1
-    eslint: ^10.8.0
+    '@antfu/eslint-config': ^9.3.0
+    '@antfu/ni': ^30.5.0
+    '@eslint-react/eslint-plugin': ^5.18.3
+    bumpp: ^12.2.0
+    eslint: ^10.8.1
     eslint-plugin-better-tailwindcss: ^4.7.0
     eslint-plugin-react-hooks: ^7.1.1
     eslint-plugin-react-refresh: ^0.5.3
     nano-staged: ^1.0.2
-    publint: ^0.3.22
+    publint: ^0.3.23
     simple-git-hooks: ^2.13.1
     skills-npm: ^1.2.0
     tsdown: ^0.22.14
-    tsx: ^4.23.1
+    tsx: ^4.23.11
     typescript: ^6.0.3
   docs:
     '@orama/tokenizers': ^3.1.18
-    '@types/mdx': ^2.0.13
-    fumadocs-core: ^16.10.5
-    fumadocs-mdx: ^15.0.12
-    next: ^16.1.0
-    rehype-pretty-code: ^0.14.1
-    shiki: ^3.23.0
+    '@types/mdx': ^2.0.14
+    fumadocs-core: ^16.14.2
+    fumadocs-mdx: ^15.2.2
+    next: ^16.3.0
+    rehype-pretty-code: ^0.14.5
+    shiki: ^4.4.2
     zod: ^4.4.3
   react:
     react: ^19.2.8
     react-dom: ^19.2.8
   testing:
     '@testing-library/react': ^16.3.2
-    '@testing-library/user-event': ^14.6.1
+    '@testing-library/user-event': ^14.6.3
     '@vitejs/plugin-react': ^6.0.5
     jsdom: ^30.0.1
     vitest: ^4.1.10
   types:
-    '@types/lodash': ^4.17.20
-    '@types/node': ^26.1.2
-    '@types/react': ^19.2.17
-    '@types/react-dom': ^19.2.3
+    '@types/lodash': ^4.17.25
+    '@types/node': ^26.2.0
+    '@types/react': ^19.2.18
+    '@types/react-dom': ^19.2.4
   ui:
     '@base-ui/react': ^1.7.0
     '@shadcn/react': ^0.2.1
     '@tabler/icons-react': ^3.46.0
     '@tailwindcss/postcss': ^4.3.3
-    '@tanstack/react-form': ^1.32.0
+    '@tanstack/react-form': ^1.33.4
     '@tanstack/react-virtual': ^3.14.9
     ahooks: ^3.9.7
     class-variance-authority: ^0.7.1
