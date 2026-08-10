@@ -13,19 +13,25 @@ const withMDX = createMDX()
  * leaving the production build pointed at dist, so the docs site stays the
  * smoke test for what actually gets published.
  *
- * Only the two published entry points need an entry: the packages' internal
+ * Only the published entry points need an entry: the packages' internal
  * cross-references go through Node's `imports` field (`#lib/utils`,
  * `#primitives/*`), which Turbopack resolves on its own.
+ *
+ * Every workspace package belongs here. A package left out is the only one
+ * still reading `dist` in dev, so `pnpm dev` races its own `tsdown --watch`:
+ * Turbopack compiles the demos before the first build lands and the import
+ * fails until something triggers a recompile.
  */
 const dev = process.env.NODE_ENV === 'development'
 const sourceAlias = {
+  '@gedatou/cadenza-form': '../packages/form/src/index.ts',
   '@gedatou/cadenza-ui': '../packages/ui/src/index.ts',
   '@gedatou/cadenza-utils': '../packages/utils/src/index.ts',
 }
 
 const config: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@gedatou/cadenza-ui', '@gedatou/cadenza-utils'],
+  transpilePackages: ['@gedatou/cadenza-form', '@gedatou/cadenza-ui', '@gedatou/cadenza-utils'],
   turbopack: {
     resolveAlias: dev ? sourceAlias : {},
   },
