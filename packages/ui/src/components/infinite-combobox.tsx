@@ -27,8 +27,8 @@ import {
 /**
  * Why the popover opened or closed: Base UI's Popover reasons pass through
  * whole, plus the panel-side reasons a close can carry (an `item-press` under
- * `closeOnSelect`, a footer `clear-press`/`close-press`) and `'none'` for
- * programmatic `setOpen`.
+ * `closeOnSelect`, a footer `clear-press`/`close-press`/`cancel-press`) and
+ * `'none'` for programmatic `setOpen`.
  */
 export type InfiniteComboboxOpenChangeEventReason
   = PopoverPrimitive.Root.ChangeEventReason | InfiniteSelectChangeEventReason
@@ -241,7 +241,11 @@ interface InfiniteComboboxCommonProps<T> {
    * Base UI slot, not a plain div.
    */
   'contentClassName'?: ComponentProps<typeof PopoverContent>['className']
-  /** Multi only: hold toggles as a draft and commit once, when the popover closes. */
+  /**
+   * Multi only: hold toggles as a draft and commit once, when the popover
+   * closes. `InfiniteSelectCancel` (or `cancel()` from the actions context) is
+   * the way out without committing.
+   */
   'commitOnClose'?: boolean
   'searchPlaceholder'?: string
   /** Prefetch distance in viewport heights. See InfiniteSelect. */
@@ -452,12 +456,32 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     (eventDetails?: InfiniteSelectChangeEventDetails) => state.setOpen(false, eventDetails),
     [state],
   )
+  /**
+   * Discard, not clear: put the draft back on the applied selection and disarm
+   * the commit, so the close effect above takes its reset branch instead of
+   * firing `onValueChange`. `eventDetails.cancel()` could never have covered
+   * this — it stops the commit but leaves `draftIds` holding the rejected
+   * ticks, so the next open shows them again.
+   *
+   * `draftIdsRef` / `draftItemsRef` are left alone on purpose: they are only
+   * read while `hasChangedRef` is armed, and every path that arms it writes
+   * both first.
+   */
+  const cancel = useCallback((eventDetails?: InfiniteSelectChangeEventDetails) => {
+    if (deferredEnabled) {
+      setDraftIds((selectedValue as string[] | null | undefined) ?? [])
+      hasChangedRef.current = false
+    }
+    close(eventDetails)
+  }, [close, deferredEnabled, selectedValue])
+
   const actions = useMemo<InfiniteSelectActions<T>>(() => ({
     selectedItems,
     selectedIds,
     clear: clearSelection,
     close,
-  }), [clearSelection, close, selectedItems, selectedIds])
+    cancel,
+  }), [cancel, clearSelection, close, selectedItems, selectedIds])
 
   // Base UI's Popover.Trigger contract, by position: first child triggers, the
   // rest are the overlay's. A function is the trigger whole — there is no

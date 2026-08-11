@@ -78,6 +78,7 @@ InfiniteCombobox
         └── InfiniteSelectFooter
             ├── InfiniteSelectClear
             ├── InfiniteSelectFooterSeparator
+            ├── InfiniteSelectCancel
             └── InfiniteSelectClose
 ```
 
@@ -124,8 +125,12 @@ InfiniteCombobox
 ## 多选
 
 `commitOnClose` 下，弹层内的勾选只是草稿，**关闭弹层才提交一次** `onValueChange` ——
-适合筛选场景（每勾一下就请求一次太吵）。footer 里的清空 / 确定通过 context 拿到
-`clear` / `close`，不需要你穿线。
+适合筛选场景（每勾一下就请求一次太吵）。footer 里的清空 / 取消 / 确定通过 context 拿到
+`clear` / `cancel` / `close`，不需要你穿线。
+
+草稿模式下三个动作各不相同，别混：**清空提交空集**，**取消把草稿丢掉、什么都不提交**
+（`InfiniteSelectCancel`），**确定提交草稿**（关闭即提交）。只有取消这一条路不提交：
+Esc、点外面这些关闭方式和「确定」同路，草稿照样提交。
 
 <ComponentPreview name="infinite-select/multiple" />
 
@@ -206,14 +211,20 @@ TanStack Virtual：**任何时刻只有视口内可见的那一小段行存在�
 
 <ComponentPreview name="infinite-select/slot-error" />
 
-### Footer 一族:清空 / 分隔 / 确定 / 自定义部件
+### Footer 一族:清空 / 取消 / 确定 / 分隔 / 自定义部件
 
 `InfiniteSelectFooter` 是底部动作条；`InfiniteSelectClear` /
-`InfiniteSelectClose` 通过 context 拿到 `clear` / `close`，不需要你
-穿线。注意**清空按钮清空后会顺带关闭弹层** —— `commitOnClose` 下这等于提交
-空选择；`InfiniteSelectFooterSeparator` 是竖向分隔。自定义部件用
+`InfiniteSelectCancel` / `InfiniteSelectClose` 通过 context 拿到
+`clear` / `cancel` / `close`，不需要你穿线。三者提交的东西不一样：
+
+- **清空**清空选择并顺带关闭弹层 —— `commitOnClose` 下这等于**提交空选择**；
+- **取消**把草稿丢掉、还原成打开前的样子再关闭，**一次 `onValueChange` 都不发**；
+- **确定**关闭弹层，`commitOnClose` 下就是提交草稿。
+
+`InfiniteSelectFooterSeparator` 是竖向分隔。自定义部件用
 `useInfiniteSelectActions()` 同样能拿到 `selectedIds` / `selectedItems` /
-`clear` / `close`——下面 demo 中间的「已选 N」就是一个自定义部件：
+`clear` / `close` / `cancel`——下面 demo 左边的「已选 N」就是一个自定义部件
+（三个动作并排是为了对照，真实场景挑一个）：
 
 <ComponentPreview name="infinite-select/footer" />
 
@@ -306,8 +317,9 @@ footer 部件之所以不需要穿线，是因为面板内有一个**动作上�
 | `selectedItems` | 已加载页的选中对象（口径与 `onValueChange` 的 `items` 一致） |
 | `clear()` | 清空选择 |
 | `close()` | 关闭弹层（`commitOnClose` 下即提交草稿） |
+| `cancel()` | 丢掉草稿、还原成已提交值再关闭，不提交任何东西；没有草稿时就是 `close()` |
 
-`InfiniteSelectClear` / `InfiniteSelectClose` 内部就是调它；
+`InfiniteSelectClear` / `InfiniteSelectCancel` / `InfiniteSelectClose` 内部就是调它；
 「[插槽](#插槽)」一节 Footer demo 里的「已选 N」自定义部件也是。两个注意点：
 
 - 在 provider 之外调用会**直接抛错**（fail loud），所以它只能出现在组合通道
@@ -317,7 +329,8 @@ footer 部件之所以不需要穿线，是因为面板内有一个**动作上�
   `InfiniteSelectActionsProvider` 亲自喂值：
 
 ```tsx
-<InfiniteSelectActionsProvider value={{ selectedItems, selectedIds, clear, close }}>
+{/* 草稿是 InfiniteCombobox 的能力,自己组弹层时没有草稿可丢 —— cancel 直接给 close */}
+<InfiniteSelectActionsProvider value={{ selectedItems, selectedIds, clear, close, cancel: close }}>
   <InfiniteSelect {/* … */}>{/* parts 与状态插槽 */}</InfiniteSelect>
 </InfiniteSelectActionsProvider>
 ```
@@ -489,6 +502,10 @@ interface InfiniteSelectItemRenderParams<T> {
 （`item-press` / `clear-press` / `escape-key` / …，程序触发是 `'none'`），
 `cancel()` 拒绝这次变更、状态原地不动。
 
+`reason` 全部沿用 Base UI 的词表，只有 `'cancel-press'` 是本库自造的：上游没有草稿模式，
+自然没有「丢掉草稿」这个词。它只会出现在 `onOpenChange` 上 —— 取消什么都不提交，
+`onValueChange` 根本不发。
+
 ## 表单
 
 家族自己不做 `FormData` 逻辑，只按需渲染隐藏 input：给了 `name` 才渲染
@@ -622,7 +639,7 @@ Base UI `Combobox.Item`）
 | `value` | 单选 `string \| null`；多选 `string[]` | — | 受控选择。单选清空传 `null`（`undefined` 表示非受控） |
 | `onValueChange` | 单选 `(item: T \| null, eventDetails) => void`；多选 `(items: T[], ids: string[], eventDetails) => void` | — | 多选时 `ids` 才是权威值，`items` 只含已加载页的对象。`eventDetails.reason` 说明来源，`cancel()` 拒绝这次变更 |
 | `disabled` | `boolean` | `false` | 禁用整个选择器：触发器元素会被注入 `disabled`，弹层不可打开 |
-| `commitOnClose` | `boolean` | `false` | 多选草稿模式，关弹层才提交 |
+| `commitOnClose` | `boolean` | `false` | 多选草稿模式，关弹层才提交；`InfiniteSelectCancel` 是不提交的出口 |
 | `name` | `string` | — | 表单序列化：有 name 才渲染隐藏 input（多选每值一个），渲染在触发器旁、弹层外；草稿不序列化，见[表单](#表单) |
 | `closeOnSelect` | `boolean` | `true` | 单选选中后自动关闭 |
 | `modal` | `boolean` | `false` | 锁定页面滚动（模态感） |
@@ -725,6 +742,7 @@ Base UI `Combobox.Item`）
 | `InfiniteSelectNoMore` | 标记部件：原地不渲染，props 被提升到滚动流末尾的终止行上（不写也有默认线） | 提升后为 `infinite-select-no-more` |
 | `InfiniteSelectLoadingMore` | 标记部件：同一位置的另一分支，翻页时渲染（不写也有默认 Spinner） | 提升后为 `infinite-select-load-more` |
 | `InfiniteSelectClear` | 总是 | `infinite-select-clear` |
+| `InfiniteSelectCancel` | 总是 | `infinite-select-cancel` |
 | `InfiniteSelectClose` | 总是 | `infinite-select-close` |
 | `InfiniteSelectStatus` | 空 / 错误两个插槽最终都渲染进它；单独导出供你复用排版 | `infinite-select-status` |
 
