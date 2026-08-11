@@ -3,9 +3,11 @@ import type { InfiniteComboboxChildren, InfiniteComboboxProps } from '../src/com
 import type { InfiniteSelectOption } from '../src/components/infinite-select'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { useState } from 'react'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { Button } from '../src'
 import { InfiniteCombobox, useInfiniteComboboxState } from '../src/components/infinite-combobox'
+import { InfiniteSelectCancel, InfiniteSelectClose, InfiniteSelectFooter } from '../src/components/infinite-select'
 
 beforeAll(() => {
   // Base UI's ScrollArea polls viewport.getAnimations(), absent in jsdom.
@@ -158,5 +160,64 @@ describe('infiniteCombobox label channel', () => {
     render(<Harness disabled triggerId="composer" />)
     await user.click(screen.getByRole('button', { name: '选择器' }))
     expect(screen.queryByRole('option', { name: 'Alice' })).toBeNull()
+  })
+})
+
+describe('infiniteCombobox commitOnClose draft', () => {
+  function DraftHarness({ onCommit }: { onCommit: (ids: string[]) => void }): ReactElement {
+    const state = useInfiniteComboboxState({})
+    const [ids, setIds] = useState<string[]>(['a'])
+    return (
+      <InfiniteCombobox<Person>
+        commitOnClose
+        getOption={getOption}
+        list={list}
+        onValueChange={(_items, nextIds) => {
+          setIds(nextIds)
+          onCommit(nextIds)
+        }}
+        selectionMode="multiple"
+        state={state}
+        value={ids}
+      >
+        <Button>选择器</Button>
+        <InfiniteSelectFooter>
+          <InfiniteSelectCancel>取消</InfiniteSelectCancel>
+          <InfiniteSelectClose>确定</InfiniteSelectClose>
+        </InfiniteSelectFooter>
+      </InfiniteCombobox>
+    )
+  }
+
+  it('commits the draft on 确定', async () => {
+    const user = userEvent.setup()
+    const onCommit = vi.fn()
+    render(<DraftHarness onCommit={onCommit} />)
+
+    await user.click(screen.getByRole('button', { name: '选择器' }))
+    await user.click(await screen.findByRole('option', { name: 'Bob' }))
+    expect(onCommit).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: '确定' }))
+    await waitFor(() => expect(onCommit).toHaveBeenCalledWith(['a', 'b']))
+  })
+
+  // The bug cancel exists for: `eventDetails.cancel()` on the commit stopped the
+  // write but left the draft holding the rejected ticks, so the next open showed
+  // them again. Reopening is the assertion that matters.
+  it('throws the draft away on 取消, and the next open is back to the applied selection', async () => {
+    const user = userEvent.setup()
+    const onCommit = vi.fn()
+    render(<DraftHarness onCommit={onCommit} />)
+
+    await user.click(screen.getByRole('button', { name: '选择器' }))
+    await user.click(await screen.findByRole('option', { name: 'Bob' }))
+    await user.click(screen.getByRole('button', { name: '取消' }))
+    await waitFor(() => expect(screen.queryByRole('option', { name: 'Bob' })).toBeNull())
+    expect(onCommit).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: '选择器' }))
+    expect(await screen.findByRole('option', { name: 'Bob', selected: false })).not.toBeNull()
+    expect(screen.getByRole('option', { name: 'Alice', selected: true })).not.toBeNull()
   })
 })

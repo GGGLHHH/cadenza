@@ -42,8 +42,13 @@ export interface InfiniteSelectOption {
 /**
  * Why the selection changed. Base UI's Combobox reasons pass through whole
  * (`item-press`, `clear-press`, `escape-key`, …); `'none'` is programmatic.
+ *
+ * `'cancel-press'` is the one word not in Base UI's table: nothing upstream has
+ * a draft, so nothing upstream has a word for throwing one away. It rides the
+ * same channel as the footer's `clear-press` / `close-press` and only ever
+ * reaches `onOpenChange` — a cancel commits nothing, so no value change fires.
  */
-export type InfiniteSelectChangeEventReason = Combobox.Root.ChangeEventReason | 'none'
+export type InfiniteSelectChangeEventReason = Combobox.Root.ChangeEventReason | 'none' | 'cancel-press'
 
 export type InfiniteSelectChangeEventDetails = ChangeEventDetails<InfiniteSelectChangeEventReason>
 
@@ -999,6 +1004,13 @@ export interface InfiniteSelectActions<T = unknown> {
   clear: (eventDetails?: InfiniteSelectChangeEventDetails) => void
   /** Close the popover host, if there is one. */
   close: (eventDetails?: InfiniteSelectChangeEventDetails) => void
+  /**
+   * Throw the draft away and close, committing nothing — the opposite of
+   * `close` under `commitOnClose`, where closing *is* the commit. With no draft
+   * to discard (single mode, or multi without `commitOnClose`) there is nothing
+   * to undo and it is plainly `close`; hand-fed providers can pass `close`.
+   */
+  cancel: (eventDetails?: InfiniteSelectChangeEventDetails) => void
 }
 
 const InfiniteSelectActionsContext = createContext<InfiniteSelectActions | null>(null)
@@ -1091,6 +1103,33 @@ export function InfiniteSelectClose({ className, onClick, ...props }: ButtonProp
       data-slot="infinite-select-close"
       onClick={(event) => {
         close(createChangeEventDetails('close-press', event.nativeEvent))
+        onClick?.(event)
+      }}
+      size="sm"
+      type="button"
+      variant="ghost"
+      {...props}
+    />
+  )
+}
+
+/**
+ * Discards the draft and closes — the counterpart to `Close` under
+ * `commitOnClose`. Not `Clear`: clearing commits an empty selection, cancelling
+ * commits nothing at all and puts the applied selection back.
+ *
+ * No corner radius of its own, unlike `Clear`/`Close`: this one is as likely to
+ * sit mid-footer as at an end, and the popover's `overflow-hidden` rounds off
+ * whichever button lands on the edge anyway.
+ */
+export function InfiniteSelectCancel({ className, onClick, ...props }: ButtonProps): ReactElement {
+  const { cancel } = useInfiniteSelectActions()
+  return (
+    <Button
+      className={cn('flex-1 rounded-none', className)}
+      data-slot="infinite-select-cancel"
+      onClick={(event) => {
+        cancel(createChangeEventDetails('cancel-press', event.nativeEvent))
         onClick?.(event)
       }}
       size="sm"

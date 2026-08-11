@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { Person } from '../lib/people'
 import {
   InfiniteCombobox,
+  InfiniteSelectCancel,
   InfiniteSelectClear,
   InfiniteSelectClose,
   InfiniteSelectFooter,
@@ -44,14 +45,17 @@ export default function FooterDemo(): ReactElement {
       value={ids}
     >
       <DemoButton>
-        {ids.length > 0 ? `已选 ${ids.length} 位` : 'footer 三件套 + 自定义部件'}
+        {ids.length > 0 ? `已选 ${ids.length} 位` : 'footer 一族 + 自定义部件'}
       </DemoButton>
       {selectSlots}
+      {/* 三个动作放一起是为了对照(真实场景挑一个):清空提交空集,
+          取消丢弃草稿还原成打开前,确定提交草稿。勾几个再点取消,
+          重新打开会看到勾选原样退回去 */}
       <InfiniteSelectFooter>
-        <InfiniteSelectClear>清空</InfiniteSelectClear>
-        <InfiniteSelectFooterSeparator />
         <FooterSelectedCount />
         <InfiniteSelectFooterSeparator />
+        <InfiniteSelectClear>清空</InfiniteSelectClear>
+        <InfiniteSelectCancel>取消</InfiniteSelectCancel>
         <InfiniteSelectClose>确定</InfiniteSelectClose>
       </InfiniteSelectFooter>
     </InfiniteCombobox>
