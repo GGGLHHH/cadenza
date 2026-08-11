@@ -128,6 +128,10 @@ const registry: Record<string, ComponentType> = {
   'stepper/composition': lazy(async () => import('./stepper/composition')),
   'stepper/controlled': lazy(async () => import('./stepper/controlled')),
   'stepper/vertical': lazy(async () => import('./stepper/vertical')),
+  'collapsible/basic': lazy(async () => import('./collapsible/basic')),
+  'collapsible/controlled': lazy(async () => import('./collapsible/controlled')),
+  'collapsible/settings': lazy(async () => import('./collapsible/settings')),
+  'collapsible/file-tree': lazy(async () => import('./collapsible/file-tree')),
   'utils/controllable-state': lazy(async () => import('./utils/controllable-state')),
 }
 

@@ -3,6 +3,7 @@
 // src/components and exporting it here.
 export * from './components/button'
 export * from './components/checkbox'
+export * from './components/collapsible'
 export * from './components/combobox'
 export * from './components/data-pagination'
 export * from './components/data-table'

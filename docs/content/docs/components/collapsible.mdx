@@ -1,0 +1,179 @@
+---
+title: Collapsible
+description: 一个触发器加一块可展开的面板 —— 高度过渡是默认值,不用自己写动画
+---
+
+<ComponentPreview name="collapsible/basic" align="start" />
+
+基于 Base UI 的展开/收起。封装层只补一件事:**面板的高度过渡**。Base UI 把面板量好的高度
+发布成 `--collapsible-panel-height`,再用 `data-starting-style` / `data-ending-style`
+标出过渡的两端,封装层把这三样接成一条 CSS transition —— 不写它,面板就是一帧之内直接
+弹开。根和触发器则不带任何外观:布局归调用方,触发器是一个裸 `<button>`,套什么样子用
+`render`。
+
+部件名跟的是 Base UI 的词表:页内展开的内容叫 **Panel**(shadcn 那边叫
+`CollapsibleContent`,是 Radix 时代的叫法,Base UI 自己导出的就是 `Collapsible.Panel`)。
+
+## 使用
+
+```tsx
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Collapsible>
+  <CollapsibleTrigger render={<Button variant="outline" />}>详情</CollapsibleTrigger>
+  <CollapsiblePanel>
+    <p className="p-4 text-sm">面板内容。</p>
+  </CollapsiblePanel>
+</Collapsible>
+```
+
+**内边距写在面板里面的元素上,不要写在面板自己身上** —— 动画动的就是面板的高度,
+它自己的 padding 会被一路压扁。
+
+## 组成
+
+三个部件,全部对外导出:
+
+```text
+Collapsible                ← 根:持有开合状态,自己不带样式
+├── CollapsibleTrigger     ← 真 <button>,aria-expanded / aria-controls 由 Base UI 接线
+└── CollapsiblePanel       ← 展开的内容,高度过渡在这一层
+```
+
+顺序是自由的:面板放在触发器前面(向上展开)同样成立,`aria-controls` 认的是 id 不是位置。
+
+## 受控
+
+`open` + `onOpenChange` 把状态交出去,回调第二参 `details.reason` 说明这次是谁改的
+(`trigger-press` 或程序性的 `none`):
+
+<ComponentPreview name="collapsible/controlled" align="start" />
+
+不传 `open` 就是非受控,初始值用 `defaultOpen`。受控性在首渲染锁定,中途换会在开发模式
+下报错。
+
+## 设置面板
+
+最常见的用法:常用项常驻,不常改的收进面板。
+
+<ComponentPreview name="collapsible/settings" align="start" />
+
+## 文件树
+
+嵌套:每个目录是一个独立的 `Collapsible`,面板里再放下一层。
+
+<ComponentPreview name="collapsible/file-tree" align="start" />
+
+每层各记各的开合,层与层之间没有共享状态。触发器上的 `data-panel-open` 是 chevron 转向
+和文件夹图标换脸的钩子 —— 注意是 `data-panel-open`,不是面板那边的 `data-open`。
+
+## 什么时候用 Collapsible
+
+- **一块内容的显示/隐藏** → Collapsible。它管的是「这块要不要看见」,没有兄弟概念。
+- **一组互斥的视图,同时只看一个** → [Tabs](/docs/components/tabs)。它有选中值,
+  有 roving focus 和方向键导航,Collapsible 这些都没有。
+- **一叠可折叠区块,展开一个自动收起其他** → 那是 Accordion,库里还没有公开封装。
+  可以叠多个 Collapsible 自己管互斥(把 `open` 提到外面),或直接用
+  `@base-ui/react/accordion`。
+
+## 状态与 className
+
+`className` / `style` / `render` 一律双形态:值,或 `(state) => 值` 的函数。下表左列是挂在
+DOM 上的 `data-*`,Tailwind 直接当变体写(`data-open:border-primary`);右列是同一个状态在
+函数形态里的名字。
+
+| 部件 | `data-*` | 出现时机 | 函数 `className` 里的名字 |
+| --- | --- | --- | --- |
+| 根 / 面板 | `data-open` | 面板展开 | `open` 为 `true` |
+| 根 / 面板 | `data-closed` | 面板收起 | `open` 为 `false` |
+| 触发器 | `data-panel-open` | 面板展开(触发器**没有** `data-closed`,收起时属性直接消失) | `open` 为 `true` |
+| 根 / 触发器 / 面板 | `data-disabled` | 根传了 `disabled` | `disabled` |
+| 根 / 面板 | `data-starting-style` | 进场的第一帧 | `transitionStatus` 为 `'starting'` |
+| 根 / 面板 | `data-ending-style` | 退场动画进行中 | `transitionStatus` 为 `'ending'` |
+
+面板的 state 比根多一个 `transitionStatus`(`'starting'` / `'ending'` / `undefined`),
+默认的高度过渡就是拿 `data-starting-style` / `data-ending-style` 把两端压到 `h-0` 做的。
+要改成横向折叠,把默认的 `h-(--collapsible-panel-height)` 换成
+`w-(--collapsible-panel-width)`、`transition-[height]` 换成 `transition-[width]` 即可
+(`cn` 合并,后写的赢)。
+
+需要从外部定位时用 `data-slot`:
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `collapsible` | 根元素 |
+| `collapsible-trigger` | 触发器按钮 |
+| `collapsible-panel` | 面板 |
+
+## 键盘交互
+
+| 按键 | 行为 |
+| --- | --- |
+| `Tab` | 触发器在 Tab 序里;面板展开后,面板内的可聚焦元素接在它后面 |
+| `Enter` / `Space` | 在触发器上切换开合 |
+
+面板收起时默认从 DOM 卸载,里面的东西自然不在 Tab 序里。`keepMounted` 会把它留在 DOM 中
+—— Base UI 同时挂 `hidden`,所以留下的内容依然不可聚焦、不被朗读。
+
+## Props
+
+顺序规则:**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### Collapsible
+
+根,持有开合状态。渲染一个 `<div>`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultOpen` | `boolean` | `false` | 非受控初始开合 |
+| `open` | `boolean` | — | 受控开合。传了就锁定受控,首渲染之后不许换 |
+| `onOpenChange` | `(open: boolean, details: CollapsibleChangeEventDetails) => void` | — | 开合变化。`details.reason` 是 `'trigger-press'` 或 `'none'` |
+| `disabled` | `boolean` | `false` | 整个组件不响应交互;三个部件都会带上 `data-disabled` |
+| `className` | `string \| (state) => string` | — | 函数形态收到 `{ open, disabled, transitionStatus }` |
+| 其余 | Base UI `Collapsible.Root` 的 props(元素原生属性 + `ref`) | — | 透传 |
+
+```tsx
+<Collapsible defaultOpen onOpenChange={(open, details) => log(details.reason)}>…</Collapsible>
+```
+
+### CollapsibleTrigger
+
+切换开合的按钮。默认渲染真 `<button type="button">`,`aria-expanded` / `aria-controls`
+由 Base UI 接线。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `nativeButton` | `boolean` | `true` | `render` 换成非 button 元素(如 `<div>`)时置 `false`,Base UI 会补上键盘与 role |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 换掉宿主元素。给触发器上妆的正道:`render={<Button />}` |
+| `className` | `string \| (state) => string` | — | 函数形态收到 `{ open, disabled, transitionStatus }` |
+| 其余 | Base UI `Collapsible.Trigger` 的 props(`<button>` 原生属性 + `ref`) | — | 透传 |
+
+```tsx
+<CollapsibleTrigger className="group/trigger" render={<Button variant="ghost" />}>
+  高级选项
+  <IconChevronDown className="transition-transform group-data-panel-open/trigger:rotate-180" />
+</CollapsibleTrigger>
+```
+
+### CollapsiblePanel
+
+展开的内容。渲染一个 `<div>`,自带高度过渡。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `keepMounted` | `boolean` | `false` | 收起时保留在 DOM 里(带 `hidden`,不可聚焦、不被朗读)。`hiddenUntilFound` 开启时此项被忽略 |
+| `hiddenUntilFound` | `boolean` | `false` | 改用 `hidden="until-found"`:浏览器自带的页内查找能命中收起的文本并自动展开。代价是内容始终在 DOM 中 |
+| `className` | `string \| (state) => string` | — | 与默认的过渡类名合并(`cn`,后写的赢)。函数形态收到 `{ open, disabled, transitionStatus }` |
+| 其余 | Base UI `Collapsible.Panel` 的 props(元素原生属性 + `ref`) | — | 透传 |
+
+```tsx
+<CollapsiblePanel hiddenUntilFound>
+  <div className="p-4">Ctrl+F 能搜到这里的文字</div>
+</CollapsiblePanel>
+```
+
+七个类型一并导出:`CollapsibleProps` / `CollapsibleState` / `CollapsibleChangeEventDetails` /
+`CollapsibleTriggerProps` / `CollapsibleTriggerState` / `CollapsiblePanelProps` /
+`CollapsiblePanelState`。
