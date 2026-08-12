@@ -61,6 +61,7 @@
     "class-variance-authority": "catalog:ui",
     "clsx": "catalog:ui",
     "input-otp": "catalog:ui",
+    "motion": "catalog:ui",
     "tailwind-merge": "catalog:ui"
   },
   "devDependencies": {

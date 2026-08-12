@@ -20,6 +20,7 @@ description: 原生 table 语义的数据表格 —— 列定义驱动 + 组合�
 import {
   DataPagination,
   DataTable,
+  DataTableColumnsSelect,
   DataTableEmpty,
   DataTableError,
   DataTableLoadingMore,
@@ -55,7 +56,8 @@ import {
 
 ```text
 DataTable
-├── DataTableEmpty              空态
+├── DataTableEmpty              空态（没有行）
+├── DataTableColumnsEmpty       空列（列全被藏掉）
 ├── DataTableError              错误
 │   └── DataTableRetry          重试按钮（自己接基座的 onRetry）
 ├── DataTableLoadingOverlay     定制加载磨砂（标记部件，原地不渲染）
@@ -64,8 +66,9 @@ DataTable
 DataTableStatus                 空 / 错误共用的 role="status" 容器，单独导出
 ```
 
-分页器 [DataPagination](/docs/components/data-pagination) 不在这棵树里 ——
-它是独立组件，放在表格下方由你组合，见[分页](#分页)。
+有两个部件不在这棵树里，都是**放在表格外面**由你组合的独立组件：
+[DataPagination](/docs/components/data-pagination) 管翻页（见[分页](#分页)），
+`DataTableColumnsSelect` 管显示哪些列（见[列选择器](#列选择器)）。
 
 ## 表头固定
 
@@ -242,6 +245,184 @@ Fragment 内有效，包进自定义组件会找不到（与 TabsIndicator 同�
 它也单独导出——自定义状态视觉时给各插槽传 `className` 微调，或复用这个容器
 保持一致的排版。
 
+## 列选择器
+
+`DataTableColumnsSelect` 是让用户挑「显示哪些列」的控件：选项是表格的列，
+值是可见的那些。
+
+<ComponentPreview name="data-table/columns-select" align="stretch" />
+
+```tsx
+const [visible, setVisible] = useState<string[]>(allColumns.map(column => column.id))
+
+<DataTableColumnsSelect columns={allColumns} value={visible} onValueChange={setVisible} />
+<DataTable
+  aria-label="作曲家"
+  columns={allColumns.filter(column => visible.includes(column.id))}
+  items={items}
+/>
+```
+
+**它自己不藏列**，藏列是调用方那一行 `filter` —— 表格永远只渲染你交给它的列。
+把过滤摊在明面上是有意的：同一个控件因此也能驱动**状态存在别处**的表格——
+外部数据层的列可见性状态、URL 参数、或者一份保存下来的视图。
+
+`hideable: false` 把某一列钉死：选择器里那一项置灰，而且它**永远出现在
+`onValueChange` 的结果里**，哪怕你传进去的 `value` 漏了它。行名列通常要这么标——
+读屏靠它播报行，藏掉整张表就没了名字。
+
+```tsx
+const allColumns: DataTableColumn<Person>[] = [
+  { id: 'name', header: '姓名', cell: p => p.name, rowHeader: true, hideable: false },
+  { id: 'role', header: '角色', cell: p => p.role },
+]
+```
+
+`columns` 收的是**结构化的一小片**（`id` / `header` / `hideable`），不是完整的
+`DataTableColumn` —— `DataTableColumn` 天然满足它，而列定义长在别处的调用方
+一行 `.map()` 就能喂进来，不用编造假的 `cell` 函数。
+
+### 一列不剩时
+
+不锁任何列，用户就能把列**全部藏掉**。行没有任何单元格可渲染时，表格不会塌成
+一叠边框线：表头行不再渲染，行区退回状态区，文案从新的 `DataTableColumnsEmpty`
+插槽进来 —— 基座零文案的家法不变，而且这正是放「显示全部列」恢复动作的地方：
+
+<ComponentPreview name="data-table/columns-empty" align="stretch" />
+
+```tsx
+<DataTable aria-label="作曲家" columns={ordered.filter(…)} items={items}>
+  <DataTableColumnsEmpty className="flex flex-col items-center gap-2">
+    所有列都被隐藏了
+    <Button variant="outline" onClick={() => setVisible(allIds)}>显示全部列</Button>
+  </DataTableColumnsEmpty>
+</DataTable>
+```
+
+它和 `DataTableEmpty` 是**两个状态**，故意分开：数据在、列不在时说「暂无数据」是
+说谎。两者同时成立（零列 + 零行）时列插槽优先。触发器那侧用 `placeholder`
+兜底（「没有可见的列」之类），不给就是空白。
+
+要**根本不允许**走到这一步，把行名列标成 `hideable: false` 就够了 ——
+这也是上面推荐的默认做法。
+
+传给它的应当是**全部列**（含已隐藏的），毕竟那是这个菜单该有的内容，
+不是表格当前在渲染的那些。
+
+### 拖拽排序
+
+给了重排回调，每个选项左侧就长出一个拖拽把手。**不给就不长** —— 缺席胜过布尔开关，
+一个没处上报的把手是死 UI。
+
+和 [Slider](/docs/components/slider#拖动中与落定) 一样，重排是**一对**回调：
+
+| 回调 | 什么时候响 | 第二参 | 能不能拦 |
+| --- | --- | --- | --- |
+| `onOrderChange` | 拖动中每越过一项就响一次 | `DataTableColumnsSelectChangeEventDetails` | 能。`cancel()` 一调，这次变更不落到选择器内部那份草稿上 |
+| `onOrderCommitted` | 松手、这一次拖拽落定后，响一次 | `DataTableColumnsSelectOrderEventDetails` | 不能 —— 它是**通知**，没有 `cancel()` |
+
+**驱动表格的是 `onOrderCommitted`，不是 `onOrderChange`。**
+
+```tsx
+const [order, setOrder] = useState<string[]>(allColumns.map(column => column.id))
+const ordered = order.map(id => allColumns.find(column => column.id === id)!)
+
+<DataTableColumnsSelect columns={ordered} onOrderCommitted={setOrder} … />
+<DataTable columns={ordered.filter(column => visible.includes(column.id))} … />
+```
+
+### 拖动期间顺序只活在选择器内部
+
+这是这对回调存在的理由。拖动中的顺序是选择器自己的一份**草稿**：
+
+- **选择器列表实时让位** —— 草稿在动，这就是放置位置的预览
+- **外面的表格纹丝不动** —— 它只听 `onOrderCommitted`，而那要等松手
+- **松手** —— 草稿作为最终结果上报一次，表格一次性重排
+
+把表格接到 `onOrderChange` 上会让它在你手还没松的时候就跟着重排，而且每越过一项
+就把所有列重渲染一遍。想要实时联动的场景才用它。
+
+草稿在落定后清空，重新跟随 `columns`：调用方应用了这次变更，两者本就相同、看不到
+中间帧；调用方忽略了，列表弹回原位 —— 那正是「没生效」该有的样子。
+
+底层是 [Motion](https://motion.dev) 的 `Reorder`。它白送三样东西：spring 重排动画、
+拖起时的 `whileDrag` 抬升，以及**其余项实时让位**——那个「让位」就是放置位置的预览，
+不用另画指示线。
+
+在 Base UI 的 listbox 里跑通它有三个关键点，都是实测撞出来的 ——
+**全部封在部件内部**，写在这里只是讲原理，组合形态也不需要碰：
+
+- **option 和可拖项是同一个元素**，不是嵌套两层。靠 Base UI 的 `render` prop 把
+  `Reorder.Item` 合并进 `SelectItem`——这样 `role="option"`、选中、typeahead 全部原样保留，
+  而 Motion 只接管位置。
+- **`dragListener={false}` + `useDragControls()`**：只有把手能发起拖拽，按住整行仍然是切显隐。
+- **捕获阶段的守卫要加在组上，不是把手上**。松手时指针早已移到**别的** option 头上，
+  Base UI 会把那一下读成按压、顺手把那一列关掉。守把手守不住，因为把手早就不在光标下面了。
+
+```tsx
+<SelectItem
+  render={<Reorder.Item as="div" dragControls={controls} dragListener={false} />}
+  value={column.id}
+>
+```
+
+> **拖拽只走指针，没有键盘路径。** listbox 里方向键归 Base UI 的选项导航，让不出来。
+> 显隐（功能性的那部分）的键盘操作完全不受影响 —— 排序是便利，不是唯一出路。
+> `hideable: false` 的列也拖不动：Base UI 给禁用选项加了 `pointer-events: none`。
+
+### 组合形态
+
+不写 children 就是上面那个默认组合；写了 children，结构整个归你 —— 和 Select
+家族同一条家法。触发器、弹层用的就是 Select 的现有词汇（`SelectTrigger` /
+`SelectValue` / `SelectPopup` / `SelectSeparator`…），**新部件只有三个**：
+`DataTableColumnsSelectList` / `Item` / `Grip`。
+
+<ComponentPreview name="data-table/columns-select-composed" align="stretch" />
+
+```tsx
+<DataTableColumnsSelect columns={ordered} value={visible}
+  onValueChange={setVisible} onOrderCommitted={setOrder}>
+  <SelectTrigger aria-label="显示列">
+    <IconColumns />
+    <SelectValue>{() => `${visible.length} / ${ordered.length} 列`}</SelectValue>
+  </SelectTrigger>
+  <SelectPopup>
+    <DataTableColumnsSelectList>
+      {column => (
+        <DataTableColumnsSelectItem column={column}>
+          <DataTableColumnsSelectGrip />
+          {column.header}
+        </DataTableColumnsSelectItem>
+      )}
+    </DataTableColumnsSelectList>
+    <SelectSeparator />
+    <Button variant="ghost" onClick={() => setOrder(defaultOrder)}>恢复默认顺序</Button>
+  </SelectPopup>
+</DataTableColumnsSelect>
+```
+
+组合形态解锁的正是闭合形态给不了的：自定义触发器（图标、「N / M 列」计数）、
+弹层尾部的动作（恢复默认）、每项的自定义内容，以及走
+[Field](/docs/components/field) + `FieldLabel htmlFor` 挂可见标签。
+`SelectValue` 的标签解析照常工作 —— 根始终把 `columns` 的 id→header 映射喂给
+Select 根，组合出来的触发器不用自己再建一份。
+
+组合时的四条规矩：
+
+- **List 的 children 是函数，不是静态 JSX** —— 这是有意为之的硬性契约：拖动中的
+  渲染顺序由内部草稿决定，Motion 按位置把 `values` 和子元素对起来，静态 JSX 的
+  顺序写死了就会错乱。列表拥有映射，你只提供「一列长什么样」。
+- **Item 的 children 会进 option 的可访问名**（`ItemText` 机制），图标、计数这类
+  装饰内容会被读屏一起念出来、也会进 typeahead 匹配。给 Item 传 `aria-label`
+  可整体覆盖播报的名字。
+- **Grip 在根上没有重排回调时渲染 null** —— 和 `DataTableRetry` 同一条规矩，
+  缺席胜过死 UI。所以组合里可以无条件写它。
+- **踩出来的守卫全在部件内部**（捕获阶段吞按压、松手晚一拍放行、把手
+  `aria-hidden`）——组合开放的是结构，不是这些陷阱。
+
+顺带一提：组合也解锁了键盘排序的路 —— 在弹层里放自己的「上移/下移」按钮，
+调 `onOrderChange` / `onOrderCommitted` 即可，不必依赖拖拽。
+
 ## 分页
 
 [DataPagination](/docs/components/data-pagination) 是独立组件，
@@ -344,6 +525,7 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | --- | --- | --- |
 | `data-loading` | 外层卡片 | `isLoading`，磨砂覆盖层同时出现 |
 | `data-empty` | 外层卡片 | 没有行（且不在加载 / 错误中），`DataTableEmpty` 同时出现 |
+| `data-columns-empty` | 外层卡片 | 没有列（全被藏掉），`DataTableColumnsEmpty` 同时出现 |
 | `data-error` | 外层卡片 | `isError`，`DataTableError` 同时出现 |
 | `data-selected` | 行 `<tr>` | 该行在选择集里，背景为 muted |
 | `aria-sort` | 可排序列的 `<th>` | 当前排序方向（`ascending` / `descending` / `none`） |
@@ -382,8 +564,13 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 
 | 类型 | 说明 |
 | --- | --- |
-| `DataTableColumn<T>` | 列定义：`{ id, header, cell, rowHeader?, sortable?, pinned?, width?, minWidth?, maxWidth?, className? }` |
+| `DataTableColumn<T>` | 列定义：`{ id, header, cell, rowHeader?, sortable?, hideable?, pinned?, width?, minWidth?, maxWidth?, className? }` |
 | `DataTableColumnWidth` | 列宽：px 数字或百分比字符串（如 `'50%'`） |
+| `DataTableColumnOption` | [列选择器](#列选择器)吃的那一小片：`{ id, header, hideable? }` |
+| `DataTableColumnsSelectProps` | 列选择器根的完整 props |
+| `DataTableColumnsSelectListProps` / `ItemProps` / `GripProps` | 三个[组合部件](#组合部件)各自的 props |
+| `DataTableColumnsSelectChangeEventReason` / `ChangeEventDetails` | `onValueChange` / `onOrderChange` 的第二参：`'item-press' \| 'drag' \| 'none'`，可 `cancel()` |
+| `DataTableColumnsSelectOrderEventDetails` | `onOrderCommitted` 的第二参 —— 通知语义，无 `cancel()` |
 | `DataTableProps<T>` | `DataTable` 完整 props，业务层包一层时直接复用 |
 | `DataTableSelectionProps<T>` | 便利层选择的判别联合（单选 `value?: string` / 多选 `value?: string[]`，`onValueChange` 签名随之切换） |
 | `DataPaginationProps` / `DataPaginationState` | 分页器 props 与 `summary` / `pageIndicator` 收到的状态 |
@@ -457,14 +644,42 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 
 ### DataTableEmpty / DataTableError / DataTableRetry / DataTableStatus
 
-四个状态插槽都是纯 DOM 部件，除了各自的出现时机没有别的契约：`className` 是字符串，
+这些状态插槽都是纯 DOM 部件，除了各自的出现时机没有别的契约：`className` 是字符串，
 其余 props 透传到宿主元素。行为见[插槽](#插槽)。
 
 | 部件 | props | 什么时候渲染 |
 | --- | --- | --- |
-| `DataTableEmpty` | `ComponentProps<'div'>` | `items` 为空，且不在加载 / 错误中 |
+| `DataTableEmpty` | `ComponentProps<'div'>` | `items` 为空，且不在加载 / 错误中（列全被藏掉时让位给下面那个） |
+| `DataTableColumnsEmpty` | `ComponentProps<'div'>` | `columns` 为空（列全被藏掉），见[一列不剩时](#一列不剩时) |
 | `DataTableError` | `ComponentProps<'div'>` | `isError` |
 | `DataTableRetry` | `ButtonProps` | `isError` 且给了 `onRetry`（它自己接好，没有就不渲染） |
 | `DataTableStatus` | `ComponentProps<'div'>` | 上面几个最终都渲染进这个 `role="status"` 容器；单独导出供你复用排版 |
+
+### DataTableColumnsSelect
+
+| Prop | 类型 | 默认 | 说明 |
+| --- | --- | --- | --- |
+| `columns` | `DataTableColumnOption[]` | — | **全部列**，含已隐藏的 —— 这是选择器的菜单，不是表格当前渲染的那些。`DataTableColumn` 天然满足 |
+| `value` | `string[]` | — | 受控：可见列的 id |
+| `defaultValue` | `string[]` | 全部列 | 非受控初值 |
+| `onValueChange` | `(ids, eventDetails) => void` | — | 显隐变化。`eventDetails.cancel()` 拒绝这次变更；`reason` 为 `'item-press'` / `'none'` |
+| `onOrderChange` | `(ids, eventDetails) => void` | — | 拖动**中**每越过一项响一次，可 `cancel()`。`reason` 为 `'drag'` |
+| `onOrderCommitted` | `(ids, eventDetails) => void` | — | 拖动**落定后**响一次 —— **驱动表格的是这个**。通知语义，无 `cancel()` |
+| `aria-label` | `string` | `'Columns'` | **默认组合**触发器的可访问名。英文默认是家法，翻译归业务层；写了 children 就没用了 |
+| `placeholder` | `string` | — | **默认组合**里一列不剩时触发器显示什么；写了 children 就没用了 |
+| `className` | `string` | — | 落在**默认组合**的触发器上；写了 children 就没用了 |
+| `children` | `ReactNode` | — | 组合通道：写了它，默认组合整个让位，见[组合形态](#组合形态) |
+
+行为上只有三条：**它自己不藏列、也不排序**（两者都是调用方对 `columns` 的操作）；
+`hideable: false` 的列既置灰、也**永远在 `onValueChange` 的结果里**；把手只在
+给了两个重排回调之一时出现。见[列选择器](#列选择器)。
+
+#### 组合部件
+
+| 部件 | props | 说明 |
+| --- | --- | --- |
+| `DataTableColumnsSelectList` | `children: (column) => ReactNode`、`className` | children 必须是函数——列表拥有草稿顺序的映射，见[组合形态](#组合形态) |
+| `DataTableColumnsSelectItem` | `column`、`aria-label`、`className`、`children` | children 默认 `column.header`；`aria-label` 覆盖 option 的可访问名，装饰内容不再进播报 |
+| `DataTableColumnsSelectGrip` | `className`、`children` | children 换默认的抓握图标；根上没有重排回调时渲染 null |
 
 `DataPagination` 的 props 见[它自己的页面](/docs/components/data-pagination#props)。
