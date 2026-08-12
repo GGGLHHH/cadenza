@@ -5,12 +5,24 @@ import userEvent from '@testing-library/user-event'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   DataTable,
+  DataTableColumnsEmpty,
   DataTableEmpty,
   DataTableError,
   DataTableLoadingMore,
   DataTableLoadingOverlay,
   DataTableRetry,
 } from '../src/components/data-table'
+import {
+  DataTableColumnsSelect,
+  DataTableColumnsSelectGrip,
+  DataTableColumnsSelectItem,
+  DataTableColumnsSelectList,
+} from '../src/components/data-table-columns-select'
+import {
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from '../src/components/select'
 
 beforeAll(() => {
   // Base UI's ScrollArea polls viewport.getAnimations(), absent in jsdom.
@@ -168,6 +180,45 @@ describe('dataTable state slots', () => {
     // The card's z-30 (clearing pinned cells) survives a caller className.
     expect(overlay?.className).toContain('z-30')
     expect(screen.getByTestId('brand')).not.toBeNull()
+  })
+
+  it('zero columns: rows give way to the status region, no junk header row', () => {
+    render(
+      <DataTable aria-label="People" columns={[]} items={people}>
+        <DataTableColumnsEmpty>所有列已隐藏</DataTableColumnsEmpty>
+        {slots}
+      </DataTable>,
+    )
+    // No header cells, no cell-less body rows masquerading as data.
+    expect(screen.queryByRole('columnheader')).toBeNull()
+    expect(screen.queryByText('Bach')).toBeNull()
+    // The columns slot speaks; the rows-empty slot stays silent — the data is
+    // there, "no data" would be the wrong words.
+    expect(screen.getByText('所有列已隐藏')).not.toBeNull()
+    expect(screen.queryByText('No rows')).toBeNull()
+    const card = document.querySelector('[data-slot="data-table"]')
+    expect(card?.getAttribute('data-columns-empty')).toBe('')
+  })
+
+  it('zero columns AND zero rows: the columns slot outranks the rows-empty slot', () => {
+    render(
+      <DataTable aria-label="People" columns={[]} items={[]}>
+        <DataTableColumnsEmpty>所有列已隐藏</DataTableColumnsEmpty>
+        {slots}
+      </DataTable>,
+    )
+    expect(screen.getByText('所有列已隐藏')).not.toBeNull()
+    expect(screen.queryByText('No rows')).toBeNull()
+  })
+
+  it('columns-empty slot renders nothing on a normal table', () => {
+    render(
+      <DataTable aria-label="People" columns={columns} items={people}>
+        <DataTableColumnsEmpty>所有列已隐藏</DataTableColumnsEmpty>
+      </DataTable>,
+    )
+    expect(screen.queryByText('所有列已隐藏')).toBeNull()
+    expect(screen.getByText('Bach')).not.toBeNull()
   })
 
   it('shows the error slot with a retry button wired to onRetry', async () => {
@@ -601,5 +652,269 @@ describe('dataTable interactions', () => {
       </DataTable>,
     )
     expect(screen.getByText('More…')).not.toBeNull()
+  })
+})
+
+describe('dataTableColumnsSelect', () => {
+  const pickerColumns: DataTableColumn<Person>[] = [
+    { id: 'name', header: 'Name', cell: person => person.name, rowHeader: true, hideable: false },
+    { id: 'role', header: 'Role', cell: person => person.role },
+    { id: 'era', header: 'Era', cell: () => '—' },
+  ]
+
+  it('lists every column and starts with all of them visible', async () => {
+    const user = userEvent.setup()
+    render(<DataTableColumnsSelect aria-label="Columns" columns={pickerColumns} />)
+
+    // The trigger prints headers, not ids — that is what `items` resolves.
+    const trigger = screen.getByRole('combobox')
+    expect(trigger.textContent).toContain('Name')
+    expect(trigger.textContent).toContain('Role')
+    expect(trigger.textContent).not.toContain('name')
+
+    await user.click(trigger)
+    expect(await screen.findByRole('option', { name: 'Name' })).not.toBeNull()
+    expect(screen.getByRole('option', { name: 'Role' })).not.toBeNull()
+    expect(screen.getByRole('option', { name: 'Era' })).not.toBeNull()
+  })
+
+  it('greys out a hideable:false column so it can never be switched off', async () => {
+    const user = userEvent.setup()
+    render(<DataTableColumnsSelect aria-label="Columns" columns={pickerColumns} />)
+
+    await user.click(screen.getByRole('combobox'))
+    const locked = await screen.findByRole('option', { name: 'Name' })
+    expect(locked.getAttribute('aria-disabled')).toBe('true')
+    expect(screen.getByRole('option', { name: 'Role' }).getAttribute('aria-disabled')).not.toBe('true')
+  })
+
+  it('reports the remaining ids in column order when one is unchecked', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <DataTableColumnsSelect
+        aria-label="Columns"
+        columns={pickerColumns}
+        onValueChange={onValueChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'Role' }))
+
+    expect(onValueChange.mock.lastCall![0] as string[]).toEqual(['name', 'era'])
+    expect((onValueChange.mock.lastCall![1] as { reason: string }).reason).toBe('item-press')
+  })
+
+  it('keeps a locked column in the emitted list even when the caller leaves it out', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <DataTableColumnsSelect
+        aria-label="Columns"
+        columns={pickerColumns}
+        // `name` is hideable:false but missing here — the picker puts it back.
+        value={['role']}
+        onValueChange={onValueChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'Era' }))
+
+    expect(onValueChange.mock.lastCall![0] as string[]).toEqual(['name', 'role', 'era'])
+  })
+
+  it('cancel() rejects the change', async () => {
+    const user = userEvent.setup()
+    render(
+      <DataTableColumnsSelect
+        aria-label="Columns"
+        columns={pickerColumns}
+        onValueChange={(_ids, details) => details.cancel()}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'Role' }))
+    // Still on: the trigger never lost it.
+    expect(screen.getByRole('combobox').textContent).toContain('Role')
+  })
+
+  it('grows a grip per option only when a reorder callback is given', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(<DataTableColumnsSelect aria-label="Columns" columns={pickerColumns} />)
+    await user.click(screen.getByRole('combobox'))
+    await screen.findByRole('option', { name: 'Name' })
+    expect(document.querySelectorAll('[role=option] .cursor-grab')).toHaveLength(0)
+    unmount()
+
+    // Either callback is enough — the commit one alone is the common case.
+    render(
+      <DataTableColumnsSelect
+        aria-label="Columns"
+        columns={pickerColumns}
+        onOrderCommitted={() => {}}
+      />,
+    )
+    await user.click(screen.getByRole('combobox'))
+    await screen.findByRole('option', { name: 'Name' })
+    expect(document.querySelectorAll('[role=option] .cursor-grab')).toHaveLength(3)
+  })
+
+  it('renders options in the caller\'s column order while no drag is in flight', async () => {
+    const user = userEvent.setup()
+    render(
+      <DataTableColumnsSelect
+        aria-label="Columns"
+        columns={[pickerColumns[2], pickerColumns[0], pickerColumns[1]]}
+        onOrderCommitted={() => {}}
+      />,
+    )
+    await user.click(screen.getByRole('combobox'))
+    await screen.findByRole('option', { name: 'Era' })
+    expect(screen.getAllByRole('option').map(option => option.textContent))
+      .toEqual(['Era', 'Name', 'Role'])
+  })
+
+  it('keeps the grip out of the option name — it lives inside ItemText, which names the option', async () => {
+    const user = userEvent.setup()
+    render(
+      <DataTableColumnsSelect aria-label="Columns" columns={pickerColumns} onOrderCommitted={() => {}} />,
+    )
+    await user.click(screen.getByRole('combobox'))
+    // Would read "Reorder role Role" if the grip carried a label.
+    expect(await screen.findByRole('option', { name: 'Role' })).not.toBeNull()
+    expect(document.querySelector('[role=option] .cursor-grab')?.getAttribute('aria-hidden')).toBe('true')
+  })
+
+  it('the option and the drag target are one element, so selection still works with a grip', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <DataTableColumnsSelect
+        aria-label="Columns"
+        columns={pickerColumns}
+        onOrderCommitted={() => {}}
+        onValueChange={onValueChange}
+      />,
+    )
+    await user.click(screen.getByRole('combobox'))
+    // Motion's Reorder.Item is merged in through Base UI's render prop rather
+    // than nested, so role/selection/typeahead all survive.
+    const role = await screen.findByRole('option', { name: 'Role' })
+    await user.click(role)
+    expect(onValueChange.mock.lastCall![0] as string[]).toEqual(['name', 'era'])
+  })
+
+  it('pressing the grip never toggles the column — the option would otherwise take the press', async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+    render(
+      <DataTableColumnsSelect
+        aria-label="Columns"
+        columns={pickerColumns}
+        onOrderCommitted={() => {}}
+        onValueChange={onValueChange}
+      />,
+    )
+    await user.click(screen.getByRole('combobox'))
+    const role = await screen.findByRole('option', { name: 'Role' })
+
+    await user.click(role.querySelector('.cursor-grab')!)
+    expect(onValueChange).not.toHaveBeenCalled()
+    expect(role.getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('composition: hands the structure over while the machinery stays wired', async () => {
+    const user = userEvent.setup()
+    const onOrderCommitted = vi.fn()
+    render(
+      <DataTableColumnsSelect columns={pickerColumns} onOrderCommitted={onOrderCommitted}>
+        <SelectTrigger aria-label="Columns">
+          <SelectValue>{() => 'custom trigger'}</SelectValue>
+        </SelectTrigger>
+        <SelectPopup>
+          <DataTableColumnsSelectList>
+            {column => (
+              <DataTableColumnsSelectItem column={column}>
+                <DataTableColumnsSelectGrip />
+                <em>{column.header}</em>
+              </DataTableColumnsSelectItem>
+            )}
+          </DataTableColumnsSelectList>
+        </SelectPopup>
+      </DataTableColumnsSelect>,
+    )
+    // The custom trigger label renders in place of the default id list.
+    expect(screen.getByRole('combobox').textContent).toContain('custom trigger')
+
+    await user.click(screen.getByRole('combobox'))
+    await screen.findByRole('option', { name: 'Name' })
+    // Options come out in column order, decorated content and all.
+    expect(screen.getAllByRole('option').map(option => option.textContent))
+      .toEqual(['Name', 'Role', 'Era'])
+    // Grips are there (orderable), the locked column still greyed.
+    expect(document.querySelectorAll('[data-slot="data-table-columns-select-grip"]')).toHaveLength(3)
+    expect(screen.getByRole('option', { name: 'Name' }).getAttribute('aria-disabled')).toBe('true')
+  })
+
+  it('composition: item aria-label keeps decorated content out of the announced name', async () => {
+    const user = userEvent.setup()
+    render(
+      <DataTableColumnsSelect columns={pickerColumns} onOrderCommitted={() => {}}>
+        <SelectTrigger aria-label="Columns"><SelectValue /></SelectTrigger>
+        <SelectPopup>
+          <DataTableColumnsSelectList>
+            {column => (
+              <DataTableColumnsSelectItem aria-label={`列 ${column.id}`} column={column}>
+                <DataTableColumnsSelectGrip />
+                {column.header}
+                <span>(3 items)</span>
+              </DataTableColumnsSelectItem>
+            )}
+          </DataTableColumnsSelectList>
+        </SelectPopup>
+      </DataTableColumnsSelect>,
+    )
+    await user.click(screen.getByRole('combobox'))
+    // Named by the override, not by "Role (3 items)".
+    expect(await screen.findByRole('option', { name: '列 role' })).not.toBeNull()
+    expect(screen.queryByRole('option', { name: /3 items/ })).toBeNull()
+  })
+
+  it('composition: grips vanish when the root has no reorder callback', async () => {
+    const user = userEvent.setup()
+    render(
+      <DataTableColumnsSelect columns={pickerColumns}>
+        <SelectTrigger aria-label="Columns"><SelectValue /></SelectTrigger>
+        <SelectPopup>
+          <DataTableColumnsSelectList>
+            {column => (
+              <DataTableColumnsSelectItem column={column}>
+                <DataTableColumnsSelectGrip />
+                {column.header}
+              </DataTableColumnsSelectItem>
+            )}
+          </DataTableColumnsSelectList>
+        </SelectPopup>
+      </DataTableColumnsSelect>,
+    )
+    await user.click(screen.getByRole('combobox'))
+    await screen.findByRole('option', { name: 'Name' })
+    expect(document.querySelectorAll('[data-slot="data-table-columns-select-grip"]')).toHaveLength(0)
+  })
+
+  it('drives a DataTable through a plain filter — the table only ever renders what it is handed', () => {
+    render(
+      <DataTable
+        aria-label="People"
+        columns={pickerColumns.filter(column => column.id !== 'role')}
+        items={people}
+      />,
+    )
+    expect(screen.getByRole('columnheader', { name: 'Name' })).not.toBeNull()
+    expect(screen.queryByRole('columnheader', { name: 'Role' })).toBeNull()
+    expect(screen.getByRole('columnheader', { name: 'Era' })).not.toBeNull()
   })
 })

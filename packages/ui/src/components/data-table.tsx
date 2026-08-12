@@ -52,6 +52,14 @@ export interface DataTableColumn<T> {
   /** Lets the header toggle `sortDescriptor`. Sorting itself is the data layer's job. */
   sortable?: boolean
   /**
+   * Whether {@link DataTableColumnsSelect} may hide this column. Defaults to
+   * true; `false` pins the column on and greys its entry in the picker — what
+   * the row-header column usually wants. Like `sortable`, this is an affordance
+   * flag for a control, not something the table itself reads: hiding is the
+   * caller filtering `columns`, and the table only ever renders what it is given.
+   */
+  hideable?: boolean
+  /**
    * Column sizing, applied to the header and body cells. Sized columns also
    * keep virtualized windows from jittering as content scrolls in.
    */
@@ -234,6 +242,7 @@ export function DataTableStatus({ className, ...props }: ComponentProps<'div'>):
 // do not travel inward.
 interface DataTableStateContextValue {
   empty: boolean
+  columnsEmpty: boolean
   error: boolean
   onRetry?: (() => void) | undefined
 }
@@ -253,6 +262,18 @@ function useDataTableState(): DataTableStateContextValue {
 export function DataTableEmpty(props: ComponentProps<'div'>): ReactElement | null {
   const { empty } = useDataTableState()
   return empty ? <DataTableStatus {...props} /> : null
+}
+
+/**
+ * No-columns slot: renders its children when every column is hidden — the
+ * state a DataTableColumnsSelect with nothing locked can reach. Distinct from
+ * `DataTableEmpty` on purpose: "no data" is the wrong words when the data is
+ * there and the columns are not, and this is also where a "show all columns"
+ * recovery action belongs.
+ */
+export function DataTableColumnsEmpty(props: ComponentProps<'div'>): ReactElement | null {
+  const { columnsEmpty } = useDataTableState()
+  return columnsEmpty ? <DataTableStatus {...props} /> : null
 }
 
 /** Error slot: container for the error copy plus `DataTableRetry`. */
@@ -524,8 +545,16 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
   // `hasRows` is false.
   const showRows = !isError
   const displayRows = showRows ? rows : []
-  const isEmpty = !isLoading && !isError && rows.length === 0
-  const hasRows = showRows && rows.length > 0
+  // No columns is a state of its own — every column hidden through
+  // DataTableColumnsSelect, say. Rows without a single cell would collapse the
+  // card into a stack of border lines, so the body falls back to the status
+  // region instead, and the `DataTableColumnsEmpty` slot is what may speak
+  // there. It outranks the rows-empty state: "no data" would be a lie when the
+  // data is there and the columns are not. Judged on the caller's `columns`,
+  // not `allColumns` — a synthesized checkbox column alone is not a table.
+  const columnsEmpty = !isLoading && !isError && columns.length === 0
+  const isEmpty = !isLoading && !isError && rows.length === 0 && columns.length > 0
+  const hasRows = showRows && rows.length > 0 && columns.length > 0
   const loadingOverlayProps = findComposedPart(children, DataTableLoadingOverlay)
   const loadingMoreProps = findComposedPart(children, DataTableLoadingMore)
 
@@ -653,8 +682,8 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
   // an unstable object would re-render every slot on every keystroke of
   // unrelated state.
   const stateContextValue = useMemo<DataTableStateContextValue>(
-    () => ({ empty: isEmpty, error: isError, onRetry }),
-    [isEmpty, isError, onRetry],
+    () => ({ empty: isEmpty, columnsEmpty, error: isError, onRetry }),
+    [isEmpty, columnsEmpty, isError, onRetry],
   )
 
   // A bounded height is what gives the sticky header a scrollport, and what
@@ -857,26 +886,29 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
       "
     >
       <TableHeader>
-        <TableRow>
-          {allColumns.map(column => (
-            <TableHead
-              aria-sort={column.sortable
-                ? (sortDescriptor?.column === column.id ? sortDescriptor.direction : 'none')
-                : undefined}
-              key={column.id}
-              style={cellStyle(column)}
-              className={cn(
-                'sticky inset-bs-0 z-10 bg-muted',
-                // Pinned headers stick on both axes and overlap their plain
-                // siblings during horizontal scroll.
-                column.pinned && 'z-20',
-                column.className,
-              )}
-            >
-              {renderHeader(column)}
-            </TableHead>
-          ))}
-        </TableRow>
+        {/* No columns, no header row: a tr with zero th collapses to junk. */}
+        {columns.length > 0 && (
+          <TableRow>
+            {allColumns.map(column => (
+              <TableHead
+                aria-sort={column.sortable
+                  ? (sortDescriptor?.column === column.id ? sortDescriptor.direction : 'none')
+                  : undefined}
+                key={column.id}
+                style={cellStyle(column)}
+                className={cn(
+                  'sticky inset-bs-0 z-10 bg-muted',
+                  // Pinned headers stick on both axes and overlap their plain
+                  // siblings during horizontal scroll.
+                  column.pinned && 'z-20',
+                  column.className,
+                )}
+              >
+                {renderHeader(column)}
+              </TableHead>
+            ))}
+          </TableRow>
+        )}
       </TableHeader>
       <TableBody>
         {hasRows
@@ -982,7 +1014,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
             )
           : (
               <TableRow className="hover:bg-transparent">
-                <TableCell className="text-center block-24" colSpan={allColumns.length}>
+                <TableCell className="text-center block-24" colSpan={Math.max(allColumns.length, 1)}>
                   {children}
                 </TableCell>
               </TableRow>
@@ -1003,6 +1035,7 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
         isLoading && rows.length === 0 && 'min-block-32',
         className,
       )}
+      data-columns-empty={dataAttr(columnsEmpty)}
       data-empty={dataAttr(isEmpty)}
       data-error={dataAttr(isError)}
       data-loading={dataAttr(isLoading)}
