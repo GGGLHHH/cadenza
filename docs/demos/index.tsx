@@ -5,6 +5,11 @@ import { lazy, Suspense } from 'react'
 
 // 客户端 demo registry:lazy 让每个 demo 独立分包,页面只拉用到的
 const registry: Record<string, ComponentType> = {
+  'alert-dialog/basic': lazy(async () => import('./alert-dialog/basic')),
+  'alert-dialog/media': lazy(async () => import('./alert-dialog/media')),
+  'alert-dialog/size': lazy(async () => import('./alert-dialog/size')),
+  'alert-dialog/async': lazy(async () => import('./alert-dialog/async')),
+  'alert-dialog/handle': lazy(async () => import('./alert-dialog/handle')),
   'button/variants': lazy(async () => import('./button/variants')),
   'button/sizes': lazy(async () => import('./button/sizes')),
   'button/pending': lazy(async () => import('./button/pending')),
@@ -41,6 +46,7 @@ const registry: Record<string, ComponentType> = {
   'dialog/scroll': lazy(async () => import('./dialog/scroll')),
   'dialog/scroll-inside': lazy(async () => import('./dialog/scroll-inside')),
   'dialog/controlled': lazy(async () => import('./dialog/controlled')),
+  'dialog/async': lazy(async () => import('./dialog/async')),
   'dialog/handle': lazy(async () => import('./dialog/handle')),
   'field/basic': lazy(async () => import('./field/basic')),
   'field/input': lazy(async () => import('./field/input')),
