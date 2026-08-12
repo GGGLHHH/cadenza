@@ -1,0 +1,406 @@
+---
+title: Dialog
+description: 模态对话框 —— 传送门、遮罩、滚动视口收在一个 DialogPopup 里，内容再长也滚得动
+---
+
+<ComponentPreview name="dialog/basic" />
+
+基于 Base UI 的对话框，套 shadcn base-nova 皮肤。组合就是全部 API：没有
+`title` / `description` / `actions` 配置对象，因为对话框的正文按定义就是任意内容。
+
+封装层做三件事：把 shadcn 那套 Radix 味别名换回 Base UI 的部件名
+（`DialogContent` → `DialogPopup`、`DialogOverlay` → `DialogBackdrop`，跟
+[Tabs](/docs/components/tabs) 同一条规矩）；补上[长内容滚动](#长内容滚动)——
+`DialogPopup` 自带滚动视口，再加个 `DialogBody` 就切成页眉页脚固定的内滚；
+以及让弹层[从指针按下的位置展开](#入场动画)。
+
+## 使用
+
+```tsx
+import {
+  createDialogHandle,
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
+  DialogTitle,
+  DialogTrigger,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Dialog>
+  <DialogTrigger render={<Button variant="outline" />}>打开</DialogTrigger>
+  <DialogPopup>
+    <DialogHeader>
+      <DialogTitle>标题</DialogTitle>
+      <DialogDescription>说明</DialogDescription>
+    </DialogHeader>
+    正文
+    <DialogFooter>
+      <DialogClose render={<Button variant="outline" />}>取消</DialogClose>
+      <Button>确定</Button>
+    </DialogFooter>
+  </DialogPopup>
+</Dialog>
+```
+
+`DialogTrigger` 和 `DialogClose` 各自渲染一个光秃秃的 `<button>`，用
+`render={<Button />}` 借库里的按钮来穿衣服 —— 不要在里面再套一个 `Button`，
+那会得到嵌套的两个按钮。文案永远是调用方的：封装层不替你写「取消」「关闭」。
+
+## 组成
+
+一个 `DialogPopup` 展开是四个 Base UI 部件，其中三个由它自己渲染：
+
+```text
+Dialog                     ← 根：只管开关状态，不渲染任何元素
+├── DialogTrigger          ← 打开的按钮，可以有多个
+└── DialogPopup            ← 写这一个，下面三层自动就位
+    ├── Portal             ← 脱离触发器所在的层叠 / 溢出上下文
+    ├── Backdrop           ← 压暗虚化的背景（backdropClassName）
+    └── Viewport           ← 铺满屏幕、可滚动的定位容器（viewportClassName）
+        └── Popup          ← 对话框本体，className 指的是它
+            ├── DialogHeader ─ DialogTitle + DialogDescription
+            ├── DialogBody   ─ 可选；写了它就切成内滚，页眉页脚钉住
+            └── DialogFooter ─ 通常放 DialogClose
+```
+
+`Portal` / `Backdrop` / `Viewport` **没有单独导出**：能调的都能通过
+`backdropClassName` 和 `viewportClassName` 调到，需要比这更自由的结构，
+说明已经越过封装层该管的范围，直接组合 `@base-ui/react/dialog` 更诚实。
+
+`DialogTitle` 实际上不是可选的 —— Base UI 把它接到弹层的 `aria-labelledby` 上，
+没有它对话框就是个没名字的框。标题在视觉上冗余时，给它挂 `sr-only` 而不是删掉：
+
+```tsx
+<DialogTitle className="sr-only">搜索文档</DialogTitle>
+```
+
+`DialogHeader` 和 `DialogFooter` 是两个普通 `<div>`，不是 Base UI 部件。页脚
+会抵消弹层的内边距，让那条灰色操作栏铺到边，并在窄屏上倒序排列 —— 主操作在上。
+
+## 长内容滚动
+
+内容比屏幕高时，**整个对话框连页眉页脚一起滚**，不用写任何 `overflow`：
+
+<ComponentPreview name="dialog/scroll" />
+
+滚动条不一定看得见——macOS 的覆盖式滚动条平时隐藏，滚动时才浮现。列表带了序号，
+方便确认自己滚到哪了；「关闭」在最底下，滚到底才够得着。
+
+这一条是封装层补的。shadcn 原版把弹层用 `fixed top-1/2 left-1/2 -translate-1/2`
+钉在视口正中，内容一超高就从上下两边同时溢出，而且**滚不动** —— 弹层是
+`fixed`，页面滚不到它；它自己又是溢出根，也滚不了自己。Base UI 为此提供了
+`Dialog.Viewport`，vendored 的源码只是早于这个部件。
+
+细节值得记一笔：居中靠的是弹层自己的 `m-auto`，不是视口的 `items-center`。
+在可滚动的 flex 容器里，`align-items: center` 遇到比容器高的子元素会把它的**起始边裁掉**
+（溢出被均分到上下两侧，滚动原点以上那截够不着）。自动外边距分配剩余空间的方式一样，
+但没有剩余空间时会塌成 0，于是超高的弹层退回贴顶，照样滚得动。
+
+### 页眉页脚钉住，只滚中间
+
+另一种滚法：把中间那段包进 `DialogBody`。没有 prop 要传，也没有类名要抄 ——
+弹层看见这个部件就自己封顶到屏幕高度、改用纵向 flex 布局。
+
+<ComponentPreview name="dialog/scroll-inside" />
+
+```tsx
+<DialogPopup>
+  <DialogHeader>…</DialogHeader>
+  <DialogBody>…</DialogBody>
+  <DialogFooter>…</DialogFooter>
+</DialogPopup>
+```
+
+切换靠的是一条 `:has()` 规则（`弹层:has(> [data-slot=dialog-body])`），所以
+两种滚法**不可能同时生效**：弹层一旦封顶就不再超出屏幕，外层视口没东西可滚，
+自动让路。想封在别的高度就覆盖弹层的 `max-block-full`：
+
+```tsx
+<DialogPopup className="max-block-[32rem]">
+```
+
+`DialogBody` 是个自带 `overflow-y-auto` 的普通 `<div>`，不是
+[ScrollArea](/docs/components/scroll-area)。这里用不了它：ScrollArea 真正滚动的
+是内层视口，那个视口用 `block-full`（百分比）定高，而百分比要求父级的 `height`
+是确定值 —— 这里的高度是 flex **主轴**尺寸，由 flex 算法在布局期定出，`height`
+属性本身始终是 `auto`，百分比永远解析不了，内容也就永远不会被裁剪。把
+`overflow` 直接放在 flex 子项上则完全绕开了百分比。
+
+代价是滚动条：ScrollArea 存在的理由正是让滚动条独立于滚动元素、不被 scroll-fade
+的 mask 压暗，而这里的原生滚动条就在 mask 里面。`scroll-fade-y` 仍然默认开着 ——
+边缘处被切掉半行的文字是"下面还有"的唯一提示，何况 macOS 的滚动条不动就看不见。
+
+## 关闭方式与拦截
+
+`onOpenChange` 的第二个参数是一个 `ChangeEventDetails`：`reason` 说明这次变化
+从哪来，`cancel()` 能把它顶回去 —— 调了内部状态就原地不动。
+
+<ComponentPreview name="dialog/controlled" />
+
+```tsx
+<Dialog
+  open={open}
+  onOpenChange={(next, details) => {
+    // 有未保存改动时，点遮罩和 Esc 都不放行；页脚的按钮照常
+    if (!next && dirty && details.reason !== 'close-press') {
+      details.cancel()
+      return
+    }
+    setOpen(next)
+  }}
+>
+```
+
+比「关掉 `disablePointerDismissal` 再自己补一套判断」省事的地方在于，`reason`
+把七种来路分得很细，可以只拒绝其中几种：
+
+| `reason` | 来自 |
+| --- | --- |
+| `'trigger-press'` | 按了 `DialogTrigger` |
+| `'close-press'` | 按了 `DialogClose`（含右上角 ✕） |
+| `'outside-press'` | 点了弹层外面 |
+| `'escape-key'` | 按了 `Esc` |
+| `'focus-out'` | 焦点移出了弹层（只有非模态会有） |
+| `'imperative-action'` | 代码调了 `actionsRef.current.close()` |
+| `'none'` | 其余，如直接改 `open` |
+
+不需要分来路、只想禁掉点外部关闭时，`disablePointerDismissal` 一个开关就够。
+
+`details` 上还有个 `preventUnmountOnClose()`：关闭动画由你自己接管时调它，
+弹层会留在 DOM 里，等你通过 `actionsRef.current.unmount()` 手动卸载。
+
+## 命令式打开
+
+`createDialogHandle()` 造一个句柄，把对话框和触发器接起来 —— 触发器不必是它的
+子节点，中间也不用一路传 state。触发器还能带 `payload`，根的 `children` 写成
+函数就能收到：
+
+<ComponentPreview name="dialog/handle" />
+
+```tsx
+const handle = createDialogHandle<Person>()
+
+// 任意位置、任意数量的触发器
+<DialogTrigger handle={handle} payload={person} render={<Button />}>
+  {person.name}
+</DialogTrigger>
+
+// 对话框只有一个
+<Dialog handle={handle}>
+  {({ payload: person }) => (
+    <DialogPopup>
+      <DialogTitle>{person?.name}</DialogTitle>
+      …
+    </DialogPopup>
+  )}
+</Dialog>
+```
+
+函数收到的是一个**对象** `{ payload }`，不是裸的 payload；`payload` 可能是
+`undefined`（对话框未必由触发器打开）。这条路子让「当前选中哪一行」根本不用
+变成组件状态 —— 一张表格配一个对话框，靠的就是它。
+
+句柄之所以要由本库转出，是因为 `@base-ui/react` 是本库的依赖而不是你的，
+`Dialog.createHandle` 在应用里 import 不到。
+
+## 模态
+
+`modal` 默认 `true`：焦点被锁在对话框里、页面滚动被锁、外部元素的指针事件失效。
+
+| `modal` | 焦点陷阱 | 页面滚动锁 | 外部指针事件 |
+| --- | --- | --- | --- |
+| `true`（默认） | 有 | 锁 | 失效 |
+| `'trap-focus'` | 有 | 不锁 | 可用 |
+| `false` | 无 | 不锁 | 可用 |
+
+`'trap-focus'` 是给「与页面共存、但键盘操作不该跑出去」的对话框准备的。
+
+模态（`true` 或 `'trap-focus'`）时，弹层里**必须**留一个 `DialogClose`：触屏读屏
+用户没有 `Esc` 键，右上角那个 ✕ 是他们的唯一出口。所以 `showCloseButton={false}`
+的含义不是「不要关闭按钮」，而是「我在正文里另外提供了出口」。
+
+## 焦点
+
+`initialFocus` / `finalFocus` 直通 Base UI，取值一样：`RefObject` 指定元素、
+`false` 不动焦点、函数按打开方式（`mouse` / `touch` / `pen` / `keyboard`）临时决定。
+
+默认打开时焦点落在弹层内第一个可聚焦元素上，**触屏打开除外** —— 那时焦点给弹层
+自己，免得虚拟键盘弹出来。关闭时焦点回到触发器。
+
+```tsx
+// 打开就聚焦搜索框
+<DialogPopup initialFocus={inputRef}>
+```
+
+## 入场动画
+
+对话框**从你按下的位置**长出来，关闭时缩回同一点。不用配置，`DialogTrigger`
+自己记住了指针落点。
+
+做法是 FLIP：封装层在触发器的 `pointerdown` 上记下视口坐标，弹层挂载时算出
+「缩小并平移到那个点」的 transform，写成一个 CSS 变量放在滚动视口上，
+弹层继承它当作过渡的两端：
+
+```css
+/* --dialog-flip 例如 translate(-212px, -184px) scale(0.3) */
+transition: transform .25s, opacity .25s;
+
+&[data-starting-style],
+&[data-ending-style] {
+  transform: var(--dialog-flip);
+  opacity: 0;
+}
+```
+
+平移量之所以是「指针坐标减屏幕中心」而不用测量弹层：弹层是 `m-auto` 居中在铺满
+屏幕的视口里，**它自己的中心就是屏幕中心**。
+
+这里没有用 `transform-origin`，是因为它做不到。绕某点缩放只会让元素移动
+`(1 − 缩放比) × 到锚点的距离`——**永远够不到锚点**，只是朝那个方向偏一点；
+`translate` 才是精确的。同理，动画走 `transition` 而不是 keyframes：
+`data-starting-style` / `data-ending-style` 由 Base UI 自己驱动，它会等过渡
+（准确说是 opacity 那一段）结束再卸载弹层，退场才播得完整。
+
+**键盘打开退回正中**。触发器上任何 `keydown` 都会清掉记下的坐标——键盘能走到
+触发器，就说明用户的注意力早已不在上次点击的地方。此时变量退成 `scale(0.95)`，
+就是普通的原地缩放。变量任何时候都有值：`transform: var(--x)` 在变量缺席时是
+一条无效声明，简写语法里没有 fallback 可写。
+
+**代码打开沿用最后一次点击的位置**，这是有意的：受控 `open` 或 `handle` 打开的
+对话框（比如保存失败弹出的错误框），从刚点过的那个按钮飞出来，比从屏幕正中冒出来
+更说得通。
+
+想改观感就覆盖对应的类：
+
+```tsx
+{/* 更慢 */}
+<DialogPopup className="duration-400" />
+
+{/* 不要位移，回到原地缩放 */}
+<DialogPopup className="data-starting-style:transform-none data-ending-style:transform-none" />
+```
+
+开了系统的「减弱动态效果」时 transform 自动变成 `none`，位移和缩放一起消失，
+只留淡入淡出。
+
+## 状态与 className
+
+`className` 一律双形态：字符串，或 `(state) => string` 的函数。下表左列是挂在
+DOM 上的 `data-*`，Tailwind 直接当变体写（`data-starting-style:opacity-0`）；
+右列是同一个状态在函数 `className` 里的名字。
+
+| 部件 | `data-*` | 出现时机 | 函数 `className` 里的名字 |
+| --- | --- | --- | --- |
+| 弹层 / 遮罩 / 视口 | `data-open` / `data-closed` | 打开 / 关闭 | `open` |
+| 弹层 / 遮罩 / 视口 | `data-starting-style` | 入场动画开始的那一帧 | `transitionStatus === 'starting'` |
+| 弹层 / 遮罩 / 视口 | `data-ending-style` | 出场动画进行中 | `transitionStatus === 'ending'` |
+| 弹层 / 遮罩 / 视口 | `data-nested` | 本对话框嵌在另一个对话框里 | `nested` |
+| 弹层 / 遮罩 / 视口 | `data-nested-dialog-open` | 本对话框里有打开的嵌套对话框 | `nestedDialogOpen` |
+| 触发器 | `data-popup-open` | 对应的对话框开着（注意不叫 `data-open`） | `open` |
+| 触发器 / 关闭按钮 | `data-disabled` | 按钮禁用 | `disabled` |
+
+`nested` 与 `nestedDialogOpen` 只是把状态挂出来，base-nova 没有为嵌套画任何样式
+（层叠对话框的缩放堆叠效果要自己写）。
+
+需要从外部定位时用 `data-slot`：
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `dialog-trigger` | 触发按钮 |
+| `dialog-backdrop` | 遮罩层 |
+| `dialog-viewport` | 铺满屏幕的滚动视口 |
+| `dialog-popup` | 对话框本体 |
+| `dialog-header` / `dialog-footer` | 页眉 / 页脚 |
+| `dialog-body` | 内滚时的滚动区；弹层的 `:has()` 就认这个名字 |
+| `dialog-title` / `dialog-description` | 标题 / 描述 |
+| `dialog-close` | 关闭按钮（含右上角 ✕） |
+
+## 键盘交互
+
+| 按键 | 行为 |
+| --- | --- |
+| `Enter` / `Space` | 在触发器上：打开；在关闭按钮上：关闭 |
+| `Esc` | 关闭（`onOpenChange` 收到 `reason: 'escape-key'`） |
+| `Tab` / `Shift` + `Tab` | 在弹层内循环，模态时出不去 |
+
+关闭后焦点自动回到触发器，见[焦点](#焦点)。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### Dialog
+
+根组件，不渲染元素。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultOpen` | `boolean` | `false` | 非受控初始开关 |
+| `open` | `boolean` | — | 受控开关 |
+| `onOpenChange` | `(open, details) => void` | — | `details` 见[关闭方式与拦截](#关闭方式与拦截) |
+| `onOpenChangeComplete` | `(open: boolean) => void` | — | 动画结束后才触发 |
+| `modal` | `boolean \| 'trap-focus'` | `true` | 见[模态](#模态) |
+| `disablePointerDismissal` | `boolean` | `false` | 禁止点外部关闭；非模态时同时禁止焦点移出关闭 |
+| `handle` | `DialogHandle<Payload>` | — | 见[命令式打开](#命令式打开) |
+| `actionsRef` | `RefObject<DialogActions>` | — | 命令式 `close()` / `unmount()` |
+| `children` | `ReactNode \| ({ payload }) => ReactNode` | — | 函数形式用于接 `payload` |
+
+### DialogPopup
+
+对话框本体，同时渲染传送门、遮罩和视口。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `initialFocus` | `boolean \| RefObject \| (openType) => …` | — | 见[焦点](#焦点) |
+| `finalFocus` | `boolean \| RefObject \| (closeType) => …` | — | 见[焦点](#焦点) |
+| `showCloseButton` | `boolean` | `true` | 右上角的 ✕ |
+| `backdropClassName` | `string \| (state) => string` | — | 遮罩层类名 |
+| `viewportClassName` | `string \| (state) => string` | — | 滚动视口类名；弹层与屏幕边缘的间距（`p-4`）在这里改 |
+| `className` | `string \| (state) => string` | — | 弹层本体类名；宽度上限（`sm:max-inline-sm`）和封顶高度在这里改 |
+| 其余 | Base UI `Dialog.Popup` 的 props | — | 透传 |
+
+### DialogTrigger / DialogClose
+
+都渲染 `<button>`，都接 `render` 换壳。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `handle` | `DialogHandle<Payload>` | — | 仅触发器：接到哪个对话框 |
+| `payload` | `Payload` | — | 仅触发器：打开时带给对话框的数据 |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 换成别的元素或组件 |
+| `disabled` | `boolean` | `false` | 禁用 |
+
+### DialogBody
+
+自带 `overflow-y-auto` 的普通 `<div>`，只接原生属性。它的出现会让弹层切换到
+[内滚](#页眉页脚钉住只滚中间)。默认带 `scroll-fade-y`，以及 `-mx-4 px-4` ——
+抵消弹层的内边距再原样加回来，滚动区因此撑到弹层全宽、滚动条骑在弹层边缘上，
+而文字一个字都没挪。用 `className` 覆盖。
+
+### DialogHeader / DialogFooter / DialogTitle / DialogDescription
+
+`DialogHeader` 和 `DialogFooter` 是普通 `<div>`，只接原生属性。`DialogTitle`
+渲染 `<h2>`、`DialogDescription` 渲染 `<p>`，两者都接 Base UI 的 `render`。
+
+`DialogFooter` 没有 shadcn 原版的 `showCloseButton`：它会渲染一个写死英文
+`Close` 的按钮，而关闭动作的措辞属于调用方。自己写一行，文案是你的：
+
+```tsx
+<DialogClose render={<Button variant="outline" />}>取消</DialogClose>
+```
+
+## 导出的类型
+
+`DialogProps<Payload>` / `DialogPopupProps` / `DialogPopupState` /
+`DialogTriggerProps<Payload>` / `DialogCloseProps` / `DialogHeaderProps` /
+`DialogBodyProps` / `DialogFooterProps` / `DialogTitleProps` /
+`DialogDescriptionProps`，
+外加 `DialogChangeEventDetails`（`onOpenChange` 的第二个参数）、
+`DialogActions`（`actionsRef` 暴露的 `close` / `unmount`）与
+`DialogHandle<Payload>`。
