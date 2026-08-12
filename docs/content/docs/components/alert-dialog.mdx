@@ -1,0 +1,355 @@
+---
+title: AlertDialog
+description: 确认框 —— alertdialog 语义、图标格与两列页脚，没有 ✕，每个出口都带标签
+---
+
+<ComponentPreview name="alert-dialog/basic" />
+
+用来问一个需要答复的问题：删除、吊销、覆盖。它与 [Dialog](/docs/components/dialog)
+共享全部底层，差别在这几处：`role="alertdialog"`（屏幕阅读器会用更强的方式播报）、
+**没有右上角 ✕**、多了[图标格](#图标)和 [`size`](#尺寸)。
+
+### 关于「点外面关闭」
+
+Base UI 自带的 AlertDialog **点外面永远关不掉**，而且不给开关——它的 Root 里
+`disablePointerDismissal` 是硬编码的，类型上直接 `Omit` 了这个 prop。
+
+本库不采用那个 root，改用 Dialog 的：
+
+```js
+// Base UI 的 useRenderDialogRoot 里，alert-dialog 模式只改两行
+const disablePointerDismissal = isAlertDialog || disablePointerDismissalProp // ← 焊死
+const role = isAlertDialog ? 'alertdialog' : 'dialog'
+```
+
+第二行封装层自己补回来了（`AlertDialogPopup` 传 `role="alertdialog"`，Base UI
+把调用方 props 合并在最后，所以能覆盖），第一行则交还给你。于是：
+
+- **默认点外面可以关闭**，和 Dialog 一致
+- `modal`、`disablePointerDismissal` 都恢复可用
+- `role="alertdialog"` 的无障碍语义原样保留
+
+真正不容误触的确认，自己锁上：
+
+```tsx
+<AlertDialog disablePointerDismissal>
+```
+
+## 使用
+
+```tsx
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogPopup,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  createAlertDialogHandle,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<AlertDialog>
+  <AlertDialogTrigger render={<Button variant="destructive" />}>删除</AlertDialogTrigger>
+  <AlertDialogPopup>
+    <AlertDialogHeader>
+      <AlertDialogTitle>删除这份草稿？</AlertDialogTitle>
+      <AlertDialogDescription>删除后无法恢复。</AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogClose render={<Button variant="outline" />}>取消</AlertDialogClose>
+      <AlertDialogClose render={<Button variant="destructive" />} onClick={remove}>
+        删除
+      </AlertDialogClose>
+    </AlertDialogFooter>
+  </AlertDialogPopup>
+</AlertDialog>
+```
+
+**两个出口都是 `AlertDialogClose`**，干活的那个把工作放进 `onClick` —— 关闭是它
+本来就会做的事。shadcn 为这一对提供了 `AlertDialogAction` / `AlertDialogCancel`，
+两个都没有提升：`Action` 只是个挂了 `data-slot` 的 `Button`，`Cancel` 只是
+`Close` 加 `variant="outline"`，那是调用方本来就要写的一行，而写出来才能把措辞和
+变体留在它们该在的地方。
+
+## 与 Dialog 的差异
+
+| | Dialog | AlertDialog |
+| --- | --- | --- |
+| `role` | `dialog` | **`alertdialog`** |
+| 点遮罩关闭 | 可以 | 可以（见[上文](#关于点外面关闭)） |
+| `modal` / `disablePointerDismissal` | 有 | 有 |
+| 右上角 ✕ | 默认有（`showCloseButton`） | **没有**，也没有开关 |
+| 尺寸 | `className` 自己调 | `size="default" \| "sm"` |
+| 图标格 | 无 | [`AlertDialogMedia`](#图标) |
+| 内滚 | `DialogBody` | 无 —— 需要长内容的确认框是个信号，不是需求 |
+
+没有 ✕ 是设计，不是遗漏：角落里那个叉是一个**什么都没回答**的出口，而这个组件
+问的是一个需要答案的问题。vendored 源码里也没有。每个出口都该带标签 —— 遮罩和
+`Esc` 是给「我先不决定」留的后路，不是答案的一部分。
+
+其余部分与 Dialog 一致，不再重复：[滚动视口](/docs/components/dialog#长内容滚动)
+（内容超过屏幕高度时整框滚动）、[从指针位置展开的入场动画](/docs/components/dialog#入场动画)
+（同一套 `--dialog-flip`，两个组件共用一份实现）。
+
+## 组成
+
+```text
+AlertDialog                    ← 根：只管开关状态，不渲染任何元素
+├── AlertDialogTrigger         ← 打开的按钮，可以有多个
+└── AlertDialogPopup           ← 写这一个，下面三层自动就位
+    ├── Portal
+    ├── Backdrop               ← 压暗虚化的背景（backdropClassName）
+    └── Viewport               ← 铺满屏幕、可滚动的定位容器（viewportClassName）
+        └── Popup              ← 对话框本体，className 指的是它
+            ├── AlertDialogHeader
+            │   ├── AlertDialogMedia        ← 可选的图标格
+            │   ├── AlertDialogTitle
+            │   └── AlertDialogDescription
+            └── AlertDialogFooter ─ 一排 AlertDialogClose
+```
+
+`AlertDialogTitle` 不是可选的 —— Base UI 把它接到弹层的 `aria-labelledby` 上。
+
+## 图标
+
+`AlertDialogMedia` 是标题上方（宽屏 `default` 尺寸时是左侧）的图标格：一个静音色
+圆角方块，会把裸 `svg` 子元素自动收成 `size-6`。
+
+<ComponentPreview name="alert-dialog/media" />
+
+它是个部件而不是自己嵌一个 `<div>`，因为**页眉会因它的存在改变 grid 形状** ——
+页眉用 `:has()` 检测它，多开一行（或宽屏时多开一列把图标挪到标题左边）。
+
+## 尺寸
+
+<ComponentPreview name="alert-dialog/size" />
+
+`size="sm"` 窄一档，页眉始终居中，页脚排成**等宽两列**。用在两个选项分量相当、
+没有明显「默认项」的场合 —— 等宽本身就在说「你自己选」。
+
+`default` 则在 `sm` 断点以上左对齐，页脚右对齐，主操作在右。
+
+## 命令式打开
+
+`createAlertDialogHandle()` 让一个确认框服务整张列表：每行的触发器带自己的
+`payload`，根的 `children` 写成函数就能收到。
+
+<ComponentPreview name="alert-dialog/handle" />
+
+```tsx
+const handle = createAlertDialogHandle<Track>()
+
+<AlertDialogTrigger handle={handle} payload={track} render={<Button />}>删除</AlertDialogTrigger>
+
+<AlertDialog handle={handle}>
+  {({ payload: track }) => (
+    <AlertDialogPopup>
+      <AlertDialogTitle>删除《{track?.name}》？</AlertDialogTitle>
+      …
+    </AlertDialogPopup>
+  )}
+</AlertDialog>
+```
+
+函数收到的是**对象** `{ payload }`，不是裸 payload；`payload` 可能是 `undefined`
+（对话框未必由触发器打开）。「正要删哪一行」因此根本不用变成组件状态。
+
+## 关闭方式
+
+`onOpenChange` 的第二个参数仍是 `ChangeEventDetails`，`cancel()` 照样管用。
+`reason` 与 Dialog 完全一致 —— **包括 `'outside-press'`**：
+
+| `reason` | 来自 |
+| --- | --- |
+| `'trigger-press'` | 按了 `AlertDialogTrigger` |
+| `'close-press'` | 按了 `AlertDialogClose` |
+| `'outside-press'` | 点了弹层外面 |
+| `'escape-key'` | 按了 `Esc` |
+| `'focus-out'` | 焦点移出了弹层（只有非模态会有） |
+| `'imperative-action'` | 代码调了 `actionsRef.current.close()` |
+| `'none'` | 其余，如直接改 `open` |
+
+框有三条不表态的退路：点遮罩、`Esc`、以及你自己写的取消按钮。所以**破坏性操作
+必须挂在按钮的 `onClick` 上**，绝不能写进 `onOpenChange` —— 否则一次滑到框外的
+误点就会把它触发：
+
+```tsx
+// 对：删除跟着按钮走
+<AlertDialogClose onClick={remove} render={<Button variant="destructive" />}>删除</AlertDialogClose>
+
+// 错：点遮罩和 Esc 都会走到这里
+<AlertDialog onOpenChange={next => !next && remove()}>
+```
+
+要把误触的路堵上，整体锁：
+
+```tsx
+<AlertDialog disablePointerDismissal>
+```
+
+或者只拦特定来路：
+
+```tsx
+onOpenChange={(next, details) => {
+  if (!next && details.reason === 'escape-key') {
+    details.cancel()
+    return
+  }
+  setOpen(next)
+}}
+```
+
+## 异步确认
+
+确认之后要发请求 —— 删除、吊销、提交。这是最容易写错的一节，因为有个陷阱：
+
+**执行按钮不能是 `AlertDialogClose`。** `Close` 会在请求刚发出的那一刻就把框关掉，
+用户看着它消失，却不知道操作成没成。执行按钮要用普通 `Button`，请求回来之后自己
+`setOpen(false)`。
+
+<ComponentPreview name="alert-dialog/async" />
+
+```tsx
+const [open, setOpen] = useState(false)
+const [pending, setPending] = useState(false)
+
+async function remove() {
+  setPending(true)
+  await api.remove(id)
+  setPending(false)
+  setOpen(false) // ← 请求回来了才关
+}
+
+<AlertDialog
+  open={open}
+  onOpenChange={(next, details) => {
+    // 请求飞在路上时，一切关闭意图都挡回去
+    if (!next && pending) {
+      details.cancel()
+      return
+    }
+    setOpen(next)
+  }}
+>
+  …
+  <AlertDialogFooter>
+    <AlertDialogClose disabled={pending} render={<Button variant="outline" />}>
+      取消
+    </AlertDialogClose>
+    {/* 不是 Close：它得等请求 */}
+    <Button pending={pending} variant="destructive" onClick={() => void remove()}>
+      删除
+    </Button>
+  </AlertDialogFooter>
+</AlertDialog>
+```
+
+三件事缺一不可：
+
+1. **`open` 受控** —— 否则第 3 步没法关。
+2. **执行按钮是 `Button` 不是 `Close`**，并挂 [`pending`](/docs/components/button#进行中)：
+   按钮保持可聚焦但不再响应，标签被 spinner 蒙住，宽度不变。
+3. **进行中 `cancel()` 掉所有关闭** —— 取消按钮、`Esc` 都算。不拦的话用户能在请求
+   途中关掉框，回来面对一个说不清做没做成的界面。
+
+失败时**什么都不用做**：`setOpen(false)` 没被调用，框自然还开着。把错误显示在
+描述里，用户可以直接重试：
+
+```tsx
+catch (error) {
+  setPending(false)
+  setError(String(error)) // 框还开着，改个说明就行
+}
+```
+
+## 状态与 className
+
+`className` 一律双形态：字符串，或 `(state) => string` 的函数。状态字段与
+[Dialog 的表](/docs/components/dialog#状态与-classname)完全一致（`data-open` /
+`data-closed` / `data-starting-style` / `data-ending-style` / `data-nested` /
+`data-nested-dialog-open`），这里只列 `data-slot`：
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `alert-dialog-trigger` | 触发按钮 |
+| `alert-dialog-backdrop` | 遮罩层 |
+| `alert-dialog-viewport` | 铺满屏幕的滚动视口 |
+| `alert-dialog-popup` | 对话框本体，同时带 `data-size` |
+| `alert-dialog-header` / `alert-dialog-footer` | 页眉 / 页脚 |
+| `alert-dialog-media` | 图标格 |
+| `alert-dialog-title` / `alert-dialog-description` | 标题 / 说明 |
+| `alert-dialog-close` | 关闭按钮 |
+
+弹层上还有一个 `group/alert-dialog-content`：页眉、页脚、标题、图标格全都靠
+`group-data-[size=…]/alert-dialog-content:` 读它来决定对齐方式。那是 vendored
+的内部约定，不是公开 API —— 改弹层类名时别把它删了。
+
+## 键盘交互
+
+| 按键 | 行为 |
+| --- | --- |
+| `Enter` / `Space` | 在触发器上：打开；在关闭按钮上：关闭 |
+| `Esc` | 关闭（`reason: 'escape-key'`，可用 `cancel()` 拦） |
+| `Tab` / `Shift` + `Tab` | 在弹层内循环，出不去 |
+
+关闭后焦点自动回到触发器。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### AlertDialog
+
+根组件，不渲染元素。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultOpen` | `boolean` | `false` | 非受控初始开关 |
+| `open` | `boolean` | — | 受控开关 |
+| `onOpenChange` | `(open, details) => void` | — | 见[关闭方式](#关闭方式) |
+| `onOpenChangeComplete` | `(open: boolean) => void` | — | 动画结束后才触发 |
+| `modal` | `boolean \| 'trap-focus'` | `true` | 与 [Dialog](/docs/components/dialog#模态) 一致 |
+| `disablePointerDismissal` | `boolean` | `false` | 锁住遮罩这条退路，见[上文](#关于点外面关闭) |
+| `handle` | `AlertDialogHandle<Payload>` | — | 见[命令式打开](#命令式打开) |
+| `actionsRef` | `RefObject<AlertDialogActions>` | — | 命令式 `close()` / `unmount()` |
+| `children` | `ReactNode \| ({ payload }) => ReactNode` | — | 函数形式用于接 `payload` |
+
+### AlertDialogPopup
+
+对话框本体，同时渲染传送门、遮罩和视口。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `size` | `'default' \| 'sm'` | `'default'` | 见[尺寸](#尺寸)；导出类型 `AlertDialogSize` |
+| `initialFocus` | `boolean \| RefObject \| (openType) => …` | — | 打开时聚焦哪里 |
+| `finalFocus` | `boolean \| RefObject \| (closeType) => …` | — | 关闭时聚焦哪里 |
+| `backdropClassName` | `string \| (state) => string` | — | 遮罩层类名 |
+| `viewportClassName` | `string \| (state) => string` | — | 滚动视口类名；弹层与屏幕边缘的间距（`p-4`）在这里改 |
+| `className` | `string \| (state) => string` | — | 弹层本体类名 |
+| 其余 | Base UI `AlertDialog.Popup` 的 props | — | 透传 |
+
+没有 `showCloseButton`。
+
+### AlertDialogTrigger / AlertDialogClose
+
+都渲染 `<button>`，都接 `render` 换壳。触发器另有 `handle` 和 `payload`。
+
+### AlertDialogHeader / AlertDialogMedia / AlertDialogFooter
+
+三个普通 `<div>`，只接原生属性。`AlertDialogTitle` 渲染 `<h2>`、
+`AlertDialogDescription` 渲染 `<p>`，两者都接 Base UI 的 `render`。
+
+## 导出的类型
+
+`AlertDialogProps<Payload>` / `AlertDialogPopupProps` / `AlertDialogPopupState` /
+`AlertDialogTriggerProps<Payload>` / `AlertDialogCloseProps` /
+`AlertDialogHeaderProps` / `AlertDialogMediaProps` / `AlertDialogFooterProps` /
+`AlertDialogTitleProps` / `AlertDialogDescriptionProps` / `AlertDialogSize`，
+外加 `AlertDialogChangeEventDetails`（`onOpenChange` 的第二个参数）、
+`AlertDialogActions`（`actionsRef` 暴露的 `close` / `unmount`）与
+`AlertDialogHandle<Payload>`。

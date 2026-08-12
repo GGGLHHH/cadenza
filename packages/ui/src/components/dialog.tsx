@@ -3,6 +3,7 @@
 import type { ComponentProps, ReactElement } from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { IconX } from '@tabler/icons-react'
+import { applyPointerFlip, clearPointerOrigin, recordPointerOrigin } from '#lib/pointer-origin'
 import { cn } from '#lib/utils'
 import {
   DialogClose as DialogClosePrimitive,
@@ -92,18 +93,6 @@ export function Dialog<Payload>(props: DialogProps<Payload>): ReactElement {
 
 export type DialogTriggerProps<Payload = unknown> = BaseDialog.Trigger.Props<Payload>
 
-// Where the pointer was when a trigger was last pressed, in viewport
-// coordinates — the anchor `DialogPopup` scales out of. Module-level rather
-// than a context because a trigger paired by `handle` need not live inside the
-// `Dialog` it opens, so there is no shared provider to hang it on. One slot is
-// enough: only one dialog is ever being opened at a given instant.
-//
-// Not cleared after use, deliberately. A dialog opened from code (a controlled
-// `open`, a failed save) then animates out of whatever was last clicked —
-// usually the button that started the operation, which reads better than the
-// screen centre.
-let pointerOrigin: { x: number, y: number } | null = null
-
 /**
  * Opens the dialog. Renders a plain `<button>`; pass `render={<Button />}` to
  * borrow the library's button instead of nesting one inside another.
@@ -126,22 +115,12 @@ export function DialogTrigger<Payload>({
   return (
     <BaseDialog.Trigger
       data-slot="dialog-trigger"
-      // Both handlers must run BEFORE the popup renders, which rules out the
-      // tidier `onClick` + `event.detail === 0` keyboard check: Base UI's open
-      // state lives in an external store, and `store.set` notifies the popup
-      // synchronously from Base UI's own click handler — which merge order puts
-      // ahead of ours. The popup would then paint with the PREVIOUS click's
-      // anchor. `pointerdown` and `keydown` both precede `click`, so they land
-      // in time.
       onPointerDown={(event) => {
-        pointerOrigin = { x: event.clientX, y: event.clientY }
+        recordPointerOrigin(event)
         onPointerDown?.(event)
       }}
-      // Any key, not just Enter/Space: a trigger only receives keydown while it
-      // is focused, and reaching it by keyboard at all means the stale pointer
-      // position is no longer where the user's attention is.
       onKeyDown={(event) => {
-        pointerOrigin = null
+        clearPointerOrigin()
         onKeyDown?.(event)
       }}
       {...props}
@@ -230,41 +209,6 @@ const POPUP_CLASSNAME = `
   motion-reduce:data-ending-style:transform-none
   motion-reduce:data-starting-style:transform-none
 `
-
-// How small the popup starts. Small enough to read as "out of a point", not so
-// small that a routine dialog feels like a stunt.
-const FLIP_SCALE = 0.3
-
-// Written imperatively from a ref callback rather than passed as `style`,
-// because `DialogPopup` does not re-render when the dialog opens — Base UI
-// keeps `open` in an external store that only its own parts subscribe to, so a
-// value computed during our render is always one opening stale. The ref fires
-// when the viewport element mounts, which happens on every open and lands in
-// the commit phase, before paint and therefore before the transition's first
-// frame.
-//
-// Set on the viewport rather than the popup for two reasons: custom properties
-// inherit, so the popup reads it anyway; and the popup's `style` prop belongs
-// to the caller and may itself be a function of state, which is not worth
-// merging into when the cascade already does it.
-//
-// The popup is centred by `m-auto` in a viewport that fills the screen, so its
-// centre IS the screen centre — which makes "distance from the popup to the
-// pointer" simply "pointer minus screen centre", with nothing to measure.
-function applyPointerFlip(element: HTMLDivElement | null): void {
-  if (element === null) {
-    return
-  }
-  if (pointerOrigin === null) {
-    // Keyboard, SSR, or code-opened with nothing clicked yet: plain centre
-    // scaling, the same fallback the vendored dialog always had.
-    element.style.setProperty('--dialog-flip', `scale(0.95)`)
-    return
-  }
-  const x = Math.round(pointerOrigin.x - window.innerWidth / 2)
-  const y = Math.round(pointerOrigin.y - window.innerHeight / 2)
-  element.style.setProperty('--dialog-flip', `translate(${x}px, ${y}px) scale(${FLIP_SCALE})`)
-}
 
 /**
  * The dialog box. Renders four Base UI parts, not one:

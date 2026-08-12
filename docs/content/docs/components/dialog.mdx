@@ -175,6 +175,57 @@ Dialog                     ← 根：只管开关状态，不渲染任何元素
 `details` 上还有个 `preventUnmountOnClose()`：关闭动画由你自己接管时调它，
 弹层会留在 DOM 里，等你通过 `actionsRef.current.unmount()` 手动卸载。
 
+## 异步提交
+
+保存要发请求时，有个陷阱：**执行按钮不能是 `DialogClose`**。`Close` 会在请求刚
+发出的那一刻就把框关掉，用户看着它消失，却不知道存没存上。执行按钮要用普通
+`Button`，请求回来之后自己 `setOpen(false)`。
+
+<ComponentPreview name="dialog/async" />
+
+```tsx
+const [open, setOpen] = useState(false)
+const [pending, setPending] = useState(false)
+
+async function save() {
+  setPending(true)
+  await api.save(draft)
+  setPending(false)
+  setOpen(false) // ← 请求回来了才关
+}
+
+<Dialog
+  open={open}
+  onOpenChange={(next, details) => {
+    // 请求飞在路上时，一切关闭意图都挡回去
+    if (!next && pending) {
+      details.cancel()
+      return
+    }
+    setOpen(next)
+  }}
+>
+  …
+  <DialogFooter>
+    <DialogClose disabled={pending} render={<Button variant="outline" />}>取消</DialogClose>
+    {/* 不是 Close：它得等请求 */}
+    <Button pending={pending} onClick={() => void save()}>保存</Button>
+  </DialogFooter>
+</Dialog>
+```
+
+要拦的退路一共三条：右上角的 ✕、点遮罩、`Esc`。好在 `cancel()` **不分 `reason`**，
+一次全挡住 —— 所以这里不需要 `disablePointerDismissal` 或
+`showCloseButton={false}`：那两个是永久的，而「锁住」只该持续到请求回来。
+[AlertDialog](/docs/components/alert-dialog#异步确认) 那边写法完全一样，只是少了
+✕ 那一条。
+
+执行按钮上的 [`pending`](/docs/components/button#进行中) 让按钮保持可聚焦但不再
+响应，标签被 spinner 蒙住，宽度不变。
+
+失败时**什么都不用做**：`setOpen(false)` 没被调用，框自然还开着，把错误显示出来
+让用户重试即可。
+
 ## 命令式打开
 
 `createDialogHandle()` 造一个句柄，把对话框和触发器接起来 —— 触发器不必是它的
