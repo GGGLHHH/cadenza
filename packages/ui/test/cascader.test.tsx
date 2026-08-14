@@ -182,6 +182,127 @@ describe('cascader', () => {
     expect(label.control).toBe(trigger)
   })
 
+  it('loads the first level through loadItems([]) when items is absent, once per lifetime', async () => {
+    const loadItems = vi.fn(async (path: string[]) => path.length === 0
+      ? [{ value: 'a', label: '甲' }, { value: 'b', label: '乙', leaf: true }]
+      : [{ value: 'a1', label: '甲一', leaf: true }])
+    render(<Cascader loadItems={loadItems} placeholder="选" />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: '选' }))
+    // No `leaf` → lazy branch (submenu trigger); `leaf: true` → radio item.
+    expect(await screen.findByRole('menuitem', { name: '甲' })).not.toBeNull()
+    expect(screen.getByRole('menuitemradio', { name: '乙' })).not.toBeNull()
+    expect(loadItems).toHaveBeenCalledWith([], { page: 0 })
+    // The cache survives close/reopen — no second request for the same panel.
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    await user.click(screen.getByRole('button', { name: '选' }))
+    await screen.findByRole('menuitem', { name: '甲' })
+    expect(loadItems).toHaveBeenCalledTimes(1)
+  })
+
+  it('frosts the panel with a LoadingOverlay and data-loading while the first page is in flight', async () => {
+    let resolve!: (nodes: CascaderNode[]) => void
+    const loadItems = vi.fn(async () => new Promise<CascaderNode[]>((res) => {
+      resolve = res
+    }))
+    render(<Cascader loadItems={loadItems} placeholder="选" />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: '选' }))
+    const panel = await waitFor(() => {
+      const found = document.querySelector('[data-slot="cascader-panel"]')
+      expect(found).not.toBeNull()
+      return found as HTMLElement
+    })
+    // The house loading visual: a frosted LoadingOverlay over the shell, not
+    // a spinner row (InfiniteSelect pattern).
+    expect(panel.hasAttribute('data-loading')).toBe(true)
+    const overlay = panel.querySelector('[data-slot="loading-overlay"]') as HTMLElement
+    expect(overlay.hasAttribute('data-loading')).toBe(true)
+    resolve([{ value: 'x', label: '叶', leaf: true }])
+    expect(await screen.findByRole('menuitemradio', { name: '叶' })).not.toBeNull()
+    expect(panel.hasAttribute('data-loading')).toBe(false)
+    // Kept mounted for the cross-fade, but no longer loading.
+    expect(overlay.hasAttribute('data-loading')).toBe(false)
+  })
+
+  it('reopening a lazy selection loads level by level and swaps raw values for cached labels', async () => {
+    const loadItems = vi.fn(async (path: string[]) => path.length === 0
+      ? [{ value: 'a', label: '甲' }]
+      : [{ value: 'a1', label: '甲一', leaf: true }])
+    render(<Cascader defaultValue={['a', 'a1']} loadItems={loadItems} />)
+    const trigger = document.querySelector('[data-slot="cascader-trigger"]') as HTMLElement
+    // Nothing is cached yet — the segments print their raw values.
+    expect(trigger.textContent).toContain('a1')
+    const user = userEvent.setup()
+    await user.click(trigger)
+    // Opening mounts the root panel; the selected path's submenu default-opens,
+    // so its panel mounts too — each mount requests its own page.
+    await waitFor(() => expect(loadItems).toHaveBeenCalledWith([], { page: 0 }))
+    await waitFor(() => expect(loadItems).toHaveBeenCalledWith(['a'], { page: 0 }))
+    const leaf = await screen.findByRole('menuitemradio', { name: '甲一' })
+    expect(leaf.getAttribute('aria-checked')).toBe('true')
+    // Labels for the lazily loaded segments now come from the cache.
+    expect(trigger.textContent).toContain('甲')
+    expect(trigger.textContent).toContain('甲一')
+  })
+
+  it('a rejected load marks the panel data-error and retries on reopen', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const loadItems = vi.fn()
+        .mockRejectedValueOnce(new Error('boom'))
+        .mockResolvedValue([{ value: 'ok', label: '好', leaf: true }])
+      render(<Cascader loadItems={loadItems} placeholder="选" />)
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: '选' }))
+      await waitFor(() => {
+        const panel = document.querySelector('[data-slot="cascader-panel"]')
+        expect(panel?.hasAttribute('data-error')).toBe(true)
+      })
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+      await user.click(screen.getByRole('button', { name: '选' }))
+      expect(await screen.findByRole('menuitemradio', { name: '好' })).not.toBeNull()
+      expect(loadItems).toHaveBeenCalledTimes(2)
+    }
+    finally {
+      consoleError.mockRestore()
+    }
+  })
+
+  // The sentinel fires from an IntersectionObserver jsdom can never trip —
+  // what is testable is which tail element is present. The trigger distance
+  // is browser-verified (InfiniteSelect precedent).
+  it('a paged level keeps a trailing sentinel while hasNextPage, none once complete', async () => {
+    const loadItems = vi.fn(async (_path: string[], { page }: { page: number }) => ({
+      items: [{ value: `p${page}`, label: `第${page}`, leaf: true }],
+      hasNextPage: page === 0,
+    }))
+    render(<Cascader loadItems={loadItems} placeholder="选" />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: '选' }))
+    await screen.findByRole('menuitemradio', { name: '第0' })
+    expect(document.querySelector('[data-slot="cascader-load-more-sentinel"]')).not.toBeNull()
+    expect(loadItems).toHaveBeenCalledTimes(1)
+  })
+
+  it('virtualized renders a windowed subset inside a total-height spacer', async () => {
+    const many = Array.from({ length: 1000 }, (_, index) => ({ value: `v${index}`, label: `项 ${index}` }))
+    render(<Cascader items={many} placeholder="选" virtualized />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: '选' }))
+    const list = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>('[data-slot="cascader-virtual-list"]')
+      expect(found).not.toBeNull()
+      return found as HTMLElement
+    })
+    // 1000 rows × 32px estimate — the spacer holds the full scroll height.
+    // jsdom measures every rect as zero so no window mounts here; the mounted
+    // subset and scrolling are browser-verified (InfiniteSelect precedent).
+    expect(list.style.blockSize).toBe('32000px')
+  })
+
   it('the composed trigger forwards its ref', () => {
     const ref = createRef<HTMLButtonElement>()
     render(

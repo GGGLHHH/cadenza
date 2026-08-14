@@ -66,7 +66,50 @@ Cascader                # 根:值协议、items、隐藏 input。不渲染 DOM
 带 `data-checked` 与行尾对勾。
 
 回显按段解析：`items` 里找得到就用节点的 `label`，找不到的段原样打印
-自己的 `value`（与 `SelectValue` 同一回退行为）。
+自己的 `value`（与 `SelectValue` 同一回退行为；懒加载的段命中缓存后同样解析）。
+
+## 异步加载
+
+一个 `loadItems` 全包按需与分页：子级不再需要提前铺满，面板打开时拉取；
+太多的层返回分页形态，滚到底自动追加。demo 里省、市两层逐级懒加载，
+「区」一层每页 20 条共 3 页。
+
+<ComponentPreview name="cascader/async" />
+
+契约：
+
+- `loadItems(path, { page })` 在某个懒面板**挂载且未缓存**时被调用，`path`
+  是分支路径（首层是 `[]`——因此有 loader 时 `items` 可省略）。返回**裸数组**
+  表示该层一次加载完；返回 `{ items, hasNextPage: true }` 则该层分页——
+  面板尾部的哨兵滚进视口就带着递增的 `page` 再次调用、结果追加。
+- 有 loader 时，无 `items` 的节点默认是**懒分支**；`leaf: true` 标叶子；
+  写了静态 `items` 的节点从不询问 loader（优先级：`items` > `leaf`）。
+- 加载视觉与本库其他组件一致：首页在途时面板带 `data-loading`，由磨砂
+  [LoadingOverlay](/docs/components/loading-overlay) 覆盖（InfiniteSelect
+  同款处理，覆盖可视区、不随行滚动）；分页尾巴也照搬 InfiniteSelect——
+  哨兵是 `aria-hidden` 的空元素，位于菜单项语义之外、提前一个视口高度触发
+  （IntersectionObserver），追加在途时尾部出现 Spinner 行，全部页到齐后
+  渲染渐隐横线的终止行（只有分过页的层才有，静态层与一次加载完的层直接停）。
+- 面板的滚动容器是本库统一的
+  [ScrollArea](/docs/components/scroll-area)（悬停浮现的滚动条 + 上下
+  渐隐遮罩），viewport 高度上限 `maxListHeight`（默认 256px）。
+- 结果按路径缓存整个组件生命周期，关闭重开不重复请求；重开自动展开
+  选中路径时也逐级走同一条加载链，标签随缓存命中从原始值换成 `label`。
+- loader **拒绝**时面板标 `data-error`（dev 下 console 警告），下次打开
+  重试；要更丰富的错误 UI，在 loader 内部自理。
+
+## 虚拟化
+
+万级子节点的层开 `virtualized`：每个面板经固定行高（`rowHeight`，默认
+32px）的虚拟窗口渲染，DOM 里只挂当前可视窗口附近的行。
+
+<ComponentPreview name="cascader/virtualized" />
+
+重开时自动滚到选中项所在位置（子菜单自动展开的虚拟化对应物）。
+**键盘天花板要知道**：上游 Menu 没有虚拟化支持（Base UI 只给 Combobox
+做了），typeahead 与 <kbd>Home</kbd>/<kbd>End</kbd> 只见已挂载的窗口；
+<kbd>↑</kbd> <kbd>↓</kbd> 逐行走不受影响——焦点会拖着窗口前进。
+虚拟化面板的行绝对定位、无法撑开宽度，子级面板最小宽从 96px 提到 192px。
 
 ## 受控
 
@@ -107,9 +150,9 @@ Cascader                # 根:值协议、items、隐藏 input。不渲染 DOM
 - 选项天然成树、**路径本身就是值**（省/市/区、类目/子类目）→ Cascader。
 - 选项是扁平列表 → [Select](/docs/components/select)。层级只是分组视觉时用
   `SelectGroup`，值仍是单段。
-- 要输入搜索或远端分页加载 →
+- 要**输入搜索** →
   [InfiniteSelect / InfiniteCombobox](/docs/components/infinite-select)。
-  本组件不做搜索与异步加载分支。
+  本组件不做搜索；异步、分页与虚拟化见上面两节，但选项仍须成树。
 
 ## 状态与 className
 
@@ -125,6 +168,9 @@ Cascader                # 根:值协议、items、隐藏 input。不渲染 DOM
 | `data-checked` / `data-unchecked` | 叶子项 | 互补对：是否当前选中（Base UI） |
 | `data-selected` | 分支项 | 该分支在选中路径上（seam 写入） |
 | `data-open` / `data-closed` | 弹层 | 互补对，进出场动画钩子（Base UI） |
+| `data-loading` | 面板 | 懒面板首页在途时（seam 写入） |
+| `data-error` | 面板 | `loadItems` 拒绝后（seam 写入，重开重试） |
+| `data-empty` | 面板 | 已加载但该层为空（seam 写入） |
 
 `data-slot`（seam 自渲染的部件）：
 
@@ -139,6 +185,15 @@ Cascader                # 根:值协议、items、隐藏 input。不渲染 DOM
 | `cascader-submenu-popup` | 子级弹层 |
 | `cascader-item` | 叶子项 |
 | `cascader-item-indicator` | 叶子项行尾对勾的定位容器 |
+| `cascader-panel` | 每层内容的定位壳（loading / error / empty 落点，LoadingOverlay 的锚） |
+| `cascader-list` | 面板行的列表容器（虚拟化时切 `p-0`，padding 移到行壳） |
+| `cascader-load-more` | 追加下一页时的 Spinner 行 |
+| `cascader-load-more-sentinel` | 分页面板尾部的加载哨兵（`aria-hidden`） |
+| `cascader-no-more` / `cascader-no-more-rule` | 分页层的终止行与渐隐横线 |
+| `cascader-virtual-list` | 虚拟化面板的总高撑杆容器 |
+
+面板内部还会出现 `scroll-area-*`（滚动容器）与 `loading-overlay`
+（磨砂加载层）家族的 slot——它们是被复用的公共部件，不属于本家族词汇。
 
 className 两条通道：`CascaderTrigger` / `CascaderPopup` 落在 Base UI
 槽位上，支持函数形态 `(state) => string`；`CascaderValue` / `CascaderClear`
@@ -154,7 +209,7 @@ className 两条通道：`CascaderTrigger` / `CascaderPopup` 落在 Base UI
 | <kbd>←</kbd> | 收起当前子菜单，退回上一级 |
 | <kbd>Enter</kbd> | 叶子上：提交整条路径并关闭 |
 | <kbd>Esc</kbd> | 关闭整个弹层（不只当前子级） |
-| 打字 | typeahead：跳到当前面板中匹配的项 |
+| 打字 | typeahead：跳到当前面板中匹配的项（虚拟化下只见已挂载窗口） |
 
 ## Props
 
@@ -167,17 +222,21 @@ className 两条通道：`CascaderTrigger` / `CascaderPopup` 落在 Base UI
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `items` | `CascaderNode[]` | — | 选项树，唯一数据源。节点：`{ value, label?, disabled?, items? }`，`value` 同级唯一 |
+| `items` | `CascaderNode[]` | — | 选项树。节点：`{ value, label?, disabled?, leaf?, items? }`，`value` 同级唯一。有 `loadItems` 时可省略（首层转由 loader 提供） |
 | `defaultValue` | `string[] \| null` | `null` | 非受控初始路径 |
 | `value` | `string[] \| null` | — | 受控路径；`null` 为空 |
 | `defaultOpen` | `boolean` | `false` | 非受控初始开合 |
 | `open` | `boolean` | — | 受控开合 |
 | `onValueChange` | `(value, eventDetails) => void` | — | 选中 / 清除时；`cancel()` 可拒绝 |
+| `loadItems` | `(path, { page }) => Promise<CascaderNode[] \| CascaderPage>` | — | 懒分支子级的加载器，见[异步加载](#异步加载) |
 | `onOpenChange` | `(open, eventDetails) => void` | — | 开合变化时 |
 | `onOpenChangeComplete` | `(open) => void` | — | 开合动画结束后 |
 | `actionsRef` | `RefObject<Menu.Root.Actions>` | — | 命令式 `close` / `unmount` |
 | `clearable` | `boolean` | `true` | 清除总开关 |
 | `modal` | `boolean` | `false` | 锁滚动、挡外部交互（Base UI 默认 `true`，seam 翻转） |
+| `virtualized` | `boolean` | `false` | 面板走固定行高虚拟窗口，见[虚拟化](#虚拟化) |
+| `rowHeight` | `number` | `32` | 虚拟窗口的固定行高（px），仅 `virtualized` 下读取 |
+| `maxListHeight` | `number` | `256` | 每个面板滚动 viewport 的最大高度（px），与 InfiniteSelect 同名同默认 |
 | `disabled` | `boolean` | `false` | 整体禁用 |
 | `name` | `string` | — | 表单字段名，见[表单](#表单) |
 | `placeholder` | `string` | — | 默认组合回显的占位文案 |
@@ -226,6 +285,6 @@ Portal + Positioner + Popup 合一；无 children 通道，内容来自根的 `i
 | `alignOffset` | `number` | `0` | 对齐偏移 |
 | 其余 | Base UI `Menu.Popup` 的 props（不含 `children`） | — | 透传到第一级弹层 |
 
-8 个类型一并导出：`CascaderProps` / `CascaderNode` / `CascaderTriggerProps` /
-`CascaderValueProps` / `CascaderClearProps` / `CascaderPopupProps` /
-`CascaderChangeEventReason` / `CascaderChangeEventDetails`。
+9 个类型一并导出：`CascaderProps` / `CascaderNode` / `CascaderPage` /
+`CascaderTriggerProps` / `CascaderValueProps` / `CascaderClearProps` /
+`CascaderPopupProps` / `CascaderChangeEventReason` / `CascaderChangeEventDetails`。

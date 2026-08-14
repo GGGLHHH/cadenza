@@ -360,7 +360,15 @@ export function SelectTrigger({ children, className, ref, ...props }: SelectTrig
   const clearVisible = clearProps !== undefined && filled && !disabled && !readOnly
   const trigger = (
     <SelectTriggerPrimitive
-      className={cn(clearVisible && '[&>svg:last-child]:invisible', className)}
+      className={cn(
+        clearVisible && '[&>svg:last-child]:invisible',
+        // Inside the clear container the trigger must follow the container's
+        // width: layouts that stretch form controls (Field's `*:w-full`)
+        // stretch the container, and a fit-content trigger would leave the
+        // lifted ✕ pinned to the far edge, orphaned from the button.
+        clearProps !== undefined && 'flex-1',
+        className,
+      )}
       // Claimed, not taken: the caller's ref still gets the element. The root
       // needs it to recognise presses on this control's own label.
       ref={(node) => {

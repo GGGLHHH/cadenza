@@ -284,6 +284,18 @@ Checkbox / Switch 本体。组标题（`FieldLegend`）由「组控件是 `Field
 - `fieldControlProps` 的整体展开不适用（`name` 归 `Select` 根、`id` 归 trigger），
   改用 `fieldInvalidState` 手工分发 `aria-invalid` 与 `aria-describedby`。
 
+### Cascader
+
+与 Select 同型，只是值是**整条路径**：`value` / `onValueChange` 收发
+`string[]`，空值是 `null`，`id` 落在 `CascaderTrigger` 上。
+
+<ComponentPreview name="tanstack-form/cascader" align="stretch" />
+
+- 表单里直接存 `string[] | null`，zod 写
+  `z.array(z.string()).nullable().refine(path => path !== null, '…')`——
+  清除 ✕ 回的 `null` 原样入表，不折字符串。
+- `name` 归 `Cascader` 根：原生提交时每个路径段序列化一个同名隐藏 input。
+
 ### Checkbox
 
 勾选列表是 `mode="array"` 的数组字段，`pushValue` / `removeValue` 是 TanStack Form
