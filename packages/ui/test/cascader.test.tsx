@@ -226,6 +226,30 @@ describe('cascader', () => {
     expect(overlay.hasAttribute('data-loading')).toBe(false)
   })
 
+  it('echoes a lazy value without opening — the selected path prefetches level by level', async () => {
+    const loadItems = vi.fn(async (path: string[]) => path.length === 0
+      ? [{ value: 'a', label: '甲' }]
+      : [{ value: 'a1', label: '甲一', leaf: true }])
+    render(<Cascader defaultValue={['a', 'a1']} loadItems={loadItems} />)
+    const trigger = document.querySelector('[data-slot="cascader-trigger"]') as HTMLElement
+    // No interaction at all: the walk fills the cache and the labels swap in.
+    await waitFor(() => expect(trigger.textContent).toContain('甲一'))
+    expect(trigger.textContent).toContain('甲')
+    expect(loadItems).toHaveBeenCalledWith([], { page: 0 })
+    expect(loadItems).toHaveBeenCalledWith(['a'], { page: 0 })
+    expect(loadItems).toHaveBeenCalledTimes(2)
+  })
+
+  it('the echo walk stops at a loaded level that misses its segment', async () => {
+    const loadItems = vi.fn(async () => [{ value: 'x', label: '某', leaf: true }])
+    render(<Cascader defaultValue={['ghost', 'deep']} loadItems={loadItems} />)
+    await waitFor(() => expect(loadItems).toHaveBeenCalledTimes(1))
+    const trigger = document.querySelector('[data-slot="cascader-trigger"]') as HTMLElement
+    // Level 0 loaded but has no 'ghost': raw fallback, no further requests.
+    expect(trigger.textContent).toContain('ghost')
+    expect(loadItems).toHaveBeenCalledTimes(1)
+  })
+
   it('reopening a lazy selection loads level by level and swaps raw values for cached labels', async () => {
     const loadItems = vi.fn(async (path: string[]) => path.length === 0
       ? [{ value: 'a', label: '甲' }]

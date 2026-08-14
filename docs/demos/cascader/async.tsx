@@ -13,8 +13,11 @@ async function sleep(ms: number): Promise<void> {
 
 export default function AsyncDemo(): ReactElement {
   return (
+    // defaultValue 演示回显:不点开弹层,组件沿选中路径逐级预载第 0 页,
+    // 标签就位即从原始值换成 省 2 / 市 3 / 区 3。
     <Cascader
       aria-label="地区"
+      defaultValue={['r-1', 'r-1-2', 'r-1-2-3']}
       placeholder="选择地区（异步）"
       loadItems={async (path, { page }) => {
         await sleep(500)

@@ -63,6 +63,10 @@ import { Spinner } from './spinner'
  *   while its first page is in flight (the InfiniteSelect treatment); a
  *   rejected load marks the panel `data-error` (and warns in dev) and retries
  *   the next time it opens — richer error UI belongs inside the loader.
+ *   Echoing a stored value needs no open: the root prefetches the selected
+ *   path's levels into the same cache, so the trigger's labels resolve on
+ *   their own (a segment beyond a paged level's first page falls back to its
+ *   raw value — `CascaderValue`'s children can take display over).
  * - **Levels can page**: return `{ items, hasNextPage: true }` from
  *   `loadItems` and the panel keeps a trailing intersection sentinel that
  *   loads the next page as it scrolls into view — a spinner row while the
@@ -326,6 +330,10 @@ export function Cascader({
     if (current?.pending === true)
       return
     const page = current?.nextPage ?? 0
+    // Synchronous on purpose, panel-mount and echo effects included: the
+    // pending latch must be visible before any concurrent caller re-checks,
+    // or the same page fires twice. The real state lands async, below.
+    // eslint-disable-next-line react/set-state-in-effect
     setPanels(prev => new Map(prev).set(key, {
       items: current?.items ?? [],
       nextPage: page,
@@ -387,6 +395,35 @@ export function Cascader({
 
   const hasLoader = loadItems !== undefined
   const filled = value !== null && value.length > 0
+
+  // Echo without opening: with a loader and a value, walk the selected path
+  // and prefetch each unresolved lazy level's first page into the same cache
+  // the panels use — the trigger's labels swap in as pages land, popup
+  // closed. One level per pass; the cache update re-runs the effect for the
+  // next. A level that is loaded (or errored) but still misses its segment
+  // stops the walk: deep pages and stale values fall back to the raw
+  // segment (CascaderValue's children can take display over from there).
+  useEffect(() => {
+    if (!hasLoader || value === null)
+      return
+    const ancestors: string[] = []
+    let staticNodes: CascaderNode[] | undefined = items
+    for (const segment of value) {
+      const key = JSON.stringify(ancestors)
+      const nodes = staticNodes ?? panels.get(key)?.items
+      if (nodes === undefined) {
+        if (panels.get(key) === undefined)
+          requestPage([...ancestors])
+        return
+      }
+      const node = nodes.find(candidate => candidate.value === segment)
+      if (node === undefined || node.leaf === true)
+        return
+      ancestors.push(segment)
+      staticNodes = node.items
+    }
+  }, [hasLoader, value, items, panels, requestPage])
+
   const context = useMemo<CascaderContextValue>(() => ({
     items,
     selectedPath: filled ? value : null,
