@@ -9,7 +9,7 @@ import { createContext, use, useMemo, useRef } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
 import { isOwnLabelPress, LABEL_PRESS_REASONS } from '#lib/own-label-press'
-import { cn } from '#lib/utils'
+import { cn, dataAttr } from '#lib/utils'
 import {
   SelectGroup,
   SelectItem,
@@ -20,6 +20,7 @@ import {
   SelectTrigger as SelectTriggerPrimitive,
   SelectValue,
 } from '#primitives/select'
+import { Spinner } from './spinner'
 
 /**
  * The published Select family.
@@ -83,6 +84,10 @@ import {
  *   `SelectGroup` shell next to it, or the slot is no longer an only child.
  * - **Clearing is `SelectClear`** — compose it inside the trigger and an ✕
  *   stands in the chevron's spot while something is selected. See its JSDoc.
+ * - **An in-flight change is `pending`** — the trigger stays focusable but
+ *   the popup will not open (`readOnly` underneath), a spinner stands in the
+ *   chevron's spot and the clear steps aside. The action-plane word, same as
+ *   `Button` — `loading` belongs to the content plane.
  *
  * `SelectPopup` is Portal + Positioner + Popup + List in one part, with the
  * scroll arrows already inside. Its positioning props (`side`, `sideOffset`,
@@ -137,6 +142,14 @@ export type SelectProps<Value = string, Multiple extends boolean | undefined = f
      * adjective, not a part you can forget.
      */
     'clearable'?: boolean
+    /**
+     * Marks a change as in flight (a save round-trip, say): the trigger stays
+     * focusable but the popup will not open (`readOnly` underneath, the form
+     * controls' "focusable but inert" channel — Button has to assemble the
+     * same thing from `disabled` + `focusableWhenDisabled`), a spinner stands
+     * in the chevron's spot and the clear affordance steps aside.
+     */
+    'pending'?: boolean
     /** Placeholder for the default compositions' `SelectValue`. Ignored once you write the trigger's children. */
     'placeholder'?: string
     /**
@@ -160,6 +173,8 @@ interface SelectContextValue {
   filled: boolean
   disabled: boolean
   readOnly: boolean
+  /** Root's `pending` — the trigger swaps its chevron for a spinner and the clear steps aside. `undefined` while unused (gates the marker's mount). */
+  pending: boolean | undefined
   /** The clear master switch (root's `clearable`, default true). */
   clearable: boolean
   /** Root's `placeholder`, claimed by the trigger's default composition. */
@@ -203,6 +218,7 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
     multiple,
     onOpenChange,
     onValueChange,
+    pending,
     placeholder,
     readOnly = false,
     value: valueProp,
@@ -249,6 +265,7 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
     filled,
     disabled,
     readOnly,
+    pending,
     clearable,
     placeholder,
     clear: event => handleValueChangeRef.current(
@@ -256,7 +273,7 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
       createChangeEventDetails('clear-press', event),
     ),
     triggerRef,
-  }), [filled, disabled, readOnly, clearable, placeholder, multiple])
+  }), [filled, disabled, readOnly, pending, clearable, placeholder, multiple])
 
   return (
     <SelectContext value={context}>
@@ -265,7 +282,9 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
         disabled={disabled}
         modal={modal}
         multiple={multiple}
-        readOnly={readOnly}
+        // Pending rides the readOnly channel: focus and tab order stay, the
+        // popup will not open, the value cannot move.
+        readOnly={readOnly || pending === true}
         value={value}
         onOpenChange={handleOpenChange}
         onValueChange={handleValueChange}
@@ -349,7 +368,7 @@ export function SelectPopup({ alignItemWithTrigger = false, children, ...props }
  * involved.
  */
 export function SelectTrigger({ children, className, ref, ...props }: SelectTriggerProps): ReactElement {
-  const { filled, disabled, readOnly, clearable, placeholder, clear, triggerRef } = useSelectContext()
+  const { filled, disabled, readOnly, pending, clearable, placeholder, clear, triggerRef } = useSelectContext()
   // No children → the trigger's own default composition: a SelectValue wired
   // to the root's placeholder, plus the clear affordance (`clearable` gates
   // it). An explicitly composed SelectClear works the same — clearable stays
@@ -357,11 +376,15 @@ export function SelectTrigger({ children, className, ref, ...props }: SelectTrig
   const autoComposed = children === undefined
   const composedClearProps = autoComposed ? {} : findComposedPart(children, SelectClear)
   const clearProps = clearable ? composedClearProps : undefined
-  const clearVisible = clearProps !== undefined && filled && !disabled && !readOnly
+  const pendingVisible = pending === true
+  const clearVisible = clearProps !== undefined && filled && !disabled && !readOnly && !pendingVisible
   const trigger = (
     <SelectTriggerPrimitive
       className={cn(
-        clearVisible && '[&>svg:last-child]:invisible',
+        // One boolean per occupant of the chevron's spot: the same flag that
+        // renders the stand-in (✕ or spinner) hides the chevron underneath.
+        (clearVisible || pendingVisible) && '[&>svg:last-child]:invisible',
+        pendingVisible && 'relative',
         // Inside the clear container the trigger must follow the container's
         // width: layouts that stretch form controls (Field's `*:w-full`)
         // stretch the container, and a fit-content trigger would leave the
@@ -379,8 +402,28 @@ export function SelectTrigger({ children, className, ref, ...props }: SelectTrig
           ref.current = node
       }}
       {...props}
+      // Derived from the root's `pending`, after the spread — same rule as
+      // Button: a caller cannot half-set the state.
+      aria-busy={pendingVisible || undefined}
+      data-pending={dataAttr(pending)}
     >
       {autoComposed ? <SelectValue placeholder={placeholder} /> : children}
+      {pendingVisible && (
+        // The spinner stands in the chevron's spot, SelectClear-style — not a
+        // button, so it may live inside the trigger.
+        <span
+          className="
+            pointer-events-none absolute inset-e-2 inset-bs-1/2 flex
+            -translate-y-1/2 items-center justify-center
+          "
+          data-slot="select-pending"
+        >
+          <Spinner
+            aria-hidden
+            className="text-muted-foreground block-4 inline-4"
+          />
+        </span>
+      )}
     </SelectTriggerPrimitive>
   )
   if (clearProps === undefined)

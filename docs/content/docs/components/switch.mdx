@@ -86,6 +86,19 @@ hero 就是这个形态：
 关着时提交 `uncheckedValue` —— 默认什么都不提交。开关渲染在 `<form>` 之外时用 `form`
 指回表单 id。
 
+## 进行中
+
+拨动即提交是开关的语义，正好也是 round-trip 需要反馈的时刻——`pending`
+标记「服务端还没确认」。
+
+<ComponentPreview name="switch/pending" />
+
+与 [Button 的进行中](/docs/components/button#进行中)同一套规矩：动作面的词是
+`pending`（`loading` 属于内容面）；开关**保持可聚焦但不再响应**（底下走
+`readOnly`，表单控件现成的「能聚焦、拨不动」通道）；视觉是 **Spinner 转在
+滑块圆点里**——圆点在哪一侧、什么尺寸，Spinner 就跟到哪；`aria-busy` 与
+`data-pending` 由 `pending` 派生，调用方无法只设一半。
+
 ## 禁用
 
 `disabled` 让开关不响应交互并降到半透明；`readOnly` 是另一档 —— 能聚焦，但拨不动。
@@ -136,6 +149,7 @@ hero 就是这个形态：
 | `data-readonly` | `readOnly` | `readOnly` |
 | `data-required` | `required` | `required` |
 | `data-size` | 恒在，值是 `default` / `sm` | —（shadcn 加的，不进 state） |
+| `data-pending` | `pending` | —（seam 派生，不进 state） |
 
 `SwitchState` 还带着 Field 那几个字段（`valid` / `touched` / `dirty` / `filled` /
 `focused`，对应 `data-valid` / `data-touched` 等）—— 但它们只在 Base UI 的 `Field.Root`
@@ -143,8 +157,9 @@ hero 就是这个形态：
 跟着控件变灰 / 变红，还是按 Field 那页的约定在 `Field` 上手动挂 `data-disabled` /
 `data-invalid`，见[禁用](#禁用)与[无效态](#无效态)。
 
-根元素带 `data-slot="switch"`，滑块带 `data-slot="switch-thumb"`，需要从外部定位时
-当选择器用。
+根元素带 `data-slot="switch"`，滑块带 `data-slot="switch-thumb"`（`pending`
+时 Spinner 渲染在滑块内，带 `data-slot="spinner"`），需要从外部定位时当
+选择器用。
 
 ## Props
 
@@ -157,6 +172,7 @@ hero 就是这个形态：
 | `defaultChecked` | `boolean` | `false` | 非受控初值 |
 | `checked` | `boolean` | — | 受控值 |
 | `onCheckedChange` | `(checked: boolean, eventDetails: SwitchChangeEventDetails) => void` | — | 开关翻转时触发。`reason` 恒为 `'none'`，`cancel()` 拦下这次变更 |
+| `pending` | `boolean` | — | 动作在途：可聚焦但不响应，Spinner 转在滑块圆点里，见[进行中](#进行中) |
 | `disabled` | `boolean` | `false` | 不响应交互 |
 | `readOnly` | `boolean` | `false` | 可聚焦，但拨不动 |
 | `required` | `boolean` | `false` | 提交表单前必须打开 |

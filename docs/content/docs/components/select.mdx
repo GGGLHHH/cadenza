@@ -196,6 +196,20 @@ macOS select 的做法），关着时就是普通贴边下拉。本库把它**�
 鼠标专属的做法会把键盘用户锁在外面）。清除非受控 Select 之所以可行，
 是因为封装层内部接管了值状态（对 Base UI 永远受控）。
 
+## 进行中
+
+改选后的保存 round-trip 用 `pending` 标记——动作面的词，与
+[Button 的进行中](/docs/components/button#进行中)同一套规矩（`loading`
+属于内容面）。
+
+<ComponentPreview name="select/pending" />
+
+触发器**保持可聚焦但弹层不再打开**（底下走 `readOnly`，表单控件现成的
+「能聚焦、动不了」通道——Button 没有它才需要用 `disabled` +
+`focusableWhenDisabled` 拼装）；Spinner 站进 chevron 的位置（与清除 ✕
+同一个机位），清除让位；`aria-busy` 与 `data-pending` 由 `pending`
+派生在触发器上，调用方无法只设一半。
+
 ## 禁用
 
 两种粒度：`disabled` 落在 `Select` 上禁整个控件（弹层打不开），
@@ -247,6 +261,7 @@ macOS select 的做法），关着时就是普通贴边下拉。本库把它**�
 | `data-placeholder` | 还没有选中值 |
 | `data-disabled` | `disabled` |
 | `data-size` | 始终有值：`sm` / `default`（我们加的） |
+| `data-pending` | 根的 `pending`（seam 派生，配套 `aria-busy`） |
 
 **SelectPopup**
 
@@ -266,7 +281,8 @@ macOS select 的做法），关着时就是普通贴边下拉。本库把它**�
 
 每个部件都带自己的 `data-slot`（`select-trigger` / `select-value` /
 `select-content` / `select-group` / `select-label` / `select-item` /
-`select-separator` / `select-clear` / `select-empty`），需要从外部定位时当选择器用。
+`select-separator` / `select-clear` / `select-empty` / `select-pending`），
+需要从外部定位时当选择器用。
 其中 `select-value` **是接线契约，不是标记**，别给它传自己的 `data-slot` ——
 `SelectTrigger` 的布局规则靠 `*:data-[slot=select-value]:…` 命中它，换掉就静默失效。
 其余几个只是标记，改了不会弄坏什么（选中项的高亮走的是 `focus:bg-accent`，
@@ -299,6 +315,7 @@ macOS select 的做法），关着时就是普通贴边下拉。本库把它**�
 | `onValueChange` | `(value, eventDetails) => void` | — | 选中变化回调 |
 | `items` | `Record<string, ReactNode> \| Array<{ value, label }> \| Array<{ value, items }>` | — | 写了 children 时**只喂 `SelectValue`**；不写 children 的一行式用法里，它同时是选项数据源（分组形态会被拍平——渲染分组要自己写 `SelectGroup`），见 [`items` 只管触发器怎么显示](#items-只管触发器怎么显示) |
 | `multiple` | `boolean` | `false` | 多选；开了之后值的类型整体变成数组 |
+| `pending` | `boolean` | — | 改选保存中：可聚焦但弹层不开，Spinner 站 chevron 位，见[进行中](#进行中) |
 | `disabled` | `boolean` | `false` | 禁用整个控件 |
 | `readOnly` | `boolean` | `false` | 只读 |
 | `required` | `boolean` | `false` | 必填（表单校验用） |

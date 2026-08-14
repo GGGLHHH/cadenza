@@ -466,3 +466,35 @@ describe('the label channel', () => {
     })
   })
 })
+
+it('pending swaps the chevron for a spinner, blocks opening, and parks the clear', async () => {
+  render(
+    <Select
+      pending
+      defaultValue="apple"
+      items={FRUIT_LABELS}
+      aria-label="水果"
+      placeholder="选一个"
+    />,
+  )
+  const trigger = screen.getByRole('combobox')
+  // Derived pair on the trigger — same rule as Button.
+  expect(trigger.getAttribute('aria-busy')).toBe('true')
+  expect(trigger.hasAttribute('data-pending')).toBe(true)
+  // The spinner stands in the chevron's spot; the clear steps aside.
+  expect(document.querySelector('[data-slot="select-pending"]')).not.toBeNull()
+  expect(screen.queryByRole('button', { name: 'Clear selection' })).toBeNull()
+  // readOnly underneath: focusable, but the popup will not open.
+  const user = userEvent.setup()
+  await user.click(trigger)
+  expect(screen.queryByRole('listbox')).toBeNull()
+})
+
+it('pending false keeps the select fully interactive', async () => {
+  render(<Select pending={false} items={FRUIT_LABELS} aria-label="水果" placeholder="选一个" />)
+  const trigger = screen.getByRole('combobox')
+  expect(trigger.hasAttribute('data-pending')).toBe(false)
+  const user = userEvent.setup()
+  await user.click(trigger)
+  expect(await screen.findByRole('option', { name: '苹果' })).not.toBeNull()
+})
