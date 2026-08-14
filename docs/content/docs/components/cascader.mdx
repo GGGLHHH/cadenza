@@ -1,0 +1,231 @@
+---
+title: Cascader
+description: 级联选择器 —— 树形选项逐级子菜单展开，值是从根到叶的一条路径，Select 同款触发器
+---
+
+<ComponentPreview name="cascader/basic" />
+
+级联选择器。Base UI 没有 cascader 原语，这是 seam 直接建在 `@base-ui/react`
+Menu 上的自建组合（`Slider` / `Combobox` 先例）：子菜单承担逐级面板 ——
+悬停展开、方向键钻取、键盘打字定位、焦点管理全部由 Menu 承担；seam 补上
+Menu 没有的那一半 —— 值协议、Select 同款触发器、路径标签回显与表单序列化。
+
+**值是路径**（`string[]`，从根到叶），只有叶子（没有 `items` 的节点）可选，
+选中即提交整条路径并关闭弹层。**`items` 是唯一数据源**：弹层内容与触发器
+回显都从它解析，弹层没有 JSX 词汇；组合只覆盖触发器一侧，不写 children
+就是完整默认组合（触发器 + 回显 + 清除 ✕ + 弹层）。
+
+## 使用
+
+```tsx
+import { Cascader } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+const REGIONS = [
+  {
+    value: 'zhejiang',
+    label: '浙江',
+    items: [
+      { value: 'hangzhou', label: '杭州', items: [{ value: 'xihu', label: '西湖区' }] },
+    ],
+  },
+  { value: 'beijing', label: '北京' },
+]
+
+// 一行式:items 供数据,placeholder / aria-label 落在根上,其余全部默认(含清除 ✕)
+<Cascader aria-label="地区" items={REGIONS} placeholder="选择地区" />
+
+// onValueChange 收到整条路径:['zhejiang', 'hangzhou', 'xihu']
+<Cascader items={REGIONS} onValueChange={path => console.log(path)} />
+```
+
+标签走常规通道：触发器是真 `<button>`，`FieldLabel htmlFor` 指向根的
+`id`（默认组合会把它转发给触发器），点标签即聚焦并可开弹层 ——
+见[表单](#表单)的示例与 [Field](/docs/components/field)。
+
+## 组成
+
+```text
+Cascader                # 根:值协议、items、隐藏 input。不渲染 DOM
+├─ CascaderTrigger      # 真 <button>,Select 同款外观;不写 children 自动含回显与清除
+│   ├─ CascaderValue    # 路径回显:各段 label 以 / 相连,空时显示 placeholder
+│   └─ CascaderClear    # 标记部件:✕ 被触发器提升为兄弟按钮,站进 chevron 的位置
+└─ CascaderPopup        # Portal + Positioner + Popup 合一;内容永远来自根的 items
+```
+
+逐层接管：写了 children 的层完全归你（比如只写 `CascaderTrigger` 定制
+`id` / `size`），没写的层保持默认 —— 弹层会自动补上。`CascaderPopup`
+没有 children 通道，写它只为定制位置 props 与 className。
+
+## 选中路径
+
+只有叶子提交值。分支节点是子菜单触发器：悬停或 ArrowRight 展开下一级，
+点它不改值、不关弹层。选中后重新打开，**选中路径上的子菜单自动展开**，
+一眼落回值所在的位置；路径上的分支触发器带 `data-selected`，选中的叶子
+带 `data-checked` 与行尾对勾。
+
+回显按段解析：`items` 里找得到就用节点的 `label`，找不到的段原样打印
+自己的 `value`（与 `SelectValue` 同一回退行为）。
+
+## 受控
+
+受控三件套 `value` / `defaultValue` / `onValueChange`，受控空值是 `null`。
+
+<ComponentPreview name="cascader/controlled" />
+
+回调第二参永远存在：`onValueChange(value, eventDetails)`，
+`eventDetails.reason` 是选中时的 `'item-press'` 或清除时的 `'clear-press'`；
+`eventDetails.cancel()` 拒绝这次变更，内部状态不动。受控性首渲染锁定 ——
+`undefined` 专属非受控，中途切换在 DEV 会收到警告。
+
+## 可清除
+
+清除默认在场：选中后 ✕ 站进 chevron 的位置，点击清空（`onValueChange`
+收到 `null`，reason `'clear-press'`）且不开弹层。`clearable={false}`
+是总开关 —— 关掉后默认组合与显式写的 `CascaderClear` 都不渲染。
+提升出来的 ✕ 是真 `<button>`（Tab 停靠点），键盘用户同样能清除。
+
+## 表单
+
+给 `name`，每个路径段渲染一个同名隐藏 input，提交顺序即路径顺序
+（Base UI `multiple` Select 的每值一 input 模式）；空值不渲染任何 input。
+
+<ComponentPreview name="cascader/form" />
+
+隐藏 input 是普通 `type="hidden"`，渲染在弹层外（弹层关闭即卸载）。
+原生 `required` 校验看不见 hidden input —— 必填校验在表单层做。
+
+## 禁用
+
+两个层级：根的 `disabled` 禁掉整个控件（触发器灰显、隐藏 input 带
+`disabled` 不参与提交）；节点的 `disabled` 只禁那一项 —— 叶子不可选中，
+分支不再展开（整棵子树不可达），项上写 `aria-disabled` 与 `data-disabled`。
+
+## 什么时候用 Cascader
+
+- 选项天然成树、**路径本身就是值**（省/市/区、类目/子类目）→ Cascader。
+- 选项是扁平列表 → [Select](/docs/components/select)。层级只是分组视觉时用
+  `SelectGroup`，值仍是单段。
+- 要输入搜索或远端分页加载 →
+  [InfiniteSelect / InfiniteCombobox](/docs/components/infinite-select)。
+  本组件不做搜索与异步加载分支。
+
+## 状态与 className
+
+`data-*` 全部是空串存在型（出现即为真，反面缺席或有互补词）：
+
+| 属性 | 落点 | 出现时机 |
+| --- | --- | --- |
+| `data-placeholder` | 触发器 | 空值（显示 placeholder）时 |
+| `data-size` | 触发器 | 恒在，值 `sm` / `default` |
+| `data-popup-open` | 触发器、分支项 | 对应弹层开着时（Base UI） |
+| `data-disabled` | 触发器、任一项 | 禁用时（Base UI） |
+| `data-highlighted` | 任一项 | 键盘/悬停高亮时（Base UI） |
+| `data-checked` / `data-unchecked` | 叶子项 | 互补对：是否当前选中（Base UI） |
+| `data-selected` | 分支项 | 该分支在选中路径上（seam 写入） |
+| `data-open` / `data-closed` | 弹层 | 互补对，进出场动画钩子（Base UI） |
+
+`data-slot`（seam 自渲染的部件）：
+
+| data-slot | 是什么 |
+| --- | --- |
+| `cascader-trigger` | 触发器 `<button>` |
+| `cascader-trigger-container` | 组合了清除时包住触发器的定位容器 |
+| `cascader-value` | 回显 `<span>` |
+| `cascader-clear` | 提升出来的 ✕ `<button>` |
+| `cascader-popup` | 第一级弹层 |
+| `cascader-submenu-trigger` | 分支项 |
+| `cascader-submenu-popup` | 子级弹层 |
+| `cascader-item` | 叶子项 |
+| `cascader-item-indicator` | 叶子项行尾对勾的定位容器 |
+
+className 两条通道：`CascaderTrigger` / `CascaderPopup` 落在 Base UI
+槽位上，支持函数形态 `(state) => string`；`CascaderValue` / `CascaderClear`
+落在纯 DOM 元素上，只收 `string`。
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| <kbd>Enter</kbd> / <kbd>Space</kbd> / <kbd>↓</kbd>（触发器上） | 开弹层并高亮第一项 |
+| <kbd>↑</kbd> <kbd>↓</kbd> | 在当前面板内移动（循环） |
+| <kbd>→</kbd> | 分支上：展开子菜单并进入第一项 |
+| <kbd>←</kbd> | 收起当前子菜单，退回上一级 |
+| <kbd>Enter</kbd> | 叶子上：提交整条路径并关闭 |
+| <kbd>Esc</kbd> | 关闭整个弹层（不只当前子级） |
+| 打字 | typeahead：跳到当前面板中匹配的项 |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### Cascader
+
+根。不渲染 DOM；显式词汇表，不透传 Menu.Root 的菜单机械（`handle` /
+`payload` 等不进入公开面）。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `items` | `CascaderNode[]` | — | 选项树，唯一数据源。节点：`{ value, label?, disabled?, items? }`，`value` 同级唯一 |
+| `defaultValue` | `string[] \| null` | `null` | 非受控初始路径 |
+| `value` | `string[] \| null` | — | 受控路径；`null` 为空 |
+| `defaultOpen` | `boolean` | `false` | 非受控初始开合 |
+| `open` | `boolean` | — | 受控开合 |
+| `onValueChange` | `(value, eventDetails) => void` | — | 选中 / 清除时；`cancel()` 可拒绝 |
+| `onOpenChange` | `(open, eventDetails) => void` | — | 开合变化时 |
+| `onOpenChangeComplete` | `(open) => void` | — | 开合动画结束后 |
+| `actionsRef` | `RefObject<Menu.Root.Actions>` | — | 命令式 `close` / `unmount` |
+| `clearable` | `boolean` | `true` | 清除总开关 |
+| `modal` | `boolean` | `false` | 锁滚动、挡外部交互（Base UI 默认 `true`，seam 翻转） |
+| `disabled` | `boolean` | `false` | 整体禁用 |
+| `name` | `string` | — | 表单字段名，见[表单](#表单) |
+| `placeholder` | `string` | — | 默认组合回显的占位文案 |
+| `id` | `string` | — | 转发给默认组合触发器，供 `FieldLabel htmlFor` |
+| `aria-label` | `string` | — | 默认组合触发器的无障碍名（无可见标签时） |
+| `children` | `ReactNode` | — | 组合通道：触发器一侧，见[组成](#组成) |
+
+### CascaderTrigger
+
+真 `<button>`。不写 children 自动含 `CascaderValue` 与清除。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `size` | `'sm' \| 'default'` | `'default'` | 触发器高度档 |
+| 其余 | Base UI `Menu.Trigger` 的 props（原生 button 属性 + ref；不含 `handle` / `payload`） | — | 透传 |
+
+### CascaderValue
+
+回显 `<span>`。内容由状态派生，children 是定制函数而非插槽。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `placeholder` | `string` | 根的 `placeholder` | 空值时显示 |
+| `children` | `(labels, value) => ReactNode` | — | 自定义回显，仅有值时调用 |
+| 其余 | `span` 原生属性（`className` 为 `string`） | — | 透传 |
+
+### CascaderClear
+
+标记部件：写在 `CascaderTrigger` 里，自身渲染 null，由触发器提升为
+兄弟 `<button>`。触发器的直接子元素或 Fragment 内才检测得到。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | ✕ 图标 | 自定义图标 |
+| 其余 | `button` 原生属性（不含 `type`；`aria-label` 默认 `"Clear selection"`） | — | 透传到提升后的按钮 |
+
+### CascaderPopup
+
+Portal + Positioner + Popup 合一；无 children 通道，内容来自根的 `items`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `side` | `Menu.Positioner` 的 `side` | `'bottom'` | 弹出方向 |
+| `sideOffset` | `number` | `4` | 与触发器的间距 |
+| `align` | `Menu.Positioner` 的 `align` | `'start'` | 对齐 |
+| `alignOffset` | `number` | `0` | 对齐偏移 |
+| 其余 | Base UI `Menu.Popup` 的 props（不含 `children`） | — | 透传到第一级弹层 |
+
+8 个类型一并导出：`CascaderProps` / `CascaderNode` / `CascaderTriggerProps` /
+`CascaderValueProps` / `CascaderClearProps` / `CascaderPopupProps` /
+`CascaderChangeEventReason` / `CascaderChangeEventDetails`。

@@ -3,6 +3,7 @@
 // src/components and exporting it here.
 export * from './components/alert-dialog'
 export * from './components/button'
+export * from './components/cascader'
 export * from './components/checkbox'
 export * from './components/collapsible'
 export * from './components/combobox'
