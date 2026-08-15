@@ -110,6 +110,7 @@ const registry: Record<string, ComponentType> = {
   'cascader/form': lazy(async () => import('./cascader/form')),
   'cascader/async': lazy(async () => import('./cascader/async')),
   'cascader/virtualized': lazy(async () => import('./cascader/virtualized')),
+  'cascader/safe-triangle': lazy(async () => import('./cascader/safe-triangle')),
   'select/basic': lazy(async () => import('./select/basic')),
   'select/clearable': lazy(async () => import('./select/clearable')),
   'select/group': lazy(async () => import('./select/group')),

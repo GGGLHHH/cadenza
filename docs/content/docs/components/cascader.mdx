@@ -68,6 +68,24 @@ Cascader                # 根:值协议、items、隐藏 input。不渲染 DOM
 回显按段解析：`items` 里找得到就用节点的 `label`，找不到的段原样打印
 自己的 `value`（与 `SelectValue` 同一回退行为；懒加载的段命中缓存后同样解析）。
 
+## 安全三角形
+
+从分支斜向移入子面板会掠过下方的兄弟项，Cascader 用悬停意图判定兜住
+这条斜线——demo 实时画出这块宽限区，光标动起来就能看到。
+
+<ComponentPreview name="cascader/safe-triangle" />
+
+这是亚马逊导航菜单出名的交互（Ben Kamens 的
+[Breaking down Amazon's mega dropdown](https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown)）：
+以**光标位置**与**子面板近边两角**围成三角形，光标在三角形内移动被判定为
+「正在奔向子面板」，掠过的兄弟项不触发切换；方向一偏出三角形，立即切到
+新分支——既没有全局延时的迟钝，也不会斜线走到一半子面板被换掉。
+
+Cascader 不为此做任何额外工作：它建在 Base UI Menu 上，子菜单触发器内置
+Floating UI 的 `safePolygon`——三角形的泛化（随光标移动动态重算、停顿
+超时就收拢的多边形，宽限期内子面板之外的指针事件被临时屏蔽）。demo 画的
+三角形是教学近似，真实宽限区以 `safePolygon` 为准。
+
 ## 异步加载
 
 一个 `loadItems` 全包按需与分页：子级不再需要提前铺满，面板打开时拉取；
