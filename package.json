@@ -1,7 +1,7 @@
 {
   "name": "cadenza",
   "type": "module",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "private": true,
   "packageManager": "pnpm@11.15.1",
   "description": "shadcn-flavoured component library built on Base UI",

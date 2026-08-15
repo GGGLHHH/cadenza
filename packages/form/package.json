@@ -1,7 +1,7 @@
 {
   "name": "@gedatou/cadenza-form",
   "type": "module",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "description": "Thin TanStack Form facade — identical API, form conventions baked in",
   "license": "MIT",
   "homepage": "https://cadenza-ui-docs.vercel.app",
