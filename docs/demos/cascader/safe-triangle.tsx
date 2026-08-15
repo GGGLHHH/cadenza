@@ -1,7 +1,7 @@
 import type { CascaderNode } from '@gedatou/cadenza-ui'
 import type { ReactElement } from 'react'
 import { Cascader } from '@gedatou/cadenza-ui'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 // 可视化子菜单的悬停意图判定(亚马逊导航出名的「安全三角形」):光标与已打开
@@ -163,6 +163,7 @@ const containsPad = 8
 
 export default function SafeTriangleDemo(): ReactElement {
   const [points, setPoints] = useState<string | null>(null)
+  const anchorRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     let lastX = 0
@@ -182,9 +183,22 @@ export default function SafeTriangleDemo(): ReactElement {
       // 面板内、奔向第 i+1 层」这一种姿态——光标不在链上任何面板内
       // (整个离开了菜单)或已在最深一层,都没有要保护的目标。只收
       // data-open 的弹层:退场动画期间旧弹层仍在 DOM 里,不能再当目标。
-      const rects = [...document.querySelectorAll(
+      // 弹层 portal 到 body,同页别的 Cascader demo 的弹层也会被全局查询
+      // 抓到——靠 aria-labelledby 认亲:根弹层指回本实例的 trigger,
+      // 子弹层指向父面板里的分支项,不在链上的一律跳过。
+      const trigger = anchorRef.current?.querySelector('[data-slot="cascader-trigger"]')
+      const chain: Element[] = []
+      for (const popup of document.querySelectorAll(
         '[data-slot="cascader-popup"][data-open], [data-slot="cascader-submenu-popup"][data-open]',
-      )].map(popup => popup.getBoundingClientRect())
+      )) {
+        const labelId = popup.getAttribute('aria-labelledby')
+        const label = labelId === null ? null : document.getElementById(labelId)
+        if (label === null)
+          continue
+        if (chain.length === 0 ? label === trigger : chain[chain.length - 1].contains(label))
+          chain.push(popup)
+      }
+      const rects = chain.map(popup => popup.getBoundingClientRect())
       // 光标真正落在的最深一层:钻取是向前的,面板边界重叠时深层赢——
       // 取最浅会把刚跨进子面板的光标判回父层,目标变成脚下这块面板。
       let index = rects.findLastIndex(rect => contains(rect, 0))
@@ -236,7 +250,10 @@ export default function SafeTriangleDemo(): ReactElement {
 
   return (
     <>
-      <Cascader aria-label="地区" defaultOpen items={REGIONS} placeholder="悬停分支,斜向移入子面板" />
+      {/* display:contents 的锚点只为拿到本实例 trigger,不参与布局 */}
+      <span className="contents" ref={anchorRef}>
+        <Cascader aria-label="地区" defaultOpen items={REGIONS} placeholder="悬停分支,斜向移入子面板" />
+      </span>
       {points !== null && createPortal(
         <svg
           aria-hidden
