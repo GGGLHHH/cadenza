@@ -1,0 +1,361 @@
+---
+title: Dropdown Menu
+description: 动作菜单 —— 按钮触发的一组操作:分组、勾选项、单选组、子菜单,Base UI Menu 词表
+---
+
+<ComponentPreview name="dropdown-menu/basic" />
+
+动作菜单。Base UI `Menu` 套 shadcn base-nova 皮,seam 只做定形:菜单的内容
+就是你的动作,**组合是唯一 API**,没有 `items` 一行式(数据通道属于
+`Select` / `Cascader` 这类带值的控件)。`modal` 默认 `false`(Base UI 默认
+`true`,seam 翻转,与 Select / Cascader 一致):打开菜单不锁页面滚动、不挡
+外部交互。
+
+部件名用 Base UI 词表,从 shadcn 迁移时五个名字要换:`Content → Popup`、
+`Label → GroupLabel`(它是组的标题,从不标注控件)、`Sub → Submenu`、
+`SubTrigger → SubmenuTrigger`、`SubContent → SubmenuPopup`。样式钩子
+`data-slot` 保留 shadcn 词形,对照见[状态与 className](#状态与-classname)。
+
+## 使用
+
+```tsx
+import {
+  DropdownMenu,
+  DropdownMenuGroup,
+  DropdownMenuGroupLabel,
+  DropdownMenuItem,
+  DropdownMenuPopup,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<DropdownMenu>
+  <DropdownMenuTrigger render={<Button variant="outline" />}>
+    打开
+  </DropdownMenuTrigger>
+  <DropdownMenuPopup>
+    <DropdownMenuGroup>
+      <DropdownMenuGroupLabel>我的账户</DropdownMenuGroupLabel>
+      <DropdownMenuItem>个人资料</DropdownMenuItem>
+      <DropdownMenuItem>账单</DropdownMenuItem>
+    </DropdownMenuGroup>
+    <DropdownMenuSeparator />
+    <DropdownMenuGroup>
+      <DropdownMenuItem>团队</DropdownMenuItem>
+      <DropdownMenuItem>订阅</DropdownMenuItem>
+    </DropdownMenuGroup>
+  </DropdownMenuPopup>
+</DropdownMenu>
+```
+
+## 组成
+
+```text
+DropdownMenu
+├── DropdownMenuTrigger
+└── DropdownMenuPopup
+    ├── DropdownMenuGroup
+    │   ├── DropdownMenuGroupLabel
+    │   ├── DropdownMenuItem
+    │   └── DropdownMenuItem
+    ├── DropdownMenuSeparator
+    ├── DropdownMenuGroup
+    │   ├── DropdownMenuGroupLabel
+    │   ├── DropdownMenuCheckboxItem
+    │   └── DropdownMenuCheckboxItem
+    ├── DropdownMenuSeparator
+    ├── DropdownMenuGroup
+    │   ├── DropdownMenuGroupLabel
+    │   └── DropdownMenuRadioGroup
+    │       ├── DropdownMenuRadioItem
+    │       └── DropdownMenuRadioItem
+    └── DropdownMenuSubmenu
+        ├── DropdownMenuSubmenuTrigger
+        └── DropdownMenuSubmenuPopup
+            └── DropdownMenuGroup
+                ├── DropdownMenuGroupLabel
+                ├── DropdownMenuItem
+                └── DropdownMenuItem
+```
+
+`DropdownMenuPopup` 是 Portal + Positioner + Popup 合一的部件:定位 props
+(`side` / `sideOffset` / `align` / `alignOffset`)去 positioner,其余全给
+popup。`DropdownMenuSubmenuPopup` 同构,默认值已调成侧向展开。
+
+## 子菜单
+
+用 `DropdownMenuSubmenu` 三件套收纳次级动作。
+
+<ComponentPreview name="dropdown-menu/submenu" />
+
+悬停或 `ArrowRight` 展开,`ArrowLeft` 收回父级;斜向掠过相邻项不会切走
+子菜单(Base UI 内置 safePolygon,与 [Cascader](/docs/components/cascader#安全三角形)
+同款)。`DropdownMenuSubmenuTrigger` 是 item 形态的触发项,自带尾部 `›`
+箭头;嵌套菜单忽略 `modal`。
+
+## 快捷键
+
+`DropdownMenuShortcut` 在行尾显示按键提示。
+
+<ComponentPreview name="dropdown-menu/shortcuts" />
+
+纯视觉部件:一个右对齐的 `<span>`,**不绑定任何键盘事件** —— 真正的快捷键
+监听仍要你自己注册。落地是纯 DOM,所以它的 `className` 是 `string`,没有
+函数形态。
+
+## 图标
+
+图标直接写进 item,前置即可。
+
+<ComponentPreview name="dropdown-menu/icons" />
+
+item 的样式已为内部 svg 排好尺寸(`size-4`)与间距,无需手工对齐。
+
+## 勾选项
+
+`DropdownMenuCheckboxItem` 做开关。
+
+<ComponentPreview name="dropdown-menu/checkboxes" />
+
+点击就地翻转、菜单保持打开(`closeOnClick` 默认 `false`,与普通 item 相反)
+—— 设置菜单经得起连续开关。受控走 `checked` / `onCheckedChange` 三件套。
+
+## 单选组
+
+`DropdownMenuRadioGroup` 做同组互斥的选择。
+
+<ComponentPreview name="dropdown-menu/radio-group" />
+
+`value` / `defaultValue` / `onValueChange` 三件套在组上,选中态由组统一
+分发;`DropdownMenuRadioItem` 只带自己的 `value`。选择后菜单同样保持打开。
+
+## 危险操作
+
+`variant="destructive"` 给不可逆动作。
+
+<ComponentPreview name="dropdown-menu/destructive" />
+
+文字、内部图标、聚焦底色整行转警示色;它只是视觉变体,不拦截点击 ——
+需要确认的动作接 [AlertDialog](/docs/components/alert-dialog)。
+
+## 综合示例
+
+分组、图标、快捷键与子菜单同场。
+
+<ComponentPreview name="dropdown-menu/complex" />
+
+## 什么时候用 DropdownMenu
+
+菜单执行**动作**,点完即走,从不进表单。一旦菜单的工作变成「选一个值留
+着」,那是别的控件:单选 / 多选一个平面列表用
+[Select](/docs/components/select),逐级钻取树形值用
+[Cascader](/docs/components/cascader) —— 两者都有触发器回显与表单序列化,
+菜单没有。勾选项与单选组是菜单里的**就地设置**(视图开关、排序方式),
+值活在菜单外的状态里,不是表单字段。
+
+## 状态与 className
+
+每个部件都接 `className`;弹层家族部件落在 Base UI 槽位,支持
+`className={(state) => …}` 函数形态(`DropdownMenuShortcut` 除外,纯 DOM,
+`string`)。状态经 `data-*` 外化:
+
+| 属性 | 出现在 | 时机 |
+| --- | --- | --- |
+| `data-open` / `data-closed` | Popup、SubmenuPopup、SubmenuTrigger | 弹层打开 / 关闭(含退场动画期间) |
+| `data-popup-open` | Trigger、SubmenuTrigger | 自己的弹层打开时 |
+| `data-checked` / `data-unchecked` | CheckboxItem、RadioItem | 勾选态互补对 |
+| `data-highlighted` | 各 item | 键盘 / 悬停高亮(Base UI 虚焦点例外词) |
+| `data-disabled` | 各 item | 禁用 |
+| `data-variant` | Item | 值型:`"default"` / `"destructive"` |
+| `data-inset` | 传了 `inset` 的 item / 标题 | 左缩进,与带勾选列对齐 |
+| `data-side` / `data-align` | Popup、SubmenuPopup | 实际落位(值型),供进场方向样式 |
+| `data-starting-style` / `data-ending-style` | Popup、SubmenuPopup | 进 / 出场动画首尾帧 |
+
+`data-slot` 保留 vendored(shadcn)词形 —— 三处与公开部件名不同,写样式
+选择器时以这张表为准:
+
+| 部件 | `data-slot` |
+| --- | --- |
+| DropdownMenuTrigger | `dropdown-menu-trigger` |
+| DropdownMenuPopup | `dropdown-menu-content` |
+| DropdownMenuGroup | `dropdown-menu-group` |
+| DropdownMenuGroupLabel | `dropdown-menu-label` |
+| DropdownMenuItem | `dropdown-menu-item` |
+| DropdownMenuCheckboxItem | `dropdown-menu-checkbox-item` |
+| DropdownMenuRadioGroup | `dropdown-menu-radio-group` |
+| DropdownMenuRadioItem | `dropdown-menu-radio-item` |
+| DropdownMenuSeparator | `dropdown-menu-separator` |
+| DropdownMenuShortcut | `dropdown-menu-shortcut` |
+| DropdownMenuSubmenu | `dropdown-menu-sub` |
+| DropdownMenuSubmenuTrigger | `dropdown-menu-sub-trigger` |
+| DropdownMenuSubmenuPopup | `dropdown-menu-sub-content` |
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| `Enter` / `Space` / `ArrowDown`(触发器上) | 打开菜单并聚焦首项 |
+| `ArrowDown` / `ArrowUp` | 在项间移动 |
+| `ArrowRight` | 展开子菜单并聚焦首项 |
+| `ArrowLeft` | 关闭子菜单,焦点回父级触发项 |
+| `Enter` / `Space` | 激活当前项 |
+| 字符键 | typeahead,按 item 文本(或 `label`)定位 |
+| `Esc` | 关闭整个菜单链,焦点回触发器 |
+
+## Props
+
+顺序规则:**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### DropdownMenu
+
+根。不渲染 DOM;seam 唯一的行为改动是 `modal` 默认 `false`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultOpen` | `boolean` | `false` | 非受控初始开合 |
+| `open` | `boolean` | — | 受控开合 |
+| `onOpenChange` | `(open, eventDetails) => void` | — | 开合变化时;`cancel()` 可拒绝 |
+| `onOpenChangeComplete` | `(open) => void` | — | 开合动画结束后 |
+| `actionsRef` | `RefObject<Menu.Root.Actions>` | — | 命令式 `unmount` |
+| `disabled` | `boolean` | `false` | 整体禁用 |
+| `modal` | `boolean` | `false` | 锁滚动、挡外部交互(Base UI 默认 `true`,seam 翻转;悬停打开与嵌套菜单恒非 modal) |
+| 其余 | Base UI `Menu.Root` 的 props | — | 透传 |
+
+### DropdownMenuTrigger
+
+真 `<button>`;要用自己的按钮(如 `Button`)走 `render`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| 其余 | Base UI `Menu.Trigger` 的 props(含 `render` / `nativeButton` + ref) | — | 透传 |
+
+### DropdownMenuPopup
+
+Portal + Positioner + Popup 合一;定位四件去 positioner,其余给 popup。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `side` | `'top' \| 'right' \| 'bottom' \| 'left' \| 'inline-start' \| 'inline-end'` | `'bottom'` | 展开侧 |
+| `sideOffset` | `number` | `4` | 距触发器间距(px) |
+| `align` | `'start' \| 'center' \| 'end'` | `'start'` | 对齐 |
+| `alignOffset` | `number` | `0` | 对齐偏移(px) |
+| 其余 | Base UI `Menu.Popup` 的 props(元素原生属性 + ref) | — | 透传 |
+
+### DropdownMenuGroup
+
+一组相关项的容器,供 `DropdownMenuGroupLabel` 标题。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| 其余 | Base UI `Menu.Group` 的 props | — | 透传 |
+
+### DropdownMenuGroupLabel
+
+组的标题 —— 不是控件的标签,不可聚焦、不进 typeahead。**必须位于
+`DropdownMenuGroup` 或 `DropdownMenuRadioGroup` 内**:Base UI 靠组的
+context 把它接成组的 `aria-labelledby`,裸放在 Popup 里会抛错。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `inset` | `boolean` | — | 左缩进,与带勾选列的 item 对齐 |
+| 其余 | Base UI `Menu.GroupLabel` 的 props | — | 透传 |
+
+### DropdownMenuItem
+
+动作项。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `onClick` | `(event) => void` | — | 激活时(点击与键盘都走这里) |
+| `closeOnClick` | `boolean` | `true` | 激活后关闭菜单 |
+| `disabled` | `boolean` | `false` | 禁用 |
+| `label` | `string` | — | typeahead 文本(默认取内容文本) |
+| `variant` | `'default' \| 'destructive'` | `'default'` | 警示色变体 |
+| `inset` | `boolean` | — | 左缩进 |
+| 其余 | Base UI `Menu.Item` 的 props | — | 透传 |
+
+### DropdownMenuCheckboxItem
+
+开关项,勾选指示器已内置。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultChecked` | `boolean` | `false` | 非受控初始勾选 |
+| `checked` | `boolean` | — | 受控勾选 |
+| `onCheckedChange` | `(checked, eventDetails) => void` | — | 翻转时 |
+| `closeOnClick` | `boolean` | `false` | 激活后关闭菜单(与普通 item 相反) |
+| `disabled` | `boolean` | `false` | 禁用 |
+| `inset` | `boolean` | — | 左缩进 |
+| 其余 | Base UI `Menu.CheckboxItem` 的 props | — | 透传 |
+
+### DropdownMenuRadioGroup
+
+互斥选择的组,值在组上。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultValue` | `unknown` | — | 非受控初始值 |
+| `value` | `unknown` | — | 受控值 |
+| `onValueChange` | `(value, eventDetails) => void` | — | 选中变化时 |
+| `disabled` | `boolean` | `false` | 整组禁用 |
+| 其余 | Base UI `Menu.RadioGroup` 的 props | — | 透传 |
+
+### DropdownMenuRadioItem
+
+单选项,选中指示器已内置。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `value` | `unknown` | 必填 | 本项代表的值 |
+| `closeOnClick` | `boolean` | `false` | 激活后关闭菜单 |
+| `disabled` | `boolean` | `false` | 禁用 |
+| `inset` | `boolean` | — | 左缩进 |
+| 其余 | Base UI `Menu.RadioItem` 的 props | — | 透传 |
+
+### DropdownMenuSeparator
+
+组间分隔线。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| 其余 | Base UI `Menu.Separator` 的 props | — | 透传 |
+
+### DropdownMenuShortcut
+
+行尾按键提示,纯视觉 `<span>`,不绑定键盘事件。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| 其余 | `<span>` 的原生属性(`className` 为 `string`) | — | 透传 |
+
+### DropdownMenuSubmenu
+
+子菜单的根(Base UI `Menu.SubmenuRoot`)。不渲染 DOM;忽略 `modal`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| 其余 | Base UI `Menu.SubmenuRoot` 的 props | — | 透传 |
+
+### DropdownMenuSubmenuTrigger
+
+item 形态的子菜单触发项(`<div>`,不是 button),自带尾部 `›` 箭头。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `inset` | `boolean` | — | 左缩进 |
+| 其余 | Base UI `Menu.SubmenuTrigger` 的 props | — | 透传 |
+
+### DropdownMenuSubmenuPopup
+
+子菜单弹层,与 `DropdownMenuPopup` 同构,默认值已调成侧向展开:
+`side='right'`、`align='start'`、`alignOffset=-3`、`sideOffset=0`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| 其余 | 同 `DropdownMenuPopup` | — | 透传 |
+
+22 个类型一并导出:每个部件的 `XxxProps`,交互部件的 `XxxState`(Trigger /
+Popup / Item / CheckboxItem / RadioItem / SubmenuTrigger),以及
+`DropdownMenuOpenChangeEventDetails`。
