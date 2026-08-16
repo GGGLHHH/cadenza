@@ -60,6 +60,17 @@ DatePicker
 <ComponentPreview name="date-picker/format" />
 
 表单序列化不跟随 `format`——hidden input 始终是 `yyyy-MM-dd`（见[表单](#表单)）。
+注意 token 大小写：月份是 `MM`，小写 `mm` 在 date-fns 语义里是**分钟**，
+传错不会报错、只会安静地显示错东西（从 dayjs 迁移的 `YYYY`/`DD` 反而会被
+date-fns 直接 throw 提醒）。
+
+`format` 是严格匹配——键入必须完全按它来。要宽容收多种写法时，用
+`inputToValue` 只换解析侧：显示仍走 `format`，失焦后统一格式化。
+
+<ComponentPreview name="date-picker/input-to-value" />
+
+返回 `null` 表示「还不是日期」（草稿保留，失焦回退）；返回的 `Date` 照常被
+归一到当天零点、过 `disabledDates` 检查。解析器必须是纯函数。
 
 ## 禁用日期
 
@@ -160,6 +171,7 @@ ArrowDown 即开日历。
 | `actionsRef` | Base UI Popover 的 actions | — | 命令式 `unmount` / `close` |
 | `format` | `string` | `'yyyy-MM-dd'` | 显示与解析格式（date-fns token） |
 | `locale` | date-fns `Locale` | — | 格式化、解析与日历文案 |
+| `inputToValue` | `(text) => Date \| null` | 按 `format` 严格解析 | 覆盖解析侧；`null` = 还不是日期 |
 | `disabledDates` | `Matcher \| Matcher[]` | — | 禁选日期；键入同样被拒 |
 | `name` | `string` | — | 有则渲染 hidden input（`yyyy-MM-dd`） |
 | `disabled` | `boolean` | `false` | 禁用 |

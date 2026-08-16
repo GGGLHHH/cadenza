@@ -97,6 +97,8 @@ interface DatePickerContextValue extends DatePickerState {
   'setValue': (value: Date | null, eventDetails?: DatePickerChangeEventDetails) => void
   /** Settles the draft: commit an empty draft as a clear, drop an unparseable one. */
   'commitDraft': (event: Event) => void
+  /** Typed text → day (already start-of-day normalised), `null` when it is not a date yet. */
+  'parseText': (text: string, referenceDate: Date) => Date | null
   'setOpen': (open: boolean, eventDetails: DatePickerOpenChangeEventDetails) => void
   'month': Date
   'setMonth': (month: Date) => void
@@ -148,6 +150,14 @@ export type DatePickerProps
       'format'?: string
       /** date-fns locale for formatting, parsing and the calendar. */
       'locale'?: Locale
+      /**
+       * Replaces how typed text parses into a date — accept several formats,
+       * compact digits, whatever the field should understand. `null` means
+       * "not a date yet". Must be pure; the result is normalised to the start
+       * of its day, and display still follows `format`. Defaults to strict
+       * parsing by `format`.
+       */
+      'inputToValue'?: (text: string) => Date | null
       /**
        * Days the calendar disables — react-day-picker matchers. A typed date
        * matching one is rejected too, not just unpickable.
@@ -243,9 +253,8 @@ export function DatePickerInput({
       onChange={(event) => {
         const raw = event.target.value
         field.setDraft(raw)
-        const parsed = parseDate(raw, field.format, new Date(), { locale: field.locale })
-        if (isValid(parsed)) {
-          const day = startOfDay(parsed)
+        const day = field.parseText(raw, new Date())
+        if (day !== null) {
           const disabledMatch = field.disabledDates !== undefined
             && dateMatchModifiers(day, field.disabledDates)
           const sameDay = field.value !== null && day.getTime() === field.value.getTime()
@@ -470,6 +479,7 @@ export function DatePicker({
   disabledDates,
   format = 'yyyy-MM-dd',
   id,
+  inputToValue,
   locale,
   modal = false,
   name,
@@ -504,6 +514,18 @@ export function DatePicker({
   const inputRef = useRef<HTMLInputElement | null>(null)
   const popupRef = useRef<HTMLDivElement | null>(null)
 
+  // The one parsing seam: typed text and the draft-vs-value judge below must
+  // speak the same language, or a custom parser's draft would be dropped and
+  // reformatted mid-typing.
+  const parseText = (text: string, referenceDate: Date): Date | null => {
+    if (inputToValue !== undefined) {
+      const parsed = inputToValue(text)
+      return parsed === null || !isValid(parsed) ? null : startOfDay(parsed)
+    }
+    const parsed = parseDate(text, format, referenceDate, { locale })
+    return isValid(parsed) ? startOfDay(parsed) : null
+  }
+
   // A value change from outside (a form reset, a programmatic set) drops the
   // draft — otherwise the input keeps showing ghost text over the new value.
   // The draft survives only the write-back its own typing produced, so a
@@ -514,9 +536,9 @@ export function DatePicker({
     if (draft !== null) {
       // The new value itself is the parse reference — render-pure, and "did
       // this draft produce that value" is exactly the question being asked.
-      const parsed = value === null ? null : parseDate(draft, format, value, { locale })
-      const draftProducedIt = value !== null && parsed !== null && isValid(parsed)
-        && startOfDay(parsed).getTime() === value.getTime()
+      const parsed = value === null ? null : parseText(draft, value)
+      const draftProducedIt = value !== null && parsed !== null
+        && parsed.getTime() === value.getTime()
       if (!draftProducedIt)
         setDraft(null)
     }
@@ -599,6 +621,7 @@ export function DatePicker({
     'setDraft': setDraft,
     'setValue': setValue,
     'commitDraft': commitDraft,
+    'parseText': parseText,
     'setOpen': setOpen,
     'month': month,
     'setMonth': setMonth,

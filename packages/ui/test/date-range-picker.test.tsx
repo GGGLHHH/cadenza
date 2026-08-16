@@ -158,6 +158,26 @@ describe('date-range-picker', () => {
     expect(getInputs()[0].value).toBe('')
   })
 
+  it('parses both ends through inputToValue when given', async () => {
+    const onValueChange = vi.fn()
+    const inputToValue = (text: string): Date | null => {
+      const match = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(text.trim())
+      return match === null ? null : new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    }
+    render(
+      <DateRangePicker
+        aria-label="日期范围"
+        defaultValue={{ from: AUG_10 }}
+        inputToValue={inputToValue}
+        onValueChange={onValueChange}
+      />,
+    )
+    const user = userEvent.setup()
+    await user.type(getInputs()[1], '2026/8/20')
+    const [value] = onValueChange.mock.lastCall as [{ from: Date, to?: Date }]
+    expect(value.to?.getDate()).toBe(20)
+  })
+
   it('serializes both ends through always-present hidden inputs', () => {
     render(<DateRangePicker aria-label="日期范围" name="stay" value={{ from: AUG_10, to: AUG_20 }} />)
     const hidden = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="stay"]'))

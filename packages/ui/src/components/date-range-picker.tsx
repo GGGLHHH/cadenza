@@ -95,6 +95,8 @@ interface DateRangePickerContextValue extends DateRangePickerState {
   setValue: (value: DateRange | null, eventDetails?: DateRangePickerChangeEventDetails) => void
   /** Settles one end's draft: commit an empty draft as a clear, drop an unparseable one. */
   commitDraft: (end: RangeEnd, event: Event) => void
+  /** Typed text → day (already start-of-day normalised), `null` when it is not a date yet. */
+  parseText: (text: string, referenceDate: Date) => Date | null
   setOpen: (open: boolean, eventDetails: DateRangePickerOpenChangeEventDetails) => void
   month: Date
   setMonth: (month: Date) => void
@@ -145,6 +147,14 @@ export type DateRangePickerProps
       'format'?: string
       /** date-fns locale for formatting, parsing and the calendar. */
       'locale'?: Locale
+      /**
+       * Replaces how typed text parses into a date, both ends alike — accept
+       * several formats, compact digits, whatever the field should
+       * understand. `null` means "not a date yet". Must be pure; the result
+       * is normalised to the start of its day, and display still follows
+       * `format`. Defaults to strict parsing by `format`.
+       */
+      'inputToValue'?: (text: string) => Date | null
       /**
        * Days the calendar disables — react-day-picker matchers. A typed date
        * matching one is rejected too, not just unpickable.
@@ -244,9 +254,8 @@ function RangeInput({
       onChange={(event) => {
         const raw = event.target.value
         field.setDraft(end, raw)
-        const parsed = parseDate(raw, field.format, new Date(), { locale: field.locale })
-        if (isValid(parsed)) {
-          const day = startOfDay(parsed)
+        const day = field.parseText(raw, new Date())
+        if (day !== null) {
           const disabledMatch = field.disabledDates !== undefined
             && dateMatchModifiers(day, field.disabledDates)
           if (!disabledMatch) {
@@ -533,6 +542,7 @@ export function DateRangePicker({
   endPlaceholder,
   format = 'yyyy-MM-dd',
   id,
+  inputToValue,
   locale,
   modal = false,
   name,
@@ -573,6 +583,18 @@ export function DateRangePicker({
   const setDraft = (end: RangeEnd, draft: string | null): void =>
     setDrafts(current => ({ ...current, [end]: draft }))
 
+  // The one parsing seam: typed text and the draft-vs-value judge below must
+  // speak the same language, or a custom parser's draft would be dropped and
+  // reformatted mid-typing.
+  const parseText = (text: string, referenceDate: Date): Date | null => {
+    if (inputToValue !== undefined) {
+      const parsed = inputToValue(text)
+      return parsed === null || !isValid(parsed) ? null : startOfDay(parsed)
+    }
+    const parsed = parseDate(text, format, referenceDate, { locale })
+    return isValid(parsed) ? startOfDay(parsed) : null
+  }
+
   // A value change from outside (a form reset, a programmatic set) drops the
   // drafts — otherwise the inputs keep showing ghost text over the new value.
   // Each end's draft survives only the write-back its own typing produced.
@@ -588,8 +610,8 @@ export function DateRangePicker({
         return false
       // The committed date is the parse reference — render-pure, and "did
       // this draft produce that value" is exactly the question being asked.
-      const parsed = parseDate(draft, format, committed, { locale })
-      return isValid(parsed) && startOfDay(parsed).getTime() === committed.getTime()
+      const parsed = parseText(draft, committed)
+      return parsed !== null && parsed.getTime() === committed.getTime()
     }
     const keepFrom = survives('from')
     const keepTo = survives('to')
@@ -682,6 +704,7 @@ export function DateRangePicker({
     setDraft,
     setValue,
     commitDraft,
+    parseText,
     setOpen,
     month,
     setMonth,

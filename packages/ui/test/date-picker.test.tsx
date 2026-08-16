@@ -202,6 +202,46 @@ describe('date-picker', () => {
     expect(getInput().value).toBe('2026-08-20')
   })
 
+  it('parses through inputToValue when given, beyond the display format', async () => {
+    const onValueChange = vi.fn()
+    // A lenient parser: slashes or dashes, one-digit parts allowed.
+    const inputToValue = (text: string): Date | null => {
+      const match = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/.exec(text.trim())
+      return match === null ? null : new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    }
+    render(<DatePicker aria-label="日期" inputToValue={inputToValue} onValueChange={onValueChange} />)
+    const user = userEvent.setup()
+    await user.type(getInput(), '2026/8/1')
+    const [value] = onValueChange.mock.lastCall as [Date]
+    expect(value.getMonth()).toBe(7)
+    expect(value.getDate()).toBe(1)
+    // The committed value still displays through `format`, once settled —
+    // Escape first: with the popup open, Tab walks into the calendar.
+    await user.keyboard('{Escape}')
+    await user.tab()
+    expect(getInput().value).toBe('2026-08-01')
+  })
+
+  it('keeps a draft alive across write-backs under a custom parser too', async () => {
+    function Harness(): ReturnType<typeof DatePicker> {
+      const [value, setValue] = useState<Date | null>(null)
+      return (
+        <DatePicker
+          aria-label="日期"
+          inputToValue={text => (/^\d{8}$/.test(text) ? new Date(Number(text.slice(0, 4)), Number(text.slice(4, 6)) - 1, Number(text.slice(6))) : null)}
+          value={value}
+          onValueChange={setValue}
+        />
+      )
+    }
+    render(<Harness />)
+    const user = userEvent.setup()
+    // The draft-vs-value comparison must judge by the same custom parser —
+    // a token-format judge would drop this draft and reformat mid-typing.
+    await user.type(getInput(), '20260801')
+    expect(getInput().value).toBe('20260801')
+  })
+
   it('wires a FieldLabel to the input through htmlFor', async () => {
     render(
       <Field>
