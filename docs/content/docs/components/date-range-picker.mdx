@@ -42,7 +42,8 @@ DateRangePicker
 │  ├─ DateRangePickerClear
 │  └─ DateRangePickerTrigger
 └─ DateRangePickerPopup
-   └─ Calendar（默认，numberOfMonths=2）
+   ├─ Calendar（默认，numberOfMonths=2）
+   └─ DateRangePickerFooter（可选，组合即进入确认模式）
 ```
 
 ## 受控
@@ -54,6 +55,16 @@ DateRangePicker
 <ComponentPreview name="date-range-picker/controlled" />
 
 清空起点输入框离开会清掉整个区间（锚点没了）；清空终点只回到半程。
+
+## 确认模式
+
+往弹层里组合 `DateRangePickerFooter`，两次点选都只是暂存（输入框实时预览、
+面板留着给你检查），`DateRangePickerClose`（或 Enter）才提交并关闭——
+reason 是 `close-press`；`DateRangePickerCancel`、Esc、点击外部都丢弃暂存。
+Footer 是纯布局壳，动作部件与文案由使用方组合，契约与
+[DatePicker 的确认模式](/docs/components/date-picker#确认模式)完全同款。
+
+<ComponentPreview name="date-range-picker/footer" />
 
 ## 表单
 
@@ -140,13 +151,23 @@ DateRangePicker
 
 ### DateRangePickerPopup
 
-与 `DatePickerPopup` 同款三层；函数 children 收
-`DateRangePickerCalendarProps`（`mode: 'range'`、双月），spread 进自己的
-`<Calendar>` 可改月数、布局等。
+与 `DatePickerPopup` 同款三层；普通 children 渲染在默认日历**下方**（放
+Footer 的位置）；函数 children 收 `DateRangePickerCalendarProps`
+（`mode: 'range'`、双月），spread 进自己的 `<Calendar>` 可改月数、布局等。
 
-12 个类型一并导出：`DateRange` / `DateRangePickerProps` /
+### DateRangePickerFooter / FooterClear / Cancel / Close
+
+日历下方的动作行（纯布局壳，组合即进入[确认模式](#确认模式)）与三个动作
+按钮，形态与
+[DatePicker 的同名部件](/docs/components/date-picker#datepickerfooter)
+完全同款：Footer 收 `ComponentProps<'div'>`，按钮收
+`ComponentProps<typeof Button>`。
+
+16 个类型一并导出：`DateRange` / `DateRangePickerProps` /
 `DateRangePickerState` / `DateRangePickerStartInputProps` /
 `DateRangePickerEndInputProps` / `DateRangePickerTriggerProps` /
 `DateRangePickerClearProps` / `DateRangePickerPopupProps` /
+`DateRangePickerFooterProps` / `DateRangePickerFooterClearProps` /
+`DateRangePickerCancelProps` / `DateRangePickerCloseProps` /
 `DateRangePickerCalendarProps` / `DateRangePickerChangeEventReason` /
 `DateRangePickerChangeEventDetails` / `DateRangePickerOpenChangeEventDetails`。

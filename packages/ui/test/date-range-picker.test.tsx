@@ -1,7 +1,13 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { DateRangePicker } from '../src/components/date-range-picker'
+import {
+  DateRangePicker,
+  DateRangePickerCancel,
+  DateRangePickerClose,
+  DateRangePickerFooter,
+  DateRangePickerPopup,
+} from '../src/components/date-range-picker'
 
 const AUG_10 = new Date(2026, 7, 10)
 const AUG_20 = new Date(2026, 7, 20)
@@ -182,6 +188,65 @@ describe('date-range-picker', () => {
     render(<DateRangePicker aria-label="日期范围" name="stay" value={{ from: AUG_10, to: AUG_20 }} />)
     const hidden = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="stay"]'))
     expect(hidden.map(input => input.value)).toEqual(['2026-08-10', '2026-08-20'])
+  })
+
+  describe('footer / confirm mode', () => {
+    function renderWithFooter(): ReturnType<typeof vi.fn> {
+      const onValueChange = vi.fn()
+      render(
+        <DateRangePicker aria-label="日期范围" onValueChange={onValueChange}>
+          {({ defaultChildren }) => (
+            <>
+              {defaultChildren}
+              <DateRangePickerPopup>
+                <DateRangePickerFooter>
+                  <DateRangePickerCancel variant="outline">取消</DateRangePickerCancel>
+                  <DateRangePickerClose>确定</DateRangePickerClose>
+                </DateRangePickerFooter>
+              </DateRangePickerPopup>
+            </>
+          )}
+        </DateRangePicker>,
+      )
+      return onValueChange
+    }
+
+    async function openPopup(): Promise<void> {
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Open calendar' }))
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+    }
+
+    it('stages a full range and commits it only on confirm, with reason close-press', async () => {
+      const onValueChange = renderWithFooter()
+      await openPopup()
+      await clickDay('10')
+      await clickDay('20')
+      // Both picks staged: nothing committed, the popup stays up.
+      expect(onValueChange).not.toHaveBeenCalled()
+      expect(queryCalendar()).not.toBeNull()
+      const [start, end] = getInputs()
+      expect(start.value).toBe('2026-08-10')
+      expect(end.value).toBe('2026-08-20')
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: '确定' }))
+      const [value, details] = onValueChange.mock.lastCall as [{ from: Date, to?: Date }, { reason: string }]
+      expect(value.from.getDate()).toBe(10)
+      expect(value.to?.getDate()).toBe(20)
+      expect(details.reason).toBe('close-press')
+      await waitFor(() => expect(queryCalendar()).toBeNull())
+    })
+
+    it('cancel drops the staged range and closes without a value change', async () => {
+      const onValueChange = renderWithFooter()
+      await openPopup()
+      await clickDay('10')
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: '取消' }))
+      expect(onValueChange).not.toHaveBeenCalled()
+      await waitFor(() => expect(queryCalendar()).toBeNull())
+      expect(getInputs()[0].value).toBe('')
+    })
   })
 
   it('mirrors disabled onto the root and both inputs', () => {

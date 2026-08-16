@@ -8,13 +8,14 @@ import { Popover as PopoverPrimitive } from '@base-ui/react/popover'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { IconCalendar, IconX } from '@tabler/icons-react'
 import { format as formatDate, isValid, parse as parseDate, startOfDay } from 'date-fns'
-import { createContext, use, useRef, useState } from 'react'
+import { createContext, use, useEffect, useRef, useState } from 'react'
 import { dateMatchModifiers } from 'react-day-picker'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
 import { isOwnLabelPress, LABEL_PRESS_REASONS } from '#lib/own-label-press'
 import { popupClassName, SERIAL_FORMAT } from '#lib/popup'
 import { cn, dataAttr } from '#lib/utils'
+import { Button } from './button'
 import { Calendar } from './calendar'
 import {
   InputGroup,
@@ -44,9 +45,9 @@ import {
  * `data-open`, `data-disabled`, `data-readonly`.
  */
 
-/** Why the value changed. Clearing is a reason, not a separate callback. */
+/** Why the value changed. Clearing is a reason, not a separate callback; `close-press` is the footer's confirm. */
 export type DatePickerChangeEventReason
-  = 'input-change' | 'input-clear' | 'item-press' | 'clear-press' | 'none'
+  = 'input-change' | 'input-clear' | 'item-press' | 'clear-press' | 'close-press' | 'none'
 
 export type DatePickerChangeEventDetails = ChangeEventDetails<DatePickerChangeEventReason>
 
@@ -82,6 +83,10 @@ export interface DatePickerCalendarProps {
 
 interface DatePickerContextValue extends DatePickerState {
   'value': Date | null
+  /** What the input and calendar show: the staged value while confirming, the committed one otherwise. */
+  'preview': Date | null
+  /** A `DatePickerFooter` is mounted: picks stage instead of committing. */
+  'confirmMode': boolean
   'draft': string | null
   'clearable': boolean
   'format': string
@@ -102,6 +107,11 @@ interface DatePickerContextValue extends DatePickerState {
   'setOpen': (open: boolean, eventDetails: DatePickerOpenChangeEventDetails) => void
   'month': Date
   'setMonth': (month: Date) => void
+  /** Stages a value while confirming (`DatePickerFooter` mounted) instead of committing it. */
+  'stage': (next: Date | null) => void
+  /** Commits the staged value (reason `close-press`) and closes. */
+  'confirm': (event: Event) => void
+  'setFooterMounted': (mounted: boolean) => void
 }
 
 const DatePickerContext = createContext<DatePickerContextValue | null>(null)
@@ -212,7 +222,7 @@ export function DatePickerInput({
 }: DatePickerInputProps): ReactElement {
   const field = useDatePickerContext()
   const text = field.draft
-    ?? (field.value === null ? '' : formatDate(field.value, field.format, { locale: field.locale }))
+    ?? (field.preview === null ? '' : formatDate(field.preview, field.format, { locale: field.locale }))
   return (
     <InputGroupInput
       aria-expanded={field.open}
@@ -257,9 +267,12 @@ export function DatePickerInput({
         if (day !== null) {
           const disabledMatch = field.disabledDates !== undefined
             && dateMatchModifiers(day, field.disabledDates)
-          const sameDay = field.value !== null && day.getTime() === field.value.getTime()
+          const sameDay = field.preview !== null && day.getTime() === field.preview.getTime()
           if (!disabledMatch && !sameDay) {
-            field.setValue(day, createChangeEventDetails('input-change', event.nativeEvent))
+            if (field.confirmMode)
+              field.stage(day)
+            else
+              field.setValue(day, createChangeEventDetails('input-change', event.nativeEvent))
             field.setMonth(day)
           }
         }
@@ -286,9 +299,12 @@ export function DatePickerInput({
           field.commitDraft(event.nativeEvent)
           if (field.open) {
             // While the popup is open, Enter belongs to it — settling the
-            // draft, not submitting the form.
+            // draft, not submitting the form. Confirming, it IS the confirm.
             event.preventDefault()
-            field.setOpen(false, createChangeEventDetails('keyboard', event.nativeEvent))
+            if (field.confirmMode)
+              field.confirm(event.nativeEvent)
+            else
+              field.setOpen(false, createChangeEventDetails('keyboard', event.nativeEvent))
           }
         }
         if (event.key === 'ArrowDown' && !field.open && !field.readOnly)
@@ -393,8 +409,10 @@ export type DatePickerPopupProps
     & Pick<PopoverPrimitive.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>
     & {
       /**
-       * Replaces the default calendar. A function receives the seam's calendar
-       * wiring — spread it into your own `<Calendar>` and add props on top:
+       * Extends or replaces the popup's content. Plain children render BELOW
+       * the default calendar (`<DatePickerPopup><DatePickerFooter …/></DatePickerPopup>`);
+       * a function replaces the calendar entirely — it receives the seam's
+       * wiring to spread into your own:
        * `{(calendar) => <Calendar {...calendar} numberOfMonths={2} />}`.
        */
       children?: ReactNode | ReactNode[] | ((calendarProps: DatePickerCalendarProps) => ReactNode)
@@ -418,12 +436,17 @@ export function DatePickerPopup({
   const field = useDatePickerContext()
   const calendarProps: DatePickerCalendarProps = {
     mode: 'single',
-    selected: field.value ?? undefined,
+    selected: field.preview ?? undefined,
     // Re-picking the selected day reports `undefined`; the trigger date keeps
     // it a confirmation instead of a surprise deselection.
     onSelect: (date, triggerDate) => {
       const day = startOfDay(date ?? triggerDate)
       field.setDraft(null)
+      if (field.confirmMode) {
+        // Staged, not committed: the footer's confirm settles the gesture.
+        field.stage(day)
+        return
+      }
       field.setValue(day, createChangeEventDetails('item-press'))
       field.setOpen(false, createChangeEventDetails('item-press'))
     },
@@ -460,10 +483,116 @@ export function DatePickerPopup({
         >
           {typeof children === 'function'
             ? children(calendarProps)
-            : children ?? <Calendar {...calendarProps} />}
+            : (
+                <>
+                  <Calendar {...calendarProps} />
+                  {children}
+                </>
+              )}
         </PopoverPrimitive.Popup>
       </PopoverPrimitive.Positioner>
     </PopoverPrimitive.Portal>
+  )
+}
+
+export type DatePickerFooterProps = ComponentProps<'div'>
+export type DatePickerFooterClearProps = ComponentProps<typeof Button>
+export type DatePickerCancelProps = ComponentProps<typeof Button>
+export type DatePickerCloseProps = ComponentProps<typeof Button>
+
+/**
+ * The action row under the calendar — a layout shell, the `AlertDialogFooter`
+ * treatment: compose the action parts (and their wording) yourself. Its
+ * presence IS the mode switch (the MUI action-bar treatment): while it is
+ * mounted, picks and typed dates stage instead of committing, and only
+ * `DatePickerClose` (or Enter) settles them — `DatePickerCancel`, Escape or
+ * clicking away drops the staged value. It only lives while the popup is
+ * open, so a closed field types-and-commits as usual.
+ *
+ * Compose inside `DatePickerPopup` (plain children render below the default
+ * calendar), and normally include a `DatePickerClose` — without one, only
+ * Enter can settle.
+ */
+export function DatePickerFooter({ className, ...props }: DatePickerFooterProps): ReactElement {
+  const { setFooterMounted } = useDatePickerContext()
+  useEffect(() => {
+    setFooterMounted(true)
+    return () => setFooterMounted(false)
+  }, [setFooterMounted])
+  return (
+    <div
+      className={cn(`
+        flex items-center justify-end gap-2 border-bs border-border p-2
+      `, className)}
+      data-slot="date-picker-footer"
+      {...props}
+    />
+  )
+}
+
+/**
+ * Stages an empty value — the popup stays up, `DatePickerClose` settles it.
+ * `Footer` in the name only disambiguates from the input-side
+ * `DatePickerClear`; wording and variant are the caller's, per the
+ * `AlertDialogClose` treatment.
+ */
+export function DatePickerFooterClear({ onClick, ...props }: DatePickerFooterClearProps): ReactElement {
+  const field = useDatePickerContext()
+  return (
+    <Button
+      data-slot="date-picker-footer-clear"
+      size="sm"
+      type="button"
+      {...props}
+      // After the spread: a caller listening for clicks must not silently
+      // take the clearing away.
+      onClick={(event) => {
+        onClick?.(event)
+        if (!event.defaultPrevented)
+          field.stage(null)
+      }}
+    />
+  )
+}
+
+/** Closes the popup without committing — the staged value is dropped. */
+export function DatePickerCancel({ onClick, ...props }: DatePickerCancelProps): ReactElement {
+  const field = useDatePickerContext()
+  return (
+    <Button
+      data-slot="date-picker-cancel"
+      size="sm"
+      type="button"
+      {...props}
+      // After the spread for the same reason as the clear's onClick.
+      onClick={(event) => {
+        onClick?.(event)
+        if (!event.defaultPrevented)
+          field.setOpen(false, createChangeEventDetails('close-press', event.nativeEvent))
+      }}
+    />
+  )
+}
+
+/**
+ * Close-and-commit — Base UI's word for exactly this: commits the staged
+ * value (reason `close-press`) and closes the popup.
+ */
+export function DatePickerClose({ onClick, ...props }: DatePickerCloseProps): ReactElement {
+  const field = useDatePickerContext()
+  return (
+    <Button
+      data-slot="date-picker-close"
+      size="sm"
+      type="button"
+      {...props}
+      // After the spread for the same reason as the clear's onClick.
+      onClick={(event) => {
+        onClick?.(event)
+        if (!event.defaultPrevented)
+          field.confirm(event.nativeEvent)
+      }}
+    />
   )
 }
 
@@ -509,6 +638,10 @@ export function DatePicker({
   // The calendar's month is internal: it resets to the value when the popup
   // opens and follows typing while it is up.
   const [month, setMonth] = useState<Date>(() => startOfDay(valueProp ?? defaultValue ?? new Date()))
+  // Confirm mode's staging area: `undefined` = nothing staged. Only a footer
+  // (mounted while the popup is open) routes changes through here.
+  const [pending, setPending] = useState<Date | null | undefined>(undefined)
+  const [footerMounted, setFooterMounted] = useState(false)
 
   const rootRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -562,7 +695,17 @@ export function DatePicker({
       return
     if (next)
       setMonth(startOfDay(value ?? new Date()))
+    else
+      // Closing settles confirm mode: whatever was staged and not confirmed
+      // is dropped — dismissing IS the cancel (the MUI/antd treatment).
+      setPending(undefined)
     setOpenState(next)
+  }
+
+  const confirm = (event: Event): void => {
+    if (pending !== undefined)
+      setValue(pending, createChangeEventDetails('close-press', event))
+    setOpen(false, createChangeEventDetails('close-press', event))
   }
 
   const commitDraft = (event: Event): void => {
@@ -570,7 +713,11 @@ export function DatePicker({
       return
     setDraft(null)
     if (draft.trim() === '') {
-      if (value !== null)
+      // While confirming, an emptied field stages the clear like every other
+      // popup-open change; confirm settles it.
+      if (footerMounted)
+        setPending(null)
+      else if (value !== null)
         setValue(null, createChangeEventDetails('input-clear', event))
     }
     // A parseable draft already committed on change; anything else reverts to
@@ -607,6 +754,8 @@ export function DatePicker({
   const context: DatePickerContextValue = {
     ...state,
     'value': value,
+    'preview': pending !== undefined ? pending : value,
+    'confirmMode': footerMounted,
     'draft': draft,
     'clearable': clearable,
     'format': format,
@@ -625,6 +774,9 @@ export function DatePicker({
     'setOpen': setOpen,
     'month': month,
     'setMonth': setMonth,
+    'stage': setPending,
+    'confirm': confirm,
+    'setFooterMounted': setFooterMounted,
   }
 
   const defaultChildren = (

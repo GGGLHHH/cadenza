@@ -8,13 +8,14 @@ import { Popover as PopoverPrimitive } from '@base-ui/react/popover'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { IconArrowNarrowRight, IconCalendar, IconX } from '@tabler/icons-react'
 import { format as formatDate, isValid, parse as parseDate, startOfDay } from 'date-fns'
-import { createContext, use, useRef, useState } from 'react'
+import { createContext, use, useEffect, useRef, useState } from 'react'
 import { dateMatchModifiers } from 'react-day-picker'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
 import { isOwnLabelPress, LABEL_PRESS_REASONS } from '#lib/own-label-press'
 import { popupClassName, SERIAL_FORMAT } from '#lib/popup'
 import { cn, dataAttr } from '#lib/utils'
+import { Button } from './button'
 import { Calendar } from './calendar'
 import {
   InputGroup,
@@ -42,9 +43,9 @@ export interface DateRange {
   to?: Date
 }
 
-/** Why the value changed. Clearing is a reason, not a separate callback. */
+/** Why the value changed. Clearing is a reason, not a separate callback; `close-press` is the footer's confirm. */
 export type DateRangePickerChangeEventReason
-  = 'input-change' | 'input-clear' | 'item-press' | 'clear-press' | 'none'
+  = 'input-change' | 'input-clear' | 'item-press' | 'clear-press' | 'close-press' | 'none'
 
 export type DateRangePickerChangeEventDetails = ChangeEventDetails<DateRangePickerChangeEventReason>
 
@@ -80,6 +81,10 @@ type RangeEnd = 'from' | 'to'
 
 interface DateRangePickerContextValue extends DateRangePickerState {
   value: DateRange | null
+  /** What the inputs and calendar show: the staged range while confirming, the committed one otherwise. */
+  preview: DateRange | null
+  /** A `DateRangePickerFooter` is mounted: picks stage instead of committing. */
+  confirmMode: boolean
   drafts: Record<RangeEnd, string | null>
   clearable: boolean
   format: string
@@ -100,6 +105,11 @@ interface DateRangePickerContextValue extends DateRangePickerState {
   setOpen: (open: boolean, eventDetails: DateRangePickerOpenChangeEventDetails) => void
   month: Date
   setMonth: (month: Date) => void
+  /** Stages a range while confirming (`DateRangePickerFooter` mounted) instead of committing it. */
+  stage: (next: DateRange | null) => void
+  /** Commits the staged range (reason `close-press`) and closes. */
+  confirm: (event: Event) => void
+  setFooterMounted: (mounted: boolean) => void
 }
 
 const DateRangePickerContext = createContext<DateRangePickerContextValue | null>(null)
@@ -207,7 +217,7 @@ function RangeInput({
   ...props
 }: RangeInputProps): ReactElement {
   const field = useDateRangePickerContext()
-  const committed = field.value === null ? undefined : field.value[end]
+  const committed = field.preview === null ? undefined : field.preview[end]
   const text = field.drafts[end]
     ?? (committed === undefined ? '' : formatDate(committed, field.format, { locale: field.locale }))
   return (
@@ -259,7 +269,7 @@ function RangeInput({
           const disabledMatch = field.disabledDates !== undefined
             && dateMatchModifiers(day, field.disabledDates)
           if (!disabledMatch) {
-            const current = field.value
+            const current = field.preview
             let next: DateRange | null = null
             if (end === 'from') {
               // A start past the end drops the end rather than reordering:
@@ -281,7 +291,10 @@ function RangeInput({
               && next.from.getTime() === current.from.getTime()
               && next.to?.getTime() === current.to?.getTime()
             if (next !== null && !same) {
-              field.setValue(next, createChangeEventDetails('input-change', event.nativeEvent))
+              if (field.confirmMode)
+                field.stage(next)
+              else
+                field.setValue(next, createChangeEventDetails('input-change', event.nativeEvent))
               field.setMonth(day)
             }
           }
@@ -309,9 +322,12 @@ function RangeInput({
           field.commitDraft(end, event.nativeEvent)
           if (field.open) {
             // While the popup is open, Enter belongs to it — settling the
-            // draft, not submitting the form.
+            // draft, not submitting the form. Confirming, it IS the confirm.
             event.preventDefault()
-            field.setOpen(false, createChangeEventDetails('keyboard', event.nativeEvent))
+            if (field.confirmMode)
+              field.confirm(event.nativeEvent)
+            else
+              field.setOpen(false, createChangeEventDetails('keyboard', event.nativeEvent))
           }
         }
         if (event.key === 'ArrowDown' && !field.open && !field.readOnly)
@@ -438,9 +454,12 @@ export type DateRangePickerPopupProps
     & Pick<PopoverPrimitive.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>
     & {
       /**
-       * Replaces the default two-month calendar. A function receives the
-       * seam's calendar wiring — spread it into your own `<Calendar>` and add
-       * props on top: `{(calendar) => <Calendar {...calendar} numberOfMonths={1} />}`.
+       * Extends or replaces the popup's content. Plain children render BELOW
+       * the default two-month calendar
+       * (`<DateRangePickerPopup><DateRangePickerFooter …/></DateRangePickerPopup>`);
+       * a function replaces the calendar entirely — it receives the seam's
+       * wiring to spread into your own:
+       * `{(calendar) => <Calendar {...calendar} numberOfMonths={1} />}`.
        */
       children?: ReactNode | ReactNode[] | ((calendarProps: DateRangePickerCalendarProps) => ReactNode)
     }
@@ -460,14 +479,22 @@ export function DateRangePickerPopup({
   ...props
 }: DateRangePickerPopupProps): ReactElement {
   const field = useDateRangePickerContext()
+  // While confirming, the gesture evolves the staged range; committing (and
+  // closing on completion) is the footer's job.
+  const applyPick = (next: DateRange | null): void => {
+    if (field.confirmMode)
+      field.stage(next)
+    else
+      field.setValue(next, createChangeEventDetails('item-press'))
+  }
   const calendarProps: DateRangePickerCalendarProps = {
     mode: 'range',
-    selected: field.value ?? undefined,
+    selected: field.preview ?? undefined,
     onSelect: (range, triggerDate) => {
       field.setDraft('from', null)
       field.setDraft('to', null)
       if (range?.from === undefined) {
-        field.setValue(null, createChangeEventDetails('item-press'))
+        applyPick(null)
         return
       }
       // react-day-picker's first press reports `{from: day, to: day}`, which
@@ -475,17 +502,17 @@ export function DateRangePickerPopup({
       // instead: a fresh press (nothing yet, or a full range being restarted)
       // stores half a range, and react-day-picker continues from a half one
       // by completing it.
-      const startingFresh = field.value === null || field.value.to !== undefined
+      const startingFresh = field.preview === null || field.preview.to !== undefined
       if (startingFresh) {
-        field.setValue({ from: startOfDay(triggerDate) }, createChangeEventDetails('item-press'))
+        applyPick({ from: startOfDay(triggerDate) })
         return
       }
       const next: DateRange = range.to === undefined
         ? { from: range.from }
         : { from: range.from, to: range.to }
-      field.setValue(next, createChangeEventDetails('item-press'))
+      applyPick(next)
       // Half a range keeps the popup up — the gesture is not finished.
-      if (next.to !== undefined)
+      if (next.to !== undefined && !field.confirmMode)
         field.setOpen(false, createChangeEventDetails('item-press'))
     },
     month: field.month,
@@ -522,10 +549,110 @@ export function DateRangePickerPopup({
         >
           {typeof children === 'function'
             ? children(calendarProps)
-            : children ?? <Calendar {...calendarProps} />}
+            : (
+                <>
+                  <Calendar {...calendarProps} />
+                  {children}
+                </>
+              )}
         </PopoverPrimitive.Popup>
       </PopoverPrimitive.Positioner>
     </PopoverPrimitive.Portal>
+  )
+}
+
+export type DateRangePickerFooterProps = ComponentProps<'div'>
+export type DateRangePickerFooterClearProps = ComponentProps<typeof Button>
+export type DateRangePickerCancelProps = ComponentProps<typeof Button>
+export type DateRangePickerCloseProps = ComponentProps<typeof Button>
+
+/**
+ * The action row under the calendar — the DatePicker footer, addressed to
+ * this family: a layout shell whose presence switches the popup to confirm
+ * mode (picks and typed dates stage; `DateRangePickerClose` or Enter
+ * settles; `DateRangePickerCancel`, Escape or clicking away drops the staged
+ * range). Compose the action parts and their wording yourself, and normally
+ * include a `DateRangePickerClose` — without one, only Enter can settle.
+ */
+export function DateRangePickerFooter({ className, ...props }: DateRangePickerFooterProps): ReactElement {
+  const { setFooterMounted } = useDateRangePickerContext()
+  useEffect(() => {
+    setFooterMounted(true)
+    return () => setFooterMounted(false)
+  }, [setFooterMounted])
+  return (
+    <div
+      className={cn(`
+        flex items-center justify-end gap-2 border-bs border-border p-2
+      `, className)}
+      data-slot="date-range-picker-footer"
+      {...props}
+    />
+  )
+}
+
+/**
+ * Stages an empty range — the popup stays up, `DateRangePickerClose` settles
+ * it. `Footer` in the name only disambiguates from the input-side
+ * `DateRangePickerClear`.
+ */
+export function DateRangePickerFooterClear({ onClick, ...props }: DateRangePickerFooterClearProps): ReactElement {
+  const field = useDateRangePickerContext()
+  return (
+    <Button
+      data-slot="date-range-picker-footer-clear"
+      size="sm"
+      type="button"
+      {...props}
+      // After the spread: a caller listening for clicks must not silently
+      // take the clearing away.
+      onClick={(event) => {
+        onClick?.(event)
+        if (!event.defaultPrevented)
+          field.stage(null)
+      }}
+    />
+  )
+}
+
+/** Closes the popup without committing — the staged range is dropped. */
+export function DateRangePickerCancel({ onClick, ...props }: DateRangePickerCancelProps): ReactElement {
+  const field = useDateRangePickerContext()
+  return (
+    <Button
+      data-slot="date-range-picker-cancel"
+      size="sm"
+      type="button"
+      {...props}
+      // After the spread for the same reason as the clear's onClick.
+      onClick={(event) => {
+        onClick?.(event)
+        if (!event.defaultPrevented)
+          field.setOpen(false, createChangeEventDetails('close-press', event.nativeEvent))
+      }}
+    />
+  )
+}
+
+/**
+ * Close-and-commit — Base UI's word for exactly this: commits the staged
+ * range (reason `close-press`) and closes the popup.
+ */
+export function DateRangePickerClose({ onClick, ...props }: DateRangePickerCloseProps): ReactElement {
+  const field = useDateRangePickerContext()
+  return (
+    <Button
+      data-slot="date-range-picker-close"
+      size="sm"
+      type="button"
+      {...props}
+      // After the spread for the same reason as the clear's onClick.
+      onClick={(event) => {
+        onClick?.(event)
+        if (!event.defaultPrevented)
+          field.confirm(event.nativeEvent)
+      }}
+    />
   )
 }
 
@@ -574,6 +701,10 @@ export function DateRangePicker({
   const [month, setMonth] = useState<Date>(
     () => startOfDay((valueProp ?? defaultValue)?.from ?? new Date()),
   )
+  // Confirm mode's staging area: `undefined` = nothing staged. Only a footer
+  // (mounted while the popup is open) routes changes through here.
+  const [pending, setPending] = useState<DateRange | null | undefined>(undefined)
+  const [footerMounted, setFooterMounted] = useState(false)
 
   const rootRef = useRef<HTMLDivElement | null>(null)
   const popupRef = useRef<HTMLDivElement | null>(null)
@@ -641,7 +772,17 @@ export function DateRangePicker({
       return
     if (next)
       setMonth(startOfDay(value?.from ?? new Date()))
+    else
+      // Closing settles confirm mode: whatever was staged and not confirmed
+      // is dropped — dismissing IS the cancel (the MUI/antd treatment).
+      setPending(undefined)
     setOpenState(next)
+  }
+
+  const confirm = (event: Event): void => {
+    if (pending !== undefined)
+      setValue(pending, createChangeEventDetails('close-press', event))
+    setOpen(false, createChangeEventDetails('close-press', event))
   }
 
   const commitDraft = (end: RangeEnd, event: Event): void => {
@@ -650,12 +791,19 @@ export function DateRangePicker({
       return
     setDraft(end, null)
     if (draft.trim() === '') {
+      const current = pending !== undefined ? pending : value
       // Emptying the start clears the range (the anchor is gone); emptying
-      // the end keeps the start.
-      if (end === 'from' && value !== null)
-        setValue(null, createChangeEventDetails('input-clear', event))
-      if (end === 'to' && value?.to !== undefined)
-        setValue({ from: value.from }, createChangeEventDetails('input-clear', event))
+      // the end keeps the start. While confirming, the clear stages like
+      // every other popup-open change.
+      const next = end === 'from'
+        ? null
+        : current === null || current.to === undefined ? current : { from: current.from }
+      if (next !== current) {
+        if (footerMounted)
+          setPending(next)
+        else
+          setValue(next, createChangeEventDetails('input-clear', event))
+      }
     }
     // A parseable draft already committed on change; anything else reverts to
     // the formatted value by dropping the draft.
@@ -690,6 +838,8 @@ export function DateRangePicker({
   const context: DateRangePickerContextValue = {
     ...state,
     value,
+    preview: pending !== undefined ? pending : value,
+    confirmMode: footerMounted,
     drafts,
     clearable,
     format,
@@ -708,6 +858,9 @@ export function DateRangePicker({
     setOpen,
     month,
     setMonth,
+    stage: setPending,
+    confirm,
+    setFooterMounted,
   }
 
   const defaultChildren = (

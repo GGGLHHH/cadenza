@@ -39,7 +39,8 @@ DatePicker
 │  ├─ DatePickerClear
 │  └─ DatePickerTrigger
 └─ DatePickerPopup
-   └─ Calendar（默认）
+   ├─ Calendar（默认）
+   └─ DatePickerFooter（可选，组合即进入确认模式）
 ```
 
 输入侧的可见部件是 `InputGroup` 的组框——自己组合时照常用它的原名：
@@ -85,6 +86,21 @@ date-fns 直接 throw 提醒）。
 `<Calendar>` 再往上叠配置。
 
 <ComponentPreview name="date-picker/custom-calendar" />
+
+## 确认模式
+
+往弹层里组合 `DatePickerFooter`，点选和键入就从「即时提交」变成「暂存」：
+输入框实时预览暂存值，`DatePickerClose`（或 Enter）才提交并关闭——reason
+是 `close-press`；`DatePickerCancel`、Esc、点击外部都丢弃暂存。
+
+<ComponentPreview name="date-picker/footer" />
+
+Footer 是纯布局壳（`AlertDialogFooter` 同款）：动作部件、文案、variant
+都由使用方组合——库不带任何语言的默认文案。三个动作部件：
+`DatePickerFooterClear` 暂存 `null` 不关闭（名字里的 Footer 只为与输入侧
+`DatePickerClear` 消歧）；`DatePickerCancel` 关闭并丢弃暂存；
+`DatePickerClose` 提交并关闭——Base UI 词汇里「关闭并提交」的正名。
+通常应包含一个 `DatePickerClose`，否则只有 Enter 能提交。
 
 ## 受控
 
@@ -145,7 +161,7 @@ date-fns 直接 throw 提醒）。
 | --- | --- |
 | <kbd>ArrowDown</kbd> | 在输入框上打开弹层 |
 | <kbd>Escape</kbd> | 关闭弹层（值不动，事件不冒泡给外层 dialog） |
-| <kbd>Enter</kbd> | 结算当前输入；弹层开着时同时关闭且不提交表单 |
+| <kbd>Enter</kbd> | 结算当前输入；弹层开着时同时关闭且不提交表单（确认模式下就是「确定」） |
 | 日历内方向键 | react-day-picker 自带的日期漫游 |
 
 清除按钮与日历按钮都在 Tab 序之外——键盘路径是输入框：清空文本即清值，
@@ -206,11 +222,25 @@ ArrowDown 即开日历。
 Portal → Positioner → Popup 一体，锚定在根的盒子上。定位四件
 （`align` / `alignOffset` / `side` / `sideOffset`）给 Positioner，其余给
 Popup；`initialFocus` / `finalFocus` 由封装层钉死（焦点留在输入框、点选后
-回输入框）。函数 children 收 `DatePickerCalendarProps`（见
+回输入框）。普通 children 渲染在默认日历**下方**（放 Footer 的位置）；
+函数 children 收 `DatePickerCalendarProps` 替换日历（见
 [自定义日历](#自定义日历)）。
 
-11 个类型一并导出：`DatePickerProps` / `DatePickerState` /
+### DatePickerFooter
+
+日历下方的动作行，纯布局壳，组合即进入[确认模式](#确认模式)。收
+`ComponentProps<'div'>`。
+
+### DatePickerFooterClear / DatePickerCancel / DatePickerClose
+
+确认模式的三个动作按钮，都收 `ComponentProps<typeof Button>`（文案是
+children，variant 自定）：`FooterClear` 暂存 `null` 不关闭、`Cancel`
+丢弃暂存关闭、`Close` 提交暂存（`close-press`）关闭。
+
+15 个类型一并导出：`DatePickerProps` / `DatePickerState` /
 `DatePickerInputProps` / `DatePickerTriggerProps` / `DatePickerClearProps` /
-`DatePickerPopupProps` / `DatePickerCalendarProps` /
+`DatePickerPopupProps` / `DatePickerFooterProps` /
+`DatePickerFooterClearProps` / `DatePickerCancelProps` /
+`DatePickerCloseProps` / `DatePickerCalendarProps` /
 `DatePickerChangeEventReason` / `DatePickerChangeEventDetails` /
 `DatePickerOpenChangeEventReason` / `DatePickerOpenChangeEventDetails`。

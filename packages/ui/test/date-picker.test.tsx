@@ -2,7 +2,14 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { DatePicker } from '../src/components/date-picker'
+import {
+  DatePicker,
+  DatePickerCancel,
+  DatePickerClose,
+  DatePickerFooter,
+  DatePickerFooterClear,
+  DatePickerPopup,
+} from '../src/components/date-picker'
 import { Field, FieldLabel } from '../src/components/field'
 
 // Fixed dates keep the calendar's grid deterministic: August 2026 starts on a
@@ -240,6 +247,103 @@ describe('date-picker', () => {
     // a token-format judge would drop this draft and reformat mid-typing.
     await user.type(getInput(), '20260801')
     expect(getInput().value).toBe('20260801')
+  })
+
+  describe('footer / confirm mode', () => {
+    function renderWithFooter(props: Partial<Parameters<typeof DatePicker>[0]> = {}): ReturnType<typeof vi.fn> {
+      const onValueChange = vi.fn()
+      render(
+        <DatePicker aria-label="日期" defaultValue={AUG_16} onValueChange={onValueChange} {...props}>
+          {({ defaultChildren }) => (
+            <>
+              {defaultChildren}
+              <DatePickerPopup>
+                <DatePickerFooter>
+                  <DatePickerFooterClear className="me-auto" variant="ghost">清除</DatePickerFooterClear>
+                  <DatePickerCancel variant="outline">取消</DatePickerCancel>
+                  <DatePickerClose>确定</DatePickerClose>
+                </DatePickerFooter>
+              </DatePickerPopup>
+            </>
+          )}
+        </DatePicker>,
+      )
+      return onValueChange
+    }
+
+    async function openPopup(): Promise<void> {
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Open calendar' }))
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+    }
+
+    it('renders the composed action parts with the caller\'s wording', async () => {
+      renderWithFooter()
+      await openPopup()
+      expect(screen.getByRole('button', { name: '清除' })).not.toBeNull()
+      expect(screen.getByRole('button', { name: '取消' })).not.toBeNull()
+      expect(screen.getByRole('button', { name: '确定' })).not.toBeNull()
+    })
+
+    it('keeps the default calendar when the popup composes only a footer', async () => {
+      renderWithFooter()
+      await openPopup()
+      // Plain children append below the calendar rather than replacing it.
+      expect(queryCalendar()).not.toBeNull()
+    })
+
+    it('stages a pick instead of committing: value lands only on confirm, with reason close-press', async () => {
+      const onValueChange = renderWithFooter()
+      await openPopup()
+      await clickDay('20')
+      // Staged, not committed — and the popup stays up.
+      expect(onValueChange).not.toHaveBeenCalled()
+      expect(queryCalendar()).not.toBeNull()
+      // The input previews the staged date.
+      expect(getInput().value).toBe('2026-08-20')
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: '确定' }))
+      const [value, details] = onValueChange.mock.lastCall as [Date, { reason: string }]
+      expect(value.getDate()).toBe(20)
+      expect(details.reason).toBe('close-press')
+      await waitFor(() => expect(queryCalendar()).toBeNull())
+    })
+
+    it('cancel discards the staged pick and closes without a value change', async () => {
+      const onValueChange = renderWithFooter()
+      await openPopup()
+      await clickDay('20')
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: '取消' }))
+      expect(onValueChange).not.toHaveBeenCalled()
+      await waitFor(() => expect(queryCalendar()).toBeNull())
+      expect(getInput().value).toBe('2026-08-16')
+    })
+
+    it('escape acts as cancel: the staged pick is dropped', async () => {
+      const onValueChange = renderWithFooter()
+      await openPopup()
+      await clickDay('20')
+      const user = userEvent.setup()
+      await user.click(getInput())
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(queryCalendar()).toBeNull())
+      expect(onValueChange).not.toHaveBeenCalled()
+      expect(getInput().value).toBe('2026-08-16')
+    })
+
+    it('clear stages an empty value; confirm then commits null', async () => {
+      const onValueChange = renderWithFooter()
+      await openPopup()
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: '清除' }))
+      // Staged only: nothing committed yet, the input previews empty.
+      expect(onValueChange).not.toHaveBeenCalled()
+      expect(getInput().value).toBe('')
+      await user.click(screen.getByRole('button', { name: '确定' }))
+      const [value] = onValueChange.mock.lastCall as [Date | null]
+      expect(value).toBeNull()
+    })
   })
 
   it('wires a FieldLabel to the input through htmlFor', async () => {
