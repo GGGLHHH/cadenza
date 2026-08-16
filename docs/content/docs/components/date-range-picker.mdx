@@ -1,0 +1,152 @@
+---
+title: DateRangePicker
+description: 两端可键入的日期区间输入 + 双月日历——第一次点定起点，第二次点收尾
+---
+
+<ComponentPreview name="date-range-picker/basic" />
+
+日期区间的完整控件，[DatePicker](/docs/components/date-picker) 的双端版。
+两个输入框各管一端，都可以直接键入；日历里第一次点是起点（弹层留着），
+第二次点收尾并关闭，再点一次重新开始。值的键名是 react-day-picker 的
+`from` / `to`，原样传给日历；部件名用它 UI 侧的词（`range_start` /
+`range_end`）：`StartInput` 编辑 `from`，`EndInput` 编辑 `to`。
+
+键入的起点越过终点时，终点清空而不是悄悄换位——正在编辑的框必须显示
+用户键入的东西。
+
+## 使用
+
+```tsx
+import { DateRangePicker } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<DateRangePicker aria-label="日期范围" startPlaceholder="开始" endPlaceholder="结束" />
+```
+
+不写 children 就有完整默认组合。根是 `role="group"`，`aria-label` 落在组上；
+两个输入框自带英文无障碍名（Start date / End date），组合时可覆盖。`id`
+转发给起点输入框，`FieldLabel htmlFor` 直连它。
+
+## 组成
+
+写了 children 就替换输入侧；弹层默认在场，组合了 `DateRangePickerPopup`
+才让位。标记部件必须是根的直接子节点或裹在 Fragment 里。
+
+```text
+DateRangePicker
+├─ InputGroup
+│  ├─ DateRangePickerStartInput
+│  ├─ （分隔图标）
+│  ├─ DateRangePickerEndInput
+│  ├─ DateRangePickerClear
+│  └─ DateRangePickerTrigger
+└─ DateRangePickerPopup
+   └─ Calendar（默认，numberOfMonths=2）
+```
+
+## 受控
+
+值是 `{ from: Date, to?: Date } | null`：选到一半是 `{ from }`（`to` 还空着），
+半程也会走 `onValueChange`；`null` 是受控空值。`details.reason` /
+`details.cancel()` 与 DatePicker 同一套协议。
+
+<ComponentPreview name="date-range-picker/controlled" />
+
+清空起点输入框离开会清掉整个区间（锚点没了）；清空终点只回到半程。
+
+## 表单
+
+有 `name` 就渲染两个常驻同名 hidden input（起、止各一，`yyyy-MM-dd`，
+空端是 `''`），`FormData.getAll(name)` 一次拿到两端。必填校验放表单层做。
+与 TanStack Form 的绑定见
+[表单指南](/docs/forms/tanstack-form#daterangepicker)。
+
+<ComponentPreview name="date-range-picker/form" />
+
+## 禁用
+
+与 DatePicker 相同：`disabled` 禁整个控件（hidden input 不参与提交）；
+`readOnly` 只锁编辑，默认组合摘掉清除与日历按钮（`InputGroup` 的
+`has-disabled` 变暗契约，理由见
+[DatePicker 的禁用节](/docs/components/date-picker#禁用)）。
+
+## 什么时候用 DateRangePicker
+
+起止成对出现（入住—退房、报表区间）用它；单个日期用
+[DatePicker](/docs/components/date-picker)。`format` / `locale` /
+`disabledDates` 与 DatePicker 完全同款，此处不再重复演示。
+
+## 状态与 className
+
+根是普通 `<div>`（`role="group"`），`className` 就是字符串。
+
+| 属性 | 出现时机 |
+| --- | --- |
+| `data-empty` | 没有值 |
+| `data-open` | 弹层开着 |
+| `data-disabled` | `disabled` |
+| `data-readonly` | `readOnly` |
+
+| data-slot | 是什么 |
+| --- | --- |
+| `date-range-picker` | 根 |
+| `date-range-picker-trigger` / `-addon` | 日历按钮及其 addon |
+| `date-range-picker-clear` / `-addon` | 清除按钮及其 addon |
+| `date-range-picker-popup` | 弹层 |
+
+两个输入框都不带自己的 data-slot（`input-group-control` 焦点环契约，
+同 DatePicker）。
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| <kbd>Tab</kbd> | 起点 → 终点；换框时结算当前框的草稿 |
+| <kbd>ArrowDown</kbd> | 在任一输入框上打开弹层 |
+| <kbd>Escape</kbd> | 关闭弹层（值不动） |
+| <kbd>Enter</kbd> | 结算当前框；弹层开着时同时关闭且不提交表单 |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### DateRangePicker
+
+根。与 [DatePicker 的根](/docs/components/date-picker#datepicker) 同构，
+差异只有值类型与占位：
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultValue` | `DateRange \| null` | — | 非受控初始值 |
+| `value` | `DateRange \| null` | — | 受控值；`null` 是受控空值 |
+| `onValueChange` | `(value, details) => void` | — | 半程也会触发；`details.cancel()` 拒绝 |
+| `startPlaceholder` | `string` | — | 起点输入框占位 |
+| `endPlaceholder` | `string` | — | 终点输入框占位 |
+| `name` | `string` | — | 有则渲染两个同名 hidden input |
+| `id` | `string` | — | 转发给起点输入框 |
+| `aria-label` | `string` | — | 组的无障碍名（根 `role="group"`） |
+| 其余 | 同 DatePicker（`open` 三件、`format` / `locale` / `disabledDates`、`disabled` / `readOnly` / `clearable` / `modal`、`children`）+ `ComponentProps<'div'>` | — | 契约同款 |
+
+### DateRangePickerStartInput / DateRangePickerEndInput
+
+两端的真 `<input>`，分别编辑 `from` / `to`，各带英文无障碍名可覆盖。都收
+`ComponentProps<typeof InputGroupInput>`。
+
+### DateRangePickerTrigger / DateRangePickerClear
+
+与 DatePicker 的同名部件同款（清除的 `aria-label` 是 Clear dates，一次清
+两端）。都收 `ComponentProps<typeof InputGroupButton>`。
+
+### DateRangePickerPopup
+
+与 `DatePickerPopup` 同款三层；函数 children 收
+`DateRangePickerCalendarProps`（`mode: 'range'`、双月），spread 进自己的
+`<Calendar>` 可改月数、布局等。
+
+12 个类型一并导出：`DateRange` / `DateRangePickerProps` /
+`DateRangePickerState` / `DateRangePickerStartInputProps` /
+`DateRangePickerEndInputProps` / `DateRangePickerTriggerProps` /
+`DateRangePickerClearProps` / `DateRangePickerPopupProps` /
+`DateRangePickerCalendarProps` / `DateRangePickerChangeEventReason` /
+`DateRangePickerChangeEventDetails` / `DateRangePickerOpenChangeEventDetails`。

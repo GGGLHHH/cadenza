@@ -1,0 +1,204 @@
+---
+title: DatePicker
+description: 可键入的日期输入框 + 日历弹层——打字即生效，点选即提交
+---
+
+<ComponentPreview name="date-picker/basic" />
+
+日期选择的完整控件。中间是真 `<input>`：直接键入「2026-08-16」解析成功就立即
+生效，日历同步跳到那个月；也可以点日历按钮（或按 ArrowDown）打开弹层点选。
+Base UI 没有日期组件，这套行为是封装层自己的——输入壳复用 `InputGroup`，
+弹层是 Base UI Popover，面板是同样导出的 `Calendar`（react-day-picker）。
+
+非法输入不落值：合法前值一直保留，离开字段时非法文本回退成上一次提交值的
+格式化显示；清空文本离开则清值。
+
+## 使用
+
+```tsx
+import { DatePicker } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<DatePicker aria-label="日期" placeholder="选择日期" />
+```
+
+不写 children 就有完整默认组合。标签走普通通道：根上的 `id` 转发给内层输入框，
+`FieldLabel htmlFor` 直连；没有可见标签时传 `aria-label`，默认组合会转交给
+输入框。
+
+## 组成
+
+写了 children 就替换输入侧（输入框、清除、日历按钮）；弹层默认在场，组合了
+`DatePickerPopup` 才让位。标记部件必须是根的直接子节点或裹在 Fragment 里。
+
+```text
+DatePicker
+├─ InputGroup
+│  ├─ DatePickerInput
+│  ├─ DatePickerClear
+│  └─ DatePickerTrigger
+└─ DatePickerPopup
+   └─ Calendar（默认）
+```
+
+输入侧的可见部件是 `InputGroup` 的组框——自己组合时照常用它的原名：
+
+```tsx
+<DatePicker aria-label="日期">
+  <InputGroup>
+    <DatePickerInput placeholder="选择日期" />
+    <DatePickerTrigger />
+  </InputGroup>
+</DatePicker>
+```
+
+## 格式与本地化
+
+`format` 是 date-fns token，同时管显示与解析；`locale` 一并喂给格式化和日历。
+
+<ComponentPreview name="date-picker/format" />
+
+表单序列化不跟随 `format`——hidden input 始终是 `yyyy-MM-dd`（见[表单](#表单)）。
+
+## 禁用日期
+
+`disabledDates` 收 react-day-picker 的 matcher（单日、区间、`before`/`after`、
+函数都行）。日历里点不了，键入同样被拒。
+
+<ComponentPreview name="date-picker/disabled-dates" />
+
+## 自定义日历
+
+`DatePickerPopup` 的函数 children 拿到接好线的日历 props，spread 进自己的
+`<Calendar>` 再往上叠配置。
+
+<ComponentPreview name="date-picker/custom-calendar" />
+
+## 受控
+
+`value` / `defaultValue` / `onValueChange(value, details)`——受控空值是
+`null`；`details.reason` 区分来源（键入 `input-change`、点选 `item-press`、
+清除 `clear-press` / `input-clear`），`details.cancel()` 拒绝这次变更。
+弹层开合是并列的一套：`open` / `defaultOpen` / `onOpenChange(open, details)`。
+
+<ComponentPreview name="date-picker/controlled" />
+
+## 表单
+
+有 `name` 就渲染一个常驻 hidden input：空值序列化成 `''`、有值是
+`yyyy-MM-dd`，与显示格式无关。hidden input 对原生约束校验不可见，必填校验
+放表单层做；视觉星号交给 `FieldLabel required`。与 TanStack Form 的绑定见
+[表单指南](/docs/forms/tanstack-form#datepicker)。
+
+<ComponentPreview name="date-picker/form" />
+
+## 禁用
+
+`disabled` 禁整个控件（hidden input 一并 `disabled`，不参与提交）。
+`readOnly` 只锁编辑：默认组合会摘掉清除与日历按钮——不是省事，是因为
+`InputGroup` 会为任何 disabled 后代整体变暗（`has-disabled:opacity-50`），
+留一个禁用按钮会让只读字段看起来像禁用字段。
+
+## 什么时候用 DatePicker
+
+选单个日期用它；选一段区间（入住—退房、起止日期）用
+[DateRangePicker](/docs/components/date-range-picker)——两端输入框 + 双月
+日历，值是 `{ from, to }`。只要日历面板不要输入框时直接用 `Calendar`。
+
+## 状态与 className
+
+根是普通 `<div>`，`className` 就是字符串；状态从根上的 data 属性读。
+
+| 属性 | 出现时机 |
+| --- | --- |
+| `data-empty` | 没有值 |
+| `data-open` | 弹层开着 |
+| `data-disabled` | `disabled` |
+| `data-readonly` | `readOnly` |
+
+| data-slot | 是什么 |
+| --- | --- |
+| `date-picker` | 根 |
+| `date-picker-trigger` / `-addon` | 日历按钮及其 addon |
+| `date-picker-clear` / `-addon` | 清除按钮及其 addon |
+| `date-picker-popup` | 弹层 |
+
+`DatePickerInput` 刻意不带自己的 data-slot：`InputGroupInput` 的
+`data-slot="input-group-control"` 是 `InputGroup` 画焦点环的契约，覆盖它
+整个组框就不亮环了。
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| <kbd>ArrowDown</kbd> | 在输入框上打开弹层 |
+| <kbd>Escape</kbd> | 关闭弹层（值不动，事件不冒泡给外层 dialog） |
+| <kbd>Enter</kbd> | 结算当前输入；弹层开着时同时关闭且不提交表单 |
+| 日历内方向键 | react-day-picker 自带的日期漫游 |
+
+清除按钮与日历按钮都在 Tab 序之外——键盘路径是输入框：清空文本即清值，
+ArrowDown 即开日历。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### DatePicker
+
+根。不写 children 渲染完整默认组合；有 `name` 时在弹层外渲染常驻 hidden input。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultValue` | `Date \| null` | — | 非受控初始值 |
+| `value` | `Date \| null` | — | 受控值；`null` 是受控空值 |
+| `onValueChange` | `(value, details) => void` | — | 每次提交变更；`details.cancel()` 拒绝 |
+| `defaultOpen` | `boolean` | `false` | 弹层初始开合 |
+| `open` | `boolean` | — | 受控弹层 |
+| `onOpenChange` | `(open, details) => void` | — | 弹层开合；`details.cancel()` 保持原样 |
+| `onOpenChangeComplete` | `(open) => void` | — | 开合动画完成后 |
+| `actionsRef` | Base UI Popover 的 actions | — | 命令式 `unmount` / `close` |
+| `format` | `string` | `'yyyy-MM-dd'` | 显示与解析格式（date-fns token） |
+| `locale` | date-fns `Locale` | — | 格式化、解析与日历文案 |
+| `disabledDates` | `Matcher \| Matcher[]` | — | 禁选日期；键入同样被拒 |
+| `name` | `string` | — | 有则渲染 hidden input（`yyyy-MM-dd`） |
+| `disabled` | `boolean` | `false` | 禁用 |
+| `readOnly` | `boolean` | `false` | 只读；默认组合摘掉两个按钮 |
+| `clearable` | `boolean` | `true` | 清除总开关；`false` 连显式组合的也关 |
+| `modal` | Base UI 的 `modal` | `false` | 钉为 false：行内控件不锁页面 |
+| `placeholder` | `string` | — | 默认组合输入框的占位 |
+| `id` | `string` | — | 转发给输入框，`FieldLabel htmlFor` 直连 |
+| `aria-label` | `string` | — | 默认组合输入框的无障碍名 |
+| `children` | `ReactNode \| (state & { defaultChildren }) => ReactNode` | — | 替换输入侧 |
+| 其余 | `ComponentProps<'div'>` | — | 透传到根 |
+
+### DatePickerInput
+
+真 `<input>`，从 context 读文本与接线，组合进 `InputGroup` 任意位置。聚焦时
+显示原始草稿，失焦显示格式化值。收 `ComponentProps<typeof InputGroupInput>`。
+
+### DatePickerTrigger
+
+日历按钮（含自己的 `InputGroupAddon`），点击开合弹层。默认日历图标 +
+英文 `aria-label`（Open calendar），`tabIndex={-1}`。收
+`ComponentProps<typeof InputGroupButton>`。
+
+### DatePickerClear
+
+清除按钮（含自己的 addon），空值时靠根的 `data-empty` 隐藏；`clearable`
+为 `false` 时整个不渲染。默认 ✕ 图标 + 英文 `aria-label`（Clear date），
+`tabIndex={-1}`。收 `ComponentProps<typeof InputGroupButton>`。
+
+### DatePickerPopup
+
+Portal → Positioner → Popup 一体，锚定在根的盒子上。定位四件
+（`align` / `alignOffset` / `side` / `sideOffset`）给 Positioner，其余给
+Popup；`initialFocus` / `finalFocus` 由封装层钉死（焦点留在输入框、点选后
+回输入框）。函数 children 收 `DatePickerCalendarProps`（见
+[自定义日历](#自定义日历)）。
+
+11 个类型一并导出：`DatePickerProps` / `DatePickerState` /
+`DatePickerInputProps` / `DatePickerTriggerProps` / `DatePickerClearProps` /
+`DatePickerPopupProps` / `DatePickerCalendarProps` /
+`DatePickerChangeEventReason` / `DatePickerChangeEventDetails` /
+`DatePickerOpenChangeEventReason` / `DatePickerOpenChangeEventDetails`。

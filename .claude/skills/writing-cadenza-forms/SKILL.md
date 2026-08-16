@@ -73,6 +73,8 @@ const form = useForm({
 | --- | --- | --- | --- | --- | --- |
 | Input / Textarea / InputOTP | `value` + `onChange` | 控件本体 | ✅ 整体展开 | — | `z.string().min(n)`;OTP `regex(/^\d{6}$/)` |
 | NumberField | `value` / `onValueChange`(`number \| null`) | **根**(`id`+`name`) | ❌ | `NumberFieldInput` 上接 describedby/invalid/onBlur | `.nullable().refine(v => v !== null, '必填文案')`,无字符串转换 |
+| DatePicker | `value` / `onValueChange`(`Date \| null`) | **根**(`id`+`name`,id 转发给输入框) | ❌ | `DatePickerInput` 上接 describedby/invalid/onBlur | `z.date().nullable().refine(v => v !== null, '…')`,非法键入不落值 |
+| DateRangePicker | `value` / `onValueChange`(`{from,to} \| null`,半程 `{from}` 也入表) | **根**(id 落起点输入框) | ❌ | Start/End 两个 Input **各自**接 describedby/invalid/onBlur | `z.object({from:z.date(),to:z.date().optional()}).nullable().refine(v => v !== null && v.to !== undefined, '…')` |
 | Select | `value \|\| null` / `onValueChange(v ?? '')` | **SelectTrigger** | ❌ | trigger 上接 describedby/invalid | `z.string().min(1, '请选择')` |
 | RadioGroup | 组上 `value`/`onValueChange` | 无(组接 `aria-labelledby` 指 `FieldLegend` 的 id) | ❌ | 各 item 接 describedby/invalid | `z.string().min(1)` |
 | Checkbox / Switch | `checked` / `onCheckedChange` | 控件本体(隐藏 input) | ❌(手写 id+aria) | 本体 | 必勾 `z.boolean().refine(Boolean, '…')` |

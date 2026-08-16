@@ -17,6 +17,7 @@
     "@orama/tokenizers": "catalog:docs",
     "@tabler/icons-react": "catalog:ui",
     "clsx": "catalog:ui",
+    "date-fns": "catalog:ui",
     "fumadocs-core": "catalog:docs",
     "fumadocs-mdx": "catalog:docs",
     "next": "catalog:docs",

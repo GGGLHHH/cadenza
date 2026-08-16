@@ -60,8 +60,10 @@
     "ahooks": "catalog:ui",
     "class-variance-authority": "catalog:ui",
     "clsx": "catalog:ui",
+    "date-fns": "catalog:ui",
     "input-otp": "catalog:ui",
     "motion": "catalog:ui",
+    "react-day-picker": "catalog:ui",
     "tailwind-merge": "catalog:ui"
   },
   "devDependencies": {
@@ -69,11 +71,9 @@
     "@types/lodash": "catalog:types",
     "@types/node": "catalog:types",
     "cmdk": "catalog:ui",
-    "date-fns": "catalog:ui",
     "embla-carousel-react": "catalog:ui",
     "next-themes": "catalog:ui",
     "react": "catalog:react",
-    "react-day-picker": "catalog:ui",
     "react-dom": "catalog:react",
     "react-resizable-panels": "catalog:ui",
     "recharts": "catalog:ui",
