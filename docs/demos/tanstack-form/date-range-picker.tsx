@@ -24,13 +24,18 @@ import { IconArrowNarrowRight } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// DateRangePicker 绑定:值是 { from, to } | null,选到一半是 { from }
-// (to 还空着)也会入表 —— 完整性用 refine 把关,半程和空值给同一句文案。
+// DateRangePicker 绑定:值是 { from?, to? } | null。两端都可选 —— 先点哪个
+// 输入框就先填哪一端,所以只有 from 或只有 to 的半程都会入表。两端都写
+// optional,否则半程会撞上 zod 自己的必填报错、绕过下面这句文案;完整性
+// 统一由 refine 把关,半程和空值给同一句。
 const schema = z.object({
   stay: z
-    .object({ from: z.date(), to: z.date().optional() })
+    .object({ from: z.date().optional(), to: z.date().optional() })
     .nullable()
-    .refine(value => value !== null && value.to !== undefined, '请选择完整的入住区间'),
+    .refine(
+      value => value !== null && value.from !== undefined && value.to !== undefined,
+      '请选择完整的入住区间',
+    ),
 })
 
 export default function DateRangePickerDemo(): ReactElement {

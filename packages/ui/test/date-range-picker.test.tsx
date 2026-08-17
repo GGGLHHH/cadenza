@@ -66,7 +66,45 @@ describe('date-range-picker', () => {
     expect(value.to?.getDate()).toBe(20)
   })
 
-  it('drops the end when a typed start passes it', async () => {
+  it('sorts a typed end that undercuts the start, as soon as the text is a whole date', async () => {
+    const onValueChange = vi.fn()
+    render(
+      <DateRangePicker
+        aria-label="日期范围"
+        defaultValue={{ from: AUG_20 }}
+        onValueChange={onValueChange}
+      />,
+    )
+    const [start, end] = getInputs()
+    const user = userEvent.setup()
+    await user.type(end, '2026-08-10')
+    // No need to leave the field: the last keystroke makes it a whole date,
+    // and two days sort into a range exactly as two presses would.
+    const [value] = onValueChange.mock.lastCall as [{ from?: Date, to?: Date }]
+    expect(value.from?.getDate()).toBe(10)
+    expect(value.to?.getDate()).toBe(20)
+    expect(start.value).toBe('2026-08-10')
+  })
+
+  it('holds back halfway text that would move the other end', async () => {
+    const onValueChange = vi.fn()
+    render(
+      <DateRangePicker
+        aria-label="日期范围"
+        defaultValue={{ from: AUG_20 }}
+        onValueChange={onValueChange}
+      />,
+    )
+    const [start, end] = getInputs()
+    const user = userEvent.setup()
+    // "2026-08-1" parses as the 1st, which would sort ahead of the start —
+    // but it is a date still being typed, so the start must not move.
+    await user.type(end, '2026-08-1')
+    expect(start.value).toBe('2026-08-20')
+    expect(onValueChange).not.toHaveBeenCalled()
+  })
+
+  it('swaps rather than clearing when a typed start passes the end', async () => {
     const onValueChange = vi.fn()
     render(
       <DateRangePicker
@@ -76,13 +114,15 @@ describe('date-range-picker', () => {
       />,
     )
     const user = userEvent.setup()
-    const [start] = getInputs()
+    const [start, end] = getInputs()
     await user.clear(start)
     await user.type(start, '2026-08-25')
-    const [value] = onValueChange.mock.lastCall as [{ from: Date, to?: Date }]
-    expect(value.from.getDate()).toBe(25)
-    // An inverted range is not silently reordered: the end clears instead.
-    expect(value.to).toBeUndefined()
+    // Same rule as a press, on the keystroke that completes the date: the
+    // two days swap roles, neither is thrown away.
+    const [value] = onValueChange.mock.lastCall as [{ from?: Date, to?: Date }]
+    expect(value.from?.getDate()).toBe(20)
+    expect(value.to?.getDate()).toBe(25)
+    expect(end.value).toBe('2026-08-25')
   })
 
   it('picks a full range in the calendar and closes only once it is complete', async () => {
@@ -105,6 +145,147 @@ describe('date-range-picker', () => {
     expect(end.value).toBe('2026-08-20')
   })
 
+  describe('active end — the pressed input decides which end the calendar fills', () => {
+    it('opening from the end input fills the end first, leaving the start empty', async () => {
+      const onValueChange = vi.fn()
+      render(<DateRangePicker aria-label="日期范围" onValueChange={onValueChange} />)
+      const [start, end] = getInputs()
+      const user = userEvent.setup()
+      await user.click(end)
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      await clickDay('20')
+      expect(end.value).toBe('2026-08-20')
+      expect(start.value).toBe('')
+      const [value] = onValueChange.mock.lastCall as [{ from?: Date, to?: Date }]
+      expect(value.from).toBeUndefined()
+      expect(value.to?.getDate()).toBe(20)
+      // Half a range, so the popup stays up for the other end.
+      expect(queryCalendar()).not.toBeNull()
+    })
+
+    it('hops the active end after a pick, so the next press completes the range', async () => {
+      const onValueChange = vi.fn()
+      render(<DateRangePicker aria-label="日期范围" onValueChange={onValueChange} />)
+      const [start, end] = getInputs()
+      const user = userEvent.setup()
+      await user.click(end)
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      await clickDay('20')
+      // The end is filled, so the active end hopped to the start.
+      await clickDay('10')
+      expect(start.value).toBe('2026-08-10')
+      expect(end.value).toBe('2026-08-20')
+      const [value] = onValueChange.mock.lastCall as [{ from?: Date, to?: Date }]
+      expect(value.from?.getDate()).toBe(10)
+      expect(value.to?.getDate()).toBe(20)
+    })
+
+    it('pressing the start input re-aims the calendar at the start', async () => {
+      render(
+        <DateRangePicker aria-label="日期范围" defaultValue={{ from: AUG_10, to: AUG_20 }} />,
+      )
+      const [start, end] = getInputs()
+      const user = userEvent.setup()
+      await user.click(start)
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      await clickDay('15')
+      expect(start.value).toBe('2026-08-15')
+      expect(end.value).toBe('2026-08-20')
+    })
+
+    it('moves focus to the other end after filling one, so two presses need no reaching', async () => {
+      render(<DateRangePicker aria-label="日期范围" />)
+      const [start, end] = getInputs()
+      const user = userEvent.setup()
+      await user.click(start)
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      await clickDay('10')
+      await waitFor(() => expect(document.activeElement).toBe(end))
+    })
+
+    it('leaves the caret in the input the completing pick landed in', async () => {
+      render(<DateRangePicker aria-label="日期范围" />)
+      const [start, end] = getInputs()
+      const user = userEvent.setup()
+      await user.click(start)
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      // Half a range: focus goes to the end still waiting to be filled.
+      await clickDay('10')
+      await waitFor(() => expect(document.activeElement).toBe(end))
+      // Completing it: nothing is left to fill, so the caret stays where the
+      // pick landed rather than hopping away from the user's last move.
+      await clickDay('20')
+      await waitFor(() => expect(queryCalendar()).toBeNull())
+      await waitFor(() => expect(document.activeElement).toBe(end))
+    })
+
+    it('follows the pick into the other input when sorting moves it there', async () => {
+      render(<DateRangePicker aria-label="日期范围" />)
+      const [start, end] = getInputs()
+      const user = userEvent.setup()
+      await user.click(start)
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      await clickDay('20')
+      await waitFor(() => expect(document.activeElement).toBe(end))
+      // Aimed at the end, but the earlier day sorts into the start — the
+      // caret follows the day, not the end that was aimed at.
+      await clickDay('10')
+      await waitFor(() => expect(queryCalendar()).toBeNull())
+      await waitFor(() => expect(document.activeElement).toBe(start))
+    })
+
+    it('sorts two picks into a range instead of letting the second wipe the first', async () => {
+      const onValueChange = vi.fn()
+      render(<DateRangePicker aria-label="日期范围" onValueChange={onValueChange} />)
+      const [start, end] = getInputs()
+      const user = userEvent.setup()
+      await user.click(end)
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      await clickDay('20')
+      expect(end.value).toBe('2026-08-20')
+      // Focus hopped to the start, and the day pressed there falls earlier.
+      // Half a range means the user is still assembling one, so two days are
+      // two days — they sort into a range rather than one deleting the other.
+      await clickDay('10')
+      expect(start.value).toBe('2026-08-10')
+      expect(end.value).toBe('2026-08-20')
+    })
+
+    it('the same two presses in the other order land the same range', async () => {
+      render(<DateRangePicker aria-label="日期范围" />)
+      const [start, end] = getInputs()
+      const user = userEvent.setup()
+      await user.click(start)
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      await clickDay('20')
+      expect(start.value).toBe('2026-08-20')
+      await clickDay('10')
+      expect([start.value, end.value]).toEqual(['2026-08-10', '2026-08-20'])
+    })
+
+    it('swaps rather than clearing when a press inverts a complete range', async () => {
+      render(
+        <DateRangePicker aria-label="日期范围" defaultValue={{ from: AUG_10, to: AUG_20 }} />,
+      )
+      const [start, end] = getInputs()
+      const user = userEvent.setup()
+      await user.click(start)
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      // Pressing a day past the end in the start input: the two days swap
+      // roles rather than one being thrown away. Clearing would cost the
+      // user a date they never asked to lose.
+      await clickDay('25')
+      expect(start.value).toBe('2026-08-20')
+      expect(end.value).toBe('2026-08-25')
+    })
+
+    it('serializes an end-only range with an empty start input', () => {
+      render(<DateRangePicker aria-label="日期范围" name="stay" value={{ to: AUG_20 }} />)
+      const hidden = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="stay"]'))
+      expect(hidden.map(input => input.value)).toEqual(['', '2026-08-20'])
+    })
+  })
+
   it('clears the whole range from the clear button', async () => {
     const onValueChange = vi.fn()
     render(
@@ -124,7 +305,7 @@ describe('date-range-picker', () => {
     expect(end.value).toBe('')
   })
 
-  it('emptying the start clears the range, emptying the end keeps the start', async () => {
+  it('emptying either input clears only that end, and the range once both are gone', async () => {
     const onValueChange = vi.fn()
     render(
       <div>
@@ -139,12 +320,13 @@ describe('date-range-picker', () => {
     const user = userEvent.setup()
     const outside = screen.getByRole('button', { name: '外部' })
     const [start, end] = getInputs()
-    await user.clear(end)
-    await user.click(outside)
-    let [value] = onValueChange.mock.lastCall as [{ from: Date, to?: Date } | null]
-    expect(value?.from.getDate()).toBe(10)
-    expect(value?.to).toBeUndefined()
     await user.clear(start)
+    await user.click(outside)
+    // The start is not an anchor the rest hangs off — the end stands alone.
+    let [value] = onValueChange.mock.lastCall as [{ from?: Date, to?: Date } | null]
+    expect(value?.from).toBeUndefined()
+    expect(value?.to?.getDate()).toBe(20)
+    await user.clear(end)
     await user.click(outside)
     ;[value] = onValueChange.mock.lastCall as [null]
     expect(value).toBeNull()
@@ -267,69 +449,6 @@ describe('date-range-picker', () => {
       await user.click(screen.getByRole('button', { name: '确定' }))
       const reasons = onValueChange.mock.calls.map(([, details]) => (details as { reason: string }).reason)
       expect(reasons).not.toContain('close-press')
-    })
-
-    it('adjusts the nearer end instead of restarting — the shadcn gesture', async () => {
-      const onValueChange = vi.fn()
-      render(
-        <DateRangePicker
-          aria-label="日期范围"
-          defaultValue={{ from: AUG_10, to: AUG_20 }}
-          onValueChange={onValueChange}
-        >
-          {({ defaultChildren }) => (
-            <>
-              {defaultChildren}
-              <DateRangePickerPopup>
-                <DateRangePickerFooter>
-                  <DateRangePickerClose>确定</DateRangePickerClose>
-                </DateRangePickerFooter>
-              </DateRangePickerPopup>
-            </>
-          )}
-        </DateRangePicker>,
-      )
-      const user = userEvent.setup()
-      await user.click(screen.getByRole('button', { name: 'Open calendar' }))
-      await waitFor(() => expect(queryCalendar()).not.toBeNull())
-      // aria-label clicks: bare day numbers collide with outside days in a
-      // two-month grid ("5" is both Aug 5 and the trailing Sep 5).
-      const clickAugust = async (dayName: RegExp): Promise<void> => {
-        await user.click(within(queryCalendar() as HTMLElement).getByRole('button', { name: dayName }))
-      }
-      // Past the end → the end moves, the start stays.
-      await clickAugust(/August 25th/)
-      let [start, end] = getInputs()
-      expect([start.value, end.value]).toEqual(['2026-08-10', '2026-08-25'])
-      // Before the start → the start moves, the end stays.
-      await clickAugust(/August 5th/)
-      ;[start, end] = getInputs()
-      expect([start.value, end.value]).toEqual(['2026-08-05', '2026-08-25'])
-      // Inside the range → still the end (the addToRange rule).
-      await clickAugust(/August 15th/)
-      ;[start, end] = getInputs()
-      expect([start.value, end.value]).toEqual(['2026-08-05', '2026-08-15'])
-      await user.click(screen.getByRole('button', { name: '确定' }))
-      const [value] = onValueChange.mock.lastCall as [{ from: Date, to?: Date }]
-      expect([value.from.getDate(), value.to?.getDate()]).toEqual([5, 15])
-    })
-
-    it('first press stages half a range; re-pressing completes a single day, a third press clears', async () => {
-      renderWithFooter()
-      await openPopup()
-      await clickDay('10')
-      let [start, end] = getInputs()
-      // Departure from bare react-day-picker (which reports {day, day} on the
-      // first press): only the start shows until a second press.
-      expect([start.value, end.value]).toEqual(['2026-08-10', ''])
-      await clickDay('10')
-      ;[start, end] = getInputs()
-      // Re-pressing the anchored day is choosing a single-day range.
-      expect([start.value, end.value]).toEqual(['2026-08-10', '2026-08-10'])
-      await clickDay('10')
-      ;[start, end] = getInputs()
-      // On a complete single-day range the same press clears (the rdp rule).
-      expect([start.value, end.value]).toEqual(['', ''])
     })
 
     it('does not steal focus on a non-submitting close — open from the start input, Escape, stay there', async () => {

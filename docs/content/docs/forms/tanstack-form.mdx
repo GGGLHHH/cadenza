@@ -314,14 +314,16 @@ Checkbox / Switch 本体。组标题（`FieldLegend`）由「组控件是 `Field
 
 ### DateRangePicker
 
-同一套接线的双端版：值是 `{ from, to } | null`，日历里选到一半的 `{ from }`
-（`to` 还空着）也会入表——完整性交给 refine 把关。
+同一套接线的双端版：值是 `{ from?, to? } | null`，两端都可选——先点哪个输入框
+就先填哪一端，所以只有 `from` 或只有 `to` 的半程都会入表；完整性交给 refine
+把关。
 
 <ComponentPreview name="tanstack-form/date-range-picker" align="stretch" />
 
 - zod 写
-  `z.object({ from: z.date(), to: z.date().optional() }).nullable().refine(v => v !== null && v.to !== undefined, '…')`，
-  空值与半程共用一句文案。
+  `z.object({ from: z.date().optional(), to: z.date().optional() }).nullable().refine(v => v !== null && v.from !== undefined && v.to !== undefined, '…')`，
+  空值与半程共用一句文案。**两端都要 `.optional()`**——漏一个，那种半程会撞上
+  zod 自己的必填报错，绕过你写的文案。
 - `id` 落在起点输入框（根的 `id` 转发给它）；两个输入框**各自**接
   `aria-invalid` / `aria-describedby` / `onBlur`。
 - `name` 归根：原生提交时两个同名隐藏 input（起、止各一），

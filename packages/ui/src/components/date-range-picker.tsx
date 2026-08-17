@@ -32,14 +32,25 @@ import {
  * `range_end`): `DateRangePickerStartInput` edits `from`,
  * `DateRangePickerEndInput` edits `to`.
  *
- * Typing into either end commits as soon as it parses; a typed start past the
- * end drops the end rather than silently reordering. Picking in the calendar
- * closes only once both ends are chosen.
+ * The input the user is in decides which end the calendar fills — press the
+ * end input and the next day lands on the end, start still empty — and a pick
+ * hops focus to the end still waiting, so two presses complete a range. Both
+ * ends of the value are therefore optional, and the caret settles wherever
+ * the completing day landed. A day that would invert the range swaps roles
+ * with the other end rather than clearing it (`placeEnd`); typing follows the
+ * same rules, holding anything that would move the other end until the text
+ * is a whole date. Picking in the calendar closes only once both ends are
+ * chosen.
  */
 
-/** The committed range. `to` is open while the gesture is half done. */
+/**
+ * The committed range. Both ends are optional: the pressed input decides
+ * which end the calendar fills, so a range can legitimately hold only an end.
+ * A range with neither end is never produced — that is `null`, the controlled
+ * empty value.
+ */
 export interface DateRange {
-  from: Date
+  from?: Date
   to?: Date
 }
 
@@ -79,6 +90,37 @@ export interface DateRangePickerCalendarProps {
 
 type RangeEnd = 'from' | 'to'
 
+/**
+ * Puts `day` on one end. With the other end empty it simply goes there;
+ * otherwise the two days are sorted, so a day that would invert the range
+ * swaps roles with the other one instead of deleting it. Choosing the 20th
+ * and then the 10th means the 10th–20th, and moving a start past the end
+ * makes the old end the new start — never a date silently thrown away.
+ *
+ * Which end was aimed at only matters while the other is empty; once both
+ * days exist, chronology decides. The caret follows the day rather than the
+ * end aimed at (see the popup), so the two stay in step.
+ */
+function placeEnd(current: DateRange | null, end: RangeEnd, day: Date): DateRange {
+  const other = end === 'from' ? current?.to : current?.from
+  if (other === undefined)
+    return end === 'from' ? { from: day } : { to: day }
+  return day.getTime() <= other.getTime() ? { from: day, to: other } : { from: other, to: day }
+}
+
+/** Empties one end, and the whole range once nothing is left. */
+function dropEnd(current: DateRange, end: RangeEnd): DateRange | null {
+  const rest = end === 'from' ? current.to : current.from
+  if (rest === undefined)
+    return null
+  return end === 'from' ? { to: rest } : { from: rest }
+}
+
+/** Same two ends, to the millisecond. */
+function sameRange(a: DateRange | null, b: DateRange | null): boolean {
+  return a?.from?.getTime() === b?.from?.getTime() && a?.to?.getTime() === b?.to?.getTime()
+}
+
 interface DateRangePickerContextValue extends DateRangePickerState {
   value: DateRange | null
   /** What the inputs and calendar show: the staged range while confirming, the committed one otherwise. */
@@ -93,6 +135,10 @@ interface DateRangePickerContextValue extends DateRangePickerState {
   startPlaceholder?: string
   endPlaceholder?: string
   id?: string
+  /** Which end the calendar's next press fills — the end whose input was last entered. */
+  activeEnd: RangeEnd
+  /** Aims the calendar at one end. Pressing or tabbing into an input calls this. */
+  setActiveEnd: (end: RangeEnd) => void
   inputRefs: Record<RangeEnd, RefObject<HTMLInputElement | null>>
   rootRef: RefObject<HTMLDivElement | null>
   popupRef: RefObject<HTMLDivElement | null>
@@ -112,8 +158,10 @@ interface DateRangePickerContextValue extends DateRangePickerState {
   setFooterMounted: (mounted: boolean) => void
   /** Flag the next close as submitting — call before `setOpen(false)`; the root then settles the caret. */
   markSubmitClose: () => void
-  /** The popup's `finalFocus`: whether this close should return focus at all (see the root). */
-  resolveReturnFocus: () => boolean
+  /** Points this close's return focus at one input instead of wherever the popup was opened from. */
+  aimReturnFocus: (element: HTMLInputElement | null) => void
+  /** The popup's `finalFocus`: where this close should return focus, or `false` for nowhere (see the root). */
+  resolveReturnFocus: () => HTMLInputElement | boolean
 }
 
 const DateRangePickerContext = createContext<DateRangePickerContextValue | null>(null)
@@ -216,6 +264,7 @@ function RangeInput({
   onBlur,
   onChange,
   onClick,
+  onFocus,
   onKeyDown,
   ref,
   ...props
@@ -244,6 +293,12 @@ function RangeInput({
       }}
       // Chained after the spread: the field's text is wired through these
       // handlers, and a caller listening in must not silently unhook them.
+      onFocus={(event) => {
+        onFocus?.(event)
+        // Entering an input aims the calendar at that end — focus, not click,
+        // so tabbing between the ends re-aims it too.
+        field.setActiveEnd(end)
+      }}
       onBlur={(event) => {
         onBlur?.(event)
         const next = event.relatedTarget
@@ -274,27 +329,26 @@ function RangeInput({
             && dateMatchModifiers(day, field.disabledDates)
           if (!disabledMatch) {
             const current = field.preview
-            let next: DateRange | null = null
-            if (end === 'from') {
-              // A start past the end drops the end rather than reordering:
-              // the field the user is editing must keep showing what they
-              // typed.
-              next = current?.to !== undefined && day.getTime() <= current.to.getTime()
-                ? { from: day, to: current.to }
-                : { from: day }
-            }
-            else {
-              // ponytail: an end typed before any start stays a draft — the
-              // value's `from` anchor is required. Pick the start first (the
-              // calendar always does).
-              next = current !== null && day.getTime() >= current.from.getTime()
-                ? { from: current.from, to: day }
-                : null
-            }
-            const same = next !== null && current !== null
-              && next.from.getTime() === current.from.getTime()
-              && next.to?.getTime() === current.to?.getTime()
-            if (next !== null && !same) {
+            const next = placeEnd(current, end, day)
+            // Typing arrives a character at a time and the halfway states
+            // parse too — "2026-08-2" reads as the 2nd before the 0 lands. A
+            // keystroke that only fills its own end is always safe, but one
+            // that would move the other end has to wait until the text is a
+            // whole date, or a halfway reading would rearrange the field
+            // under the user's hands.
+            //
+            // "Whole" is decided by a round trip: format the parsed day back
+            // out and see if it matches what was typed. Canonical, finished
+            // text does ("2026-08-10"); text still being typed does not
+            // ("2026-08-1" formats back to "2026-08-01"). A custom
+            // `inputToValue` writes in its own notation, so it never matches
+            // and keeps the cautious behaviour — settling on the way out
+            // through `commitDraft`.
+            const touchesOtherEnd = end === 'from'
+              ? current?.to?.getTime() !== next.to?.getTime()
+              : current?.from?.getTime() !== next.from?.getTime()
+            const wholeDate = formatDate(day, field.format, { locale: field.locale }) === raw.trim()
+            if ((!touchesOtherEnd || wholeDate) && !sameRange(next, current)) {
               if (field.confirmMode)
                 field.stage(next)
               else
@@ -491,52 +545,43 @@ export function DateRangePickerPopup({
   ...props
 }: DateRangePickerPopupProps): ReactElement {
   const field = useDateRangePickerContext()
-  // While confirming, the gesture evolves the staged range; committing (and
-  // closing on completion) is the footer's job.
   const calendarProps: DateRangePickerCalendarProps = {
     mode: 'range',
-    selected: field.preview ?? undefined,
-    onSelect: (range, triggerDate) => {
+    selected: { from: field.preview?.from, to: field.preview?.to },
+    // The day pressed, not the range react-day-picker computed from it: which
+    // end this fills is the field's decision (the active end), so its own
+    // adjust-by-proximity model is deliberately bypassed. `range` is unused.
+    onSelect: (_range, triggerDate) => {
       field.setDraft('from', null)
       field.setDraft('to', null)
-      if (field.confirmMode) {
-        // Confirming adopts react-day-picker's adjust gesture: a press before
-        // the start moves the start, after it (inside the range too) moves
-        // the end, and on a single-day range the same press clears. The
-        // gesture never finishes — DateRangePickerClose is the finish, which
-        // is exactly why this model only fits confirm mode. One departure
-        // from bare react-day-picker: its first press reports `{day, day}`,
-        // which would fill both inputs at once — stored as half a range
-        // instead, so the end stays empty until a second press (re-pressing
-        // the anchored day then completes a single-day range, the from-only
-        // branch of `addToRange`).
-        field.stage(range?.from === undefined
-          ? null
-          : field.preview === null || range.to === undefined
-            ? { from: startOfDay(range.from) }
-            : { from: startOfDay(range.from), to: startOfDay(range.to) })
-        return
-      }
-      if (range?.from === undefined) {
-        field.setValue(null, createChangeEventDetails('item-press'))
-        return
-      }
-      // react-day-picker's first press reports `{from: day, to: day}`, which
-      // reads as a finished range. Committing instantly needs a finished
-      // signal, so the stored shape drives the gesture instead: a fresh press
-      // (nothing yet, or a full range being restarted) stores half a range,
-      // and react-day-picker continues from a half one by completing it.
-      const startingFresh = field.preview === null || field.preview.to !== undefined
-      if (startingFresh) {
-        field.setValue({ from: startOfDay(triggerDate) }, createChangeEventDetails('item-press'))
-        return
-      }
-      const next: DateRange = range.to === undefined
-        ? { from: range.from }
-        : { from: range.from, to: range.to }
-      field.setValue(next, createChangeEventDetails('item-press'))
-      // Half a range keeps the popup up — the gesture is not finished.
-      if (next.to !== undefined) {
+      const end = field.activeEnd
+      const day = startOfDay(triggerDate)
+      const next = placeEnd(field.preview, end, day)
+      if (field.confirmMode)
+        field.stage(next)
+      else
+        field.setValue(next, createChangeEventDetails('item-press'))
+      // Where the day actually ended up, which is not always the end aimed at
+      // — sorting can put it in the other one.
+      const landedOn: RangeEnd = next[end]?.getTime() === day.getTime()
+        ? end
+        : end === 'from' ? 'to' : 'from'
+      // Still short an end? Go wait in the empty one, so a second press
+      // completes the range without reaching for the other input. Otherwise
+      // stay on the day just placed — there is nothing left to fill, and
+      // hopping away from the user's last move is the jarring part.
+      const complete = next.from !== undefined && next.to !== undefined
+      const caretEnd: RangeEnd = complete
+        ? landedOn
+        : next.from === undefined ? 'from' : 'to'
+      field.setActiveEnd(caretEnd)
+      field.inputRefs[caretEnd].current?.focus()
+      // Where the popup's own return focus should land, since the close below
+      // would otherwise send it back to whichever input opened the popup.
+      field.aimReturnFocus(field.inputRefs[caretEnd].current)
+      // Instant mode needs a completion signal to commit and close on; while
+      // confirming, the footer is that signal.
+      if (!field.confirmMode && complete) {
         field.markSubmitClose()
         field.setOpen(false, createChangeEventDetails('item-press'))
       }
@@ -746,6 +791,9 @@ export function DateRangePicker({
   // (mounted while the popup is open) routes changes through here.
   const [pending, setPending] = useState<DateRange | null | undefined>(undefined)
   const [footerMounted, setFooterMounted] = useState(false)
+  // Which end the calendar fills next. Entering an input aims it there, and a
+  // press hops it to the other end so a second press completes the range.
+  const [activeEnd, setActiveEnd] = useState<RangeEnd>('from')
   // Whether the close now underway submitted a range — after such a close,
   // if Base UI's guarded return-focus landed on one of our inputs, the caret
   // gets settled to the end (a rewritten controlled value parks it at 0).
@@ -758,6 +806,13 @@ export function DateRangePicker({
   // unmount cleanup — a ref, because a state flip would not have rendered by
   // then.
   const focusLeftFieldRef = useRef(false)
+  // Where this close should return focus, when a pick has moved the caret away
+  // from the input the popup was opened from. `null` leaves the destination to
+  // the focus manager (back to where it opened from). The element itself, not
+  // the end it belongs to: the inputs' ref callbacks are inline, so React
+  // detaches and reattaches them on every render, and the focus manager reads
+  // this from inside its unmount cleanup — right where that gap can fall.
+  const returnElementRef = useRef<HTMLInputElement | null>(null)
   const fromInputRef = useRef<HTMLInputElement | null>(null)
   const toInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -824,6 +879,7 @@ export function DateRangePicker({
       setMonth(startOfDay(value?.from ?? new Date()))
       setSubmittedClose(false)
       focusLeftFieldRef.current = false
+      returnElementRef.current = null
     }
     else {
       // Closing settles confirm mode: whatever was staged and not confirmed
@@ -878,23 +934,29 @@ export function DateRangePicker({
     if (draft === null)
       return
     setDraft(end, null)
-    if (draft.trim() === '') {
-      const current = pending !== undefined ? pending : value
-      // Emptying the start clears the range (the anchor is gone); emptying
-      // the end keeps the start. While confirming, the clear stages like
-      // every other popup-open change.
-      const next = end === 'from'
-        ? null
-        : current === null || current.to === undefined ? current : { from: current.from }
-      if (next !== current) {
-        if (footerMounted)
-          setPending(next)
-        else
-          setValue(next, createChangeEventDetails('input-clear', event))
-      }
+    const current = pending !== undefined ? pending : value
+    const settle = (next: DateRange | null, reason: 'input-change' | 'input-clear'): void => {
+      if (sameRange(next, current))
+        return
+      // While confirming, this stages like every other popup-open change.
+      if (footerMounted)
+        setPending(next)
+      else
+        setValue(next, createChangeEventDetails(reason, event))
     }
-    // A parseable draft already committed on change; anything else reverts to
-    // the formatted value by dropping the draft.
+    if (draft.trim() === '') {
+      // Emptying one input empties that end only; the range goes once both
+      // ends are gone.
+      settle(current === null ? null : dropEnd(current, end), 'input-clear')
+      return
+    }
+    // Text that parsed but was held back because it would have moved the
+    // other end (see the typing guard). Leaving the field is the moment the
+    // intent is complete, so it settles under the full rule now.
+    const day = parseText(draft, new Date())
+    if (day === null || (disabledDates !== undefined && dateMatchModifiers(day, disabledDates)))
+      return
+    settle(placeEnd(current, end, day), 'input-change')
   }
 
   const handlePrimitiveOpenChange = (
@@ -930,12 +992,17 @@ export function DateRangePicker({
   // Not a flat `false` only because the calendar navigates by real focus
   // where Combobox's list is virtual: a keyboard user's focus genuinely goes
   // into the popup, and Escape has to bring it back. So only the closes where
-  // focus already left get refused; `true` leaves the destination to the
-  // manager, which returns focus to whichever end was focused when the popup
-  // opened. Keyed off the reason recorded in `setOpen` rather than off where
-  // focus sits, because by the time this runs the popup's ref is already
-  // detached.
-  const resolveReturnFocus = (): boolean => !focusLeftFieldRef.current
+  // focus already left get refused — keyed off the reason recorded in
+  // `setOpen` rather than off where focus sits, because by the time this runs
+  // the popup's ref is already detached. `true` hands the destination to the
+  // manager (back to whichever input opened the popup); a pick that moved the
+  // caret names its own input instead, or the range just assembled would send
+  // the caret back to the end the user started from.
+  const resolveReturnFocus = (): HTMLInputElement | boolean => {
+    if (focusLeftFieldRef.current)
+      return false
+    return returnElementRef.current ?? true
+  }
 
   const preview = pending !== undefined ? pending : value
   // Filled follows what the inputs are showing, not the committed value —
@@ -966,6 +1033,8 @@ export function DateRangePicker({
     startPlaceholder,
     endPlaceholder,
     id,
+    activeEnd,
+    setActiveEnd,
     inputRefs: { from: fromInputRef, to: toInputRef },
     rootRef,
     popupRef,
@@ -980,6 +1049,9 @@ export function DateRangePicker({
     confirm,
     setFooterMounted,
     markSubmitClose: () => setSubmittedClose(true),
+    aimReturnFocus: (element: HTMLInputElement | null) => {
+      returnElementRef.current = element
+    },
     resolveReturnFocus,
   }
 
@@ -1033,7 +1105,7 @@ export function DateRangePicker({
               disabled={disabled}
               name={name}
               type="hidden"
-              value={value === null ? '' : formatDate(value.from, SERIAL_FORMAT)}
+              value={value?.from === undefined ? '' : formatDate(value.from, SERIAL_FORMAT)}
             />
             <input
               disabled={disabled}
