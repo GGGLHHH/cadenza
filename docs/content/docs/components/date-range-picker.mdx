@@ -1,18 +1,18 @@
 ---
 title: DateRangePicker
-description: 两端可键入的日期区间输入 + 双月日历——第一次点定起点，第二次点收尾
+description: 两端可键入的日期区间输入 + 双月日历——焦点在哪端，日历就填哪端
 ---
 
 <ComponentPreview name="date-range-picker/basic" />
 
 日期区间的完整控件，[DatePicker](/docs/components/date-picker) 的双端版。
-两个输入框各管一端，都可以直接键入；日历里第一次点是起点（弹层留着），
-第二次点收尾并关闭，再点一次重新开始。值的键名是 react-day-picker 的
-`from` / `to`，原样传给日历；部件名用它 UI 侧的词（`range_start` /
-`range_end`）：`StartInput` 编辑 `from`，`EndInput` 编辑 `to`。
+两个输入框各管一端，都可以直接键入；日历填的是**焦点所在的那一端**，还差
+一端时焦点自动跳过去，所以连点两下就凑齐一个区间（见[活动端](#活动端)）。
+值的键名是 react-day-picker 的 `from` / `to`，原样传给日历；部件名用它 UI
+侧的词（`range_start` / `range_end`）：`StartInput` 编辑 `from`，`EndInput`
+编辑 `to`。
 
-键入的起点越过终点时，终点清空而不是悄悄换位——正在编辑的框必须显示
-用户键入的东西。
+顺序反了就自动交换，两端都不会被清空。
 
 ## 使用
 
@@ -77,6 +77,27 @@ DateRangePicker
 
 只填自己那一端的键入不受这条约束，照常边打边提交。自定义 `inputToValue` 用的是
 它自己的写法，对不上这个判据，保持保守——留草稿，离开输入框时再结算。
+
+## 年月选择
+
+**两个月各有一套年月下拉，默认在场**——区间常常横跨几个月，从哪一侧跳都行，
+和[活动端](#活动端)是同一个直觉：手放在哪边就管哪边。
+
+右侧那套是**带偏移**的：在它里面选 3 月，得到的是 2 月–3 月而不是 3 月–4 月
+（你指定的是那一格显示什么，不是整个面板从哪开始）。两个月始终相邻，这一条
+由 react-day-picker 保证。
+
+年份范围、`locale` 联动、换回纯标题的写法与
+[DatePicker 的年月选择](/docs/components/date-picker#年月选择)完全同款，
+包括「收窄要走弹层的函数 children」这一点：
+
+```tsx
+<DateRangePickerPopup>
+  {calendar => (
+    <Calendar {...calendar} endMonth={new Date(2030, 11)} startMonth={new Date(2020, 0)} />
+  )}
+</DateRangePickerPopup>
+```
 
 ## 确认模式
 

@@ -86,6 +86,14 @@ export interface DateRangePickerCalendarProps {
   numberOfMonths: number
   disabled: Matcher | Matcher[] | undefined
   locale: Locale | undefined
+  /**
+   * `'dropdown'` — the caption's month and year are pickable, so a distant
+   * range takes one press instead of a walk through the arrows. Both months
+   * get a set; the second one's is offset, so choosing March there leaves
+   * February–March rather than March–April. Spread this on and pass
+   * `captionLayout="label"` after it for the plain caption.
+   */
+  captionLayout: 'dropdown'
 }
 
 type RangeEnd = 'from' | 'to'
@@ -141,7 +149,7 @@ interface DateRangePickerContextValue extends DateRangePickerState {
   setActiveEnd: (end: RangeEnd) => void
   inputRefs: Record<RangeEnd, RefObject<HTMLInputElement | null>>
   rootRef: RefObject<HTMLDivElement | null>
-  popupRef: RefObject<HTMLDivElement | null>
+  portalRef: RefObject<HTMLDivElement | null>
   setDraft: (end: RangeEnd, draft: string | null) => void
   setValue: (value: DateRange | null, eventDetails?: DateRangePickerChangeEventDetails) => void
   /** Settles one end's draft: commit an empty draft as a clear, drop an unparseable one. */
@@ -308,11 +316,19 @@ function RangeInput({
           field.commitDraft(end, event.nativeEvent)
           return
         }
-        // Focus moving into our own box or popup is not leaving the field.
+        // Focus moving into our own box or portal is not leaving the field.
         // Base UI's focus guards render inside the root, so a Tab that is
         // about to land in the calendar answers `rootRef.contains` too.
+        //
+        // The portal node rather than the popup, which is what lets the
+        // calendar's month and year lists count as ours: they are popups of
+        // their own, and this end holds focus for most of the stretch where
+        // jumping months is the point — picking a day hands the caret to the
+        // end still waiting. Nested portals resolve their container to the
+        // parent portal node, so containment still answers (see the popup
+        // part for Base UI drawing the same line).
         if (next !== null && (field.rootRef.current?.contains(next)
-          || field.popupRef.current?.contains(next))) {
+          || field.portalRef.current?.contains(next))) {
           return
         }
         field.commitDraft('from', event.nativeEvent)
@@ -591,9 +607,16 @@ export function DateRangePickerPopup({
     numberOfMonths: 2,
     disabled: field.disabledDates,
     locale: field.locale,
+    captionLayout: 'dropdown',
   }
   return (
-    <PopoverPrimitive.Portal>
+    // The portal node, not the popup, is what "inside the field" means once a
+    // popup can host popups of its own — Base UI draws the same line
+    // (`FloatingFocusManager`'s `contains(portalContext.portalNode, …)`), and
+    // it holds because a nested `FloatingPortal` resolves its container to the
+    // parent portal node rather than `<body>`. The calendar's month and year
+    // lists land there, so the inputs' blur judge recognises them for free.
+    <PopoverPrimitive.Portal ref={field.portalRef}>
       <PopoverPrimitive.Positioner
         align={align}
         alignOffset={alignOffset}
@@ -623,15 +646,7 @@ export function DateRangePickerPopup({
             onMouseDown?.(event)
             event.preventDefault()
           }}
-          // Claimed, not taken: the caller's ref still gets the element. The
-          // inputs' blur needs it to tell "into our popup" from "away".
-          ref={(node: HTMLDivElement | null) => {
-            field.popupRef.current = node
-            if (typeof ref === 'function')
-              return ref(node)
-            if (ref !== null && ref !== undefined)
-              ref.current = node
-          }}
+          ref={ref}
         >
           {typeof children === 'function'
             ? children(calendarProps)
@@ -800,7 +815,7 @@ export function DateRangePicker({
   const [submittedClose, setSubmittedClose] = useState(false)
 
   const rootRef = useRef<HTMLDivElement | null>(null)
-  const popupRef = useRef<HTMLDivElement | null>(null)
+  const portalRef = useRef<HTMLDivElement | null>(null)
   // Whether the close now underway is one where focus already left the field.
   // Read by `resolveReturnFocus` below, from inside the focus manager's
   // unmount cleanup — a ref, because a state flip would not have rendered by
@@ -1037,7 +1052,7 @@ export function DateRangePicker({
     setActiveEnd,
     inputRefs: { from: fromInputRef, to: toInputRef },
     rootRef,
-    popupRef,
+    portalRef,
     setDraft,
     setValue,
     commitDraft,

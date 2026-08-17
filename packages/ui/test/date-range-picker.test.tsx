@@ -372,6 +372,29 @@ describe('date-range-picker', () => {
     expect(hidden.map(input => input.value)).toEqual(['2026-08-10', '2026-08-20'])
   })
 
+  describe('caption dropdowns', () => {
+    it('the panel stays open while the year list is used mid-range', async () => {
+      const onValueChange = vi.fn()
+      render(<DateRangePicker aria-label="日期范围" onValueChange={onValueChange} />)
+      const user = userEvent.setup()
+      await user.click(getInputs()[0])
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      // Picking a day hands the caret to the end still waiting, so an input
+      // holds focus for exactly the stretch where jumping months is the point
+      // — half a range is picked and the other end is elsewhere in the year.
+      // The list is portalled out of both the field's box and its popup, and
+      // opening it moves focus onto the selected option; read as a plain blur
+      // that closes the panel the press was aimed at.
+      await clickDay('10')
+      await user.click(screen.getAllByRole('combobox', { name: /year/i })[0])
+      await user.click(await screen.findByRole('option', { name: '2030' }))
+      expect(queryCalendar()).not.toBeNull()
+      // Navigating is not choosing: the half-range is untouched.
+      expect(getInputs()[0].value).toBe('2026-08-10')
+      expect(onValueChange).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('footer / confirm mode', () => {
     function renderWithFooter(): ReturnType<typeof vi.fn> {
       const onValueChange = vi.fn()

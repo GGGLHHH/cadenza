@@ -50,6 +50,7 @@ const registry: Record<string, ComponentType> = {
   'date-picker/controlled': lazy(async () => import('./date-picker/controlled')),
   'date-picker/format': lazy(async () => import('./date-picker/format')),
   'date-picker/disabled-dates': lazy(async () => import('./date-picker/disabled-dates')),
+  'date-picker/caption-nav': lazy(async () => import('./date-picker/caption-nav')),
   'date-picker/custom-calendar': lazy(async () => import('./date-picker/custom-calendar')),
   'date-picker/input-to-value': lazy(async () => import('./date-picker/input-to-value')),
   'date-picker/footer': lazy(async () => import('./date-picker/footer')),

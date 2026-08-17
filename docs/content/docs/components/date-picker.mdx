@@ -60,6 +60,38 @@ DatePicker
 
 <ComponentPreview name="date-picker/format" />
 
+`locale` 覆盖面板的每一处**可见**文案：星期行、[年月下拉](#年月选择)、以及
+输入框里格式化后的值——同一条 date-fns 通道，不会有一处跟着浏览器语言、
+另一处留在英文默认。不传就整体是 react-day-picker 的英文。
+
+**无障碍文案是另一条通道**：react-day-picker 的 `labels`。`locale` 只能翻译
+**格式化出来的**文本，而 rdp 有一批**写死的英文字面量**——`labelYearDropdown`
+（Choose the Year）、`labelMonthDropdown`、`labelPrevious`（Go to the
+Previous Month）、`labelNext`、`labelWeekNumber`、`labelWeekNumberHeader`，
+共 6 个，没有任何 locale 能碰到。本库不往 DOM 塞任何语言的文案，所以不替你
+翻译，只把通道留着。
+
+它只影响面板、不影响输入框，所以和 `startMonth` 那些一样走
+[自定义日历](#自定义日历)，不在根上：
+
+```tsx
+<DatePickerPopup>
+  {calendar => (
+    <Calendar
+      {...calendar}
+      labels={{ labelYearDropdown: () => '选择年份', labelMonthDropdown: () => '选择月份' }}
+    />
+  )}
+</DatePickerPopup>
+```
+
+`Partial`：只写要改的那几个。其余的 label（`labelGrid` / `labelWeekday` /
+`labelDayButton`）本来就走 `locale`，不用管。
+
+根上只放**同时影响输入框和面板**的东西：`locale` 要参与解析键入的文本、
+`format` 管显示与解析、`disabledDates` 连键入一起拒。纯面板的配置一律走弹层的
+函数 children——这样「这个 prop 该写在哪」永远只有一个答案，不用背表。
+
 表单序列化不跟随 `format`——hidden input 始终是 `yyyy-MM-dd`（见[表单](#表单)）。
 注意 token 大小写：月份是 `MM`，小写 `mm` 在 date-fns 语义里是**分钟**，
 传错不会报错、只会安静地显示错东西（从 dayjs 迁移的 `YYYY`/`DD` 反而会被
@@ -80,10 +112,37 @@ date-fns 直接 throw 提醒）。
 
 <ComponentPreview name="date-picker/disabled-dates" />
 
+## 年月选择
+
+**面板顶上的年和月本身就是下拉，默认在场**——跳到三年前不用点 36 次箭头。
+下拉用的是本库的 [Select](/docs/components/select)，不是原生 `<select>`：
+弹层里按下鼠标不夺焦是这个控件的既定行为（输入框的光标不会闪），而原生
+下拉正是靠那个被取消掉的默认动作展开的，放着不管整行标题会点不动。
+
+<ComponentPreview name="date-picker/caption-nav" />
+
+**年份范围默认是今年 ±100 年。** react-day-picker 自己的默认是「今年往前 100 年
+到今年年底」——生日选择器的量法，连明年都选不到，所以这里把上界补成对称的。
+真实场景多半更窄：`startMonth` / `endMonth` 收窄它，两个都是日历的 props，
+走弹层的函数 children 传（见上面的 demo）。它们一旦给出，箭头也走不出这个范围。
+
+**下拉文案跟随 `locale`**，与星期行、输入框格式化同一条通道，见
+[格式与本地化](#格式与本地化)。不传 `locale` 时整个面板都是
+react-day-picker 的英文默认，不会只有月份跟着浏览器语言跑。
+
+要回到不可点的纯标题，spread 之后传 `captionLayout="label"`：
+
+```tsx
+<DatePickerPopup>
+  {calendar => <Calendar {...calendar} captionLayout="label" />}
+</DatePickerPopup>
+```
+
 ## 自定义日历
 
 `DatePickerPopup` 的函数 children 拿到接好线的日历 props，spread 进自己的
-`<Calendar>` 再往上叠配置。
+`<Calendar>` 再往上叠配置。`captionLayout` 也在这份 props 里，所以叠配置
+不会把年月下拉弄丢。
 
 <ComponentPreview name="date-picker/custom-calendar" />
 

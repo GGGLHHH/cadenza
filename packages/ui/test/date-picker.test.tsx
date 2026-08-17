@@ -296,6 +296,37 @@ describe('date-picker', () => {
     expect(getInput().value).toBe('20260801')
   })
 
+  describe('caption dropdowns', () => {
+    it('the panel stays open while the year list is used', async () => {
+      render(<DatePicker aria-label="日期" defaultValue={AUG_16} />)
+      const user = userEvent.setup()
+      await user.click(getInput())
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      // The list is portalled to the body, so neither the field's box nor its
+      // popup contains it, and opening it puts focus on the selected option.
+      // Read as a plain blur that would be the user leaving the field, and the
+      // panel would close under the press that was aimed at it.
+      await user.click(screen.getByRole('combobox', { name: /year/i }))
+      await screen.findAllByRole('option')
+      expect(queryCalendar()).not.toBeNull()
+    })
+
+    it('jumps the panel to the chosen year without committing anything', async () => {
+      const onValueChange = vi.fn()
+      render(<DatePicker aria-label="日期" defaultValue={AUG_16} onValueChange={onValueChange} />)
+      const user = userEvent.setup()
+      await user.click(getInput())
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      await user.click(screen.getByRole('combobox', { name: /year/i }))
+      await user.click(await screen.findByRole('option', { name: '2030' }))
+      await waitFor(() => expect(screen.getByRole('combobox', { name: /year/i }).textContent).toContain('2030'))
+      // Navigating is not choosing: the field still holds August 2026.
+      expect(queryCalendar()).not.toBeNull()
+      expect(onValueChange).not.toHaveBeenCalled()
+      expect(getInput().value).toBe('2026-08-16')
+    })
+  })
+
   describe('footer / confirm mode', () => {
     function renderWithFooter(props: Partial<Parameters<typeof DatePicker>[0]> = {}): ReturnType<typeof vi.fn> {
       const onValueChange = vi.fn()
