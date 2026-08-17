@@ -58,13 +58,21 @@ DateRangePicker
 
 ## 确认模式
 
-往弹层里组合 `DateRangePickerFooter`，两次点选都只是暂存（输入框实时预览、
-面板留着给你检查），`DateRangePickerClose`（或 Enter）才提交并关闭——
-reason 是 `close-press`；`DateRangePickerCancel`、Esc、点击外部都丢弃暂存。
-Footer 是纯布局壳，动作部件与文案由使用方组合，契约与
+往弹层里组合 `DateRangePickerFooter`，点选就从「即时提交」变成「暂存」
+（输入框实时预览、面板留着给你检查），`DateRangePickerClose`（或 Enter）
+才提交并关闭——reason 是 `close-press`；`DateRangePickerCancel`、Esc、
+点击外部都丢弃暂存。Footer 是纯布局壳，动作部件与文案由使用方组合，契约与
 [DatePicker 的确认模式](/docs/components/date-picker#确认模式)完全同款。
 
 <ComponentPreview name="date-range-picker/footer" />
+
+确认模式下日历手势也随之切换成 react-day-picker 的**就近调整**：首次点击
+定起点（终点留空），第二次点击收尾（再点起点当天则得到单日区间）；在完整
+区间上，点起点之前挪起点、点起点之后（含区间内）挪终点，单日区间再点同
+一天清空——区间随时可继续雕塑，「完成」由确定按钮宣告。即时模式
+（无 Footer）保持「第一次点定起点、第二次点收尾并关闭」的重开手势——
+即时提交需要一个完成信号，调整手势给不了，这正是两种手势各配一种提交
+语义的原因。
 
 ## 表单
 

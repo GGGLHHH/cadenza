@@ -481,38 +481,50 @@ export function DateRangePickerPopup({
   const field = useDateRangePickerContext()
   // While confirming, the gesture evolves the staged range; committing (and
   // closing on completion) is the footer's job.
-  const applyPick = (next: DateRange | null): void => {
-    if (field.confirmMode)
-      field.stage(next)
-    else
-      field.setValue(next, createChangeEventDetails('item-press'))
-  }
   const calendarProps: DateRangePickerCalendarProps = {
     mode: 'range',
     selected: field.preview ?? undefined,
     onSelect: (range, triggerDate) => {
       field.setDraft('from', null)
       field.setDraft('to', null)
+      if (field.confirmMode) {
+        // Confirming adopts react-day-picker's adjust gesture: a press before
+        // the start moves the start, after it (inside the range too) moves
+        // the end, and on a single-day range the same press clears. The
+        // gesture never finishes — DateRangePickerClose is the finish, which
+        // is exactly why this model only fits confirm mode. One departure
+        // from bare react-day-picker: its first press reports `{day, day}`,
+        // which would fill both inputs at once — stored as half a range
+        // instead, so the end stays empty until a second press (re-pressing
+        // the anchored day then completes a single-day range, the from-only
+        // branch of `addToRange`).
+        field.stage(range?.from === undefined
+          ? null
+          : field.preview === null || range.to === undefined
+            ? { from: startOfDay(range.from) }
+            : { from: startOfDay(range.from), to: startOfDay(range.to) })
+        return
+      }
       if (range?.from === undefined) {
-        applyPick(null)
+        field.setValue(null, createChangeEventDetails('item-press'))
         return
       }
       // react-day-picker's first press reports `{from: day, to: day}`, which
-      // reads as a finished range. The stored shape drives the gesture
-      // instead: a fresh press (nothing yet, or a full range being restarted)
-      // stores half a range, and react-day-picker continues from a half one
-      // by completing it.
+      // reads as a finished range. Committing instantly needs a finished
+      // signal, so the stored shape drives the gesture instead: a fresh press
+      // (nothing yet, or a full range being restarted) stores half a range,
+      // and react-day-picker continues from a half one by completing it.
       const startingFresh = field.preview === null || field.preview.to !== undefined
       if (startingFresh) {
-        applyPick({ from: startOfDay(triggerDate) })
+        field.setValue({ from: startOfDay(triggerDate) }, createChangeEventDetails('item-press'))
         return
       }
       const next: DateRange = range.to === undefined
         ? { from: range.from }
         : { from: range.from, to: range.to }
-      applyPick(next)
+      field.setValue(next, createChangeEventDetails('item-press'))
       // Half a range keeps the popup up — the gesture is not finished.
-      if (next.to !== undefined && !field.confirmMode)
+      if (next.to !== undefined)
         field.setOpen(false, createChangeEventDetails('item-press'))
     },
     month: field.month,

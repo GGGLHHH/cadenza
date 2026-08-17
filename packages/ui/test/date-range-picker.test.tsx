@@ -217,6 +217,69 @@ describe('date-range-picker', () => {
       await waitFor(() => expect(queryCalendar()).not.toBeNull())
     }
 
+    it('adjusts the nearer end instead of restarting — the shadcn gesture', async () => {
+      const onValueChange = vi.fn()
+      render(
+        <DateRangePicker
+          aria-label="日期范围"
+          defaultValue={{ from: AUG_10, to: AUG_20 }}
+          onValueChange={onValueChange}
+        >
+          {({ defaultChildren }) => (
+            <>
+              {defaultChildren}
+              <DateRangePickerPopup>
+                <DateRangePickerFooter>
+                  <DateRangePickerClose>确定</DateRangePickerClose>
+                </DateRangePickerFooter>
+              </DateRangePickerPopup>
+            </>
+          )}
+        </DateRangePicker>,
+      )
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Open calendar' }))
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      // aria-label clicks: bare day numbers collide with outside days in a
+      // two-month grid ("5" is both Aug 5 and the trailing Sep 5).
+      const clickAugust = async (dayName: RegExp): Promise<void> => {
+        await user.click(within(queryCalendar() as HTMLElement).getByRole('button', { name: dayName }))
+      }
+      // Past the end → the end moves, the start stays.
+      await clickAugust(/August 25th/)
+      let [start, end] = getInputs()
+      expect([start.value, end.value]).toEqual(['2026-08-10', '2026-08-25'])
+      // Before the start → the start moves, the end stays.
+      await clickAugust(/August 5th/)
+      ;[start, end] = getInputs()
+      expect([start.value, end.value]).toEqual(['2026-08-05', '2026-08-25'])
+      // Inside the range → still the end (the addToRange rule).
+      await clickAugust(/August 15th/)
+      ;[start, end] = getInputs()
+      expect([start.value, end.value]).toEqual(['2026-08-05', '2026-08-15'])
+      await user.click(screen.getByRole('button', { name: '确定' }))
+      const [value] = onValueChange.mock.lastCall as [{ from: Date, to?: Date }]
+      expect([value.from.getDate(), value.to?.getDate()]).toEqual([5, 15])
+    })
+
+    it('first press stages half a range; re-pressing completes a single day, a third press clears', async () => {
+      renderWithFooter()
+      await openPopup()
+      await clickDay('10')
+      let [start, end] = getInputs()
+      // Departure from bare react-day-picker (which reports {day, day} on the
+      // first press): only the start shows until a second press.
+      expect([start.value, end.value]).toEqual(['2026-08-10', ''])
+      await clickDay('10')
+      ;[start, end] = getInputs()
+      // Re-pressing the anchored day is choosing a single-day range.
+      expect([start.value, end.value]).toEqual(['2026-08-10', '2026-08-10'])
+      await clickDay('10')
+      ;[start, end] = getInputs()
+      // On a complete single-day range the same press clears (the rdp rule).
+      expect([start.value, end.value]).toEqual(['', ''])
+    })
+
     it('stages a full range and commits it only on confirm, with reason close-press', async () => {
       const onValueChange = renderWithFooter()
       await openPopup()
