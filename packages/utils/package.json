@@ -1,7 +1,7 @@
 {
   "name": "@gedatou/cadenza-utils",
   "type": "module",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "React hooks and helpers shared across cadenza packages",
   "license": "MIT",
   "homepage": "https://cadenza-ui-docs.vercel.app",
