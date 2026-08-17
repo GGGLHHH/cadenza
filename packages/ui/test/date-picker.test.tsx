@@ -174,6 +174,39 @@ describe('date-picker', () => {
     expect(reasons).not.toContain('input-change')
   })
 
+  it('a close from focus leaving the field does not pull focus back to the input', async () => {
+    render(<DatePicker aria-label="日期" />)
+    const input = getInput()
+    const user = userEvent.setup()
+    await user.click(input)
+    await waitFor(() => expect(queryCalendar()).not.toBeNull())
+    // Pressing empty space blurs the input first, which is the field's own
+    // `focus-out` close. Focus has already left; returning it a beat later is
+    // what makes the ring and caret blink off and back on.
+    input.blur()
+    await waitFor(() => expect(queryCalendar()).toBeNull())
+    // The focus manager's return attempt runs in a microtask after unmount.
+    await new Promise((resolve) => {
+      setTimeout(resolve, 20)
+    })
+    expect(document.activeElement).not.toBe(input)
+  })
+
+  it('a close that leaves focus in place still returns it — escape from inside the calendar', async () => {
+    render(<DatePicker aria-label="日期" />)
+    const input = getInput()
+    const user = userEvent.setup()
+    await user.click(input)
+    await waitFor(() => expect(queryCalendar()).not.toBeNull())
+    // Tab moves focus into the calendar for real (it navigates by focus, not
+    // by aria-activedescendant), so escape has somewhere to return from.
+    await user.tab()
+    expect(queryCalendar()?.contains(document.activeElement)).toBe(true)
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(queryCalendar()).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(input))
+  })
+
   it('mirrors disabled and readOnly onto the root as data attributes and onto the input', () => {
     const { rerender } = render(<DatePicker aria-label="日期" disabled />)
     const root = document.querySelector('[data-slot="date-picker"]') as HTMLElement
@@ -182,6 +215,20 @@ describe('date-picker', () => {
     rerender(<DatePicker aria-label="日期" readOnly />)
     expect(root.getAttribute('data-readonly')).toBe('')
     expect(getInput().readOnly).toBe(true)
+  })
+
+  it('keys data-empty off what the input shows: a half-typed draft already fills the field', async () => {
+    render(<DatePicker aria-label="日期" />)
+    const root = document.querySelector('[data-slot="date-picker"]') as HTMLElement
+    expect(root.getAttribute('data-empty')).toBe('')
+    const user = userEvent.setup()
+    // Not a parseable date yet — but the input visibly holds text, so the
+    // clear affordance must already be there (Base UI's FieldControl reading:
+    // filled follows the DOM input's text, not the committed value).
+    await user.type(getInput(), '2026-')
+    expect(root.getAttribute('data-empty')).toBeNull()
+    await user.clear(getInput())
+    expect(root.getAttribute('data-empty')).toBe('')
   })
 
   it('drops an unsettled draft when the value changes from outside (a form reset)', async () => {
@@ -309,6 +356,43 @@ describe('date-picker', () => {
       await waitFor(() => expect(queryCalendar()).toBeNull())
     })
 
+    it('popup clicks never take focus away from the input — no blur/refocus flicker', async () => {
+      renderWithFooter()
+      const input = getInput()
+      let blurs = 0
+      input.addEventListener('blur', () => {
+        blurs += 1
+      })
+      const user = userEvent.setup()
+      await user.click(input)
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      // Picking a day and confirming are popup clicks: mousedown is
+      // prevented (the antd treatment), so the input keeps focus throughout.
+      await clickDay('20')
+      expect(document.activeElement).toBe(input)
+      await user.click(screen.getByRole('button', { name: '确定' }))
+      await waitFor(() => expect(queryCalendar()).toBeNull())
+      expect(document.activeElement).toBe(input)
+      expect(blurs).toBe(0)
+    })
+
+    it('returns focus to where the popup was opened from, caret settled to the end', async () => {
+      renderWithFooter()
+      const input = getInput()
+      const user = userEvent.setup()
+      // Opened from the input: Base UI's guarded default returns focus there.
+      await user.click(input)
+      await waitFor(() => expect(queryCalendar()).not.toBeNull())
+      await clickDay('20')
+      await user.click(screen.getByRole('button', { name: '确定' }))
+      await waitFor(() => expect(queryCalendar()).toBeNull())
+      await waitFor(() => expect(document.activeElement).toBe(input))
+      // A rewritten controlled value parks the caret at 0; once the guarded
+      // return focus lands here, the root settles it to the end.
+      await waitFor(() => expect(input.selectionStart).toBe(input.value.length))
+      expect(input.value).toBe('2026-08-20')
+    })
+
     it('cancel discards the staged pick and closes without a value change', async () => {
       const onValueChange = renderWithFooter()
       await openPopup()
@@ -330,6 +414,49 @@ describe('date-picker', () => {
       await waitFor(() => expect(queryCalendar()).toBeNull())
       expect(onValueChange).not.toHaveBeenCalled()
       expect(getInput().value).toBe('2026-08-16')
+    })
+
+    it('a staged pick already fills the field: data-empty clears on the pick, not at confirm', async () => {
+      renderWithFooter({ defaultValue: undefined })
+      const root = document.querySelector('[data-slot="date-picker"]') as HTMLElement
+      expect(root.getAttribute('data-empty')).toBe('')
+      await openPopup()
+      await clickDay('20')
+      // The input is already previewing the staged date; keeping the clear
+      // button hidden until confirm makes it pop in the instant the popup
+      // closes — the flicker this guards against.
+      expect(root.getAttribute('data-empty')).toBeNull()
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: '确定' }))
+      expect(root.getAttribute('data-empty')).toBeNull()
+    })
+
+    it('a dismissed stage restores data-empty along with the dropped preview', async () => {
+      renderWithFooter({ defaultValue: undefined })
+      const root = document.querySelector('[data-slot="date-picker"]') as HTMLElement
+      await openPopup()
+      await clickDay('20')
+      expect(root.getAttribute('data-empty')).toBeNull()
+      const user = userEvent.setup()
+      await user.click(getInput())
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(queryCalendar()).toBeNull())
+      expect(root.getAttribute('data-empty')).toBe('')
+    })
+
+    it('the input-side clear button wipes a staged pick: confirm then has nothing to commit', async () => {
+      const onValueChange = renderWithFooter({ defaultValue: undefined })
+      await openPopup()
+      await clickDay('20')
+      expect(getInput().value).toBe('2026-08-20')
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'Clear date' }))
+      expect(getInput().value).toBe('')
+      // Confirming must not resurrect the cleared pick.
+      await user.click(screen.getByRole('button', { name: '确定' }))
+      const reasons = onValueChange.mock.calls.map(([, details]) => (details as { reason: string }).reason)
+      expect(reasons).not.toContain('close-press')
+      expect(getInput().value).toBe('')
     })
 
     it('clear stages an empty value; confirm then commits null', async () => {

@@ -58,7 +58,7 @@ export type DateRangePickerOpenChangeEventDetails = ChangeEventDetails<DateRange
 
 /** What the root's parts read, and what function children are handed. */
 export interface DateRangePickerState {
-  /** Something is picked — Base UI's Field word (`data-filled`). */
+  /** An input is showing something — Base UI's Field word (`data-filled`), read off the visible text (drafts, staged or committed). */
   filled: boolean
   open: boolean
   disabled: boolean
@@ -105,11 +105,15 @@ interface DateRangePickerContextValue extends DateRangePickerState {
   setOpen: (open: boolean, eventDetails: DateRangePickerOpenChangeEventDetails) => void
   month: Date
   setMonth: (month: Date) => void
-  /** Stages a range while confirming (`DateRangePickerFooter` mounted) instead of committing it. */
-  stage: (next: DateRange | null) => void
+  /** Stages a range while confirming (`DateRangePickerFooter` mounted) instead of committing it; `undefined` drops the stage (the pending domain's own word for "nothing staged"). */
+  stage: (next: DateRange | null | undefined) => void
   /** Commits the staged range (reason `close-press`) and closes. */
   confirm: (event: Event) => void
   setFooterMounted: (mounted: boolean) => void
+  /** Flag the next close as submitting — call before `setOpen(false)`; the root then settles the caret. */
+  markSubmitClose: () => void
+  /** The popup's `finalFocus`: whether this close should return focus at all (see the root). */
+  resolveReturnFocus: () => boolean
 }
 
 const DateRangePickerContext = createContext<DateRangePickerContextValue | null>(null)
@@ -421,7 +425,10 @@ export function DateRangePickerClear({
   return (
     <InputGroupAddon
       align="inline-end"
-      className="group-data-empty/date-range-picker:hidden"
+      // `invisible`, not `hidden`: the empty state must keep the button's
+      // box, or the inputs' widths jump the moment a value lands and the
+      // whole field visibly shifts (the Cascader zero-layout-shift verdict).
+      className="group-data-empty/date-range-picker:invisible"
       data-slot="date-range-picker-clear-addon"
     >
       <InputGroupButton
@@ -438,6 +445,10 @@ export function DateRangePickerClear({
             return
           field.setDraft('from', null)
           field.setDraft('to', null)
+          // A staged-but-unconfirmed range is part of what this button clears —
+          // left in place it would keep previewing, and confirming would
+          // resurrect it.
+          field.stage(undefined)
           field.setValue(null, createChangeEventDetails('clear-press', event.nativeEvent))
         }}
       >
@@ -473,6 +484,7 @@ export function DateRangePickerPopup({
   alignOffset = 0,
   children,
   className,
+  onMouseDown,
   ref,
   side = 'bottom',
   sideOffset = 4,
@@ -524,8 +536,10 @@ export function DateRangePickerPopup({
         : { from: range.from, to: range.to }
       field.setValue(next, createChangeEventDetails('item-press'))
       // Half a range keeps the popup up — the gesture is not finished.
-      if (next.to !== undefined)
+      if (next.to !== undefined) {
+        field.markSubmitClose()
         field.setOpen(false, createChangeEventDetails('item-press'))
+      }
     },
     month: field.month,
     onMonthChange: field.setMonth,
@@ -546,9 +560,24 @@ export function DateRangePickerPopup({
         <PopoverPrimitive.Popup
           data-slot="date-range-picker-popup"
           className={cn(popupClassName, className)}
-          finalFocus={field.inputRefs.from}
+          // Base UI's Combobox treatment for this shape: focus stays on the
+          // inputs, so a close has nothing to return. The root's judge spells
+          // out the one exception (see `resolveReturnFocus` there); the
+          // function form deliberately replaces the focus manager's own
+          // guard, which lets a `body` active element through. The caret fix
+          // for submitting closes lives in the root's onOpenChangeComplete.
+          finalFocus={field.resolveReturnFocus}
           initialFocus={false}
           {...props}
+          // The antd treatment: popup mouse presses never take focus away
+          // from the field, so a pointer session has no blur/refocus flicker
+          // and nothing to return — the guarded default only ever works for
+          // keyboard users, whose focus genuinely enters the popup. Chained
+          // after the spread so a caller cannot silently unhook it.
+          onMouseDown={(event) => {
+            onMouseDown?.(event)
+            event.preventDefault()
+          }}
           // Claimed, not taken: the caller's ref still gets the element. The
           // inputs' blur needs it to tell "into our popup" from "away".
           ref={(node: HTMLDivElement | null) => {
@@ -717,9 +746,18 @@ export function DateRangePicker({
   // (mounted while the popup is open) routes changes through here.
   const [pending, setPending] = useState<DateRange | null | undefined>(undefined)
   const [footerMounted, setFooterMounted] = useState(false)
+  // Whether the close now underway submitted a range — after such a close,
+  // if Base UI's guarded return-focus landed on one of our inputs, the caret
+  // gets settled to the end (a rewritten controlled value parks it at 0).
+  const [submittedClose, setSubmittedClose] = useState(false)
 
   const rootRef = useRef<HTMLDivElement | null>(null)
   const popupRef = useRef<HTMLDivElement | null>(null)
+  // Whether the close now underway is one where focus already left the field.
+  // Read by `resolveReturnFocus` below, from inside the focus manager's
+  // unmount cleanup — a ref, because a state flip would not have rendered by
+  // then.
+  const focusLeftFieldRef = useRef(false)
   const fromInputRef = useRef<HTMLInputElement | null>(null)
   const toInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -782,19 +820,57 @@ export function DateRangePicker({
     onOpenChange?.(next, eventDetails)
     if (eventDetails.isCanceled)
       return
-    if (next)
+    if (next) {
       setMonth(startOfDay(value?.from ?? new Date()))
-    else
+      setSubmittedClose(false)
+      focusLeftFieldRef.current = false
+    }
+    else {
       // Closing settles confirm mode: whatever was staged and not confirmed
       // is dropped — dismissing IS the cancel (the MUI/antd treatment).
       setPending(undefined)
+      // Every close funnels through here, so this is where the two reasons
+      // that mean "focus already left" are recognised. A press on empty space
+      // blurs the input first, which is the input's own `focus-out` close —
+      // it never reaches Base UI as an outside press.
+      focusLeftFieldRef.current
+        = eventDetails.reason === 'focus-out' || eventDetails.reason === 'outside-press'
+    }
     setOpenState(next)
   }
 
   const confirm = (event: Event): void => {
     if (pending !== undefined)
       setValue(pending, createChangeEventDetails('close-press', event))
+    setSubmittedClose(true)
     setOpen(false, createChangeEventDetails('close-press', event))
+  }
+
+  const handleOpenChangeComplete = (nextOpen: boolean): void => {
+    // A submitting close rewrote the controlled values, which parks a blurred
+    // input's caret at 0. Base UI's guarded return focus has run by now — if
+    // it landed on either of our inputs, settle that caret to the end; where
+    // focus went is entirely its call (the industry behaviour: back to where
+    // the popup was opened from, never stolen).
+    if (!nextOpen && submittedClose) {
+      setSubmittedClose(false)
+      // A frame later: Base UI's return focus runs in a microtask after the
+      // popup unmounts, which is after this callback fires. Only touch the
+      // selection when it is actually off — `setSelectionRange` restarts the
+      // caret blink and disturbs the focus ring, and Chrome already parks a
+      // focused input's caret at the end on a value rewrite, so the pointer
+      // path must stay untouched (this is for keyboard return focus).
+      requestAnimationFrame(() => {
+        const active = document.activeElement
+        const input = [fromInputRef.current, toInputRef.current].find(candidate => candidate !== null && candidate === active)
+        if (input === undefined || input === null)
+          return
+        const end = input.value.length
+        if (input.selectionStart !== end || input.selectionEnd !== end)
+          input.setSelectionRange(end, end)
+      })
+    }
+    onOpenChangeComplete?.(nextOpen)
   }
 
   const commitDraft = (end: RangeEnd, event: Event): void => {
@@ -843,14 +919,44 @@ export function DateRangePicker({
     setOpen(nextOpen, eventDetails)
   }
 
-  const state: DateRangePickerState = { filled: value !== null, open, disabled, readOnly }
+  // Base UI's own Combobox is this exact shape — typeable inputs outside the
+  // popup — and it passes `finalFocus={false}`: focus never went into the
+  // popup, so there is nothing to return, and returning anyway is what makes
+  // the ring and caret blink off and back on. (Its guarded boolean default
+  // waves through any close whose active element is `body` — see
+  // FloatingFocusManager's `activeEl !== doc.body` clause — and a press on
+  // empty space parks focus on exactly that.)
+  //
+  // Not a flat `false` only because the calendar navigates by real focus
+  // where Combobox's list is virtual: a keyboard user's focus genuinely goes
+  // into the popup, and Escape has to bring it back. So only the closes where
+  // focus already left get refused; `true` leaves the destination to the
+  // manager, which returns focus to whichever end was focused when the popup
+  // opened. Keyed off the reason recorded in `setOpen` rather than off where
+  // focus sits, because by the time this runs the popup's ref is already
+  // detached.
+  const resolveReturnFocus = (): boolean => !focusLeftFieldRef.current
+
+  const preview = pending !== undefined ? pending : value
+  // Filled follows what the inputs are showing, not the committed value —
+  // Base UI's own reading (FieldControl flips `filled` off the DOM input's
+  // text on every keystroke). Keyed off the committed value it lags a whole
+  // popup cycle in confirm mode: the inputs preview the staged range with the
+  // clear button still hidden, and it pops in the instant the popup closes.
+  const endShown = (end: RangeEnd): boolean => {
+    const draft = drafts[end]
+    if (draft !== null)
+      return draft.trim() !== ''
+    return preview !== null && preview[end] !== undefined
+  }
+  const state: DateRangePickerState = { filled: endShown('from') || endShown('to'), open, disabled, readOnly }
   // Not memoised: `drafts` changes on every keystroke anyway, so a stable
   // identity would buy nothing and only hide the dependency. (The documented
   // exception to the provider-value-must-memo rule.)
   const context: DateRangePickerContextValue = {
     ...state,
     value,
-    preview: pending !== undefined ? pending : value,
+    preview,
     confirmMode: footerMounted,
     drafts,
     clearable,
@@ -873,6 +979,8 @@ export function DateRangePicker({
     stage: setPending,
     confirm,
     setFooterMounted,
+    markSubmitClose: () => setSubmittedClose(true),
+    resolveReturnFocus,
   }
 
   const defaultChildren = (
@@ -912,7 +1020,7 @@ export function DateRangePicker({
           modal={modal}
           open={open}
           onOpenChange={handlePrimitiveOpenChange}
-          onOpenChangeComplete={onOpenChangeComplete}
+          onOpenChangeComplete={handleOpenChangeComplete}
         >
           {resolvedChildren}
           {hasComposedPopup ? null : <DateRangePickerPopup />}
