@@ -145,6 +145,44 @@ describe('infiniteCombobox label channel', () => {
     await waitFor(() => expect(screen.queryByRole('option', { name: 'Alice' })).toBeNull())
   })
 
+  // The two cells where `label.control` (the element) and `label.htmlFor` (the
+  // id string) disagree — a wrapping label has no htmlFor to compare, and a
+  // triggerId that never reached a DOM node matches an id string that is not
+  // ours. Both are decided by element identity, the way Base UI decides it.
+  it('closes on a second click of a wrapping label that carries no htmlFor', async () => {
+    const user = userEvent.setup()
+    render(
+      <label>
+        作曲家
+        <Harness />
+      </label>,
+    )
+    await user.click(screen.getByText('作曲家'))
+    expect(await screen.findByRole('option', { name: 'Alice' })).not.toBeNull()
+
+    await user.click(screen.getByText('作曲家'))
+    await waitFor(() => expect(screen.queryByRole('option', { name: 'Alice' })).toBeNull())
+  })
+
+  it('still dismisses for a label whose htmlFor points at no element of ours', async () => {
+    const user = userEvent.setup()
+    // A non-element trigger becomes the content of Base UI's own button, and
+    // `triggerId` is only ever cloned onto an element — so nothing on the page
+    // carries this id, and this label belongs to somebody else entirely.
+    render(
+      <>
+        <label htmlFor="composer">作曲家</label>
+        <Harness triggerId="composer">选择器</Harness>
+      </>,
+    )
+    expect(document.getElementById('composer')).toBeNull()
+    await user.click(screen.getByRole('button', { name: '选择器' }))
+    expect(await screen.findByRole('option', { name: 'Alice' })).not.toBeNull()
+
+    await user.click(screen.getByText('作曲家'))
+    await waitFor(() => expect(screen.queryByRole('option', { name: 'Alice' })).toBeNull())
+  })
+
   it('still dismisses for a press anywhere else', async () => {
     const user = userEvent.setup()
     render(renderLabelled())

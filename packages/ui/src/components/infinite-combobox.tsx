@@ -9,6 +9,7 @@ import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-ut
 import { useDebounceFn } from 'ahooks'
 import { Children, cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
+import { isOwnLabelPress, LABEL_PRESS_REASONS } from '#lib/own-label-press'
 import { cn } from '#lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '#primitives/popover'
 import {
@@ -388,9 +389,10 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     }
   }, [deferredEnabled, props, setInternalValue, state.open])
 
-  // Set below, where the trigger's id is resolved — a ref because the handler
-  // is created before that and must still see the current value.
-  const labelTargetIdRef = useRef<string | undefined>(undefined)
+  // The trigger element itself, claimed off `Popover.Trigger` below. The label
+  // check needs the element, not an id: it is the element the browser forwards
+  // a label's click to.
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
 
   /**
    * Open/close, with one exception written in: **the associated `<label>` is
@@ -400,21 +402,29 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
    * does reach the page. Base UI counts that as an outside press and dismisses
    * on `pointerdown`; the browser then forwards the `click` to the trigger,
    * which reopens what was just closed — the label could open the popover but
-   * never close it, with a visible flicker in between. A `<label for>` points
-   * at the trigger, so pressing it *is* pressing the trigger: cancel the
-   * dismissal and let the forwarded click do the toggling.
+   * never close it, with a visible flicker in between. Pressing a label that
+   * owns the trigger *is* pressing the trigger: cancel the dismissal and let
+   * the forwarded click do the toggling.
+   *
+   * The same `isOwnLabelPress` the Select, Cascader and DatePicker seams use,
+   * so the anchor is `label.control` — element identity, which is how Base UI
+   * itself resolves a label press
+   * (`drawer/virtual-keyboard-provider/DrawerVirtualKeyboardProvider.js:539`).
+   * That covers a wrapping `<label>` with no `htmlFor` at all, and it goes null
+   * exactly when the browser would not forward the click either, so an id that
+   * reached no DOM node can no longer swallow an unrelated label's press.
+   * `LABEL_PRESS_REASONS` also lists `cancel-open`, which no popover ever emits
+   * (only the combobox/menu/context-menu/select triggers do) — inert here, kept
+   * for one spelling of the check across the seams.
    */
   const handleOpenChange = useCallback(
     (next: boolean, eventDetails: PopoverPrimitive.Root.ChangeEventDetails) => {
       if (disabled && next)
         return
-      if (!next && eventDetails.reason === 'outside-press' && labelTargetIdRef.current !== undefined) {
-        const target = eventDetails.event?.target
-        const label = target instanceof Element ? target.closest('label') : null
-        if (label !== null && label.htmlFor === labelTargetIdRef.current) {
-          eventDetails.cancel()
-          return
-        }
+      if (!next && LABEL_PRESS_REASONS.has(eventDetails.reason)
+        && isOwnLabelPress(eventDetails.event, triggerRef.current)) {
+        eventDetails.cancel()
+        return
       }
       // The same details object rides through: the caller's onOpenChange can
       // cancel(), and Base UI reads the flag after this handler returns.
@@ -515,11 +525,9 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
   // Nothing has to be wired for the click the label forwards: the trigger is a
   // real button, so the browser delivers that click to it and Base UI toggles.
   // The one exception is the second such click; see `handleOpenChange`.
-  // The id a `FieldLabel htmlFor` can aim at: the element's own wins, `triggerId`
-  // fills in. Needed twice — to clone in, and to recognise that label below.
+  // An element that brought its own `id` keeps it, so `triggerId` only clones in
+  // when there is nothing to overwrite.
   const triggerOwnId = isValidElement(trigger) ? (trigger.props as { id?: string }).id : undefined
-  const labelTargetId = triggerOwnId ?? triggerId
-  labelTargetIdRef.current = labelTargetId
 
   // Only the id is cloned in. `disabled` goes to `Popover.Trigger` instead, so
   // Base UI's own button machinery owns it: it suppresses activation, writes the
@@ -562,10 +570,14 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     <Popover modal={modal} open={state.open} onOpenChange={handleOpenChange}>
       {/* An element trigger IS the button (Base UI merges its props into the
           caller's element); anything else — a bare string, say — becomes the
-          content of Base UI's own button instead. */}
+          content of Base UI's own button instead. The ref is claimed, not
+          taken: on the `render` path Base UI merges it with whatever ref the
+          caller's element already carries, on the other it lands on Base UI's
+          own button — either way `handleOpenChange` gets the one element the
+          browser would forward a label's click to. */}
       {isValidElement(wiredTrigger)
-        ? <PopoverTrigger disabled={disabled} render={wiredTrigger} />
-        : <PopoverTrigger disabled={disabled}>{wiredTrigger}</PopoverTrigger>}
+        ? <PopoverTrigger ref={triggerRef} disabled={disabled} render={wiredTrigger} />
+        : <PopoverTrigger ref={triggerRef} disabled={disabled}>{wiredTrigger}</PopoverTrigger>}
       {name !== undefined && (isMultiple
         ? ((selectedValue as string[] | null | undefined) ?? []).map(id => (
             <input key={id} name={name} type="hidden" value={id} />
