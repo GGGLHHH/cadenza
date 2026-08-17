@@ -118,8 +118,8 @@ DOM 里（自身带 `aria-live` 播报），所以别条件渲染它本身，要
 **chips 那一行要自己交给弹层当锚点。** 默认弹层贴着输入框，而这里输入框只是行里的一小
 截，选多了还会换行把整行撑高。所以给 `ComboboxChips` 一个 ref，把同一个 ref 交给
 `ComboboxPopup` 的 `anchor` —— 弹层跟着整行走。封装层认得这件事：给了 `anchor` 时弹层
-上会多一个 `data-chips`，宽度下限随之收回到锚点本身（见
-[状态与 className](#状态与-classname)），要按这个分支再调样式时它也是个选择器。
+上会多一个 `data-chips`（见 [状态与 className](#状态与-classname)），
+要按这个分支调样式时它是个现成的选择器。
 
 chip 的删除按下标走（`selectedValue.filter((_, i) => i !== index)`，下标是它在
 `ComboboxChips` 里的渲染顺序），所以**chips 的顺序必须和值的顺序一致** —— 用
@@ -480,11 +480,10 @@ Portal + Positioner + Popup 一整套。定位那几个 props 是从 Positioner 
 | `data-instant` | 这一次不要动画 |
 | `data-chips` | **封装层加的**：给了 `anchor` 就挂上（空串值），没给就不挂 |
 
-宽度默认跟随锚点（`inline-(--anchor-width)`），下限再宽一点点
-（`calc(var(--anchor-width) + --spacing(7))`，给箭头和清除留位），
-高度上限是 `--available-height`。挂着 `data-chips` 时下限收回到锚点本身
-（`data-chips:min-inline-(--anchor-width)`）—— 那一行本来就够宽，不用再给
-箭头留位。
+宽度跟随锚点（`inline-(--anchor-width)`），高度上限是 `--available-height`。
+锚点是**整行**，不是中间那截 input——输入行渲染成 `Combobox.InputGroup`，把自己
+注册进 Base UI，于是 `--anchor-width` 量到的就是含前后 addon 的完整宽度，箭头和
+清除不用额外补位。
 
 ### ComboboxItem
 

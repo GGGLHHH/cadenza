@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import { IconSearch } from '@tabler/icons-react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
@@ -12,13 +14,17 @@ import {
   ComboboxList,
   ComboboxPopup,
 } from '../src/components/combobox'
+import { InputGroupAddon } from '../src/components/input-group'
 
 const COMPOSERS = ['拉威尔', '德彪西', '萨蒂']
 
-function renderComposers(props: Partial<Parameters<typeof Combobox<string>>[0]> = {}): void {
+function renderComposers(
+  props: Partial<Parameters<typeof Combobox<string>>[0]> = {},
+  addon?: ReactNode,
+): void {
   render(
     <Combobox items={COMPOSERS} {...props}>
-      <ComboboxInput aria-label="作曲家" />
+      <ComboboxInput aria-label="作曲家">{addon}</ComboboxInput>
       <ComboboxPopup>
         <ComboboxEmpty>没有匹配</ComboboxEmpty>
         <ComboboxList>
@@ -91,6 +97,53 @@ it('lets a root-level disabled reach the input and the row', () => {
   const input = screen.getByRole('combobox', { name: '作曲家' })
   expect(input.hasAttribute('disabled')).toBe(true)
   expect(input.closest('[data-slot="input-group"]')).not.toBeNull()
+})
+
+it('keeps the list open when the documented leading addon is pressed', async () => {
+  const user = userEvent.setup()
+  const onOpenChange = vi.fn()
+  renderComposers({ onOpenChange }, <InputGroupAddon data-testid="search"><IconSearch /></InputGroupAddon>)
+
+  const input = screen.getByRole('combobox', { name: '作曲家' })
+  await user.click(input)
+  await waitFor(() => expect(screen.getByRole('option', { name: '德彪西' })).toBeTruthy())
+  onOpenChange.mockClear()
+
+  // The row is the fourth anchor of Base UI's outside-press test
+  // (`!contains(inputGroupElement, target)`, AriaCombobox.js:911), and only
+  // `Combobox.InputGroup` fills that slot in. Rendered as a bare div the addon
+  // matched none of the four anchors, so the press the docs teach —
+  // `<InputGroupAddon><IconSearch /></InputGroupAddon>` inside `ComboboxInput`
+  // — dismissed the list it was meant to search.
+  await user.click(screen.getByTestId('search'))
+  expect(screen.queryByRole('option', { name: '德彪西' })).not.toBeNull()
+  expect(document.activeElement).toBe(input)
+  // The end state alone cannot tell "never dismissed" from "dismissed, then
+  // reopened a tick later by handleInputPress" — both leave the list up with
+  // the input focused. Only the callback sequence separates them, and the
+  // close/reopen is real churn the user can see (unmount, exit animation,
+  // highlight reset). So: not one dismissal, cancelled or otherwise.
+  expect(onOpenChange.mock.calls.filter(([nextOpen]) => nextOpen === false)).toEqual([])
+})
+
+it('registers the row as the popup anchor, not the bare input', async () => {
+  const user = userEvent.setup()
+  renderComposers()
+
+  await user.click(screen.getByRole('combobox', { name: '作曲家' }))
+  await waitFor(() => expect(screen.getByRole('option', { name: '德彪西' })).toBeTruthy())
+
+  // `data-popup-open` is written only when the row renders through
+  // `Combobox.InputGroup` (triggerStateAttributesMapping), so this catches a
+  // swap back to a plain div. It is NOT proof the store holds the element —
+  // that comes from the ref, and the attribute would survive a render element
+  // that swallowed it. The addon test above is what covers the ref path: with
+  // `inputGroupElement` null the addon press dismisses, and the dismissal shows
+  // up in `onOpenChange` even though the end state looks identical. Identity,
+  // not pixels — jsdom has no layout to measure.
+  const row = document.querySelector('[data-slot="input-group"]')
+  expect(row?.contains(screen.getByRole('combobox', { name: '作曲家' }))).toBe(true)
+  expect(row?.hasAttribute('data-popup-open')).toBe(true)
 })
 
 it('drops the whole addon when neither button is asked for', () => {

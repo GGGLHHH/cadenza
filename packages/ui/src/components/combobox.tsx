@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactElement } from 'react'
+import type { ComponentProps, ReactElement } from 'react'
 import { Combobox as ComboboxPrimitive } from '@base-ui/react/combobox'
 import { IconCheck, IconChevronDown, IconX } from '@tabler/icons-react'
 import { cn, dataAttr } from '#lib/utils'
@@ -42,11 +42,15 @@ export type ComboboxInputProps
        */
       clearable?: boolean
       /**
-       * Classes for the bordered **row**, not the input inside it — the row is
-       * the `InputGroup` this part assembles, a plain DOM element, so this is a
-       * string and not the Base UI `(state) => string` form.
+       * Classes for the bordered **row**, not the input inside it. The full
+       * Base UI form, function included: the row renders through
+       * `Combobox.InputGroup`, so the class lands in a Base UI slot that
+       * resolves `(state) => string` itself. It was narrowed to a plain string
+       * back when the row was a bare div — no routing forces that any more, and
+       * a type that refuses what the runtime accepts is the same half-open door
+       * as one that promises what it cannot deliver.
        */
-      className?: string
+      className?: ComponentProps<typeof ComboboxPrimitive.InputGroup>['className']
     }
 
 /**
@@ -163,8 +167,29 @@ export function ComboboxInput({
   trigger = true,
   ...props
 }: ComboboxInputProps): ReactElement {
+  /*
+    The row is Base UI's `Combobox.InputGroup` wearing shadcn's `InputGroup`, not
+    a bare `InputGroup` div: only that part runs
+    `store.set('inputGroupElement', element)`
+    (@base-ui/react/combobox/input-group/ComboboxInputGroup.js:56), and Base UI
+    answers three questions off that element:
+
+    - is this press outside? — `!contains(inputGroupElement, target)` is the
+      fourth anchor of the four (combobox/root/AriaCombobox.js:911), so a press
+      on an addon focuses the input and keeps the list open
+      (combobox/utils/handleInputPress.js) instead of dismissing it;
+    - what does the popup anchor to? — `inputGroupElement ?? inputElement`
+      (combobox/positioner/ComboboxPositioner.js:66), so `--anchor-width` is the
+      row and `ComboboxPopup` needs no hand-built allowance for the addon;
+    - where does `modal`'s backdrop cut its hole? — the same element
+      (ComboboxPositioner.js:111), so the arrow and clear stay pressable.
+
+    Left unregistered all three fall back to the bare `<input>`. Line numbers
+    drift with the dependency; the store key `inputGroupElement` is the stable
+    handle to grep for.
+  */
   return (
-    <InputGroup className={cn('inline-auto', className)}>
+    <ComboboxPrimitive.InputGroup className={cn('inline-auto', className)} render={<InputGroup />}>
       {/*
         Nothing here passes `disabled` down. Base UI's Input already resolves
         `fieldDisabled || comboboxDisabled || disabledProp` and writes it on
@@ -201,13 +226,22 @@ export function ComboboxInput({
         </InputGroupAddon>
       )}
       {children}
-    </InputGroup>
+    </ComboboxPrimitive.InputGroup>
   )
 }
 
 /**
  * The floating list. Anchors to the input by default; pass `anchor` a ref to
  * anchor it elsewhere — a `ComboboxChips` row, say.
+ *
+ * `inline-(--anchor-width)` is the whole width story. The vendored primitive
+ * also carries `min-w-[calc(var(--anchor-width)+--spacing(7))]`, undone again
+ * for the chips row — a hand-measured 28px standing in for the trailing addon,
+ * because its row was a plain div and the anchor fell back to the bare
+ * `<input>`. `ComboboxInput` now registers the row as Base UI's
+ * `Combobox.InputGroup`, so `--anchor-width` already measures input + addon
+ * (combobox/positioner/ComboboxPositioner.js:66) and the allowance is gone.
+ * `data-chips` stays as a styling hook for callers, not for this.
  */
 export function ComboboxPopup({
   align = 'start',
@@ -236,8 +270,6 @@ export function ComboboxPopup({
               shadow-md ring-1 ring-foreground/10 duration-100
               inline-(--anchor-width) max-block-(--available-height)
               max-inline-(--available-width)
-              min-inline-[calc(var(--anchor-width)+(--spacing(7)))]
-              data-chips:min-inline-(--anchor-width)
               data-[side=bottom]:slide-in-from-top-2
               data-[side=inline-end]:slide-in-from-left-2
               data-[side=inline-start]:slide-in-from-right-2
