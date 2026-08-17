@@ -229,6 +229,15 @@ interface CascaderContextValue {
   clear: (event: Event) => void
   /** The trigger element — the root tells a press on the control's own `FieldLabel` apart from an outside press. */
   triggerRef: RefObject<HTMLElement | null>
+  /**
+   * The box the trigger and the lifted ✕ share (mounted only while there is a
+   * ✕ to lift). The root needs it because Menu's `outsidePress` override
+   * ignores the target entirely (menu/root/MenuRoot.js:285), leaving
+   * `useDismiss`'s anchor of floating ∪ domReference
+   * (floating-ui-react/hooks/useDismiss.js:83-85) — and the lifted ✕, a DOM
+   * sibling of the trigger, is in neither.
+   */
+  containerRef: RefObject<HTMLSpanElement | null>
 }
 
 const CascaderContext = createContext<CascaderContextValue | null>(null)
@@ -378,17 +387,36 @@ export function Cascader({
   }
 
   const triggerRef = useRef<HTMLElement | null>(null)
+  const containerRef = useRef<HTMLSpanElement | null>(null)
   const handleOpenChange = (
     nextOpen: boolean,
     eventDetails: MenuPrimitive.Root.ChangeEventDetails,
   ): void => {
-    // Same correction as the Select seam: a press on our own label is not an
-    // outside press. Cancelled before the caller's callback runs — the caller
-    // still hears about it, with `isCanceled` already set — and the browser
-    // then forwards the label's click to the trigger, which toggles itself.
-    if (!nextOpen && LABEL_PRESS_REASONS.has(eventDetails.reason)
-      && isOwnLabelPress(eventDetails.event, triggerRef.current)) {
-      eventDetails.cancel()
+    // Same correction as the Select seam: a press on our own label, or on our
+    // own lifted ✕, is not an outside press. Cancelled before the caller's
+    // callback runs — the caller still hears about it, with `isCanceled`
+    // already set — and the browser then forwards the label's click to the
+    // trigger, which toggles itself.
+    //
+    // The ✕ half is Base UI's own answer to the same question: its Combobox
+    // overrides `outsidePress` to spare exactly the parts that sit outside the
+    // trigger — `!contains(clearRef.current, target)` and its siblings, see
+    // combobox/root/AriaCombobox.js:911. Menu's override answers `true`
+    // without ever looking at the target, so our lifted ✕ (a sibling button —
+    // HTML forbids nesting it) reads as outside. Widened to the whole
+    // container rather than the ✕ alone, the DatePicker treatment: anything in
+    // our own box is ours. Without it one press reports both `clear-press` and
+    // a dismissal the user never performed.
+    //
+    // The menu still closes, as `focus-out`: the ✕ is a real button and takes
+    // focus off the menu. That reason is honest, so it is left alone — the
+    // wrong one is what this removes.
+    if (!nextOpen && LABEL_PRESS_REASONS.has(eventDetails.reason)) {
+      const target = eventDetails.event.target
+      if (isOwnLabelPress(eventDetails.event, triggerRef.current)
+        || (target instanceof Node && containerRef.current?.contains(target) === true)) {
+        eventDetails.cancel()
+      }
     }
     onOpenChange?.(nextOpen, eventDetails)
   }
@@ -443,6 +471,7 @@ export function Cascader({
       handleValueChangeRef.current(JSON.parse(key) as string[], eventDetails),
     clear: event => handleValueChangeRef.current(null, createChangeEventDetails('clear-press', event)),
     triggerRef,
+    containerRef,
   }), [items, value, filled, disabled, clearable, placeholder, panels, hasLoader, requestPage, virtualized, rowHeight, maxListHeight])
 
   // Layered takeover: an unwritten part stays present by default. Children
@@ -486,7 +515,7 @@ export type CascaderTriggerProps = Omit<MenuPrimitive.Trigger.Props, 'handle' | 
  * another).
  */
 export function CascaderTrigger({ children, className, ref, size = 'default', ...props }: CascaderTriggerProps): ReactElement {
-  const { filled, disabled, clearable, clear, triggerRef } = useCascaderContext()
+  const { filled, disabled, clearable, clear, triggerRef, containerRef } = useCascaderContext()
   const autoComposed = children === undefined
   const composedClearProps = autoComposed ? {} : findComposedPart(children, CascaderClear)
   const clearProps = clearable ? composedClearProps : undefined
@@ -551,7 +580,7 @@ export function CascaderTrigger({ children, className, ref, size = 'default', ..
   if (clearProps === undefined)
     return trigger
   return (
-    <span className="relative inline-flex inline-fit" data-slot="cascader-trigger-container">
+    <span className="relative inline-flex inline-fit" data-slot="cascader-trigger-container" ref={containerRef}>
       {trigger}
       {clearVisible && <CascaderClearOverlay {...clearProps} clear={clear} />}
     </span>
@@ -614,6 +643,7 @@ function CascaderClearOverlay({
   children,
   clear,
   onClick,
+  onMouseDown,
   ...props
 }: CascaderClearProps & { clear: (event: Event) => void }): ReactElement {
   return (
@@ -637,6 +667,18 @@ function CascaderClearOverlay({
         onClick?.(event)
         if (!event.defaultPrevented)
           clear(event.nativeEvent)
+      }}
+      // Base UI's own clear does exactly this, with the same one-line reason
+      // (`ComboboxClear.js:96-98`, "Avoid stealing focus from the input"): a
+      // pointer press on a clear affordance must not move focus. It matters
+      // more here than upstream, because HTML forbids a button inside a button
+      // so this one is lifted out of the trigger — taking focus would land it
+      // outside the popup's own elements and the dismissal machinery would
+      // read a genuine focus-out. Cancelling the mousedown default is what
+      // keeps a press on the control's own part from reading as leaving it.
+      onMouseDown={(event) => {
+        onMouseDown?.(event)
+        event.preventDefault()
       }}
     >
       {children ?? <IconX aria-hidden className="block-4 inline-4" />}

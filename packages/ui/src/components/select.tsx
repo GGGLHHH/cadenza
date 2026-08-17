@@ -186,6 +186,15 @@ interface SelectContextValue {
    * `FieldLabel` apart from a press outside the select — see `isOwnLabelPress`.
    */
   triggerRef: RefObject<HTMLButtonElement | null>
+  /**
+   * The box the trigger and the lifted ✕ share (mounted only while there is a
+   * ✕ to lift). The root needs it because Base UI's outside-press anchor is
+   * floating ∪ domReference (`useDismiss`'s `isEventWithinOwnElements`,
+   * floating-ui-react/hooks/useDismiss.js:83-85) and Select's Root feeds it
+   * only the trigger and the positioner (select/root/SelectRoot.js:271-274) —
+   * so the lifted ✕, a DOM sibling of the trigger, reads as outside.
+   */
+  containerRef: RefObject<HTMLSpanElement | null>
 }
 
 const SelectContext = createContext<SelectContextValue | null>(null)
@@ -244,18 +253,37 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
   handleValueChangeRef.current = handleValueChange
 
   const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const containerRef = useRef<HTMLSpanElement | null>(null)
   const handleOpenChange = (
     nextOpen: boolean,
     eventDetails: SelectPrimitive.Root.ChangeEventDetails,
   ): void => {
     // Cancelled before the caller's callback runs, not after: this corrects
-    // what the event *is* — a press on our own label is not an outside press —
-    // rather than deciding what to do about it. The caller still hears about
-    // it, with `isCanceled` already set. The browser then forwards the label's
-    // click to the trigger, which toggles the popup itself.
-    if (!nextOpen && LABEL_PRESS_REASONS.has(eventDetails.reason)
-      && isOwnLabelPress(eventDetails.event, triggerRef.current)) {
-      eventDetails.cancel()
+    // what the event *is* — a press on our own label, or on our own lifted ✕,
+    // is not an outside press — rather than deciding what to do about it. The
+    // caller still hears about it, with `isCanceled` already set. The browser
+    // then forwards the label's click to the trigger, which toggles the popup
+    // itself.
+    //
+    // The ✕ half is Base UI's own answer to the same question: its Combobox
+    // overrides `outsidePress` to spare exactly the parts that sit outside the
+    // trigger — `!contains(clearRef.current, target)` and its siblings, see
+    // combobox/root/AriaCombobox.js:911. Select's Root does not override, so
+    // the anchor stays floating ∪ domReference and our lifted ✕ (a sibling
+    // button — HTML forbids nesting it) falls outside it. Widened to the whole
+    // container rather than the ✕ alone, the DatePicker treatment: anything in
+    // our own box is ours. Without it one press reports both `clear-press` and
+    // a dismissal the user never performed.
+    //
+    // The popup still closes, as `focus-out`: the ✕ is a real button and takes
+    // focus off the popup. That reason is honest, so it is left alone — the
+    // wrong one is what this removes.
+    if (!nextOpen && LABEL_PRESS_REASONS.has(eventDetails.reason)) {
+      const target = eventDetails.event.target
+      if (isOwnLabelPress(eventDetails.event, triggerRef.current)
+        || (target instanceof Node && containerRef.current?.contains(target) === true)) {
+        eventDetails.cancel()
+      }
     }
     onOpenChange?.(nextOpen, eventDetails)
   }
@@ -273,6 +301,7 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
       createChangeEventDetails('clear-press', event),
     ),
     triggerRef,
+    containerRef,
   }), [filled, disabled, readOnly, pending, clearable, placeholder, multiple])
 
   return (
@@ -368,7 +397,7 @@ export function SelectPopup({ alignItemWithTrigger = false, children, ...props }
  * involved.
  */
 export function SelectTrigger({ children, className, ref, ...props }: SelectTriggerProps): ReactElement {
-  const { filled, disabled, readOnly, pending, clearable, placeholder, clear, triggerRef } = useSelectContext()
+  const { filled, disabled, readOnly, pending, clearable, placeholder, clear, triggerRef, containerRef } = useSelectContext()
   // No children → the trigger's own default composition: a SelectValue wired
   // to the root's placeholder, plus the clear affordance (`clearable` gates
   // it). An explicitly composed SelectClear works the same — clearable stays
@@ -429,7 +458,7 @@ export function SelectTrigger({ children, className, ref, ...props }: SelectTrig
   if (clearProps === undefined)
     return trigger
   return (
-    <span className="relative inline-flex inline-fit" data-slot="select-trigger-container">
+    <span className="relative inline-flex inline-fit" data-slot="select-trigger-container" ref={containerRef}>
       {trigger}
       {clearVisible && <SelectClearOverlay {...clearProps} clear={clear} />}
     </span>
@@ -460,6 +489,7 @@ function SelectClearOverlay({
   children,
   clear,
   onClick,
+  onMouseDown,
   ...props
 }: SelectClearProps & { clear: (event: Event) => void }): ReactElement {
   return (
@@ -483,6 +513,18 @@ function SelectClearOverlay({
         onClick?.(event)
         if (!event.defaultPrevented)
           clear(event.nativeEvent)
+      }}
+      // Base UI's own clear does exactly this, with the same one-line reason
+      // (`ComboboxClear.js:96-98`, "Avoid stealing focus from the input"): a
+      // pointer press on a clear affordance must not move focus. It matters
+      // more here than upstream, because HTML forbids a button inside a button
+      // so this one is lifted out of the trigger — taking focus would land it
+      // outside the popup's own elements and the dismissal machinery would
+      // read a genuine focus-out. Cancelling the mousedown default is what
+      // keeps a press on the control's own part from reading as leaving it.
+      onMouseDown={(event) => {
+        onMouseDown?.(event)
+        event.preventDefault()
       }}
     >
       {children ?? <IconX aria-hidden className="block-4 inline-4" />}

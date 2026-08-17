@@ -163,6 +163,51 @@ describe('select', () => {
     expect(document.querySelector('[data-slot="select-clear"]')).not.toBeNull()
   })
 
+  // The ✕ is lifted OUT of the trigger (a <button> may not nest another), so
+  // Base UI's outside-press anchor — floating ∪ domReference — does not cover
+  // it: unfiltered, one press on the ✕ reports both `clear-press` and an
+  // `outside-press` the user never performed. Upstream answers the same
+  // question by naming the part it lifted out (Combobox's
+  // `!contains(clearRef.current, target)`, AriaCombobox.js:911).
+  it('selectClear: pressing the ✕ with the popup open is not an outside press', async () => {
+    const onOpenChange = vi.fn()
+    const onValueChange = vi.fn()
+    render(
+      <Select defaultValue="pear" items={FRUIT_LABELS} onOpenChange={onOpenChange} onValueChange={onValueChange}>
+        <SelectTrigger aria-label="水果">
+          <SelectValue />
+          <SelectClear />
+        </SelectTrigger>
+        <SelectPopup>
+          {FRUITS.map(fruit => (
+            <SelectItem key={fruit.id} value={fruit.id}>{fruit.name}</SelectItem>
+          ))}
+        </SelectPopup>
+      </Select>,
+    )
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('combobox'))
+    expect(await screen.findByRole('option', { name: '苹果' })).not.toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Clear selection' }))
+    // The value change is still reported — it is the only thing the gesture
+    // actually did.
+    expect(onValueChange).toHaveBeenCalledExactlyOnceWith(null, expect.objectContaining({ reason: 'clear-press' }))
+    const dismissals = onOpenChange.mock.calls
+      .filter(([nextOpen]) => nextOpen === false)
+      .map(([, details]) => details as { reason: string, isCanceled: boolean })
+    // Base UI still calls the press outside — HTML forbids a button inside a
+    // button, so the ✕ is lifted out of the trigger and lands in neither of
+    // the two elements its dismissal machinery knows about. Every one of those
+    // is cancelled, and no other dismissal takes their place: the ✕ declines
+    // the mousedown default (Base UI's own clear does the same), so focus never
+    // moves and there is no honest `focus-out` behind the phantom one.
+    expect(dismissals.some(details => details.reason === 'outside-press')).toBe(true)
+    expect(dismissals.filter(details => !details.isCanceled)).toEqual([])
+    // Pressing a control's own part is not leaving it: the list stays up.
+    expect(screen.queryByRole('option', { name: '苹果' })).not.toBeNull()
+  })
+
   it('selectClear: a real button in the tab order — the only keyboard path to clearing', () => {
     render(
       <Select defaultValue="pear" items={FRUIT_LABELS}>
