@@ -1,0 +1,142 @@
+---
+title: ThemeEditor
+description: A floating design-token editor — live injection, undo/redo, import and export, localStorage persistence
+---
+
+<ComponentPreview name="theme-editor/basic" align="stretch" />
+
+A development-time theming tool: a floating button opens a non-modal panel for
+editing the library's semantic colours token by token (each row a
+[ColorPicker](/en/docs/components/color-picker) swatch plus a free-text box)
+and the `--radius` slider. Changes are injected live through one
+document-level `<style>`, portalled popups following along; defaults are read
+fresh from **the CSSOM of the loaded stylesheets** (the `:root` and
+`.dark, [data-theme='dark']` blocks), so the component holds no theme copy
+that could ever go stale.
+
+Whether you are editing light or dark follows `<html>`'s own dark marker (the
+`.dark` class or `data-theme="dark"`, the same pair styles.css recognises) —
+observed with a MutationObserver, no theming library required.
+
+The editor at this site's bottom right is exactly this (a global instance
+mounted by the docs layout, with Chinese text passed in). The demo above is a
+second, inline-placed instance: its changes likewise apply to the whole site
+immediately, and `storageKey={null}` keeps it from fighting the global
+instance over storage.
+
+## Usage
+
+```tsx
+import { ThemeEditor } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<ThemeEditor />
+```
+
+By default it floats `fixed` at the viewport's bottom right; the root is a
+plain `<div>` — use `className` to override the inset utilities for another
+position, or override with `static` for inline placement.
+
+## History
+
+Undo / redo maintains a history of at most **20 steps**. Step granularity is
+"consecutive same-source merges": one drag of a slider, or one burst of typing
+within the same token, is one step; switching token or operation type cuts a
+new step; reset and import are steps of their own — **reset itself can be
+undone**. A new operation invalidates the redo stack.
+
+## Import and export
+
+"Export CSS" downloads the light and dark sets as complete token blocks (the
+shadcn-convention `:root {}` + `.dark {}`) in one CSS file (named by
+`exportFileName`, default `theme.css`); "Import" parses pasted CSS of the same
+format and **merges** it into the current edits (pasting just three tokens
+never wipes the other hand edits). Values carrying CSS structural characters
+(`red}`) are skipped wholesale at injection and export, to keep them from
+silently breaking the whole style block.
+
+## Persistence
+
+Edits are stored in localStorage under `storageKey` (default
+`cadenza-theme-editor`) and restored on mount; clearing all edits clears the
+storage. Pass `storageKey={null}` to switch persistence off entirely — which a
+second instance on the page (like this page's demo) should do, lest the two
+instances write over the same key.
+
+## Localisation
+
+All visible text goes through flat `*Label` string props, English by default;
+group titles follow the `groups` data. Pass translations one by one to switch
+the whole language:
+
+<ComponentPreview name="theme-editor/localized" align="stretch" />
+
+## Controlled
+
+Panel open state supports the controlled trio; the callback's second argument
+is event details with a `reason` (`trigger-press` / `close-press` /
+`escape-key`), and `cancel()` rejects the toggle:
+
+```tsx
+const [open, setOpen] = useState(false)
+
+<ThemeEditor
+  open={open}
+  onOpenChange={(next, details) => {
+    if (details.reason === 'escape-key')
+      details.cancel() // close by button only, never by Esc
+    else
+      setOpen(next)
+  }}
+/>
+```
+
+## State and className
+
+| Attribute | Where | When present |
+| --- | --- | --- |
+| `data-open` | root | panel is open (presence attribute) |
+
+| data-slot | What it is |
+| --- | --- |
+| `theme-editor` | root of the floating stack |
+| `theme-editor-trigger` | the floating button |
+| `theme-editor-panel` | the panel |
+
+The root is a plain `<div>`; `className` honestly takes only a `string`,
+merged with the default classes through `cn` (the caller's win).
+
+## Keyboard interactions
+
+| Key | Effect |
+| --- | --- |
+| <kbd>Esc</kbd> | closes the panel while focus is inside it (reason `escape-key`) |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → className**. An all-in-one tool
+component; its props surface is closed (nothing is passed through to any
+element).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `groups` | `ThemeEditorGroup[]` | the library's nine semantic colour groups | each group is `{ label, tokens }`, tokens carrying the `--` prefix |
+| `storageKey` | `string \| null` | `'cadenza-theme-editor'` | localStorage key; `null` switches persistence off |
+| `defaultOpen` | `boolean` | `false` | initial panel open state |
+| `open` | `boolean` | — | controlled panel open state |
+| `onOpenChange` | `(open, eventDetails) => void` | — | `cancel()` rejects the toggle |
+| `aria-label` | `string` | `'Theme editor'` | accessible name of the floating button |
+| `titleLabel` | `string` | `'Theme editor'` | panel title |
+| `editingLightLabel` / `editingDarkLabel` | `string` | `'Editing light'` / `'Editing dark'` | mode badge |
+| `undoLabel` / `redoLabel` / `resetLabel` | `string` | `'Undo'` / `'Redo'` / `'Reset'` | history actions |
+| `importLabel` / `applyLabel` / `cancelLabel` | `string` | `'Import'` / `'Apply'` / `'Cancel'` | the import view |
+| `exportLabel` | `string` | `'Export CSS'` | export button |
+| `exportFileName` | `string` | `'theme.css'` | file name of the export download |
+| `closeLabel` | `string` | `'Close'` | accessible name of the panel's close button |
+| `importErrorLabel` | `string` | an English message | shown when no tokens can be parsed from the paste |
+| `className` | `string` | — | the root `<div>`; override positioning/layout |
+
+The 4 types are exported as well: `ThemeEditorProps` / `ThemeEditorGroup` /
+`ThemeEditorOpenChangeEventReason` / `ThemeEditorOpenChangeEventDetails`.

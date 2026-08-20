@@ -1,0 +1,29 @@
+---
+title: Themes
+description: Edit design tokens live and preview every component following the theme
+---
+
+Every component's colours and radii come from a layer of CSS variables in
+`@gedatou/cadenza-ui/styles.css` (shadcn convention, oklch values). **The
+palette button at the bottom right** is on every docs page: open the editor
+and changes apply live to the whole site (portalled popups included); the
+panel never locks scrolling, so you can keep flipping pages with it open —
+wander the docs site freely and the changes travel with you. After switching
+with the light/dark toggle at the top right, the light and dark sets can be
+edited separately. "Export CSS" downloads both complete token blocks as a CSS
+file — include it after `@import '@gedatou/cadenza-ui/styles.css'` in your
+project and it becomes the project theme; "Import" accepts pasted CSS of the
+same format (or a shadcn theme), parsed and merged into the current edits.
+Edits are stored in the browser's localStorage — they survive refreshes and
+reopens; only "Reset" clears them.
+
+The editable scope is the semantic tokens components actually consume:
+`--chart-*` and `--sidebar-*` have no consuming component right now, and fonts
+are deliberately left undefined by the library (injected by the consumer) —
+neither is included. Colours picked from the swatch are stored as hex; the
+text box takes any valid CSS colour written by hand (oklch, hsl, color-mix all
+work).
+
+Below is a preview of every component — the whole theme's effect on one page:
+
+<ThemePreviewGrid />

@@ -1,0 +1,320 @@
+---
+title: Slider
+description: A slider — one thumb per value, a Value generic that never degrades, and onValueCommitted as the one to hang requests on
+---
+
+<ComponentPreview name="slider/basic" />
+
+Base UI's `Slider` dressed in shadcn's base-nova skin. **One thumb per
+value**: `defaultValue={40}` renders one, `defaultValue={[25, 75]}` renders
+two — one component, two shapes.
+
+It is **the seam's own composition, not a re-export**, precisely so that
+sentence can hold — the vendored version counts thumbs by
+`Array.isArray(value)`, a scalar never enters that branch and falls back to
+`[min, max]`: the most common single-value slider thus grows **two thumbs
+stacked in the same spot**, one extra Tab stop, and one extra slider announced
+by screen readers — for a control that has exactly one value. Here the thumb
+count follows **the value actually in use** (`value ?? defaultValue`, with
+`??` not `||` — `0` is a perfectly good value, and a falsy check would leak it
+into the default branch and miscount the thumbs).
+
+One boundary: uncontrolled, Base UI reads `defaultValue` only once at mount,
+so changing its **shape** afterwards (scalar ↔ array, or a different length)
+moves the thumb count while Base UI's copy of the value stays put — and the
+stacked pair is back. Changing `defaultValue` after mount is a misuse React
+warns about anyway; a controlled `value` keeps up the whole way.
+
+## Usage
+
+```tsx
+import { Field, FieldDescription, FieldTitle, Slider } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Field>
+  <FieldTitle id="volume">Master volume</FieldTitle>
+  <Slider aria-labelledby="volume" defaultValue={40} name="volume" />
+</Field>
+```
+
+## Labelling
+
+`Slider`'s root renders a `<div role="group">`, **not a labelable element**;
+what actually carries `role="slider"` is the visually hidden
+`<input type="range">` inside each thumb. So the labelling line differs from
+the `htmlFor` → `id` set of [Checkbox](/en/docs/components/checkbox):
+
+| Spelling | Who gets the name |
+| --- | --- |
+| `aria-labelledby` pointing at the label element's `id` | the root group **and** each thumb's input (Base UI passes it down) |
+| `aria-label` on the root | only the root group; the thumbs' inputs never get it |
+| `FieldLabel htmlFor` | nobody — see below |
+
+**With visible text, use `aria-labelledby`.**
+[`FieldTitle`](/en/docs/components/field) is the perfect fit: it is a `div`
+(not a `label`), made precisely for groupings with "no single control to point
+at" — and a `role="group"` slider is exactly that.
+
+`FieldLabel htmlFor` has nowhere to land here — do not point it: native
+`<label for>` only honours labelable elements, so pointing at the root `div`
+points at nothing; and the seam renders the thumbs itself, with no opening for
+outside `id`s — even if there were one, Base UI's `Slider.Thumb` puts its `id`
+on the thumb `div`, while the inner input's id is generated internally and
+unguessable.
+
+Only when there is no visible text at all (a lone volume bar in a toolbar)
+write `aria-label`.
+
+The library-wide table of all four labelling channels is in
+[Field](/en/docs/components/field#accessibility); the slider is the only row
+that "cannot take `htmlFor`".
+
+## Range
+
+Put two values in the array and you have a range:
+
+<ComponentPreview name="slider/range" />
+
+Before rendering, values are clamped to `[min, max]` and sorted ascending.
+
+With exactly two values, Base UI defaults the two thumbs' `aria-valuetext` to
+`"180 start range"` / `"680 end range"`.
+
+To keep them apart, use `minStepsBetweenValues` (the unit is **steps**, not
+value: `step={20} minStepsBetweenValues={1}` means at least 20 apart).
+
+## Multiple thumbs
+
+As many values in the array, as many thumbs — beyond two works the same:
+
+<ComponentPreview name="slider/multiple" />
+
+Thumbs are **numbered from 0**, with `data-index` on each thumb. From three
+up, Base UI stops providing `aria-valuetext` (unless you pass `format`) and
+screen readers read the raw `aria-valuenow` number itself — the
+`start range` / `end range` set appears only with exactly two values.
+
+What happens when two thumbs collide is decided by `thumbCollisionBehavior`:
+`'push'` (the default — push along), `'swap'` (swap places), `'none'` (hold
+still, discarding the extra travel).
+
+## Generics
+
+The signature is `Slider<Value extends number | readonly number[] = number>`,
+and **the generic follows the value you pass**:
+
+```tsx
+<Slider defaultValue={40} onValueChange={next => setLevel(next)} />       // next: number
+<Slider defaultValue={[25, 75]} onValueChange={next => setRange(next)} /> // next: number[]
+<Slider onValueChange={next => setLevel(next)} />                         // next: number
+```
+
+That is, the callback never receives `number | readonly number[]`, so there is
+no narrowing step at every call site before use. `SliderProps` carries the
+same generic (defaulting to `number`).
+
+## Orientation
+
+`orientation="vertical"` stands the track upright:
+
+<ComponentPreview name="slider/vertical" />
+
+`data-orientation` flips to `vertical` on the root, control, track, indicator
+and thumbs together, and the seam's default styles switch axis with it: the
+track becomes a vertical bar, the control takes `block-full` to fill whatever
+height is given outside, with `min-block-40` as a minimum-height safety net —
+even with no height given it never collapses to 0.
+
+## Controlled
+
+The controlled trio is `value` / `defaultValue` / `onValueChange`, same as
+everywhere else: pass `value` for controlled, `defaultValue` for uncontrolled,
+and with neither it starts at `min`.
+
+The place to hang requests is not `onValueChange` but its neighbour
+`onValueCommitted` — see below.
+
+## While dragging and on commit
+
+<ComponentPreview name="slider/commit" />
+
+The two callbacks are **not the same thing**:
+
+| Callback | When it fires | Second argument | Interceptable? |
+| --- | --- | --- | --- |
+| `onValueChange` | every time the value changes | `SliderChangeEventDetails` | Yes. Call `cancel()` and the change never lands on the component's internal state, and `onValueCommitted` does not follow |
+| `onValueCommitted` | after the interaction settles | `SliderCommitEventDetails` | No — it is a **notification** (generic event) with no `cancel()` at all |
+
+When "settled" happens splits two ways:
+
+- **Pointer** (`'drag'` / `'track-press'`) — settles only on release; a whole
+  drag counts once.
+- **Keyboard** (`'keyboard'`) — every press settles on the spot.
+
+Upstream writes this into the contract: if the value did not change, or the
+change was `cancel()`ed, no commit fires for it.
+
+Both callbacks share the same set of `reason` values:
+
+| `reason` | From |
+| --- | --- |
+| `'drag'` | dragging a thumb |
+| `'track-press'` | pressing the track |
+| `'keyboard'` | arrow keys, PageUp / PageDown, Home / End |
+| `'input-change'` | the hidden range input emitting change on its own (form integration, assistive tech setting the value directly) |
+| `'none'` | no specific interaction source |
+
+When a range slider wants to know **which thumb moved**,
+`SliderChangeEventDetails` also carries an `activeThumbIndex` (numbered like
+`data-index`); the commit details have no such field.
+
+**Hang the expensive thing on `onValueCommitted`.** One drag fires
+`onValueChange` dozens to hundreds of times — sending requests from it means
+dozens to hundreds of requests.
+
+## Form
+
+Serialisation is Base UI's: given a `name`, **every thumb's
+`<input type="range">` carries that name** into submission. A single-value
+slider submits one entry; a range slider submits two under the same name —
+read them with `FormData.getAll(name)`:
+
+```ts
+new FormData(form).getAll('price') // ['180', '680']
+```
+
+`form` names the id of the form owning these inputs, for a control rendered
+outside the `<form>`.
+
+## Disabled
+
+`disabled` makes the control ignore user interaction and dims the whole strip
+— that one is done by `data-disabled:opacity-50` on `Slider.Control`, taking
+the track, indicator and thumbs translucent together.
+
+Upstream puts `disabled:pointer-events-none disabled:opacity-50` on the
+**thumb**, where both are dead: the thumb is a `div`, and `:disabled` only
+ever matches the hidden `<input type="range">` nested inside it, never the
+thumb itself. The seam therefore did not copy those two over.
+
+The cursor turns `not-allowed` — for where that comes from, see
+[Cursor](#cursor).
+
+## Edge-aligned thumb
+
+The seam changed `thumbAlignment` from Base UI's `'center'` to `'edge'`: at
+either end of the range the whole thumb tucks inside the control instead of
+poking halfway out of the track. To restore the original behaviour, pass
+`thumbAlignment="center"` yourself.
+
+## Cursor
+
+The thumb is `cursor-grab`, flipping to `grabbing` mid-drag; the track keeps
+the arrow. Every other clickable control in the library goes `pointer` (that
+policy lives in `styles.css`, matched by tag and role) — the slider is
+**deliberately not among them**: in CSS, `pointer` means "indicates a link",
+while `grab` / `grabbing` mean "grabbable / grabbing", and a thumb is dragged,
+not clicked. Upstream shadcn, Base UI and Radix official examples write not a
+single cursor rule for sliders, and native `<input type="range">` shows the
+arrow in Chrome too — this rule is the seam's own addition.
+
+The dragging state hangs on `data-dragging`, not `:active`: a drag outlives
+the press on the thumb, and `:active` breaks the moment the pointer leaves it.
+The same attribute also sits on the control, so when a fast drag flings the
+pointer off the thumb, the cursor is still `grabbing`.
+
+Disabled, it is `not-allowed`, from the library-wide disabled rule — which is
+**unlayered**, so it outweighs the `cursor-grab` utility and needs no
+restating on the slider's side.
+
+To change the cursor, go through a `data-slot` selector (`className` lands on
+the root and cannot reach the thumb):
+
+```css
+[data-slot='slider-thumb'] { cursor: pointer; }
+```
+
+## State and className
+
+`className` reaches a Base UI slot, so the function form holds:
+`(state) => string | undefined`. That state is `SliderState`:
+
+| `data-*` | Name in `SliderState` | When present |
+| --- | --- | --- |
+| `data-orientation` | `orientation` | always set: `horizontal` / `vertical`. On the root and every part |
+| `data-dragging` | `dragging` | a thumb is being dragged |
+| `data-disabled` | `disabled` | `disabled` |
+
+`SliderState` has another group that **deliberately never lands as `data-*`**:
+`values` / `activeThumbIndex` / `min` / `max` / `step` /
+`minStepsBetweenValues` — numbers make no sense in attribute selectors; to use
+them, read them in the function form of `className`.
+
+There is also the Field group (`valid` / `touched` / `dirty` / `filled` /
+`focused`), with the same footnote as [Checkbox](/en/docs/components/checkbox):
+they **only move inside Base UI's `Field.Root`**, and this library's
+[`Field`](/en/docs/components/field) is pure DOM layout, not that.
+
+### Styling from outside
+
+Every part below the root is rendered by the seam itself, with no composition
+slot exposed (anything written into `children` never appears). To restyle, use
+`data-slot` selectors:
+
+| `data-slot` | What it is |
+| --- | --- |
+| `slider` | the root, `<div role="group">` |
+| `slider-control` | the hit-testing and dragging layer (Base UI's `Slider.Control`); the thumbs line up inside it |
+| `slider-track` | the track, the base groove |
+| `slider-range` | the selected stretch (Base UI's `Slider.Indicator`) |
+| `slider-thumb` | a thumb, one per value |
+
+## Keyboard interactions
+
+Once focus is on a thumb (each thumb is its own Tab stop):
+
+| Key | Effect |
+| --- | --- |
+| `↑` / `→` | add one `step` |
+| `↓` / `←` | subtract one `step` |
+| `Shift` + arrow keys | use `largeStep` instead (default `10`) |
+| `PageUp` / `PageDown` | also `largeStep`, no Shift needed |
+| `Home` | jump to `min`; in a range, to "the previous thumb + `minStepsBetweenValues × step`" |
+| `End` | jump to `max`; in a range, to "the next thumb − `minStepsBetweenValues × step`" |
+
+Every keyboard press settles on the spot (`reason` is `'keyboard'`), unlike a
+drag which settles once on release — see
+[While dragging and on commit](#while-dragging-and-on-commit).
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `Value` | `min` (that is, `0`) | uncontrolled initial value. A `number` gives one thumb, an array one thumb per value |
+| `value` | `Value` | — | controlled value |
+| `onValueChange` | `(value: Value extends number ? number : Value, eventDetails: SliderChangeEventDetails) => void` | — | value change callback, `cancel()`-able |
+| `onValueCommitted` | `(value: Value extends number ? number : Value, eventDetails: SliderCommitEventDetails) => void` | — | commit callback, a notification, no `cancel()` |
+| `min` | `number` | `0` | minimum value |
+| `max` | `number` | `100` | maximum value. In development, `min >= max` warns |
+| `step` | `number` | `1` | step size, snapping with `min` as the origin |
+| `largeStep` | `number` | `10` | step size for Shift + arrow keys and PageUp / PageDown |
+| `minStepsBetweenValues` | `number` | `0` | minimum steps between two thumbs of a range |
+| `thumbCollisionBehavior` | `'push' \| 'swap' \| 'none'` | `'push'` | on thumb collision: push along / swap / hold still |
+| `orientation` | `'horizontal' \| 'vertical'` | `'horizontal'` | direction |
+| `disabled` | `boolean` | `false` | ignore user interaction |
+| `name` | `string` | — | form field name, used by every thumb's input |
+| `form` | `string` | — | id of the form owning the inputs, for a control rendered outside the form |
+| `format` | `Intl.NumberFormatOptions` | — | number format for announcement, fed into the thumbs' `aria-valuetext` |
+| `locale` | `Intl.LocalesArgument` | — | locale paired with `format`; omitted, it follows the runtime |
+| `thumbAlignment` | `'center' \| 'edge' \| 'edge-client-only'` | `'edge'` | **default changed by the seam**, see [Edge-aligned thumb](#edge-aligned-thumb) |
+| `aria-labelledby` | `string` | — | points at the label element's id, passed down to every thumb's input |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | replaces the element the root renders |
+| `className` | `string \| ((state: SliderState) => string \| undefined)` | — | root class. Comes after the seam's defaults; on conflict yours wins |
+| rest | Base UI `Slider.Root` props (native `div` props + `ref`) | — | passed through. Except `children` — the parts are rendered by the seam |
+
+The four types `SliderProps` (with the `Value` generic) / `SliderState` /
+`SliderChangeEventDetails` / `SliderCommitEventDetails` are exported as well.

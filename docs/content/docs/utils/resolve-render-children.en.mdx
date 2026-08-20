@@ -1,0 +1,41 @@
+---
+title: resolveRenderChildren
+description: The single resolver for dual-form children — ReactNode or (state) => ReactNode
+---
+
+In a few places in this library, children are dual-form: a plain ReactNode, or
+a `(values) => ReactNode` function. `resolveRenderChildren` is the single
+resolver of that contract — the seam computes the state and the default
+composition, then collapses both forms into one ReactNode. The semantics
+(including the nullish fallback below) follow the closing behaviour of the old
+RAC `useRenderProps`:
+
+```ts
+import { resolveRenderChildren } from '@gedatou/cadenza-utils'
+
+resolveRenderChildren(children, values, defaultChildren?)
+```
+
+- **Function children**: called with `values` plus `defaultChildren` as
+  arguments;
+- **node children**: used as is;
+- **a nullish result on either path falls back to `defaultChildren`** — the
+  closer is `computedChildren ?? defaultChildren`, so a function returning
+  `null` gets the default composition, not a blank. "Render nothing" is
+  expressed by giving no `defaultChildren`, not by returning `null` over its
+  head.
+
+The behavioural spec is `packages/utils/test/resolve-render-children.test.ts`.
+
+## Usage inside the library
+
+- `SearchField`: resolves the caller's children in its own render body,
+  passing the default composition (`InputGroup` + search icon + input + clear
+  button) as `defaultChildren` — function children can thus "add on top of
+  the default composition" without rebuilding it;
+- `InfiniteCombobox`: resolves the trigger's dual-form children with no
+  `defaultChildren` — the trigger has no default look and must come from the
+  caller.
+
+When application code wraps a component another layer and needs the same
+"pass a ReactNode or render by state" contract, use it directly.

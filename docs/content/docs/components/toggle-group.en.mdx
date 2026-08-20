@@ -1,0 +1,242 @@
+---
+title: ToggleGroup
+description: A set of toggles sharing one value — value is always an array, orientation is handed back to Base UI, and visuals no longer fight the arrow keys
+---
+
+<ComponentPreview name="toggle-group/basic" />
+
+A set of related [Toggle](/en/docs/components/toggle)s sharing one value.
+Composition is the whole API: a `ToggleGroup` holds `ToggleGroupItem`s, and
+each item's `value` is its identity within the group.
+
+**`value` is always an array**, single-select included — `multiple`
+(default `false`) only decides "how many items can be in it at once", not
+the shape of the value. So single-select writes `defaultValue={['start']}`
+and the callback receives single-element arrays like `['center']`; pressing
+an already-pressed item again releases it and the array becomes `[]`
+(nothing selected is a legal state).
+
+The root element is `role="group"`, so **`aria-label` is required** — it is
+the accessible name of this button set; every item inside is still its own
+`<button aria-pressed>`, and icon-only items each add their own
+`aria-label` as usual.
+
+## Usage
+
+```tsx
+import { ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<ToggleGroup aria-label="Alignment" defaultValue={['start']}>
+  <ToggleGroupItem aria-label="Align left" value="start"><IconAlignLeft /></ToggleGroupItem>
+  <ToggleGroupItem aria-label="Align center" value="center"><IconAlignCenter /></ToggleGroupItem>
+</ToggleGroup>
+```
+
+## Anatomy
+
+Two parts, and no third:
+
+```text
+ToggleGroup
+├── ToggleGroupItem
+└── ToggleGroupItem
+```
+
+Inside the group use `ToggleGroupItem`, not `Toggle`: the latter can read
+the group's context too and toggles just fine, but it gets none of the
+segmenting, spacing and radius-merging styles.
+
+## Variants and sizes
+
+`variant` and `size` are written on the **group** and delivered to every
+item through context, so the strip never comes out uneven. Precedence is
+the most ordinary kind: **item → group → library default**. Set it once on
+the group and the whole strip is uniform; for one item to differ, write it
+on that item and it overrides the group.
+
+(The pre-promotion vendored version had it backwards: it read
+`context.size || size`, and the item's own `size` had the default
+`'default'`, so once the group set that knob no item could ever override
+it. The seam moved the item's default down to the resolution step to
+restore the normal precedence.)
+
+For what the two `variant`s (`default` / `outline`) and three `size`s look
+like, see
+[Toggle's variants and sizes](/en/docs/components/toggle#variants-and-sizes)
+— the same `toggleVariants`; the group only hands them down.
+
+## Spacing
+
+<ComponentPreview name="toggle-group/segmented" />
+
+`spacing` is the gap between items, in spacing units (default `2`, i.e.
+`gap-2`). **`0` is a switch, not merely "zero gap"**: it also writes
+`data-spacing="0"` onto the group and every item, so middle items drop
+their radius, the first and last get back the radius on their outer side,
+and in the `outline` variant two adjacent borders merge into one — a true
+segmented control. The focused state carries `z-10`, so the focus ring is
+never buried under the neighbouring item.
+
+The gap itself is delivered through a `--gap` CSS variable, and the seam
+**merges** it into the `style` you pass (the function form is honoured too)
+instead of replacing it wholesale — otherwise one `style` on the group
+would wipe the gap while `data-spacing` kept reporting the old value.
+
+## Orientation
+
+<ComponentPreview name="toggle-group/vertical" />
+
+With `orientation="vertical"` the group stacks vertically and the arrow
+keys switch to up/down **at the same time** — one thing now, previously
+two:
+
+> The vendored version declared an `orientation` prop of its own, used it
+> to paint the flex direction, wrote `data-orientation` itself — **yet
+> never passed it to Base UI**. So Base UI's composite kept navigating
+> horizontally by default: a group that **looks vertical** while the arrow
+> keys still walk ← / → and ↑ / ↓ do nothing. Here the seam composes its
+> own rather than re-exporting: `orientation` goes straight to Base UI,
+> `data-orientation` is written by Base UI from its own state, and the
+> layout classes read that very attribute — visuals and keyboard can never
+> disagree again.
+
+The full key table is in [Keyboard interactions](#keyboard-interactions).
+
+## Multiple
+
+<ComponentPreview name="toggle-group/multiple" />
+
+With `multiple` on, several items can be pressed at once, and the array
+grows and shrinks in click order. The shape of the value does not change —
+still that array, only how many items it can hold at once. The demo above
+also happens to show the [controlled](#controlled) form.
+
+## Controlled
+
+The controlled trio is `value` / `defaultValue` / `onValueChange`. The
+callback's second argument is a real `ChangeEventDetails` (exported as
+`ToggleGroupChangeEventDetails`): `reason` is **always `'none'`**, and
+`cancel()` counts — call it and the group's internal value does not move
+forward.
+
+The value type is `Value extends string` — **strings only** (unlike
+[RadioGroup](/en/docs/components/radio-group), which also takes numbers).
+When controlled, `Value` is inferred straight from your state:
+
+```tsx
+type Mark = 'bold' | 'italic' | 'underline'
+const [marks, setMarks] = useState<Mark[]>(['bold'])
+// value takes Mark[], and onValueChange hands back Mark[]
+```
+
+Just do not expect it to validate each item: every `ToggleGroupItem` infers
+its own `value`, out of the group generic's reach — a one-letter typo gets
+past TypeScript, and the callback gains a value your application code does
+not recognise.
+
+## When to use ToggleGroup
+
+A single-select ToggleGroup is semantically **still a set of buttons**
+(`role="group"` + each item's `aria-pressed`), not a radiogroup: it
+expresses "which mode is currently in effect", and allows selecting none.
+To express "this question requires exactly one answer, and it submits with
+the form", use [RadioGroup](/en/docs/components/radio-group).
+
+Toggles unrelated to each other (bold, show gridlines, mute) need no team —
+write each as its own [Toggle](/en/docs/components/toggle); the point of
+the group is one shared value and one Tab stop.
+
+## State and className
+
+Here the function form of `className` **is effective** — unlike
+[Toggle](/en/docs/components/toggle#state-and-classname). The difference is
+routing: `Toggle` hands your className to `cva` (clsx inside, silently
+dropping functions), while these two parts use cva only for the variant
+classes and merge your className through this library's `cn` — which, given
+a function, returns a function and resolves it once the state arrives. So
+`(state) => string` works as usual, the `data-*` in the two tables below
+work as usual — both routes are open.
+
+**ToggleGroup**
+
+| `data-*` | When present |
+| --- | --- |
+| `data-orientation` | always set, `horizontal` / `vertical` (written by Base UI from its own state; the layout classes read exactly this) |
+| `data-multiple` | `multiple` |
+| `data-disabled` | whole group `disabled` |
+| `data-spacing` | always set, the value of `spacing` (written by the seam; items read it via `group-data-*`) |
+| `data-variant` / `data-size` | present only when the group sets the corresponding prop (written by the seam) |
+
+**ToggleGroupItem**
+
+| `data-*` | When present |
+| --- | --- |
+| `data-pressed` | this item's `value` is in the group's array. Comes with `aria-pressed="true"`, which is what paints the default background |
+| `data-disabled` | item `disabled`, or whole group `disabled` |
+| `data-variant` / `data-size` / `data-spacing` | always set, the tier finally in effect (written by the seam) |
+
+The root carries `data-slot="toggle-group"`, every item
+`data-slot="toggle-group-item"`. `ToggleGroupState` (`disabled` /
+`multiple` / `orientation`) and `ToggleGroupItemState` are exactly the
+arguments the two function-form `className`s each receive.
+
+## Keyboard interactions
+
+| Key | Behaviour |
+| --- | --- |
+| `→` / `←` | horizontal (default): move to the adjacent item; left and right swap under RTL |
+| `↓` / `↑` | `orientation="vertical"`: move to the adjacent item |
+| `Home` / `End` | jump to the first / last item (Base UI enables `enableHomeAndEndKeys` for this group) |
+| `Tab` | the group takes a single stop (roving focus); pressing again leaves the group |
+| `Enter` / `Space` | toggle the focused item |
+
+Arrow keys wrap around at the ends — Base UI's `loopFocus` (default
+`true`); pass `false` if unwanted. Disabled items are skipped in all of the
+navigation above — they render native `disabled` and could never take
+focus in the first place.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+### ToggleGroup
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `aria-label` | `string` | — | accessible name of this button set, **required** (the root element is `role="group"`) |
+| `defaultValue` | `readonly Value[]` | `[]` | uncontrolled initial value. **An array** — put one item in for single-select |
+| `value` | `readonly Value[]` | — | controlled value |
+| `onValueChange` | `(value: Value[], eventDetails: ToggleGroupChangeEventDetails) => void` | — | value change callback. `reason` is always `'none'`; `cancel()` rejects the change |
+| `multiple` | `boolean` | `false` | whether several items can be pressed at once. **Never changes the value's shape** |
+| `disabled` | `boolean` | `false` | disables the whole group, handed down to every item |
+| `orientation` | `'horizontal' \| 'vertical'` | `'horizontal'` | layout direction, also decides the arrow-key axis |
+| `loopFocus` | `boolean` | `true` | whether arrow keys wrap around at the ends |
+| `variant` | `'default' \| 'outline'` | — | handed down to every item; omitted, items use their own (default `default`) |
+| `size` | `'default' \| 'sm' \| 'lg'` | — | same as above |
+| `spacing` | `number` | `2` | gap between items (spacing units). `0` fuses them into one segmented control |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | replace the rendered element |
+| `className` | `string \| ((state: ToggleGroupState) => string \| undefined)` | — | class. The function form is effective (routed through `cn`, not cva), see [State and className](#state-and-classname) |
+| rest | Base UI `ToggleGroup` props (native `div` props + `ref`) | — | passed through |
+
+### ToggleGroupItem
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `Value` | — | this item's identity in the group's value array. Optional in the type, **required in practice**: once the group has a `value` / `defaultValue`, an item missing `value` errors in development and Base UI substitutes a generated id — the array then contains values nobody recognises |
+| `onPressedChange` | `(pressed: boolean, eventDetails: ToggleChangeEventDetails) => void` | — | still fires, and **before** the group's `onValueChange`; the two share one `eventDetails`, so a `cancel()` here vetoes the group's value change along with it |
+| `disabled` | `boolean` | `false` | disables this item: native `disabled` + `aria-disabled`, skipped by arrow keys |
+| `pressed` / `defaultPressed` | `boolean` | — | **ineffective inside a group**: pressed or not is computed from the group's value array |
+| `variant` | `'default' \| 'outline'` | `'default'` | effective only when the group **does not set** `variant` |
+| `size` | `'default' \| 'sm' \| 'lg'` | `'default'` | effective only when the group **does not set** `size` |
+| `nativeButton` | `boolean` | `true` | switch off to use `render` with a non-`<button>` element |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | replace the rendered element |
+| `children` | `ReactNode` | — | content, doubling as this item's accessible name (icon-only items add `aria-label`) |
+| `className` | `string \| ((state: ToggleGroupItemState) => string \| undefined)` | — | class. The function form is effective; sorted after the variant classes, yours wins on conflict |
+| rest | Base UI `Toggle` props (native `button` props + `ref`) | — | passed through; `type` is always `"button"` |
+
+The five types `ToggleGroupProps` / `ToggleGroupItemProps` /
+`ToggleGroupState` / `ToggleGroupItemState` /
+`ToggleGroupChangeEventDetails` are exported as well.

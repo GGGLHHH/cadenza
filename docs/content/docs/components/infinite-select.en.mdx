@@ -1,0 +1,885 @@
+---
+title: InfiniteSelect / InfiniteCombobox
+description: A searchable, infinite-scrolling picker family — the base panel and the popup convenience layer on one page, Base UI Combobox behaviour + composable slots
+---
+
+<ComponentPreview name="infinite-select/single" />
+
+A searchable picker family with cursor-paginated infinite scrolling. Once
+open, scrolling to the bottom loads the next page automatically; typing lands
+on `queryValue` after a 300ms debounce, and the data layer refetches.
+Behaviour is entirely Base UI's `Combobox`: it renders in `inline` mode (no
+popup of its own), connects the search box and the list with virtual focus
+(the input keeps DOM focus while arrow keys move through the list), and
+provides the selection semantics. **Client-side filtering is switched off**
+(`filter={null}`) — filtering happens on the server: typing drives
+`onInputValueChange`, the caller refetches, and the panel renders whatever
+comes back. For large datasets, `virtualized` turns on row virtualization,
+see [Virtualization](#virtualization).
+
+The layering: at the bottom a **hooks layer** (state and behaviour), in the
+middle **composable parts** (context wiring, rendered in writing order), and
+`InfiniteCombobox` is the **convenience layer** that assembles them in one
+go. The convenience layer covers everyday use; to change the structure, drop
+down to the parts layer and compose freely, see
+[Composable architecture and hooks](#composable-architecture-and-hooks).
+
+Every demo comes with its full source below it (View Code expands, copy in
+the top right); async interfaces are simulated with Promises (random
+300–500ms delay), and the mock data sources live in `demos/lib`.
+
+## Usage
+
+```tsx
+import {
+  Button,
+  InfiniteCombobox,
+  InfiniteSelect,
+  InfiniteSelectActionsProvider,
+  InfiniteSelectEmpty,
+  InfiniteSelectFooter,
+  InfiniteSelectInputGroup,
+  InfiniteSelectList,
+  InfiniteSelectLoadingMore,
+  InfiniteSelectNoMore,
+  useInfiniteComboboxState,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+const state = useInfiniteComboboxState()
+// your own data adapter, see "Data adapter"
+const list = usePersonList(state.queryValue)
+
+<InfiniteCombobox<Person>
+  getOption={person => ({ id: person.id, label: person.name })}
+  list={list}
+  onValueChange={setPicked}
+  searchPlaceholder="Search composers…"
+  state={state}
+>
+  <Button>Select a composer</Button>
+  <InfiniteSelectEmpty>No matching results</InfiniteSelectEmpty>
+</InfiniteCombobox>
+```
+
+## Anatomy
+
+Composition is **positional**: **the first child is the trigger, and every
+child after it goes into the panel's composition channel**.
+
+```text
+InfiniteCombobox
+├── <trigger>                           ← first child, any element works
+└── (popup)
+    └── InfiniteSelect                  ← assembled by the convenience layer
+        ├── InfiniteSelectInputGroup    ← rendered by the convenience layer, do not write it again
+        ├── InfiniteSelectList          ← same as above
+        │   └── <option rows>
+        ├── InfiniteSelectEmpty         ↑ everything from here on comes from the composition channel
+        ├── InfiniteSelectError
+        │   └── InfiniteSelectRetry
+        ├── InfiniteSelectLoadingOverlay  ← marker part, hoisted to the list shell
+        ├── InfiniteSelectLoadingMore     ← marker part, hoisted to the end of the scroll flow
+        ├── InfiniteSelectNoMore          ← the other branch of the same position
+        └── InfiniteSelectFooter
+            ├── InfiniteSelectClear
+            ├── InfiniteSelectFooterSeparator
+            ├── InfiniteSelectCancel
+            └── InfiniteSelectClose
+```
+
+```tsx
+<InfiniteCombobox {/* … */}>
+  <Button>Select a composer</Button>                {/* trigger */}
+  <InfiniteSelectEmpty>No results</InfiniteSelectEmpty>  {/* composition channel */}
+  <InfiniteSelectFooter>…</InfiniteSelectFooter>
+</InfiniteCombobox>
+```
+
+The trigger can be any element (the library's `Button` is fine) — Base UI's
+`Popover.Trigger` turns it into the trigger button, and opening/closing,
+focus return and Esc-to-close are all taken over by Base UI's `Popover`. The
+`Search` and `List` parts are rendered by the convenience layer itself — do
+**not** write them in again (writing another `InfiniteSelectList` gets you
+two lists).
+
+When `children` is a function, the whole children is the trigger (it receives
+the current state for summary display), and there is no composition channel —
+to have both, read the `state` you already hold right in your JSX.
+
+When you drop down to the base and compose the popup yourself,
+`InfiniteSelectInputGroup` / `InfiniteSelectList` are yours to write as well,
+see [Composable architecture and hooks](#composable-architecture-and-hooks).
+
+## Label
+
+The trigger is **an element you pass in yourself**, so the `id` cannot be
+written on a part the way `Select` does it — hand it to Base UI via
+`triggerId`, and `FieldLabel htmlFor` has somewhere to land:
+
+<ComponentPreview name="field/infinite-combobox" />
+
+Without `triggerId`, Base UI assigns the trigger a generated id nobody could
+guess. With it, **one channel covers everything**: the trigger is a real
+`<button>`, so a native `<label for>` both names it (no extra `aria-label`
+needed — no `aria-labelledby` presses over it) and has the browser forward
+the click to it to open the popup. The full table of the four label channels
+is in [Field](/en/docs/components/field#accessibility).
+
+**The label is the control**: with the popup open, pressing the label again
+closes it — one clean toggle. This takes one extra cut from the seam — a
+non-modal popup does not block the page, so Base UI reads the press as an
+`outside-press` and closes immediately; the browser then forwards the click
+to the trigger, which flips once more, and the two together are a
+"close-then-reopen" flicker. A `<label>` pointing at our own trigger does not
+count as "outside", so the seam `cancel()`s that close and lets the forwarded
+click complete the toggle alone.
+
+Incidentally, the `aria-label` prop names **the list inside the popup**
+(falling back to `searchPlaceholder` when omitted) — it is not the trigger's
+name; do not mix the two.
+
+## Multiple selection
+
+Under `commitOnClose`, checking inside the popup is only a draft — **closing
+the popup commits `onValueChange` once** — a fit for filtering scenarios (one
+request per checkmark is too noisy). The clear / cancel / confirm in the
+footer get `clear` / `cancel` / `close` through context; no wiring on your
+part.
+
+In draft mode the three actions each differ — do not mix them: **clear
+commits the empty set**, **cancel drops the draft and commits nothing**
+(`InfiniteSelectCancel`), **confirm commits the draft** (closing is
+committing). Cancel is the only path that does not commit: closing via Esc or
+an outside press takes the same road as "confirm", and the draft is committed
+all the same.
+
+<ComponentPreview name="infinite-select/multiple" />
+
+In the multi-select `onValueChange(items, ids)`, **`ids` is the
+authoritative full set**: when a preselected id sits on a page not yet
+loaded, there is an id but no object, and `items` echoes only the loaded
+ones. For persistence, store `ids`.
+
+## Virtualization
+
+By default, as many rows render as have been loaded. With `virtualized` on,
+row rendering goes to TanStack Virtual: **at any moment only the small slice
+of rows visible in the viewport exists in the DOM** — measured with ten
+thousand rows loaded, the DOM held just 16 nodes while the scroll height
+stayed a full 320000px. (Virtualization is unified on TanStack; `DataTable`
+uses it too.) The demo below pulls all 10000 items in one go (no paging):
+
+<ComponentPreview name="infinite-select/virtualized" />
+
+```tsx
+<InfiniteCombobox<Person> virtualized rowHeight={32} … />
+```
+
+There is exactly one trade-off to know before turning it on:
+
+**Row height is fixed** at `rowHeight` (default 32px) — virtualization
+trades a fixed row height for zero measurement and zero jumping; when a
+custom `renderItem` is taller than the default, bump it accordingly.
+
+Keyboard navigation is **unaffected**: `virtualized` also tells Base UI that
+"not all rows are in the DOM", so it navigates by the value list rather than
+DOM order. This is also why the switch lives on the **root component** rather
+than on `InfiniteSelectList` — both the base and the virtualizer need to
+know.
+
+The screen-reader list total (`aria-setsize`) covers only the slice in the
+DOM — the inherent cost of external virtualization.
+
+Next-page loading triggers exactly as in non-virtualized mode (prefetching
+about one viewport ahead, controlled by `loadMoreScrollOffset`) — nothing to
+worry about.
+
+## Slots
+
+The base has **zero copy**. All visible copy is injected through the
+**composition channel** — the children after the `InfiniteCombobox` trigger —
+so i18n exists only in your application layer. The status slots are
+context-driven components that render themselves by state, mutually
+exclusive; the footer family are composable parts, and placed at the end of
+the composition channel they land at the bottom of the panel naturally:
+
+### InfiniteSelectEmpty: empty
+
+Renders itself when the list is empty (and not loading / in error) — a
+search with no results is this slot too:
+
+<ComponentPreview name="infinite-select/slot-empty" />
+
+### Loading: the unified frosted overlay
+
+Loading has **no copy slot** — first load or refresh, the unified visual is
+the [LoadingOverlay](/en/docs/components/loading-overlay) built into the list
+area: one loading look. **It covers the list area only**: the search box
+stays outside the overlay — typing is precisely the action that triggers a
+refresh, and covering the input would interrupt it.
+
+**First load** (`isLoading` with no results yet): the list shell gets a
+minimum height (`min-block-24`) against collapse, and the frost covers the
+blank:
+
+<ComponentPreview name="infinite-select/loading" />
+
+**Refresh** (`isLoading` while the previous batch is still there — pair it
+with react-query's `placeholderData` in the application layer): the list
+stays in place, covered by the frost.
+
+#### InfiniteSelectLoadingOverlay: customising the frost
+
+Place it in the composition channel to customise the frost above. It is a
+TabsIndicator-style **marker part** — it renders nothing where it is written
+(an absolutely positioned overlay cannot live in the panel's document flow);
+the List part hoists it to the list shell's position to render. `children`
+replaces the centered Spinner, `className` tunes the frost density, and
+`loading` is the base's wiring — not among its props. Effective as a direct
+child or inside a Fragment; wrapped in a custom component it cannot be found
+(the same limit as TabsIndicator). With `InfiniteCombobox`, just write it
+after the trigger:
+
+<ComponentPreview name="infinite-select/loading-custom" />
+
+(The old `InfiniteSelectLoading` copy slot is removed; customisation goes
+through `InfiniteSelectLoadingOverlay`.)
+
+### InfiniteSelectError / InfiniteSelectRetry: error and retry
+
+Renders itself on `isError`; `InfiniteSelectRetry` wires itself to the base's
+`onRetry` (and does not render without one) — you supply only the copy. This
+demo always fails its first load; retry recovers:
+
+<ComponentPreview name="infinite-select/slot-error" />
+
+### The footer family: clear / cancel / confirm / separator / custom parts
+
+`InfiniteSelectFooter` is the bottom action bar; `InfiniteSelectClear` /
+`InfiniteSelectCancel` / `InfiniteSelectClose` get `clear` / `cancel` /
+`close` through context — no wiring on your part. The three commit different
+things:
+
+- **Clear** empties the selection and closes the popup along the way — under
+  `commitOnClose` this amounts to **committing an empty selection**;
+- **Cancel** drops the draft, restores what was there before opening, then
+  closes — **not a single `onValueChange` fires**;
+- **Confirm** closes the popup — under `commitOnClose` that is committing the
+  draft.
+
+`InfiniteSelectFooterSeparator` is the vertical separator. Custom parts get
+`selectedIds` / `selectedItems` / `clear` / `close` / `cancel` just the same
+via `useInfiniteSelectActions()` — the "N selected" on the left of the demo
+below is one such custom part (the three actions sit side by side for
+comparison; real scenarios pick one):
+
+<ComponentPreview name="infinite-select/footer" />
+
+### InfiniteSelectStatus: the status container
+
+The empty / error status slots both ultimately render into the same
+`role="status"` container (state changes are announced by screen readers;
+loading has no copy slot and goes through the frosted overlay). It is also
+exported on its own, reusable when customising the status visuals.
+
+### InfiniteSelectLoadingMore: loading more
+
+While the next page is being fetched, a loading row appears at the end of the
+scroll flow. **The default is a Spinner** — the same rule as the frosted
+overlay and the terminal row: defaults give a visual, never copy. For text,
+compose it:
+
+```tsx
+<InfiniteSelectLoadingMore>Loading more…</InfiniteSelectLoadingMore>
+```
+
+A **marker part** of the same kind as `InfiniteSelectNoMore`, occupying the
+same position (the end of the scroll flow) — the two are the two branches of
+one position (another page to come / no more), never shown together. Likewise
+a **customisation entry, not a switch**: left unwritten, the Spinner still
+renders.
+
+Prefetching fires about one viewport ahead, so a user parked at the top never
+sees this row — only someone scrolled to the bottom, right in the middle of
+waiting for the next page, will.
+
+### InfiniteSelectNoMore: the end
+
+When every page is loaded (`hasNextPage` is `false`) and the list is
+non-empty, a **terminal row** appears at the end of the scroll flow, making
+the list look "finished" rather than "stalled" — with small pages and fast
+loads, a user cannot tell "still loading" from "no more" by looking at the
+list alone.
+
+Both dropdowns below draw from **exactly three pages** (16 items per page, 48
+in total). Scrolling to the bottom you will see page 1 → `Loading…` →
+page 2 → `Loading…` → page 3 → the **terminal row**. The left one does not
+compose `InfiniteSelectNoMore` and still gets a terminal row (the default
+line); the right one composes it, and the line is replaced by copy:
+
+<ComponentPreview name="infinite-select/no-more" />
+
+**The default is a fading thin line, not a sentence.** The base has zero
+copy — a library shipped to npm should not put any particular language into
+the DOM. This is the same rule as loading defaulting to a Spinner instead of
+"Loading…".
+
+It is a **customisation entry, not a switch**:
+
+```tsx
+<InfiniteCombobox {/* … */}>
+  <Button>Select a composer</Button>
+  <InfiniteSelectEmpty>No matching results</InfiniteSelectEmpty>
+  <InfiniteSelectNoMore>No more data</InfiniteSelectNoMore>
+</InfiniteCombobox>
+```
+
+Unwritten → the default thin line renders. Written → `children` displaces
+the line, `className` stacks onto the terminal row.
+
+A **marker part** of the same kind as `InfiniteSelectLoadingOverlay`: written
+anywhere in the composition channel, it renders nothing in place; the List
+hoists it to the position only the List knows (the end of the scroll flow).
+Effective as a direct child or inside a Fragment; wrapped in a custom
+component it cannot be found — the same limit as TabsIndicator.
+
+#### When it does not render
+
+| State | Terminal row |
+| --- | --- |
+| `hasNextPage` is `true` | not rendered (that position is the load-more sentinel) |
+| list empty | not rendered (that is `InfiniteSelectEmpty`'s turn to speak) |
+| first load / error | not rendered (the list shell itself is not rendered) |
+| loaded and non-empty | **rendered** |
+
+The terminal row and the loading-more indicator are **two branches of the
+same position** — never shown together.
+
+#### Under the hood
+
+The terminal row, the loading indicator and the paging sentinel all render
+**outside the listbox element**, inside the scroll container. So they are not
+options, never enter `aria-setsize`, and `getAllByRole('option')` counts
+exactly the real rows.
+
+Paging is triggered by an `IntersectionObserver` sentinel
+(`loadMoreScrollOffset` is how many viewport heights early it fires) — an
+observer rather than a scroll listener, because what matters is the
+sentinel's position, not the scroll offset: after virtualization the offset
+says nothing about how many rows remain.
+
+> The React Aria version carried a debt here: the loader row had to be a
+> **non-selectable `role="option"`** (the only legal children of
+> `role="listbox"` are options), so an extra option element sat in the DOM
+> and tests had to count around it. Gone now.
+
+## Action context
+
+The footer parts need no wiring because the panel carries an **action
+context**. `useInfiniteSelectActions<T>()` is callable inside any part in the
+composition channel and returns `InfiniteSelectActions<T>`:
+
+| Field | Description |
+| --- | --- |
+| `selectedIds` | the authoritative full set of the current selection (ids on unloaded pages included) |
+| `selectedItems` | the selected objects from loaded pages (same scope as `onValueChange`'s `items`) |
+| `clear()` | empty the selection |
+| `close()` | close the popup (under `commitOnClose`, that commits the draft) |
+| `cancel()` | drop the draft, restore the committed value, then close — commits nothing; with no draft it is just `close()` |
+
+`InfiniteSelectClear` / `InfiniteSelectCancel` / `InfiniteSelectClose` call
+it internally; so does the "N selected" custom part in the footer demo of
+[Slots](#slots). Two notes:
+
+- called outside the provider it **throws outright** (fail loud), so it can
+  only appear inside the composition-channel subtree;
+- the context is filled automatically by `InfiniteCombobox`. Only when you
+  skip InfiniteCombobox and compose the popup yourself from the
+  `InfiniteSelect` base do you feed it by hand with
+  `InfiniteSelectActionsProvider`:
+
+```tsx
+{/* Drafts are an InfiniteCombobox capability; composing the popup yourself there is no draft to drop — hand close to cancel */}
+<InfiniteSelectActionsProvider value={{ selectedItems, selectedIds, clear, close, cancel: close }}>
+  <InfiniteSelect {/* … */}>{/* parts and status slots */}</InfiniteSelect>
+</InfiniteSelectActionsProvider>
+```
+
+The context is defined at the base layer rather than the combobox layer to
+avoid a circular import: the combobox already imports the base — if the hook
+lived in the upper layer and the base imported it back, that would close the
+cycle. The same reasoning applies when your application layer does this kind
+of layering.
+
+## Data adapter
+
+The component makes no requests. The `list` prop accepts any object
+satisfying `InfiniteSelectAdapterProps<T>`:
+
+```ts
+interface InfiniteSelectAdapterProps<T> {
+  items: T[]
+  isLoading: boolean
+  isFetchingNextPage: boolean
+  hasNextPage: boolean
+  isError: boolean
+  onLoadMore: () => void
+  onRetry: () => void
+}
+```
+
+With react-query it is a thin shell over `useInfiniteQuery`:
+
+```ts
+function usePersonList(query: string | undefined): InfiniteSelectAdapterProps<Person> {
+  const q = useInfiniteQuery({
+    queryKey: ['people', query],
+    queryFn: ({ pageParam }) => fetchPeople({ cursor: pageParam, query }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor,
+  })
+  return {
+    items: q.data?.pages.flatMap((p) => p.items) ?? [],
+    isLoading: q.isLoading,
+    isFetchingNextPage: q.isFetchingNextPage,
+    hasNextPage: q.hasNextPage,
+    isError: q.isError,
+    onLoadMore: () => void q.fetchNextPage(),
+    onRetry: () => void q.refetch(),
+  }
+}
+```
+
+The division of search labour: `inputValue` is the input's immediate value,
+`queryValue` the request value after the 300ms debounce (tunable via
+`debounceMs`). Pass `state.queryValue` to the adapter and you are done;
+reopening after the popup closes clears the search automatically.
+
+## Custom row content
+
+What `renderItem` replaces is the row's **content**, not the row itself — the
+`Combobox.Item` shell stays, and keyboard navigation and selection semantics
+are untouched. Signature:
+
+```ts
+renderItem?: (params: InfiniteSelectItemRenderParams<T>) => ReactNode
+
+interface InfiniteSelectItemRenderParams<T> {
+  /** The raw data object behind this row. */
+  item: T
+  /** The result of getOption(item): id / label / disabled. */
+  option: InfiniteSelectOption
+  /** The row's position in the currently loaded list, 0-based. Semantics below. */
+  index: number
+  // Base UI's item state vocabulary
+  selected: boolean
+  disabled: boolean
+  /** The panel's selection mode (to decide whether to draw your own checkbox). */
+  selectionMode: 'single' | 'multiple'
+}
+```
+
+Once `renderItem` is provided, the default row content stops rendering as a
+whole — the multi-select checkbox and the single-select checkmark included;
+when you need those visuals, draw them yourself from `selected` /
+`selectionMode`:
+
+<ComponentPreview name="infinite-select/render-item" />
+
+```tsx
+<InfiniteCombobox<Person>
+  renderItem={({ item, index, selected }) => (
+    <>
+      <span className="w-8 text-right text-xs tabular-nums text-muted-foreground">
+        {index + 1}.
+      </span>
+      <span className="flex-1 truncate">{item.name}</span>
+      <span className="text-xs text-muted-foreground">{item.role}</span>
+      {selected && <span className="text-xs text-primary">✓</span>}
+    </>
+  )}
+  {/* … */}
+/>
+```
+
+`index` is this row's position in the **currently loaded list**, 0-based, for
+"which row is this" displays like ordinals and zebra stripes. Two notes:
+
+- It is not a stable identity. After a search or a page turn, the same
+  datum's `index` changes — to identify a row uniquely, use `option.id`.
+- With `virtualized` on, stop using CSS `nth-child` for odd/even stripes. By
+  then only the few dozen rows near the scroll position are in the DOM;
+  `nth-child` counts their relative positions, and one scroll scrambles the
+  parity — `index` counts positions in the full list, unaffected by
+  scrolling.
+
+**Keyboard/pointer highlight is not among the params**: it belongs to Base
+UI and cannot be read during render. To restyle along with the highlight,
+hook onto the row's `data-highlighted` (the function form of `itemClassName`
+or a Tailwind variant, either works), see
+[State and className](#state-and-classname).
+
+A `label` that is not a plain string needs nothing extra either: there is no
+client-side typeahead here, and filtering is all server-side — typing drives
+`onInputValueChange`, and the caller refetches.
+
+## Composable architecture and hooks
+
+Three layers:
+
+1. **The hooks layer** (`useXxxState` semantics) —
+   `useInfiniteSelectSelection` owns selection: controlled/uncontrolled ids,
+   the cross-page object cache, and the translation from Base UI's value to
+   your `onValueChange`; `useInfiniteComboboxState` owns popup open state and
+   search/debounce; `useDataPaginationState` is the same pattern applied to
+   the paginator. All exported, usable headless without the components.
+2. **The parts layer (composable components + context wiring)** — the root
+   `InfiniteSelect` provides the data and selection context plus the Base UI
+   `Combobox.Root` shell. **With no children it renders the default
+   composition** (`InfiniteSelectInputGroup` + `InfiniteSelectList` — the
+   present-by-default house rule); write children and the whole channel is
+   yours. `InfiniteSelectInputGroup` (the search box), `InfiniteSelectList`
+   (the list, virtualization and prefetch included), the status slots and the
+   footer family are all ordinary children, **rendered in writing order**,
+   each with its own props:
+
+   ```tsx
+   <InfiniteSelect
+     {...list}
+     getOption={getOption}
+     selectionMode="multiple"
+     value={ids}
+     onValueChange={(items, nextIds) => setIds(nextIds)}
+     inputValue={state.inputValue}
+     onInputValueChange={state.setInputValue}
+     virtualized
+   >
+     <InfiniteSelectInputGroup placeholder="Search…" />
+     <InfiniteSelectList />
+     <InfiniteSelectEmpty>No results</InfiniteSelectEmpty>
+   </InfiniteSelect>
+   ```
+
+   No manual wiring between the search box and the list — the root's
+   `Combobox.Root` pairs `Combobox.Input` / `Combobox.List` descendants at
+   any depth through Base UI's own context (virtual focus, selection
+   semantics). Custom parts read the wiring the root provides via
+   `useInfiniteSelectContext()` (items / getOption / selectionMode /
+   selectedIds / filled / hasNextPage / isFetchingNextPage / onLoadMore /
+   virtualized / rowHeight, plus the `loadingOverlayProps` / `noMoreProps` /
+   `loadingMoreProps` hoisted up from the composition channel).
+3. **The convenience layer** — `InfiniteCombobox` assembles popup + parts +
+   slots behind one flat set of props; it is the default entry for
+   application code, and internally it is exactly the composition above.
+
+## Controlled
+
+Three channels, each independent, each the standard controlled /
+uncontrolled trio:
+
+| Channel | Where it lives | Trio |
+| --- | --- | --- |
+| selection | root component / convenience layer | `value` / `defaultValue` / `onValueChange` |
+| search text | `useInfiniteComboboxState()` | `inputValue` / `defaultInputValue` / `onInputValueChange` |
+| popup open state | `useInfiniteComboboxState()` | `open` / `defaultOpen` / `onOpenChange` |
+
+The test for being controlled is **`value !== undefined`** (Base UI's
+convention): to clear a single selection pass `null` — `undefined` only means
+"uncontrolled". The multi-select controlled value is `string[]`; the
+authoritative convention is in [Multiple selection](#multiple-selection).
+
+The debounced request value `queryValue` is controllable too (`queryValue` /
+`defaultQueryValue` / `onQueryValueChange`); `debounceMs` defaults to `300`.
+
+Every change callback's **second argument is `eventDetails`**: `reason` names
+where the change came from (`item-press` / `clear-press` / `escape-key` / …,
+programmatic is `'none'`), and `cancel()` rejects the change, leaving state
+exactly where it was.
+
+`reason` follows Base UI's vocabulary throughout; only `'cancel-press'` is
+this library's own coinage: upstream has no draft mode, hence no word for
+"dropping the draft". It appears only on `onOpenChange` — cancel commits
+nothing, so `onValueChange` never fires.
+
+## Form
+
+The family does no `FormData` logic of its own; it renders hidden inputs
+only on demand: with a `name` it renders `<input type="hidden">` — one per
+selected id in multi-select, one in single-select; without a `name`, none at
+all.
+
+- `InfiniteCombobox` renders them **next to the trigger, outside the popup**
+  — the popup unmounts entirely when closed; rendered inside, nothing would
+  be left at submit time.
+- Under `commitOnClose` **drafts are not serialized** — only committed
+  selections enter `FormData`.
+- They are plain hidden inputs, not Base UI's focusable visually-hidden
+  input: native validation and autofill both make no sense for a
+  server-filtered panel.
+
+## When to use InfiniteCombobox
+
+**When the whole list is already in hand and filtering only needs the
+browser**, skip this family — that is
+[`Combobox`](/en/docs/components/combobox): the same Base UI `Combobox`, but
+with filtering on and none of the cursor-pagination machinery. For the
+division of labour, see the four-way table at the top of
+[the Select page](/en/docs/components/select).
+
+## State and className
+
+The left column is the `data-*` put on the DOM — Tailwind uses it directly
+as a variant (`data-selected:bg-accent`); the right column is the same
+state's name among the `renderItem` params / in the function form of
+`itemClassName`. Note that Base UI writes boolean states as **empty strings**
+(`data-selected=""`), not `"true"`. Any `data-*` not listed here is Base UI's
+own internal marker — do not rely on it.
+
+**InfiniteSelect** (the root element, three logical states; presence
+attributes (empty string), usable directly as CSS hooks)
+
+| State | When present |
+| --- | --- |
+| `data-loading` | `isLoading` is true |
+| `data-empty` | not loading / in error, and `items` is empty |
+| `data-error` | `isError` is true |
+
+**The popup** (`InfiniteCombobox`'s `data-slot="infinite-combobox-content"`)
+
+| State | When present | Notes |
+| --- | --- | --- |
+| `data-side` | the side the popup actually attached to; values are `bottom` / `top` / … | hook the entry animation on this when it branches by direction |
+
+The trigger is the `children` you pass yourself, so its states depend on what
+you render it with. With our `Button`, it has only `data-disabled` /
+`data-pending` — interaction states get no data attributes; use the `hover:`
+/ `active:` / `focus-visible:` pseudo-classes directly.
+
+**The option row** (`data-slot="infinite-select-item"`, the Base UI
+`Combobox.Item` rendered by `InfiniteSelectList`)
+
+| State | When present | renderItem param |
+| --- | --- | --- |
+| `data-selected` | the item is selected | `selected` |
+| `data-highlighted` | the currently highlighted item (virtual focus; real focus stays in the search box) — keyboard and pointer both set it | none — unreadable during render, see below |
+| `data-disabled` | `getOption` returned `disabled: true` | `disabled` |
+
+`renderItem`'s params are `item` / `option` / `index` / `selected` /
+`disabled` / `selectionMode`. `selectionMode` exists only in the params, with
+no matching attribute on the DOM (use it to tell single from multiple when
+drawing your own checkbox); conversely **`data-highlighted` exists only on
+the DOM, not in the params** — highlight belongs to Base UI and cannot be
+read during render, so restyling along with it can only go through CSS: the
+Tailwind variant `data-highlighted:` or the function form of `itemClassName`.
+
+The search box keeping real focus while list items take virtual focus is
+Base UI `Combobox.Root`'s design in `inline` mode: typing and arrow keys can
+work at the same time. So hang highlight styles on `data-highlighted`, not
+on `:focus`.
+
+**InfiniteSelectList**
+
+| State | When present | Notes |
+| --- | --- | --- |
+| `data-empty` | written by Base UI when the list has no items | never actually seen: with no rows, `InfiniteSelectList` does not render at all and `InfiniteSelectEmpty` takes over |
+
+**InfiniteSelectInputGroup** has no state attributes — this layer is a plain
+`<div>`; the states all sit on the `Combobox.Input` inside.
+
+Every part carries a `data-slot` (`infinite-select` /
+`infinite-select-input-group` / `infinite-select-input` /
+`infinite-select-list` / `infinite-select-item` /
+`infinite-combobox-content`…), usable as a selector when targeting from
+outside; the status slots' and footer's own `data-slot`s are in
+[the table below](#status-slots-and-footer).
+
+The shape of `className` differs by part: the root component,
+`InfiniteSelectInputGroup` and the status slots are plain `<div>`s and take
+strings only; `InfiniteSelectList`'s three class outlets (`className` /
+`listClassName` / `itemClassName`) and the convenience layer's
+`contentClassName` sit over Base UI parts and accept the `(state) => string`
+function form.
+
+## Keyboard interactions
+
+| Key | Behaviour |
+| --- | --- |
+| `↓` / `↑` | move through the list (the input keeps focus) |
+| `Enter` | select the current item |
+| `Esc` | close the popup (taken over by Base UI's `Popover`; the search text clears on the next open) |
+| typing | filter (debounced, handed to the data layer) |
+
+## Exported types
+
+Beyond the components, `@gedatou/cadenza-ui` also exports these types, for
+application-layer wrappers and data adapters:
+
+| Type | Description |
+| --- | --- |
+| `InfiniteSelectOption` | the return shape of `getOption`: `{ id, label, disabled? }` |
+| `InfiniteSelectItemRenderParams<T>` | `renderItem`'s params, see [Custom row content](#custom-row-content) |
+| `InfiniteSelectAdapterProps<T>` | the `list` prop's contract — the shape a data adapter implements, see [Data adapter](#data-adapter) |
+| `ControllableSelectionProps<T>` | the discriminated union of the selection props, discriminated on `selectionMode` (single `value?: string` / multiple `value?: string[]`, with the `onValueChange` signature switching along) |
+| `InfiniteSelectProps<T>` / `InfiniteComboboxProps<T>` | the full props of the root and the convenience layer — reuse them directly when wrapping another layer in application code |
+| `InfiniteSelectInputGroupProps` / `InfiniteSelectListProps<T>` | the two parts' props |
+| `InfiniteSelectLoadingOverlayProps` / `InfiniteSelectNoMoreProps` / `InfiniteSelectLoadingMoreProps` | the three marker parts' props — the first is `LoadingOverlayProps` minus `loading`, the other two are `ComponentProps<'div'>` |
+| `InfiniteSelectContextValue<T>` | the return of `useInfiniteSelectContext()` — the wiring readable by custom parts |
+| `InfiniteSelectSelectionState<T>` | the return of `useInfiniteSelectSelection()`: `selectedIds` / `selectedItems` / `onValueChange` (fed to Base UI's `Combobox.Root`) |
+| `InfiniteSelectActions<T>` | the action context's value shape (the return of `useInfiniteSelectActions()` / the input of `InfiniteSelectActionsProvider`), see [Action context](#action-context) |
+| `InfiniteComboboxState<T>` / `InfiniteComboboxStateOptions` | the return value and options of `useInfiniteComboboxState` |
+| `InfiniteComboboxChildren<T>` | the type of children: `ReactNode` / `ReactNode[]` (the first is the trigger, the rest go into the composition channel), or a state-receiving function |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+State attributes are not in these tables — they are all in
+[State and className](#state-and-classname).
+
+### InfiniteCombobox
+
+The convenience layer: one props surface, split internally and routed to the
+root component and the individual parts. When switching to the composable
+form, `searchPlaceholder` is `placeholder` on `InfiniteSelectInputGroup`;
+`renderItem` / `maxListHeight` / `scrollbars` / `loadMoreScrollOffset` live
+on `InfiniteSelectList`; `virtualized` / `rowHeight` live on the **root**
+`InfiniteSelect` (both the base and the virtualizer need to know, see
+[Virtualization](#virtualization)); the loading-more copy goes through the
+`InfiniteSelectLoadingMore` part.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `state` | `InfiniteComboboxState` | — | **required**, from `useInfiniteComboboxState()` |
+| `list` | `InfiniteSelectAdapterProps<T>` | — | **required**, the data adapter |
+| `getOption` | `(item: T) => InfiniteSelectOption` | — | **required**, extracts id / label / disabled |
+| `children` | `ReactNode` \| `ReactNode[]` \| `(state) => ReactElement` | — | **required**. The first child is the trigger; every child after it goes into the panel's composition channel; any element works (Base UI's `Popover.Trigger` wires it up as the trigger button); the function form receives the whole `state` (`open` included) plus `selectedItems` / `selectedValue` / `disabled` |
+| `selectionMode` | `'single' \| 'multiple'` | `'single'` | the discriminant: decides the types of the three below (same name as DataTable) |
+| `defaultValue` | `string` \| `string[]` | — | uncontrolled initial selection |
+| `value` | single `string \| null`; multiple `string[]` | — | controlled selection. To clear a single selection pass `null` (`undefined` means uncontrolled) |
+| `onValueChange` | single `(item: T \| null, eventDetails) => void`; multiple `(items: T[], ids: string[], eventDetails) => void` | — | in multi-select `ids` is the authoritative value; `items` holds only objects from loaded pages. `eventDetails.reason` names the source, `cancel()` rejects the change |
+| `disabled` | `boolean` | `false` | disable the whole picker: the trigger element gets `disabled` injected and the popup cannot open |
+| `commitOnClose` | `boolean` | `false` | multi-select draft mode, committing only on close; `InfiniteSelectCancel` is the non-committing exit |
+| `name` | `string` | — | form serialization: hidden inputs render only with a name (one per value in multi-select), next to the trigger and outside the popup; drafts are not serialized, see [Form](#form) |
+| `closeOnSelect` | `boolean` | `true` | close automatically after a single-select choice |
+| `modal` | `boolean` | `false` | lock page scroll (a modal feel) |
+| `searchPlaceholder` | `string` | — | the search box placeholder, doubling as its accessible name |
+| `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | replace row content (the `Combobox.Item` shell stays), params in [Custom row content](#custom-row-content) |
+| `loadMoreScrollOffset` | `number` | `1` | prefetch distance: how many viewport heights early `onLoadMore` fires |
+| `virtualized` | `boolean` | `false` | TanStack Virtual row virtualization, for large datasets |
+| `rowHeight` | `number` | `32` | the fixed height of virtualized rows; adjust it along with a taller custom `renderItem` |
+| `maxListHeight` | `number` | `256` | maximum list height |
+| `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | scrollbar visibility: always shown / shown on hover and scroll / always hidden |
+| `aria-label` | `string` | falls back to `searchPlaceholder` | the panel's accessible name |
+| `selectClassName` | `string` | — | class of the root component inside the popup |
+| `contentClassName` | `string \| (state) => string` | — | class of the popup itself; the function form receives Base UI's popup state |
+| `triggerId` | `string` | — | give the trigger an id for `FieldLabel htmlFor` to point at (the trigger is the caller's own element, so the id is injected from here), see [Label](#label) |
+| `popoverProps` | `Omit<PopoverContentProps, 'children' \| 'className'>` | — | the popup positioning surface: `side` / `sideOffset` / `align`… The wiring is written after the spread and always wins; `contentClassName` is the class outlet |
+
+Debounce is not on this table — `debounceMs` (default `300`) is an option of
+`useInfiniteComboboxState()`.
+
+### InfiniteSelect
+
+The root component: holds data and selection, wired to the parts through
+context. It renders no copy and no parts of its own.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `items` | `T[]` | — | **required**, the currently loaded (server-filtered) data |
+| `getOption` | `(item: T) => InfiniteSelectOption` | — | **required**, extracts id / label / disabled |
+| `selectionMode` | `'single' \| 'multiple'` | `'single'` | the discriminant, as above |
+| `defaultValue` | `string` \| `string[]` | — | uncontrolled initial selection |
+| `value` | single `string \| null`; multiple `string[]` | — | controlled selection. To clear a single selection pass `null` (`undefined` means uncontrolled) |
+| `onValueChange` | same as `InfiniteCombobox` | — | selection change callback |
+| `inputValue` | `string` | — | controlled search text |
+| `onInputValueChange` | `(value, eventDetails) => void` | — | search text change callback; the details are Base UI Combobox's originals (`reason` / `cancel()`) |
+| `isLoading` | `boolean` | `false` | first load in progress |
+| `isFetchingNextPage` | `boolean` | `false` | fetching the next page |
+| `hasNextPage` | `boolean` | `false` | another page to come |
+| `isError` | `boolean` | `false` | loading failed |
+| `searchPlaceholder` | `string` | — | the default composition's search box placeholder-cum-accessible-name (same word as on `InfiniteCombobox`). Ignored once children are written |
+| `onLoadMore` | `() => void` | — | called on reaching the bottom (or one viewport early) |
+| `onRetry` | `() => void` | — | for `InfiniteSelectRetry`; omitted, that slot does not render |
+| `aria-label` | `string` | — | the panel's accessible name; `InfiniteSelectList` falls back to it |
+| `name` | `string` | — | form serialization: hidden inputs render only with it (one per value in multi-select) |
+| `virtualized` | `boolean` | `false` | row virtualization, see [Virtualization](#virtualization) |
+| `rowHeight` | `number` | `32` | virtualized row height (a fixed value) |
+| `children` | `ReactNode` | — | parts / status slots / footer, rendered in the caller's writing order |
+| `className` | `string` | — | root element class |
+
+### InfiniteSelectInputGroup
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `placeholder` | `string` | — | placeholder of the default composition's input, doubling as the accessible name. **No default copy** — the base has zero visible copy; with neither given, the accessible name falls back to `'Search'` (aria only, never on screen) |
+| `autoFocus` | `boolean` | `false` | focus on mount. Off by default (an inline panel should not steal page focus); `InfiniteCombobox` passes `true`, so the popup is typeable the moment it opens |
+| `children` | `ReactNode` | icon + input | written, it takes over the internal structure entirely; the `Combobox.Input` inside is wired automatically by the root's context, and `placeholder` / `autoFocus` apply to the default composition only |
+| `className` | `string` | — | class. This part is a plain `<div>`, not a Base UI part — strings only |
+| rest | native `<div>` props | — | passed through to the search row's container. `value` / `onValueChange` are not exposed — that wiring belongs to the root |
+
+### InfiniteSelectList
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `aria-label` | `string` | falls back to the root's | the list's accessible name |
+| `renderItem` | `(params: InfiniteSelectItemRenderParams<T>) => ReactNode` | — | replace row content; the `Combobox.Item` shell stays |
+| `loadMoreScrollOffset` | `number` | `1` | prefetch distance, in viewport heights |
+| `maxListHeight` | `number` | `256` | maximum height |
+| `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | scrollbar visibility |
+| `className` | `string \| (state) => string` | — | class of the outer scroll container (size constraints go here). The function form receives the ScrollArea root's state |
+| `listClassName` | `string \| (state) => string` | — | class of the listbox element itself; the function form receives Base UI's list state |
+| `itemClassName` | `string \| (state) => string` | — | class of each row; the function form receives Base UI's item state (see "The option row" under [State and className](#state-and-classname)) |
+
+### The option row
+
+Not a component you can write — the Base UI `Combobox.Item` rendered by
+`InfiniteSelectList`, `data-slot="infinite-select-item"`. What `renderItem`
+swaps out is its **content**; the shell, keyboard navigation and selection
+wiring all remain, so its states stay available as usual, see
+[State and className](#state-and-classname).
+
+### InfiniteSelectActionsProvider
+
+Not a slot but the manual entry to the action context: feed it a `value` and
+the footer parts inside can reach `useInfiniteSelectActions()`. The
+convenience layer already provides one automatically; you write it yourself
+only when placing the footer outside the popup, see
+[Action context](#action-context).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `InfiniteSelectActions<T>` | — | required. `{ selectedItems, selectedIds, clear, close }` |
+| `children` | `ReactNode` | — | the subtree consuming this context |
+
+### Status slots and footer
+
+None of these parts has props of its own (beyond `className` and native
+attributes passed through); the copy comes from `children`, and whether they
+render is decided by the state in context — details in [Slots](#slots) and
+[Action context](#action-context).
+
+| Part | When it renders | data-slot |
+| --- | --- | --- |
+| `InfiniteSelectEmpty` | loaded, no error, `items` empty | `infinite-select-status` |
+| `InfiniteSelectError` | `isError` | `infinite-select-status` |
+| `InfiniteSelectRetry` | inside `Error`, and the root received `onRetry` | `infinite-select-retry` |
+| `InfiniteSelectFooter` | always (the caller decides whether to include it) | `infinite-select-footer` |
+| `InfiniteSelectFooterSeparator` | always | `infinite-select-footer-separator` |
+| `InfiniteSelectLoadingOverlay` | marker part: renders nothing in place; its props are hoisted onto the list shell's overlay | `loading-overlay` after hoisting |
+| `InfiniteSelectNoMore` | marker part: renders nothing in place; its props are hoisted onto the terminal row at the end of the scroll flow (the default line shows even unwritten) | `infinite-select-no-more` after hoisting |
+| `InfiniteSelectLoadingMore` | marker part: the other branch of the same position, rendered while paging (the default Spinner shows even unwritten) | `infinite-select-load-more` after hoisting |
+| `InfiniteSelectClear` | always | `infinite-select-clear` |
+| `InfiniteSelectCancel` | always | `infinite-select-cancel` |
+| `InfiniteSelectClose` | always | `infinite-select-close` |
+| `InfiniteSelectStatus` | both the empty and error slots ultimately render into it; exported on its own for you to reuse the layout | `infinite-select-status` |
+
+The empty / error status slots share one `role="status"` container, so a
+change is announced by screen readers once — not once per variant.
+
+The two marker parts (`InfiniteSelectLoadingOverlay` /
+`InfiniteSelectNoMore`) are **customisation entries, not switches** — left
+uncomposed, the default visuals (frosted Spinner / fading thin line) render
+all the same; composing them is for replacing `children` and stacking
+`className`. Every other part simply is not there unless written.

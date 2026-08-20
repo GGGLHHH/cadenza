@@ -1,0 +1,232 @@
+---
+title: Checkbox
+description: A box-only checkbox — the id lands on the hidden input, and one htmlFor covers both clicks and the accessible name
+---
+
+<ComponentPreview name="checkbox/basic" />
+
+Base UI's `Checkbox.Root` in shadcn's base-nova box. The seam fills in
+exactly one thing: [the look of the indeterminate state](#indeterminate).
+
+It is **box-only**: the root renders a `<span role="checkbox">` with a
+hidden `<input type="checkbox">` beside it — so the root element **is** the
+box, and nothing more. Text goes to a sibling `FieldLabel` (see
+[Field](/en/docs/components/field)).
+
+## Usage
+
+```tsx
+import {
+  Checkbox,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Field orientation="horizontal">
+  <Checkbox id="terms" name="terms" />
+  <FieldLabel htmlFor="terms">Accept the terms</FieldLabel>
+</Field>
+```
+
+## Label
+
+`Field orientation="horizontal"` + `Checkbox id` + `FieldLabel htmlFor` —
+**one `htmlFor` buys both things**, and it is worth knowing why: the `id`
+does not land where it appears to.
+
+| Channel | Covers |
+| --- | --- |
+| `FieldLabel htmlFor` → `Checkbox id` | clicking the text toggles **+** accessible name |
+
+The `id` lands on **the hidden `<input>`** (the visible box keeps a
+generated id of its own). So the native `<label for>` forwards clicks to
+that input — the toggle is its doing; meanwhile Base UI looks up
+`input.labels` and mirrors the label's id onto the box as `aria-labelledby`
+— which is where the name a screen reader announces comes from. No second
+`aria-label` is needed, and the seam wires no click handling of its own.
+
+Only when there is no visible text at all (one per row in a
+[table](#table), say) give an `aria-label`.
+
+The library-wide table of all four label channels is in
+[Field](/en/docs/components/field#accessibility); box-only is one of them,
+with [Switch](/en/docs/components/switch) and
+[RadioGroupItem](/en/docs/components/radio-group) in the same family.
+
+## Controlled
+
+The controlled trio is `checked` / `defaultChecked` / `onCheckedChange`:
+
+<ComponentPreview name="checkbox/controlled" />
+
+The callback's second argument is a real `ChangeEventDetails` (exported as
+`CheckboxChangeEventDetails`):
+
+- `reason` is **always `'none'`** — upstream never assigned checkboxes a
+  second reason, so do not count on it to tell sources apart.
+- `cancel()` is honoured: call it and the component's internal state does
+  not move forward.
+
+When controlled, what shows is your `checked` anyway — what `cancel()`
+stops is the component's invisible internal copy; uncontrolled (only
+`defaultChecked`), that copy is the one on display, so `cancel()` blocks
+the tick outright — the second box in the demo works this way, refusing to
+toggle with no external state written at all.
+
+## Indeterminate
+
+The "select all" box's tier: with only part of the rows ticked, it counts
+as neither checked nor unchecked.
+
+<ComponentPreview name="checkbox/indeterminate" />
+
+`indeterminate` is a **display state**, orthogonal to `checked` — not a
+third value of it — rendered as `aria-checked="mixed"`. So a "select all"
+box computes the two values independently: `checked` when everything is
+ticked, `indeterminate` when only part is.
+
+Base UI has a dedicated `parent` prop for exactly this, but it must live
+inside a `CheckboxGroup`, and this library **has not promoted that part** —
+hence the demo above computes the two values itself.
+
+⚠️ Without a group around it, `parent` is not "inert" but **harmful**: it
+clears the hidden input's `name` (the field vanishes from `FormData`
+entirely), skips the `uncheckedValue` input, and stamps `data-parent=""`
+on the box. Never use it outside a group.
+
+**The dash is the seam's addition.** The base-nova box only paints
+`data-checked`: while indeterminate it applies no fill, and the checkmark
+inside is still there — looking exactly like "checked". So `Checkbox`'s
+default `className` fills on `data-indeterminate`, hides the checkmark and
+draws the dash with `before` — the indicator inside the box is rendered by
+the part itself, with no replaceable children, so CSS is the only route.
+The same fix lands on [DataTable](/en/docs/components/data-table)'s header
+select-all.
+
+## Invalid state
+
+`aria-invalid` goes on the control, `data-invalid` on the field column —
+each attribute covers one end:
+
+| Where | Effect |
+| --- | --- |
+| `aria-invalid` on the `Checkbox` | the box draws the destructive border and ring |
+| `data-invalid` on the `Field` | the column of text turns destructive, see [Field](/en/docs/components/field#state-and-classname) |
+
+Once ticked, the **border** returns to primary
+(`aria-invalid:aria-checked:border-primary`) — the border only: the
+`ring-destructive/20` ring has no matching `aria-checked` rule, so a
+ticked invalid box is a primary border with a destructive ring, still
+signalling that something is wrong. The error message itself is spoken by
+a `FieldError` in the same `Field`.
+
+## Description
+
+With a description, use `FieldContent` to pack "label + description" into a
+column — the first field in the hero is this very shape (that one also
+carries `defaultChecked`):
+
+```tsx
+<Field orientation="horizontal">
+  <Checkbox id="newsletter" name="newsletter" />
+  <FieldContent>
+    <FieldLabel htmlFor="newsletter">Season newsletter</FieldLabel>
+    <FieldDescription>Get an email when new dates go on sale.</FieldDescription>
+  </FieldContent>
+</Field>
+```
+
+A horizontal `Field` is one flex row — label and description dropped in
+directly would sit side by side; `FieldContent` is the flex column built to
+hold that stack of text (see [Field](/en/docs/components/field)). No
+description, no need for it.
+
+## Form
+
+Serialization is native: given a `name`, the hidden input joins the
+submission — ticked, it submits `value` (the native `"on"` when no `value`
+is given); unticked, it submits `uncheckedValue`, which defaults to
+submitting nothing at all, same as a native checkbox. When the control
+renders outside the `<form>`, point `form` at the form it belongs to.
+
+## Disabled
+
+The control's own `disabled` covers only the control's visuals; to grey
+the column of text along with it, hang `data-disabled` on the `Field` by
+hand per the [Field](/en/docs/components/field) state convention — the
+second field in the hero is written this way.
+
+`readOnly` is a separate tier: focusable and readable, but it cannot be
+ticked or unticked.
+
+## Grouping
+
+A column of checkboxes is several `Field`s lined up in a `FieldGroup`; to
+name the whole set, wrap another layer of `FieldSet` + `FieldLegend`
+(semantically the native `fieldset` / `legend`) — the
+[Indeterminate](#indeterminate) demo has exactly this structure. Grouping
+is a layout concern, carried entirely by the
+[Field](/en/docs/components/field) family; Base UI's `CheckboxGroup` is not
+promoted by this library.
+
+## Table
+
+[DataTable](/en/docs/components/data-table)'s selection column renders this
+very Checkbox: one per row, with the header's "select all" running exactly
+the `checked` + `indeterminate` arithmetic above. The row ones have no
+visible text, so their name goes through `aria-label`.
+
+## State and className
+
+`className` reaches Base UI's slot, so the function form holds:
+`(state) => string | undefined`. That state is `CheckboxState`:
+
+| `data-*` | Name in `CheckboxState` | When present |
+| --- | --- | --- |
+| `data-checked` / `data-unchecked` | `checked` | ticked / unticked. **Neither appears while `indeterminate`** |
+| `data-indeterminate` | `indeterminate` | indeterminate. The seam's dash styling hangs on this attribute |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-readonly` | `readOnly` | `readOnly` |
+| `data-required` | `required` | `required` |
+
+`CheckboxState` also carries the Field set (`valid` / `touched` / `dirty` /
+`filled` / `focused`). They **only move inside Base UI's `Field.Root`** —
+and this library's `Field` is not it (that one is plain DOM layout), so
+here these values never change.
+
+The root carries `data-slot="checkbox"`, the checkmark indicator inside
+carries `data-slot="checkbox-indicator"` — use them as selectors when
+targeting from outside.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | — | lands on the hidden `<input>`; `FieldLabel htmlFor` points here |
+| `defaultChecked` | `boolean` | `false` | uncontrolled initial checked state |
+| `checked` | `boolean` | — | controlled checked state |
+| `onCheckedChange` | `(checked: boolean, eventDetails: CheckboxChangeEventDetails) => void` | — | checked change callback. `reason` is always `'none'`; `cancel()` rejects the change |
+| `indeterminate` | `boolean` | `false` | indeterminate display state, orthogonal to `checked` |
+| `disabled` | `boolean` | `false` | ignores user interaction |
+| `readOnly` | `boolean` | `false` | read-only: cannot be ticked or unticked |
+| `required` | `boolean` | `false` | must be ticked before the form submits |
+| `name` | `string` | — | form field name; the hidden input joins submission through it |
+| `value` | `string` | — | value submitted while ticked; the native `"on"` when omitted |
+| `uncheckedValue` | `string` | — | value submitted while unticked; nothing submitted when omitted |
+| `form` | `string` | — | id of the form owning the hidden input, for controls rendered outside the form |
+| `parent` | `boolean` | `false` | a Base UI `CheckboxGroup` capability, not promoted here — switched on outside a group it clears `name`, see [Indeterminate](#indeterminate) |
+| `inputRef` | `Ref<HTMLInputElement>` | — | grabs the hidden `<input>` |
+| `nativeButton` | `boolean` | `false` | switch on only when `render` swaps in a real `<button>`; the `id` then lands on the button instead |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | replace the rendered element |
+| `className` | `string \| ((state: CheckboxState) => string \| undefined)` | — | class. Sorted after the seam's indeterminate styles, yours wins on conflict |
+| rest | Base UI `Checkbox.Root` props (native `span` props + `ref`) | — | passed through |
+
+The three types `CheckboxProps` / `CheckboxState` /
+`CheckboxChangeEventDetails` are exported as well.

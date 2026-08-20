@@ -1,0 +1,54 @@
+---
+title: cn
+description: The class-name merge utility — clsx + tailwind-merge, and it composes Base UI's function className
+---
+
+Class-name merging: clsx semantics (conditions, arrays and objects all work)
+plus tailwind-merge conflict resolution — **within a utility group, the one
+written later wins**:
+
+```tsx
+import { cn } from '@gedatou/cadenza-ui'
+
+cn('p-2 text-sm', condition && 'p-4') // => 'text-sm p-4' (p-2 displaced by the later p-4)
+```
+
+## Composing function classNames
+
+Base UI defines `className` as `string | (state) => string`. clsx **silently
+drops functions** (no error — the class names just vanish), so a plain
+`cn(baseClasses, className)` would quietly break this contract at the seam.
+This library's `cn` covers for it: given a function argument, it returns a
+**lazily resolved function** that Base UI calls with the state at render time
+— resolve the functions first, then merge as usual, with the merge-order
+semantics unchanged (the caller's classes still come later, and still win):
+
+```tsx
+// write as usual in the seam component; cn preserves the function contract:
+<TabsListPrimitive className={cn(tabsListVariants({ variant }), className)} />
+
+// so callers can pass a state function (the state vocabulary is Base UI's, see each component page's state table):
+<TabsTab value="overview" className={({ active }) => active ? 'underline' : 'opacity-60'}>
+  Overview
+</TabsTab>
+```
+
+Pure string calls are untouched — with no function argument, the return is
+still a string.
+
+## The return type is honest
+
+`cn`'s return type is inferred conditionally from its arguments: no argument
+type contains a function → `string`; possibly a function →
+`string | (values) => string`. Which means **feeding a possibly-function
+result to a plain DOM element is a compile error** — exactly the accident to
+intercept: a function that never reaches Base UI has nobody to resolve it, and
+on the DOM it only becomes a garbage class. The rule is simple:
+
+- the `cn` result lands in a **Base UI className slot** → use it freely,
+  functions are honoured automatically;
+- it lands on a plain `<div>` / `<span>` → arguments may only be strings
+  (narrow the props type to `string`).
+
+The full conventions for writing new seams are in the repo skill
+`wrapping-base-ui-components`.

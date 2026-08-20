@@ -1,0 +1,303 @@
+---
+title: InputGroup
+description: An input with affixes — icons, text, buttons and the input share one border, with the focus ring drawn around the whole group
+---
+
+<ComponentPreview name="input-group/basic" />
+
+One input plus any number of attachments (icons, units, buttons, keyboard
+hints), **sharing a single border**, with the focus ring drawn on the whole
+group instead of the input. A shadcn composition, adopted as-is —
+[SearchField](/en/docs/components/search-field) is built out of it.
+
+The input underneath is Base UI's `Input` — drop it into a Base UI
+`Field.Root` and it wires up automatically, no props to pass down; the button
+is Base UI's `Button`, and the row and the textarea are plain DOM.
+
+## Usage
+
+```tsx
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+  InputGroupTextarea,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<InputGroup>
+  <InputGroupInput aria-label="Search" placeholder="Search..." />
+  <InputGroupAddon>
+    <IconSearch aria-hidden />
+  </InputGroupAddon>
+</InputGroup>
+```
+
+## Anatomy
+
+The row has only two kinds of roles: one control, any number of addons —
+buttons, text and icons all live inside addons.
+
+```text
+InputGroup
+├── InputGroupInput or InputGroupTextarea
+└── InputGroupAddon          # any number; align decides where it goes
+    ├── InputGroupButton
+    ├── InputGroupText
+    └── icon / <kbd> / any node
+```
+
+## Alignment
+
+`InputGroupAddon`'s `align` decides where it goes, defaulting to
+`inline-start`:
+
+| `align` | Position | Pairs with | Example |
+| --- | --- | --- | --- |
+| `inline-start` (default) | start of the row | `InputGroupInput` | [Icon](#icon), [Text](#text) |
+| `inline-end` | end of the row | `InputGroupInput` | [Button](#button), [Keyboard hint](#keyboard-hint) |
+| `block-start` | full row above | `InputGroupTextarea` | [Textarea and bottom toolbar](#textarea-and-bottom-toolbar) |
+| `block-end` | full row below | `InputGroupTextarea` | same as above |
+
+**Use `inline-*` with `InputGroupInput`, `block-*` with
+`InputGroupTextarea`.** The `block-*` values turn the `InputGroup` from one
+row into a vertical stack and let the height loose; the two inline values
+leave the layout alone.
+
+Placement relies on CSS `order`, not DOM order — so **write button-carrying
+addons after the control**, and Tab enters the group landing on the input
+first. Icon-only and text-only addons are not focusable, so writing them
+first changes nothing.
+
+## Icon
+
+Put the icon straight inside an `InputGroupAddon`; it sits at the start by
+default, `align="inline-end"` moves it to the end:
+
+<ComponentPreview name="input-group/icon" />
+
+## Text
+
+`InputGroupText` embeds fixed protocol prefixes, units and domain suffixes —
+so the user never has to type them:
+
+<ComponentPreview name="input-group/text" />
+
+## Button
+
+`InputGroupButton` is Base UI's `Button` underneath; `size` defaults to
+`xs`, icon-only buttons use `icon-xs`:
+
+<ComponentPreview name="input-group/button" />
+
+## Keyboard hint
+
+Put a `<kbd>` straight into an addon — `InputGroup` aligns it and strips the
+extra margins:
+
+<ComponentPreview name="input-group/kbd" />
+
+## Textarea and bottom toolbar
+
+An addon with `align="block-end"` spans the full row and moves below,
+turning the `InputGroup` from one row into a vertical layout (`block-start`
+moves it above). Paired with `InputGroupTextarea`, that is an input area
+with a toolbar:
+
+<ComponentPreview name="input-group/textarea" />
+
+## Where the focus ring comes from
+
+The ring is drawn on the `InputGroup`, triggered when **some element inside
+carrying `data-slot="input-group-control"`** is `:focus-visible`:
+
+```
+has-[[data-slot=input-group-control]:focus-visible]:border-ring
+has-[[data-slot=input-group-control]:focus-visible]:ring-3
+```
+
+`InputGroupInput` / `InputGroupTextarea` carry this slot out of the box and
+suppress their own ring with `focus-visible:ring-0`, so the group shows
+exactly one ring.
+
+**This slot value is a wiring contract, not a marker.** Do not pass
+`data-slot` to the control — the component writes the attribute first and
+spreads props after, so a same-named one from outside overrides the contract
+value and the focus ring silently disappears: no error, it just stops
+showing. To add a marker of your own, pick another attribute name.
+
+Text inputs also hit `:focus-visible` on mouse click (browsers assume typing
+is expected), so a single click shows the ring — native behaviour, not
+something added.
+
+## Custom controls
+
+Put the other way round: the ring recognises the attribute, not any
+particular component. Hang `data-slot="input-group-control"` on your own
+control and it joins the same focus management — third-party auto-resizing
+textareas and the like slot in exactly this way:
+
+```tsx
+import TextareaAutosize from 'react-textarea-autosize'
+
+<InputGroup>
+  <TextareaAutosize
+    className="flex-1 resize-none border-0 bg-transparent focus-visible:ring-0"
+    data-slot="input-group-control"
+  />
+  <InputGroupAddon align="block-end">
+    <InputGroupButton variant="default">Send</InputGroupButton>
+  </InputGroupAddon>
+</InputGroup>
+```
+
+Besides the attribute, the two built-in controls also suppress their own
+border and ring (`border-0` / `focus-visible:ring-0`) — custom controls must
+do the same, or you will see two rings.
+
+## When to use InputGroup
+
+| Scenario | Use |
+| --- | --- |
+| nothing attached to the input | [`Input`](/en/docs/components/input), [`Textarea`](/en/docs/components/textarea) for multiline |
+| icons, units, buttons or keyboard hints sharing the input's border | `InputGroup` |
+| a search box | [`SearchField`](/en/docs/components/search-field) — built from these parts, with the clear button and Escape-to-clear already wired |
+
+The border belongs to the row, so `InputGroupInput` itself has **no border**
+— used on its own it is a bare input. Switch over the moment something needs
+to share the input's border.
+
+## State and className
+
+`InputGroup` has no state props of its own: state lives on the controls
+inside, styling is painted on the group outside, and `:has()` connects the
+two.
+
+| Selector on the group | Effect |
+| --- | --- |
+| `has-[[data-slot=input-group-control]:focus-visible]` | draws the focus ring |
+| `has-disabled` | greys the whole group + changes the background |
+| `has-[[data-slot][aria-invalid=true]]` | validation-failure ring |
+| `has-[>[data-align=block-start\|block-end]]` | turns the row into a vertical stack |
+
+To disable the whole group, disable the control inside (or put the group
+into a disabled `Field.Root` — Base UI's `Input` inherits it on its own).
+
+The `has-disabled` row is a trap: as soon as **any** `:disabled` element is
+in the group, the whole group renders as disabled. This is why `SearchField`
+**does not render** the clear button while read-only; `hidden` does not help
+— a `display: none` element is still matched by `:has(:disabled)`.
+
+Three `data-slot`s serve as selectors:
+
+| `data-slot` | On |
+| --- | --- |
+| `input-group` | the group root, that `role="group"` `<div>` |
+| `input-group-addon` | every addon; a `data-align` next to it echoes the current `align` |
+| `input-group-control` | `InputGroupInput` / `InputGroupTextarea`, the wiring point of the [focus ring](#where-the-focus-ring-comes-from) |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+Only `InputGroupInput`'s `className` takes both forms (a string, or
+`(state) => string`) — it is Base UI's `Input` underneath. Every other
+part's `className` is a string: most are plain DOM elements, and while
+`InputGroupButton` is Base UI's `Button` underneath, its class has to pass
+through `cva` (which simply drops functions), so the type is honestly
+narrowed to string.
+
+### InputGroup
+
+A `role="group"` `<div>`. Border, radius, height and the focus ring all live
+on it; it has no state props of its own — it watches its descendants via
+`:has()`, the four selectors are in
+[State and className](#state-and-classname).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class |
+| rest | native `<div>` props | — | passed through |
+
+### InputGroupAddon
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `align` | `'inline-start' \| 'inline-end' \| 'block-start' \| 'block-end'` | `'inline-start'` | start / end of the row, full row above / below |
+| `className` | `string` | — | class |
+
+One addon can hold several buttons and icons, laid out in a row:
+
+```tsx
+<InputGroupAddon align="inline-end">
+  <InputGroupButton>Undo</InputGroupButton>
+  <InputGroupButton>Redo</InputGroupButton>
+</InputGroupAddon>
+```
+
+Clicking an addon's empty space sends focus to the input in the group (not
+when clicking a button) — so anywhere within the border can be clicked into
+focus. For focus order, write button-carrying addons after the control and
+place them with `align`, see [Alignment](#alignment).
+
+### InputGroupButton
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onClick` | `(event) => void` | — | click |
+| `size` | `'xs' \| 'sm' \| 'icon-xs' \| 'icon-sm'` | `'xs'` | icon-only uses `icon-*` |
+| `variant` | `Button` variants | `'ghost'` | ghost by default, blending into the input |
+| `disabled` | `boolean` | `false` | disabled |
+| `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | change it when a form needs submitting |
+| `className` | `string` | — | class |
+
+Icon-only buttons **require an `aria-label`**.
+
+```tsx
+<InputGroupButton>Subscribe</InputGroupButton>
+<InputGroupButton aria-label="Copy link" size="icon-xs">
+  <IconCopy aria-hidden />
+</InputGroupButton>
+```
+
+### InputGroupInput
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `placeholder` | `string` | — | placeholder |
+| `onValueChange` | `(value, details) => void` | — | Base UI's controlled callback — receives the string, not an event |
+| `className` | `string \| (state) => string` | — | class; the argument is Base UI's field-control state (`disabled` / `valid` / `dirty` / `touched`…) |
+| rest | Base UI `Input` props | — | passed through |
+
+Carries `data-slot="input-group-control"` out of the box (see
+[above](#where-the-focus-ring-comes-from)), with its own border and ring
+removed — the outer group draws them instead. Remember an `aria-label` when
+there is no visible label.
+
+### InputGroupTextarea
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `rows` | `number` | — | initial number of rows |
+| `className` | `string` | — | class |
+| rest | native `<textarea>` props | — | passed through |
+
+Carries `input-group-control` as well. With it in the group, the height is
+let loose instead of staying fixed to one row.
+
+### InputGroupText
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class |
+
+A muted piece of text for units, protocol prefixes and counts. It is a
+`<span>` and never takes focus.
+
+The six parts' props types are exported as well: `InputGroupProps` /
+`InputGroupAddonProps` / `InputGroupButtonProps` / `InputGroupInputProps` /
+`InputGroupTextProps` / `InputGroupTextareaProps`.

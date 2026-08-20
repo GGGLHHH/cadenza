@@ -1,0 +1,827 @@
+---
+title: DataTable
+description: A data table with native table semantics — column-definition driven + composable slots + pagination / infinite scroll / virtualization
+---
+
+<ComponentPreview name="data-table/basic" align="stretch" />
+
+The data table family. Underneath is a **native `<table>`**: sort buttons and
+row checkboxes are focusable native controls, `aria-sort` states the current
+sort direction, and `<th scope="row">` lets screen readers announce rows by
+name. You provide a **column definition array** and the data — no JSX table
+structure to write.
+The companion `DataPagination` handles offset pagination; cursor pagination goes
+through infinite scroll; for large datasets, `virtualized` switches on TanStack
+Virtual row virtualization — see below.
+
+Every demo carries its full source below it (expand with View Code, copy from
+the top-right corner); async APIs are simulated with Promises (random 300–500ms
+delay), and the mock data sources live in `demos/lib`.
+
+## Usage
+
+```tsx
+import {
+  DataPagination,
+  DataTable,
+  DataTableColumnsSelect,
+  DataTableEmpty,
+  DataTableError,
+  DataTableLoadingMore,
+  DataTableLoadingOverlay,
+  DataTableRetry,
+  DataTableStatus,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<DataTable
+  aria-label="Composers"
+  columns={[
+    { id: 'name', header: 'Name', cell: person => person.name, rowHeader: true },
+    { id: 'role', header: 'Role', cell: person => person.role },
+  ]}
+  items={people}
+/>
+```
+
+Column definitions are plain objects: `id` identifies the column, `header` is
+the header content, and `cell` receives the row data and row index and returns
+the cell content. `aria-label` is required — the table is one large region with
+no landing spot like `FieldLabel htmlFor`, so the accessible name can only come
+from here.
+
+Two conventions:
+
+- `rowHeader` marks the column that "represents the row" (screen readers speak
+  it when announcing the row); unmarked, the first column is the default.
+- Row keys default to `item.id`; pass `getRowId` when the data has no `id` field.
+
+## Anatomy
+
+`DataTable` alone is the complete table; every other part is an optional
+**state slot**, composed in through the `children` channel and responsible only
+for copy (see [Slots](#slots)):
+
+```text
+DataTable
+├── DataTableEmpty              empty state (no rows)
+├── DataTableColumnsEmpty       empty columns (all columns hidden)
+├── DataTableError              error
+│   └── DataTableRetry          retry button (wires itself to the base's onRetry)
+├── DataTableLoadingOverlay     custom loading frost (marker part, renders nothing in place)
+└── DataTableLoadingMore        "load more" copy (marker part, renders nothing in place)
+
+DataTableStatus                 the role="status" container shared by empty / error, exported separately
+```
+
+Two parts are not in this tree; both are standalone components you compose
+**outside the table**:
+[DataPagination](/en/docs/components/data-pagination) handles paging (see
+[Pagination](#pagination)), and `DataTableColumnsSelect` decides which columns
+show (see [Columns selector](#columns-selector)).
+
+## Sticky header
+
+The header is sticky by default: it stays put while the row area scrolls. This
+requires the row area **to be a scrolling container itself**, which is why
+`maxHeight` defaults to `480` — it is a **cap, not a height**: tables shorter
+than it still render at content height, never padded with blank space, never
+given an extra scrollbar.
+
+To let the whole table scroll with the page (header scrolling away with it),
+pass `maxHeight={Infinity}`.
+
+> A trap lives here, and this library has stepped on it for you:
+> `position: sticky` binds to the **nearest** scrolling ancestor. shadcn's
+> `Table` wraps itself in an `overflow-x-auto` container; render the table
+> inside it and the header sticks to that never-scrolling container — everything
+> looks fine and nothing works. So this library renders a bare `<table>`
+> directly, with horizontal and vertical scrolling both owned by the same
+> ScrollArea.
+
+## Sorting
+
+Turn on `sortable` on a column and its header becomes pressable with a sort
+indicator. The component only maintains **sort intent** (controlled
+`sortDescriptor` + `onSortChange`); actual sorting belongs to the data layer —
+`sort` local data yourself, or turn the descriptor into request parameters for
+server data:
+
+<ComponentPreview name="data-table/sort" align="stretch" />
+
+The `SortDescriptor` type (`{ column, direction }`) is exported from
+`@gedatou/cadenza-ui` — it is this library's own vocabulary, borrowed from no
+underlying base. The sort entry in the header is a real `<button>`, and its
+`<th>` carries `aria-sort`.
+
+## Row selection and row actions
+
+Selection is best done through the **convenience layer**: `selectionMode`
+(`single` / `multiple`) + `value` / `defaultValue` / `onValueChange` — the same
+contract as InfiniteSelect.
+Turning on `selectionColumn` synthesizes a checkbox column at the front:
+per-row ticking and header select-all / indeterminate are all wired
+automatically. The checkboxes' accessible names go through `selectAllLabel` /
+`selectRowLabel` (English fallback; the application layer passes translations).
+Advanced scenarios needing the raw semantics (`selectedKeys` /
+`onSelectionChange` / the `'all'` sentinel) can still use the passed-through
+layer. How the two layers relate: while the convenience layer is active,
+`selectedKeys` is ignored, but `onSelectionChange` still receives the raw
+`Selection` (including the `'all'` sentinel) and can serve as an observation
+hook.
+
+### Single selection
+
+`value` is a single id; `onValueChange` receives the row object directly
+(`null` on deselection); the header renders no select-all box. The demo below
+turns on `selectionColumn`, so selection goes through the checkboxes — without
+it, clicking the row is the selection gesture (see the routing table below):
+
+<ComponentPreview name="data-table/selection-single" align="stretch" />
+
+### Multiple selection
+
+`value` is an array of ids; in `onValueChange(items, ids)`, **`ids` is the
+authoritative full set** while `items` only echoes objects from loaded pages —
+the same contract as InfiniteSelect; persist `ids`.
+
+<ComponentPreview name="data-table/selection-multiple" align="stretch" />
+
+`onRowAction` is row activation; the callback gets the row object rather than a
+key. The single gesture of clicking a row can only belong to one thing, so
+there is exactly **one** routing rule:
+
+| Case | What clicking the row does |
+| --- | --- |
+| `onRowAction` present | triggers the action. Selection goes through checkboxes |
+| no `onRowAction`, no `selectionColumn`, `selectionMode` on | toggles the row's selection |
+| everything else | does nothing |
+
+Checkboxes are always the unambiguous selection entry — exactly where
+`selectionColumn` earns its keep.
+
+**A clickable row also enters the Tab order**, with Enter / Space taking the
+same path as a click: without `selectionColumn`, clicking the row is the only
+selection gesture, and accepting only the mouse would lock keyboard users out.
+
+Two details:
+
+- The synthesized column never acts as row header (screen readers still take
+  the row name from your data columns), and it pins along when a
+  `pinned: 'start'` data column exists;
+- The convenience layer normalizes header select-all to "**merge loaded rows
+  into** the selection set" and deselect (Esc clearing included) to "remove
+  loaded rows" — true "server-side select all" (every match, unloaded pages
+  included) is beyond what the component can express; that is a contract
+  between the application layer and the backend (e.g. `select_all=true` + an
+  exclusion list).
+
+### Cross-page archive
+
+The selection set is archived by id and is **cross-page by nature**: paging
+merely swaps `items` while the ids in `value` stay put, so checkboxes restore
+themselves when you page back; ticking rows on page 2 never loses page 1's
+archive; row objects from other pages are cached by the component and available
+in `onValueChange`'s `items` argument. Just keep the selection state outside
+the paging state. The demo below shows 5 rows per page — tick across several
+pages and the roster stays complete (names from other pages come from the
+component's object cache, not the current page's data):
+
+<ComponentPreview name="data-table/selection-archive" align="stretch" />
+
+## Horizontal scroll and pinned columns
+
+Horizontal scrolling is driven by **column widths**: a column given a numeric
+`width` becomes fixed-width (never compressed by table layout), and once the
+widths add up past the container, horizontal scrolling appears on its own — the
+scrollbar and the left/right edge fades need no configuration:
+
+<ComponentPreview name="data-table/hscroll" align="stretch" />
+
+Columns without a `width` are flexible: when the total falls short of the
+container they absorb the remaining space, and no horizontal scrolling appears.
+
+To keep certain columns pinned during horizontal scrolling, add `pinned` to the
+column definition. Multiple columns can pin to the same side, with sticky
+offsets accumulating in array order — the demo below pins the name and role
+columns on the left and the actions column on the right:
+
+<ComponentPreview name="data-table/pinned" align="stretch" />
+
+Three conventions:
+
+- **`pinned: 'start'` columns go at the head of the array, `'end'` columns at
+  the tail** — sticky offsets accumulate in array order, and a pinned column
+  stuck in the middle makes no sense.
+- **Pinned columns must have a numeric `width`**; offsets are computed from it.
+- Pinned cells carry an opaque background of their own (following the row's
+  hover / selected state), so content scrolling past never shows through from
+  underneath; the edge fades automatically skip the pinned regions and apply
+  only to the moving part.
+
+## Slots
+
+The base ships **zero copy**. Empty / loading / error are context-driven slot
+components, passed in through the `children` channel and rendered in the empty
+area under the header; they self-render by state, mutually exclusive, with all
+copy injected by you — i18n exists only in your application layer.
+
+### DataTableEmpty: empty
+
+Self-renders when `items` is empty (and neither loading nor in error):
+
+<ComponentPreview name="data-table/slot-empty" align="stretch" />
+
+### Loading: the unified frosted overlay
+
+Loading has **no copy slot** — first paint or refresh, the unified visual is
+the built-in [LoadingOverlay](/en/docs/components/loading-overlay): one loading
+look.
+
+**First paint** (`isLoading` with no rows yet): the card gets a minimum height
+(`min-block-32`) against collapse, and the frost covers the blank:
+
+<ComponentPreview name="data-table/loading" align="stretch" />
+
+**Refresh** (`isLoading` with rows still on screen — the application layer
+keeps the previous page's data with react-query's `placeholderData`): old rows
+stay in place, covered by the frost. The header is covered too — repeatedly
+clicking sort mid-refresh would only queue requests up, so blocking it is
+protection:
+
+<ComponentPreview name="data-table/refresh" align="stretch" />
+
+#### DataTableLoadingOverlay: custom frost
+
+Compose it into the slot channel to customize the frost layer above. It is a
+TabsIndicator-style **marker part** — it renders nothing wherever you write it
+(an absolutely positioned overlay cannot live in the empty area's document
+flow) and is hoisted by the card to the overlay position; `children` replaces
+the centered Spinner (brand animation or copy, either works), `className` tunes
+the frost density, and `loading` is the base's wiring, absent from its props.
+Valid as a direct child or inside a Fragment; wrapped in a custom component it
+cannot be found (the same limit as TabsIndicator):
+
+<ComponentPreview name="data-table/loading-custom" align="stretch" />
+
+(The old `DataTableLoading` copy slot has been removed; customization goes
+through `DataTableLoadingOverlay`.)
+
+### DataTableLoadingMore: load more
+
+While the next page loads, a loading row appears at the end of the scroll
+stream — **a Spinner by default**: the base ships zero copy, the same rule as
+the frosted overlay. For text, compose it into the slot channel:
+
+```tsx
+<DataTable {/* … */}>
+  <DataTableLoadingMore>Loading more…</DataTableLoadingMore>
+</DataTable>
+```
+
+The same kind of **marker part** as `DataTableLoadingOverlay`: it renders
+nothing in place and the base hoists it to the end of the scroll stream; **the
+customization entry is not a switch** — omitted, the Spinner still renders. It
+lands on a `<tr>` (only rows may live in a `<tbody>`), so its props are
+`ComponentProps<'tr'>` rather than `'div'`.
+
+### DataTableError / DataTableRetry: error and retry
+
+Self-renders on `isError`; `DataTableRetry` wires itself to the base's
+`onRetry` (absent, it does not render) and you provide only the copy. This demo
+always fails its first load; press retry to recover:
+
+<ComponentPreview name="data-table/slot-error" align="stretch" />
+
+### DataTableStatus: the status container
+
+The empty and error state slots both ultimately render into the same
+`role="status"` container (state changes are announced by screen readers;
+loading has no copy slot and goes through the frosted overlay).
+It is exported on its own as well — when customizing state visuals, pass
+`className` to each slot for fine-tuning, or reuse this container to keep
+consistent typography.
+
+## Columns selector
+
+`DataTableColumnsSelect` is the control that lets users pick "which columns
+show": the options are the table's columns, the value is the visible ones.
+
+<ComponentPreview name="data-table/columns-select" align="stretch" />
+
+```tsx
+const [visible, setVisible] = useState<string[]>(allColumns.map(column => column.id))
+
+<DataTableColumnsSelect columns={allColumns} value={visible} onValueChange={setVisible} />
+<DataTable
+  aria-label="Composers"
+  columns={allColumns.filter(column => visible.includes(column.id))}
+  items={items}
+/>
+```
+
+**It hides no columns itself** — hiding is the caller's one line of `filter`;
+the table only ever renders the columns you hand it.
+Keeping the filtering out in the open is deliberate: the same control can
+therefore also drive a table whose **state lives elsewhere** — column
+visibility in an external data layer, URL parameters, or a saved view.
+
+`hideable: false` locks a column down: its item in the selector is greyed out,
+and it **always appears in `onValueChange`'s result**, even when the `value`
+you pass in misses it. The row-name column usually deserves this mark — screen
+readers rely on it to announce rows, and hiding it leaves the whole table
+nameless.
+
+```tsx
+const allColumns: DataTableColumn<Person>[] = [
+  { id: 'name', header: 'Name', cell: p => p.name, rowHeader: true, hideable: false },
+  { id: 'role', header: 'Role', cell: p => p.role },
+]
+```
+
+`columns` takes a **small structural slice** (`id` / `header` / `hideable`),
+not the full `DataTableColumn` — `DataTableColumn` satisfies it naturally,
+while callers whose column definitions live elsewhere can feed it with one
+`.map()`, no fake `cell` functions to invent.
+
+### When no columns remain
+
+Lock no columns and users can hide them **all**. When rows have no cells left
+to render, the table does not crumple into a stack of border lines: the header
+row stops rendering, the row area falls back to the status area, and the copy
+comes in through the new `DataTableColumnsEmpty` slot — the zero-copy house
+rule stands, and this is exactly the place for a "show all columns" recovery
+action:
+
+<ComponentPreview name="data-table/columns-empty" align="stretch" />
+
+```tsx
+<DataTable aria-label="Composers" columns={ordered.filter(…)} items={items}>
+  <DataTableColumnsEmpty className="flex flex-col items-center gap-2">
+    All columns are hidden
+    <Button variant="outline" onClick={() => setVisible(allIds)}>Show all columns</Button>
+  </DataTableColumnsEmpty>
+</DataTable>
+```
+
+It and `DataTableEmpty` are **two states**, deliberately separate: with data
+present and columns gone, saying "no data" is a lie. When both hold (zero
+columns + zero rows) the columns slot wins. On the trigger side, `placeholder`
+is the fallback ("No visible columns" or the like); omitted, it stays blank.
+
+To make this state **unreachable in the first place**, marking the row-name
+column `hideable: false` is enough — which is also the default practice
+recommended above.
+
+What you pass it should be **all columns** (hidden ones included) — that is,
+after all, what this menu is about, not whichever columns the table currently
+renders.
+
+### Drag reordering
+
+Provide a reorder callback and a drag handle grows on the left of every item.
+**Withhold it and none grows** — absence beats a boolean switch; a handle with
+nowhere to report is dead UI.
+
+Like [Slider](/en/docs/components/slider#while-dragging-and-on-commit), reordering is
+a **pair** of callbacks:
+
+| Callback | When it fires | Second argument | Cancelable? |
+| --- | --- | --- | --- |
+| `onOrderChange` | once per item crossed while dragging | `DataTableColumnsSelectChangeEventDetails` | Yes. Call `cancel()` and this change never lands on the selector's internal draft |
+| `onOrderCommitted` | once, on release, after this drag has settled | `DataTableColumnsSelectOrderEventDetails` | No — it is a **notification**, with no `cancel()` |
+
+**What drives the table is `onOrderCommitted`, not `onOrderChange`.**
+
+```tsx
+const [order, setOrder] = useState<string[]>(allColumns.map(column => column.id))
+const ordered = order.map(id => allColumns.find(column => column.id === id)!)
+
+<DataTableColumnsSelect columns={ordered} onOrderCommitted={setOrder} … />
+<DataTable columns={ordered.filter(column => visible.includes(column.id))} … />
+```
+
+### During the drag the order lives only inside the selector
+
+This is the reason the pair exists. The mid-drag order is the selector's own
+**draft**:
+
+- **The selector list makes way in real time** — the draft is moving, and that
+  is the drop-position preview
+- **The table outside never stirs** — it listens only to `onOrderCommitted`,
+  which waits for release
+- **Release** — the draft is reported once as the final result and the table
+  reorders in one go
+
+Wiring the table to `onOrderChange` would have it reordering before your hand
+has let go, re-rendering every column once per item crossed. Reserve it for
+scenarios that genuinely want live linkage.
+
+The draft clears once settled and follows `columns` again: if the caller
+applied the change, the two already match and no intermediate frame shows; if
+the caller ignored it, the list springs back — exactly what "didn't take"
+should look like.
+
+Underneath is [Motion](https://motion.dev)'s `Reorder`. It gives three things
+for free: spring reorder animation, the `whileDrag` lift on pickup, and **the
+other items making way in real time** — that "making way" is the drop-position
+preview, no extra indicator line to draw.
+
+Getting it to run inside Base UI's listbox has three key points, each
+discovered the hard way in real testing — **all sealed inside the part**;
+they are written here only to explain the mechanism, and the composed form
+never needs to touch them either:
+
+- **The option and the draggable item are one element**, not two nested layers.
+  Base UI's `render` prop merges `Reorder.Item` into `SelectItem` — so
+  `role="option"`, selection and typeahead all survive intact while Motion
+  takes over position only.
+- **`dragListener={false}` + `useDragControls()`**: only the handle can start a
+  drag; pressing the row itself still toggles visibility.
+- **The capture-phase guard goes on the group, not the handle.** By release the
+  pointer has long moved onto **another** option, and Base UI would read that
+  as a press and casually switch that column off. Guarding the handle cannot
+  hold, because the handle left the cursor long ago.
+
+```tsx
+<SelectItem
+  render={<Reorder.Item as="div" dragControls={controls} dragListener={false} />}
+  value={column.id}
+>
+```
+
+> **Dragging is pointer-only, with no keyboard path.** Inside a listbox the
+> arrow keys belong to Base UI's option navigation and cannot be ceded.
+> Keyboard operation of visibility (the functional part) is fully unaffected —
+> reordering is a convenience, not the only way through. `hideable: false`
+> columns cannot be dragged either: Base UI puts `pointer-events: none` on
+> disabled options.
+
+### Composed form
+
+Without children you get the default composition above; write children and the
+structure is entirely yours — the same house rule as the Select family. The
+trigger and popup use Select's existing vocabulary (`SelectTrigger` /
+`SelectValue` / `SelectPopup` / `SelectSeparator`…); **only three parts are
+new**: `DataTableColumnsSelectList` / `Item` / `Grip`.
+
+<ComponentPreview name="data-table/columns-select-composed" align="stretch" />
+
+```tsx
+<DataTableColumnsSelect columns={ordered} value={visible}
+  onValueChange={setVisible} onOrderCommitted={setOrder}>
+  <SelectTrigger aria-label="Show columns">
+    <IconColumns />
+    <SelectValue>{() => `${visible.length} / ${ordered.length} columns`}</SelectValue>
+  </SelectTrigger>
+  <SelectPopup>
+    <DataTableColumnsSelectList>
+      {column => (
+        <DataTableColumnsSelectItem column={column}>
+          <DataTableColumnsSelectGrip />
+          {column.header}
+        </DataTableColumnsSelectItem>
+      )}
+    </DataTableColumnsSelectList>
+    <SelectSeparator />
+    <Button variant="ghost" onClick={() => setOrder(defaultOrder)}>Restore default order</Button>
+  </SelectPopup>
+</DataTableColumnsSelect>
+```
+
+What the composed form unlocks is exactly what the closed form cannot give: a
+custom trigger (an icon, an "N / M columns" count), actions at the popup's tail
+(restore defaults), custom per-item content, and a visible label via
+[Field](/en/docs/components/field) + `FieldLabel htmlFor`.
+`SelectValue`'s label resolution works as usual — the root always feeds the
+`columns` id→header map to the Select root, so a composed trigger never builds
+its own.
+
+Four rules when composing:
+
+- **List's children is a function, not static JSX** — a deliberate hard
+  contract: the mid-drag render order is decided by the internal draft, Motion
+  matches `values` to children by position, and a static JSX order, written
+  down once, would scramble. The list owns the mapping; you only provide "what
+  one column looks like".
+- **Item's children enter the option's accessible name** (the `ItemText`
+  mechanism); decorative content like icons and counts gets read aloud by
+  screen readers and enters typeahead matching too. Pass `aria-label` to Item
+  to override the announced name wholesale.
+- **Grip renders null when the root has no reorder callback** — the same rule
+  as `DataTableRetry`: absence beats dead UI. So the composition can write it
+  unconditionally.
+- **The hard-won guards all live inside the parts** (capture-phase press
+  swallowing, the one-beat-late release, the `aria-hidden` handle) —
+  composition opens up the structure, not these traps.
+
+In passing: composition also unlocks a keyboard path for reordering — put your
+own "move up / move down" buttons in the popup and call `onOrderChange` /
+`onOrderCommitted`; no need to rely on dragging.
+
+## Pagination
+
+[DataPagination](/en/docs/components/data-pagination) is a standalone
+component, composed by you under the table — pagination state lives outside,
+and the table only receives the current page's `items`:
+
+<ComponentPreview name="data-table/pagination" align="stretch" />
+
+Props, built-in guards (`total=0` skips clamping, invalid `limit` falls back)
+and custom copy are on the
+[DataPagination page](/en/docs/components/data-pagination).
+
+**A new batch of rows returns you to the top of the row area**, no wiring on
+your part: otherwise pressing "next page" would apply the previous page's
+scroll offset to new data — stranded mid-air, the rows at the top of the new
+page skipped. The table sees only `items`, never a page number, so the
+criterion is the **first row's id**:
+
+| How items change | First row id | Behaviour |
+| --- | --- | --- |
+| paging / rows-per-page change / sorting / search | changes | back to top |
+| infinite scroll appending the next page | unchanged | stays put (otherwise every loaded page would bounce you back to top) |
+| in-place refresh (`placeholderData`) | unchanged | stays put |
+
+Only the vertical axis resets; the horizontal offset stays — the columns have
+not changed. Deleting the first row also reads as a new batch: one visual reset
+right after a delete action, a smaller price than landing mid-air on every page
+turn. `InfiniteSelect`'s list follows the same rule (a search swaps the batch
+and returns to top; loading the next page holds still).
+
+## Infinite scroll
+
+Cursor pagination skips `DataPagination` and uses the list-state props:
+scrolling near the bottom triggers `onLoadMore` automatically (an
+`IntersectionObserver` sentinel row, prefetching ahead). The shape of this prop
+group matches `InfiniteSelectAdapterProps` exactly; spread the adapter object
+straight in with `{...list}`:
+
+<ComponentPreview name="data-table/infinite" align="stretch" />
+
+The row area already caps at 480px by default (see
+[Sticky header](#sticky-header)), so the scrolling container infinite scroll
+needs exists naturally; pass `maxHeight` for taller or shorter. The load-more
+indicator renders at the end of the scroll stream (a Spinner by default; swap
+in your own copy with `DataTableLoadingMore`): prefetch fires early, and a user
+parked at the top never sees it.
+
+The demo turns on `virtualized` as well, and that is no coincidence:
+**infinite scroll's loaded set accumulates without bound** — each page turn
+nets the DOM one more page of rows, and a few dozen pages in, the table has
+grown itself into a performance trap. Virtualization holds the DOM at window
+size for any page count; the load sentinel sits at the true end of the loaded
+content (after the bottom filler row) and still fires early under
+virtualization. Only skip it when the total is bounded and the page count stays
+manageable.
+
+"Load more" is the fallback for when prefetch fails, not a feature — ideally
+users never perceive the pagination. `loadMoreScrollOffset` controls the
+prefetch distance (by default it fires 1 viewport height ahead); raise it for
+high API latency. Prefetch distance is at heart a cost trade-off (every user
+pulling one page ahead = double the server QPS), so it is left to the
+application layer. The more aggressive move lives in the data layer: prefetch
+page N+1 the moment page N arrives (react-query's `prefetchQuery`), scrolling
+only ever consumes the cache, and the indicator all but disappears.
+
+Scrollbars default to `scrollbars="hover"`: hidden normally, fading in while
+the pointer hovers or scrolling is underway (the other two values: `'always'`
+always shown, `'hidden'` never shown).
+
+## Virtualization
+
+With `virtualized` on, row rendering is handed to TanStack Virtual:
+**at any moment only the rows visible in the viewport, plus a few pre-rendered
+rows (overscan), exist in the DOM**, with one non-interactive filler row above
+and one below propping up the full scroll height; the table stays a native
+`<table>` — sticky header, borders and column layout identical to the
+non-virtual mode. The demo below pulls a full 10000 rows at once:
+
+<ComponentPreview name="data-table/virtualized" align="stretch" />
+
+Trade-offs to know before switching it on:
+
+1. **Row height is fixed** at `rowHeight` (default 40px) — virtualization
+   trades fixed row height for zero measurement and zero jumping; when cell
+   content runs taller, raise it in step. For genuinely variable content, turn
+   on `dynamicRowHeight` — see [Dynamic row height](#dynamic-row-height).
+2. **Screen readers see a narrower scope**: only those few dozen rows are in
+   the DOM, so the row count screen readers announce follows the window; the
+   browser's in-page find and select-all likewise reach only the visible rows.
+3. Hence **not recommended within a few hundred rows** — without it the whole
+   table is in the DOM, and a few hundred rows pose no performance problem at
+   all.
+
+Virtualization uses TanStack Virtual, the same engine as
+[InfiniteSelect](/en/docs/components/infinite-select#virtualization); rows keep
+their positioning (no switch to absolute) and two filler `<tr>`s above and
+below prop up the scroll height, so the native `<table>`'s sticky header,
+pinned columns and borders all work as usual.
+
+Setting `width` on columns avoids slight column-width jitter while scrolling
+(auto-layout tables size columns by their visible content).
+
+Virtualization and infinite scroll **can be on together** — and with no upper
+bound on page count they should be; see the notes in
+[Infinite scroll](#infinite-scroll).
+
+## Dynamic row height
+
+In non-virtual mode row heights are content-driven already; nothing to do.
+Virtualization defaults to **fixed row height** in exchange for zero
+measurement and zero jumping; for variable content (multi-line text, tag
+groups) turn on `dynamicRowHeight`: `rowHeight` demotes to an initial estimate,
+and rendered rows are measured at their real height (ResizeObserver) with the
+layout corrected automatically. Cells do not wrap by default; columns that need
+wrapping add their own `className: 'whitespace-normal'`.
+The demo below loads 10000 rows at once, with bios of varying length:
+
+<ComponentPreview name="data-table/dynamic-row-height" align="stretch" />
+
+The cost: while scrolling, the scrollbar jitters slightly as measured values
+replace estimates, and every row adds a measurement overhead — **use fixed row
+height when rows are uniform**, and save `dynamicRowHeight` for tables that are
+genuinely variable.
+
+## State and className
+
+This family has no Base UI state underneath: `className` is a plain string
+throughout, and the attributes are put on by the seam by hand. The outer card
+echoes the three list states; rows and headers echo their own semantics:
+
+| Attribute | Lives on | Effect |
+| --- | --- | --- |
+| `data-loading` | outer card | `isLoading`; the frosted overlay appears alongside |
+| `data-empty` | outer card | no rows (and neither loading nor in error); `DataTableEmpty` appears alongside |
+| `data-columns-empty` | outer card | no columns (all hidden); `DataTableColumnsEmpty` appears alongside |
+| `data-error` | outer card | `isError`; `DataTableError` appears alongside |
+| `data-selected` | row `<tr>` | the row is in the selection set; background goes muted |
+| `aria-sort` | sortable column's `<th>` | current sort direction (`ascending` / `descending` / `none`) |
+
+> A row's selected state is **not** `data-state="selected"`. That is Radix
+> vocabulary, and this library never writes `data-state`; rows carry
+> `data-selected`, the same dialect as Base UI and the rest of the library.
+> Copying class names over from shadcn's table styles will trip on this.
+
+Parts the seam renders itself all carry `data-slot`; use it as a selector when
+targeting from outside:
+
+| data-slot | What it is |
+| --- | --- |
+| `data-table` | the outer card container (`className` lands on it) |
+| `data-table-grid` | the actual `<table>` |
+| `data-table-row` | a row `<tr>` |
+| `data-table-sort-button` | the sort button in the header |
+| `data-table-status` | the `role="status"` container shared by empty / error |
+| `data-table-retry` | `DataTableRetry`'s button |
+| `data-table-load-more` | the loading row at the end of the scroll stream |
+| `data-table-spacer` | virtualization's top and bottom filler rows |
+
+## Keyboard interactions
+
+The table is a native `<table>`; the keyboard Tabs through the focusable
+controls inside:
+
+| Key | Behaviour |
+| --- | --- |
+| `Tab` | lands in turn on sort buttons, row checkboxes, **activatable rows themselves** (with `onRowAction`, or when clicking a row selects it), and any buttons/links you put in cells yourself |
+| `Space` / `Enter` | activates the currently focused control |
+
+> 0.2 (the React Aria base) had grid navigation here — arrow keys moving
+> between cells — and `role="grid"`. Gone after the move to a native `<table>`
+> — the one explicit accessibility regression in this migration, traded for
+> table semantics consistent with the shadcn / Radix ecosystem.
+
+## Exported types
+
+| Type | Description |
+| --- | --- |
+| `DataTableColumn<T>` | column definition: `{ id, header, cell, rowHeader?, sortable?, hideable?, pinned?, width?, minWidth?, maxWidth?, className? }` |
+| `DataTableColumnWidth` | column width: a px number or a percentage string (e.g. `'50%'`) |
+| `DataTableColumnOption` | the small slice the [columns selector](#columns-selector) consumes: `{ id, header, hideable? }` |
+| `DataTableColumnsSelectProps` | the columns selector root's full props |
+| `DataTableColumnsSelectListProps` / `ItemProps` / `GripProps` | props of each of the three [composed parts](#composed-parts) |
+| `DataTableColumnsSelectChangeEventReason` / `ChangeEventDetails` | second argument of `onValueChange` / `onOrderChange`: `'item-press' \| 'drag' \| 'none'`, supports `cancel()` |
+| `DataTableColumnsSelectOrderEventDetails` | second argument of `onOrderCommitted` — notification semantics, no `cancel()` |
+| `DataTableProps<T>` | `DataTable`'s full props; reuse directly when wrapping a layer in application code |
+| `DataTableSelectionProps<T>` | the convenience-layer selection discriminated union (single `value?: string` / multiple `value?: string[]`, with the `onValueChange` signature switching along) |
+| `DataPaginationProps` / `DataPaginationState` | the pagination bar's props and the state received by `summary` / `pageIndicator` |
+| `SortDescriptor` / `Selection` / `Key` | this library's own collection vocabulary; the types of sort and selection callbacks |
+
+## Props
+
+### DataTable
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `aria-label` | `string` | — | the table's accessible name (required) |
+| `columns` | `DataTableColumn<T>[]` | — | column definitions |
+| `items` | `T[]` | — | row data |
+| `getRowId` | `(item: T) => string` | reads `item.id` | row key extraction |
+| `isLoading` / `isError` / `onRetry` | — | — | `isLoading` uniformly renders the built-in frosted overlay (minimum height on first paint); `isError` / `onRetry` drive the error slot, see [Slots](#slots) |
+| `hasNextPage` / `isFetchingNextPage` / `onLoadMore` | — | — | infinite scroll, see [Infinite scroll](#infinite-scroll) |
+| `loadMoreScrollOffset` | `number` | `1` | prefetch distance: how many viewport heights ahead `onLoadMore` fires |
+| `selectionMode` | `'none' \| 'single' \| 'multiple'` | `'none'` | row selection mode |
+| `value` / `defaultValue` / `onValueChange` | `string` \| `string[]` | — | convenience-layer selection (cross-page archive); signatures switch with `selectionMode`, see [Row selection and row actions](#row-selection-and-row-actions) |
+| `selectedKeys` / `onSelectionChange` | — | — | raw selection, passed through. The former is ignored while the convenience layer is active; `onSelectionChange` still fires, observation only |
+| `selectionColumn` | `boolean` | `false` | synthesized checkbox column (row ticks + header select-all), see [Row selection and row actions](#row-selection-and-row-actions) |
+| `selectAllLabel` / `selectRowLabel` | `string` | `'Select all rows'` / `'Select row'` | accessible names of the checkboxes; English fallback, the application layer passes translations |
+| `sortDescriptor` / `onSortChange` | `SortDescriptor` | — | sort intent (controlled) |
+| `onRowAction` | `(item: T) => void` | — | row activation; the callback receives the row object |
+| `maxHeight` | `number` | `480` | row area height **cap** (not a height). See [Sticky header](#sticky-header); pass `Infinity` to lift the cap |
+| `scrollbars` | `'always' \| 'hover' \| 'hidden'` | `'hover'` | scrollbar visibility: always shown / shown on hover and while scrolling / never |
+| `virtualized` | `boolean` | `false` | TanStack Virtual row virtualization, for large datasets |
+| `rowHeight` | `number` | `40` | fixed height of virtualized rows; under `dynamicRowHeight`, the initial estimate |
+| `dynamicRowHeight` | `boolean` | `false` | virtualized rows measured at their content height (estimate + correction), see [Dynamic row height](#dynamic-row-height) |
+| `className` | `string` | — | extra class on the outer card container (lands on a plain div; no function form) |
+| `children` | `ReactNode` | — | the state slot channel |
+
+### DataTableLoadingOverlay
+
+Customizes the frost layer. A **marker part**: written in the slot channel but
+rendering nothing in place, hoisted by the card to the overlay position — so it
+only works as a direct child or inside a Fragment, and wrapped in a custom
+component it cannot be found. Behaviour in
+[Loading](#loading-the-unified-frosted-overlay).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | centered `Spinner` | replaces the overlay content (brand animation or copy, either works) |
+| `className` | `string` | — | tunes frost density and the like |
+| rest | `LoadingOverlayProps` minus `loading` | — | passed through. `loading` is the base's wiring, absent from its props |
+
+```tsx
+<DataTable {/* … */}>
+  <DataTableLoadingOverlay className="backdrop-blur-sm">
+    Syncing…
+  </DataTableLoadingOverlay>
+</DataTable>
+```
+
+### DataTableLoadingMore
+
+The row at the end of the scroll stream while the next page loads. Another
+**marker part**: renders nothing in place, hoisted by the base to the end of
+the stream. **It is not a switch**: omitted, a Spinner still renders; written,
+it merely replaces the content.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | `Spinner` | replaces that row's content |
+| rest | `ComponentProps<'tr'>` | — | passed through. `'tr'`, not `'div'` — it lands inside a `<tbody>`, where only rows may live |
+
+```tsx
+<DataTable {/* … */}>
+  <DataTableLoadingMore>Loading more…</DataTableLoadingMore>
+</DataTable>
+```
+
+### DataTableEmpty / DataTableError / DataTableRetry / DataTableStatus
+
+These state slots are all plain DOM parts with no contract beyond when each
+appears: `className` is a string, and the remaining props are passed through to
+the host element. Behaviour in [Slots](#slots).
+
+| Part | props | When it renders |
+| --- | --- | --- |
+| `DataTableEmpty` | `ComponentProps<'div'>` | `items` empty, and neither loading nor in error (steps aside for the next one when all columns are hidden) |
+| `DataTableColumnsEmpty` | `ComponentProps<'div'>` | `columns` empty (all columns hidden), see [When no columns remain](#when-no-columns-remain) |
+| `DataTableError` | `ComponentProps<'div'>` | `isError` |
+| `DataTableRetry` | `ButtonProps` | `isError` with `onRetry` provided (it wires itself; absent, it does not render) |
+| `DataTableStatus` | `ComponentProps<'div'>` | the slots above all ultimately render into this `role="status"` container; exported separately for you to reuse the typography |
+
+### DataTableColumnsSelect
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `columns` | `DataTableColumnOption[]` | — | **all columns**, hidden ones included — this is the selector's menu, not whichever columns the table currently renders. `DataTableColumn` satisfies it naturally |
+| `value` | `string[]` | — | controlled: ids of the visible columns |
+| `defaultValue` | `string[]` | all columns | uncontrolled initial value |
+| `onValueChange` | `(ids, eventDetails) => void` | — | visibility change. `eventDetails.cancel()` rejects the change; `reason` is `'item-press'` / `'none'` |
+| `onOrderChange` | `(ids, eventDetails) => void` | — | fires once per item crossed **while dragging**, supports `cancel()`. `reason` is `'drag'` |
+| `onOrderCommitted` | `(ids, eventDetails) => void` | — | fires once **after the drag settles** — **this is what drives the table**. Notification semantics, no `cancel()` |
+| `aria-label` | `string` | `'Columns'` | the **default composition** trigger's accessible name. The English default is the house rule, translation belongs to the application layer; useless once children is written |
+| `placeholder` | `string` | — | what the **default composition** trigger shows when no columns remain; useless once children is written |
+| `className` | `string` | — | lands on the **default composition**'s trigger; useless once children is written |
+| `children` | `ReactNode` | — | the composition channel: write it and the default composition steps aside entirely, see [Composed form](#composed-form) |
+
+Behaviour comes down to three points: **it neither hides nor reorders columns
+itself** (both are the caller's operations on `columns`); `hideable: false`
+columns are both greyed out and **always in `onValueChange`'s result**; the
+grip appears only when one of the two reorder callbacks is provided. See
+[Columns selector](#columns-selector).
+
+#### Composed parts
+
+| Part | props | Description |
+| --- | --- | --- |
+| `DataTableColumnsSelectList` | `children: (column) => ReactNode`, `className` | children must be a function — the list owns the draft-order mapping, see [Composed form](#composed-form) |
+| `DataTableColumnsSelectItem` | `column`, `aria-label`, `className`, `children` | children defaults to `column.header`; `aria-label` overrides the option's accessible name, keeping decorative content out of announcements |
+| `DataTableColumnsSelectGrip` | `className`, `children` | children swaps the default grip icon; renders null when the root has no reorder callback |
+
+`DataPagination`'s props are on
+[its own page](/en/docs/components/data-pagination#props).

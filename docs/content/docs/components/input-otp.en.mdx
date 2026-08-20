@@ -1,0 +1,289 @@
+---
+title: InputOTP
+description: One-time passcode input — the only control in the library not built on Base UI, one invisible real input spanning all the slots
+---
+
+<ComponentPreview name="input-otp/basic" />
+
+**The only control in the library not built on Base UI.** Underneath is the
+[`input-otp`](https://input-otp.rodz.dev) package: one **real `<input>`**,
+visually invisible, spanning all the slots across the full row; the row of
+boxes you see is just `div`s painted from its value.
+
+This structure is not for looks — it is exactly why SMS autofill and
+whole-string paste work. Focus, selection, IME and
+`autocomplete="one-time-code"` (on by default) are all carried by that real
+input: autofill and paste see one complete field, not six little boxes each
+owning one digit.
+
+⚠️ The protocol is therefore **React DOM's**, not the one the rest of this
+library uses: `value` / `onChange`, where `onChange` receives a **string**, not
+an event; this family has **no `eventDetails` whatsoever**, and no `cancel()`.
+
+## Usage
+
+```tsx
+import {
+  Field,
+  FieldLabel,
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Field>
+  <FieldLabel htmlFor="code">SMS verification code</FieldLabel>
+  <InputOTP id="code" maxLength={6} name="code">
+    <InputOTPGroup>
+      <InputOTPSlot index={0} />
+      <InputOTPSlot index={1} />
+      <InputOTPSlot index={2} />
+    </InputOTPGroup>
+    <InputOTPSeparator />
+    <InputOTPGroup>
+      <InputOTPSlot index={3} />
+      <InputOTPSlot index={4} />
+      <InputOTPSlot index={5} />
+    </InputOTPGroup>
+  </InputOTP>
+</Field>
+```
+
+## Anatomy
+
+Grouping is pure composition: wrap a consecutive run of slots in an
+`InputOTPGroup` (the radius is painted on the group's first and last slot), and
+put an `InputOTPSeparator` between groups. The hero above has this shape:
+
+```text
+InputOTP
+├── InputOTPGroup
+│   ├── InputOTPSlot   index={0}
+│   ├── InputOTPSlot   index={1}
+│   └── InputOTPSlot   index={2}
+├── InputOTPSeparator
+└── InputOTPGroup
+    ├── InputOTPSlot   index={3}
+    ├── InputOTPSlot   index={4}
+    └── InputOTPSlot   index={5}
+```
+
+Two hard rules:
+
+- **`maxLength` is required**, and must match the number of slots you render.
+  It is the real input's `maxlength` and the length of the internal `slots`
+  array.
+- **`index` numbers consecutively from 0, continuing across groups.** Each
+  `InputOTPSlot` fetches its own character from `slots[index]`; the tree above
+  is `0 1 2` + separator + `3 4 5`, not two groups each starting at 0. An
+  `index` beyond `maxLength` fetches nothing and only paints a forever-empty
+  box.
+
+**There is no `render` channel.** `input-otp` uses `render` to mean "one
+function replacing the entire row's content, mutually exclusive with
+`children`", while everywhere else in this library `render` is Base UI's
+element replacement (taking a `ReactElement`) — one name, two meanings, and
+guessing wrong reports a union type error nobody can read. The seam `Omit`s it
+from the public surface; grouping always goes through composition.
+
+## Label
+
+`id` lands on that invisible real input, so
+[`FieldLabel htmlFor`](/en/docs/components/field) holds as usual — one
+`htmlFor` gives both the accessible name and click-the-text-to-focus, no
+different from an ordinary input. That is what the hero uses. The full table of
+the library's four label channels is in
+[Field](/en/docs/components/field#accessibility); InputOTP belongs to the most
+ordinary one.
+
+## Pattern
+
+`pattern` restricts which characters get in; it takes a **regex source string**
+(not a `RegExp` literal), handed internally to `new RegExp()`:
+
+```tsx
+<InputOTP maxLength={6} pattern="^\d+$">
+  …
+</InputOTP>
+```
+
+- **A mismatch rejects wholesale**, not by filtering illegal characters out:
+  typing character by character, that `onChange` simply does not advance;
+  pasting tests the whole string once (after `pasteTransformer` first), and a
+  failure lets not a single character in.
+- The compiled regex's `source` is also written to the real input's native
+  `pattern` attribute, so the browser's native form validation honours it too.
+- The `input-otp` package exports three ready-made strings —
+  `REGEXP_ONLY_DIGITS` (`^\d+$`), `REGEXP_ONLY_CHARS` (`^[a-zA-Z]+$`) and
+  `REGEXP_ONLY_DIGITS_AND_CHARS` (`^[a-zA-Z0-9]+$`). The seam does not
+  re-export them — they are three strings, just write the literal.
+
+Mobile keyboards are a separate thread: `inputMode` defaults to `'numeric'`;
+when accepting letters, remember to change it to `'text'` as well.
+
+## Separator
+
+`InputOTPSeparator` is the only part on this page the seam has **rewrapped**;
+the other three are re-exported as-is. It renders an `IconMinus` with
+`role="separator"`.
+
+The reason: the vendored copy writes its own `className` **before** the props
+spread:
+
+```tsx
+// vendored (must not change)
+<div className="flex items-center …" role="separator" {...props} />
+```
+
+So a `className` passed from outside does not merge — it **wipes out** the
+whole run of layout classes, and the icon loses its box and size on the spot.
+The seam wraps one layer outside to run a `cn` merge, restoring the ordinary
+rule of "yours wins on conflict, mine survives otherwise".
+
+## Disabled
+
+`disabled` is the native attribute, landing on the real input: no typing, no
+focusing; the container's `has-disabled:opacity-50` drops the whole row (slots
+and separators together) to half opacity, and the cursor goes from "text" back
+to the default arrow.
+
+It only covers the control's own cell. To grey out the label and description
+column along with it, hang `data-disabled` on the `Field` manually, per
+[Field](/en/docs/components/field#state-and-classname)'s convention.
+
+## Controlled
+
+<ComponentPreview name="input-otp/controlled" />
+
+- `onChange(value: string)` — the argument is the current whole-string value
+  directly. **Not an event**, so there is no `event.target.value` and no
+  second parameter.
+- `onComplete(value: string)` — fires once at the moment length goes from
+  "short" to "exactly `maxLength`". Pasting a full string triggers it too.
+
+Giving only `defaultValue` (a plain string) runs too, and the value does show —
+but `input-otp` spreads that prop onto the real input together with its own
+`value`, so React logs "contains an input with both value and defaultValue
+props" in development mode. **For a clean run, go controlled**, like the demo
+above.
+
+## Invalid state
+
+`aria-invalid` goes on the **slots**, not on the `InputOTP`:
+
+| Where | Effect |
+| --- | --- |
+| `aria-invalid` on an `InputOTPSlot` | that slot paints a destructive border; its `InputOTPGroup` paints the group-wide destructive border and ring via `has-aria-invalid:` |
+| `data-invalid` on the `Field` | the whole column of text turns destructive, see [Field](/en/docs/components/field#state-and-classname) |
+
+Hanging it on `InputOTP` has no visible effect at all: that input is itself
+invisible, and inside the visible container it is a **sibling** of the
+`InputOTPGroup`s, not a descendant, so `has-` selectors cannot reach it. When
+the whole row counts as wrong, spread `aria-invalid` onto every
+`InputOTPSlot`.
+
+## Form
+
+Native: `name` lands on that real input, the whole code takes part in form
+submission as **one field**, and `FormData` holds a single `code=123456`. When
+the control renders outside the `<form>`, point back at the form's id with
+`form`.
+
+## State and className
+
+`InputOTP` has two className outlets, governing two different elements:
+
+| Prop | Lands on |
+| --- | --- |
+| `className` | the **invisible real input** |
+| `containerClassName` | the **visible row** (the container `div` holding slots and separators) |
+
+Row spacing, slot gaps, full-row width — all `containerClassName`. `className`
+is really only useful when touching input-behaviour styling (say the cursor
+under `disabled:`). Both are plain strings: this family is not Base UI parts
+and has no function form — same for `InputOTPGroup` / `InputOTPSlot` /
+`InputOTPSeparator`.
+
+There are only three state attributes, none of them from Base UI:
+
+| Attribute | Effect |
+| --- | --- |
+| `data-active` | hung by the seam on every `InputOTPSlot` automatically; the slot under the caret gets the outline and ring, is raised to `z-10`, and paints the blinking fake caret |
+| `aria-invalid` | hung by you on the slots, see [Invalid state](#invalid-state) |
+| `disabled` | hung by you on the `InputOTP`; the container's whole row goes translucent, see [Disabled](#disabled) |
+
+| `data-slot` | What it is |
+| --- | --- |
+| `input-otp` | the invisible real input |
+| `input-otp-group` | one consecutive run of slots |
+| `input-otp-slot` | a single slot |
+| `input-otp-separator` | the between-group separator, also carrying `role="separator"` |
+
+The visible container row has no `data-slot`; it carries the `input-otp`
+package's own `data-input-otp-container`.
+
+**`data-active` is a value-typed boolean.** The slot under the caret is marked
+`data-active="true"`, the rest `data-active="false"` — the attribute is
+**always there**, only the value changes. This is not the empty-string form
+used across the rest of the library (`data-checked=""`, judged by presence):
+the vendored copy writes the boolean value straight into the attribute, and it
+is byte-for-byte aligned with upstream — must not change.
+
+So selectors here must be written `data-[active=true]:`:
+
+```tsx
+<InputOTPSlot className="data-[active=true]:ring-4" index={0} />
+```
+
+The `data-active` custom variant in `styles.css` is deliberately written
+leniently (`[data-active]:not([data-active="false"])`), so `data-active:`
+matches here too — but the family's existing classes all use the
+`data-[active=true]:` spelling; follow it and spare yourself the mix of two
+styles.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+### InputOTP
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `maxLength` | `number` | — | **required**. Total character count; must match the number of slots |
+| `children` | `ReactNode` | — | slots and separators. The only content channel — `render` is off the public surface, see [Anatomy](#anatomy) |
+| `defaultValue` | `string` | `''` | uncontrolled initial value. Triggers React's both-value/defaultValue warning, see [Controlled](#controlled) |
+| `value` | `string` | — | controlled value |
+| `onChange` | `(newValue: string) => unknown` | — | value change callback. **The argument is a string, not an event** |
+| `onComplete` | `(value: string) => unknown` | — | fires once when `maxLength` fills up |
+| `pattern` | `string` | — | regex **source string**, handed to `new RegExp()` (e.g. `^\d+$`). Mismatched typing and pastes are rejected wholesale, see [Pattern](#pattern) |
+| `pasteTransformer` | `(pasted: string) => string` | — | runs pasted content through once before it lands (stripping spaces, hyphens, that kind of thing) |
+| `inputMode` | `string` | `'numeric'` | mobile keyboard type, passed through to the real input |
+| `autoComplete` | `string` | `'one-time-code'` | SMS autofill depends on it; do not override casually |
+| `disabled` | `boolean` | `false` | the native attribute; the container follows with `has-disabled:opacity-50`, see [Disabled](#disabled) |
+| `name` | `string` | — | form field name |
+| `form` | `string` | — | id of the form the real input belongs to; for when the control renders outside the form |
+| `id` | `string` | — | lands on the real input; `FieldLabel htmlFor` points here |
+| `textAlign` | `'left' \| 'center' \| 'right'` | `'left'` | alignment of the text (i.e. where the caret parks) inside the invisible input |
+| `pushPasswordManagerStrategy` | `'increase-width' \| 'none'` | `'increase-width'` | widens the container a little when a password manager icon is detected, keeping the icon off the slots |
+| `noScriptCSSFallback` | `string \| null` | a built-in CSS string | `<noscript>` style fallback for no-JS; pass `null` to render none |
+| `containerClassName` | `string` | — | the visible row's class |
+| `className` | `string` | — | the invisible real input's class |
+| rest | native `input` props | — | passed through to the invisible input (`ref` included — it is that input) |
+
+### InputOTPGroup / InputOTPSlot / InputOTPSeparator
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `index` | `number` | — | **required on `InputOTPSlot`**; consecutive from 0, continuing across groups |
+| `className` | `string` | — | all three are plain `div`s, string only |
+| rest | native `div` props | — | passed through (`ref` included) |
+
+`InputOTPGroup` and `InputOTPSlot` are re-exported as-is; `InputOTPSeparator`
+is [rewrapped once](#separator).
+
+Four types are exported as well: `InputOTPProps` / `InputOTPGroupProps` /
+`InputOTPSlotProps` / `InputOTPSeparatorProps`.

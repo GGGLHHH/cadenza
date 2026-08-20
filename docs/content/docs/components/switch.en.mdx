@@ -1,0 +1,209 @@
+---
+title: Switch
+description: A switch — Base UI's Switch.Root promoted as-is, box-only, no indeterminate; size is shadcn's addition
+---
+
+<ComponentPreview name="switch/basic" />
+
+Base UI's `Switch.Root`, **promoted as-is** on shadcn's base-nova track — the seam
+adds no behaviour, only a `size`.
+
+It has the **same shape** as [Checkbox](/en/docs/components/checkbox): the root
+renders a `<span role="switch">` with a hidden `<input type="checkbox">` beside
+it. That is, the root element **is the track** and nothing else (**box-only**);
+text stuffed into `children` gets squeezed into the track — so text goes through
+a sibling [`FieldLabel`](/en/docs/components/field), pointed over by `htmlFor`.
+
+## Usage
+
+```tsx
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  Switch,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Field orientation="horizontal">
+  <Switch id="notify" name="notify" />
+  <FieldLabel htmlFor="notify">Email notifications</FieldLabel>
+</Field>
+```
+
+## Label
+
+`Field orientation="horizontal"` + the `Switch`'s `id` + `FieldLabel htmlFor` —
+one line is all it takes.
+
+The `id` lands on **the hidden `<input>`** (the visible track gets a generated
+id), so one `htmlFor` line handles two things: the native `<label for>` forwards
+clicks to that input — that click is what flips the switch; Base UI then mirrors
+the label's id back onto the track as `aria-labelledby` — that is the name a
+screen reader announces. No second `aria-label` is needed, and the seam adds no
+click wiring. The full story of this channel is on the
+[Checkbox](/en/docs/components/checkbox#label) page — the two are identical; the
+library-wide table of all four channels is in
+[Field](/en/docs/components/field#accessibility).
+
+## Description
+
+With a description, use `FieldContent` to stack "label + description" into one
+column — the same pattern as Checkbox; the hero is exactly this shape:
+
+```tsx
+<Field orientation="horizontal">
+  <Switch id="notify" name="notify" defaultChecked />
+  <FieldContent>
+    <FieldLabel htmlFor="notify">Rehearsal reminders</FieldLabel>
+    <FieldDescription>Sends you an email when a new rehearsal is scheduled.</FieldDescription>
+  </FieldContent>
+</Field>
+```
+
+## Controlled
+
+`checked` / `defaultChecked` / `onCheckedChange` — the same trio as Checkbox.
+
+The second argument of `onCheckedChange` is a real `ChangeEventDetails`
+(`SwitchChangeEventDetails`): `reason` is **always `'none'`** (upstream
+dispatches only this one for switches), and `cancel()` **is honoured** — call it
+and internal state does not advance; it is not a mere marker on the event:
+
+```tsx
+<Switch
+  id="notify"
+  checked={notify}
+  onCheckedChange={(checked, eventDetails) => {
+    if (locked) {
+      eventDetails.cancel() // internal state does not advance; the switch stays put
+      return
+    }
+    setNotify(checked)
+  }}
+/>
+```
+
+## Form
+
+Native, same as Checkbox: given a `name`, the hidden input submits `value` while
+on (`"on"` when not passed), and `uncheckedValue` while off — by default nothing
+is submitted. When the switch renders outside the `<form>`, use `form` to point
+back at the form's id.
+
+## Pending
+
+Flip-to-submit is the switch's semantics — and exactly the moment a round-trip
+needs feedback: `pending` marks "the server has not confirmed yet".
+
+<ComponentPreview name="switch/pending" />
+
+Same rules as [Button's pending](/en/docs/components/button#pending): the
+action-side word is `pending` (`loading` belongs to the content side); the
+switch **stays focusable but stops responding** (backed by `readOnly`, the form
+control's ready-made "focusable, but immovable" channel); the visual is a
+**Spinner spinning inside the thumb** — whichever side the thumb sits on,
+whatever its size, the Spinner follows; `aria-busy` and `data-pending` are
+derived from `pending`, so callers cannot set just one half.
+
+## Disabled
+
+`disabled` makes the switch ignore interaction and drop to half opacity;
+`readOnly` is the other tier — focusable, but immovable.
+
+Both only govern the control's own cell. To grey out the whole text column,
+follow the state convention of [Field](/en/docs/components/field) and put
+`data-disabled` on the `Field` by hand.
+
+## Invalid state
+
+`aria-invalid` goes on the control, `data-invalid` on the field column:
+
+| Where | Effect |
+| --- | --- |
+| `aria-invalid` on `Switch` | the track paints a destructive border and ring |
+| `data-invalid` on `Field` | the whole text column turns destructive, see [Field](/en/docs/components/field#state-and-classname) |
+
+## Sizes
+
+`size` is **shadcn's, not Base UI's** — `Switch.Root` has no such prop. It is
+mirrored as `data-size` on the root; the track takes its width and height from
+it, and the thumb takes its own size and travel from `group-data-[size=…]`: one
+attribute, effective in two places.
+
+<ComponentPreview name="switch/sizes" />
+
+## When to use Switch
+
+Behaviourally, Switch and Checkbox differ in exactly one thing: **Switch has no
+`indeterminate`** — a switch is only on or off, no third state. Every other
+difference is in what the affordance *reads as*:
+
+| Control | Reads as | Typical scene |
+| --- | --- | --- |
+| `Switch` | a toggle that **takes effect immediately** | "Dark mode", "Rehearsal reminders" on a settings page — flip it and it changes |
+| `Checkbox` | a tick **pending submission** | "Agree to terms", multi-select in a list — counts only after submit |
+
+The test is direct: if the effect should be visible the moment you flip, use
+Switch; if it only takes effect on form submit, or needs "partially checked",
+use [Checkbox](/en/docs/components/checkbox).
+
+## State and className
+
+`className` reaches Base UI's slot, so **the function form works**:
+`(state: SwitchState) => string | undefined`; `style` takes the same two forms.
+The left column is the `data-*` on the root element (Tailwind uses it directly
+as a variant); the right column is the same state's name in the function form.
+
+| `data-*` | When present | Name in `SwitchState` |
+| --- | --- | --- |
+| `data-checked` / `data-unchecked` | on / off, exactly one always present | `checked` |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-readonly` | `readOnly` | `readOnly` |
+| `data-required` | `required` | `required` |
+| `data-size` | always set, value `default` / `sm` | — (shadcn's, not in state) |
+| `data-pending` | `pending` | — (seam-derived, not in state) |
+
+`SwitchState` also carries the Field fields (`valid` / `touched` / `dirty` /
+`filled` / `focused`, matching `data-valid` / `data-touched` and so on) — but
+they only move inside Base UI's `Field.Root`, and this library's
+[`Field`](/en/docs/components/field) is pure DOM, not that one. To grey or
+redden the whole text column along with the control, it is still the Field
+page's convention: put `data-disabled` / `data-invalid` on the `Field` by hand,
+see [Disabled](#disabled) and [Invalid state](#invalid-state).
+
+The root carries `data-slot="switch"`, the thumb `data-slot="switch-thumb"`
+(while `pending`, the Spinner renders inside the thumb with
+`data-slot="spinner"`) — use them as selectors when targeting from outside.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks
+→ behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | — | lands on the hidden `<input>`; `FieldLabel htmlFor` points here (it only moves to the root when `nativeButton` is `true`) |
+| `name` | `string` | — | identifies this field in the form |
+| `defaultChecked` | `boolean` | `false` | uncontrolled initial value |
+| `checked` | `boolean` | — | controlled value |
+| `onCheckedChange` | `(checked: boolean, eventDetails: SwitchChangeEventDetails) => void` | — | fires when the switch flips. `reason` is always `'none'`; `cancel()` stops the change |
+| `pending` | `boolean` | — | action in flight: focusable but unresponsive, Spinner spins in the thumb, see [Pending](#pending) |
+| `disabled` | `boolean` | `false` | ignores interaction |
+| `readOnly` | `boolean` | `false` | focusable, but immovable |
+| `required` | `boolean` | `false` | must be on before the form submits |
+| `value` | `string` | — | value submitted while on; omitted, it is the native `"on"` (the browser's behaviour for a value-less checkbox, not a Base UI default) |
+| `uncheckedValue` | `string` | — | value submitted while off; omitted, nothing is submitted while off |
+| `form` | `string` | — | id of the form the hidden input belongs to, for switches rendered outside the form |
+| `inputRef` | `React.Ref<HTMLInputElement>` | — | reaches the hidden `<input>` |
+| `size` | `'default' \| 'sm'` | `'default'` | **shadcn's, not Base UI's**; mirrored as `data-size` |
+| `nativeButton` | `boolean` | `false` | set `true` when `render` swaps in a native `<button>` |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | replaces the root element itself |
+| `className` | `string \| ((state: SwitchState) => string \| undefined)` | — | class, both forms, see [State and className](#state-and-classname) |
+| `style` | `CSSProperties \| ((state: SwitchState) => CSSProperties \| undefined)` | — | same, both forms |
+| rest | Base UI `Switch.Root` props (native `span` props + `ref`) | — | passed through to the track; `aria-invalid` paints the destructive border and ring |
+
+The three types `SwitchProps` / `SwitchState` / `SwitchChangeEventDetails` are
+exported as well.

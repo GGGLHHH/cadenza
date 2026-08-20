@@ -1,0 +1,368 @@
+---
+title: Cascader
+description: A cascading picker — tree options unfold level by level as submenus, the value is one path from root to leaf, with the same trigger as Select
+---
+
+<ComponentPreview name="cascader/basic" />
+
+The cascading picker. Base UI has no cascader primitive; this is a composition
+the seam builds directly on `@base-ui/react` Menu (the `Slider` / `Combobox`
+precedent): submenus serve as the level-by-level panels — hover expansion,
+arrow-key drilling, typeahead and focus management are all carried by Menu; the
+seam adds the half Menu lacks — the value protocol, the same trigger as Select,
+path label display and form serialization.
+
+**The value is a path** (`string[]`, root to leaf); only leaves (nodes without
+`items`) are selectable, and selecting commits the whole path and closes the
+popup. **`items` is the single data source**: both the popup content and the
+trigger display resolve from it — the popup has no JSX vocabulary; composition
+covers only the trigger side, and omitting children gives the full default
+composition (trigger + value display + clear ✕ + popup).
+
+## Usage
+
+```tsx
+import { Cascader } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+const REGIONS = [
+  {
+    value: 'united-states',
+    label: 'United States',
+    items: [
+      { value: 'california', label: 'California', items: [{ value: 'san-francisco', label: 'San Francisco' }] },
+    ],
+  },
+  { value: 'singapore', label: 'Singapore' },
+]
+
+// One-liner: items feeds the data, placeholder / aria-label sit on the root,
+// everything else defaults (clear ✕ included)
+<Cascader aria-label="Region" items={REGIONS} placeholder="Select a region" />
+
+// onValueChange receives the whole path: ['united-states', 'california', 'san-francisco']
+<Cascader items={REGIONS} onValueChange={path => console.log(path)} />
+```
+
+Labels go through the regular channel: the trigger is a real `<button>`,
+`FieldLabel htmlFor` points at the root's `id` (the default composition
+forwards it to the trigger), and clicking the label focuses — and can open —
+the popup. See the example in [Form](#form) and
+[Field](/en/docs/components/field).
+
+## Anatomy
+
+```text
+Cascader                # root: value protocol, items, hidden inputs; renders no DOM
+├─ CascaderTrigger      # real <button>, Select's look; sans children it includes display + clear
+│   ├─ CascaderValue    # path display: segment labels joined with /, placeholder when empty
+│   └─ CascaderClear    # marker part: the ✕, hoisted by the trigger into a sibling button in the chevron's spot
+└─ CascaderPopup        # Portal + Positioner + Popup in one; content always comes from the root's items
+```
+
+Take-over is layer by layer: written layers are fully yours (say, writing only
+a `CascaderTrigger` to customise `id` / `size`), unwritten layers keep their
+defaults — the popup fills itself in. `CascaderPopup` has no children channel;
+write it only to customise position props and className.
+
+## Selected path
+
+Only leaves commit a value. Branch nodes are submenu triggers: hover or
+ArrowRight expands the next level; pressing one changes no value and closes no
+popup. Reopen after selecting and **the submenus along the selected path expand
+automatically**, landing your eye right back where the value lives; branch
+triggers on the path carry `data-selected`, the selected leaf carries
+`data-checked` and an end-of-row checkmark.
+
+The display resolves segment by segment: found in `items`, a segment uses the
+node's `label`; not found, it prints its own `value` as-is (the same fallback
+as `SelectValue`; lazily loaded segments resolve the same way once the cache is
+hit).
+
+## Safe triangle
+
+Moving diagonally from a branch into its subpanel sweeps across the sibling
+items below; Cascader catches this diagonal with hover-intent detection — the
+demo draws the grace area live, visible as soon as your cursor moves.
+
+<ComponentPreview name="cascader/safe-triangle" />
+
+This is the interaction Amazon's navigation menu made famous (Ben Kamens's
+[Breaking down Amazon's mega dropdown](https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown)):
+a triangle is drawn between the **cursor position** and the **two near corners
+of the subpanel**; cursor movement inside the triangle is read as "heading for
+the subpanel", so the sibling items it sweeps across never switch panels —
+while the moment the direction strays out of the triangle, the new branch takes
+over immediately. No global-delay sluggishness, and no subpanel swapped out
+halfway down the diagonal.
+
+Cascader does no extra work for this: built on Base UI Menu, its submenu
+triggers ship Floating UI's `safePolygon` — the triangle's generalisation (a
+polygon recomputed dynamically as the cursor moves, collapsing after a pause
+timeout, with pointer events outside the subpanel temporarily blocked during
+the grace period). The triangle the demo draws is a teaching approximation; the
+real grace area is whatever `safePolygon` says.
+
+## Async loading
+
+One `loadItems` covers both on-demand and pagination: children no longer need
+to be laid out up front — panels fetch when they open; levels with too many
+entries return the paged form, and scrolling to the bottom appends
+automatically. In the demo the province and city levels lazy-load level by
+level, and the district level pages 20 per page across 3 pages.
+
+<ComponentPreview name="cascader/async" />
+
+The contract:
+
+- `loadItems(path, { page })` is called when a lazy panel **mounts uncached**;
+  `path` is the branch path (the first level is `[]` — which is why `items`
+  may be omitted when a loader exists). Returning a **bare array** means the
+  level loads in one go; returning `{ items, hasNextPage: true }` makes the
+  level paged — when the sentinel at the panel's tail scrolls into view it is
+  called again with an incremented `page` and the results append.
+- With a loader present, nodes without `items` default to **lazy branches**;
+  `leaf: true` marks a leaf; nodes with static `items` never ask the loader
+  (precedence: `items` > `leaf`).
+- Loading visuals match the rest of the library: while the first page is in
+  flight the panel carries `data-loading` and is covered by the frosted
+  [LoadingOverlay](/en/docs/components/loading-overlay) (the InfiniteSelect
+  treatment — covers the visible area, does not scroll with the rows); the
+  paging tail is also copied from InfiniteSelect — the sentinel is an
+  `aria-hidden` empty element outside menu-item semantics, triggering one
+  viewport height early (IntersectionObserver); while an append is in flight a
+  Spinner row appears at the tail, and once all pages have arrived a
+  terminator row with a fading rule renders (only levels that actually paged
+  get one; static levels and one-shot levels just stop).
+- The panel's scroll container is the library-wide
+  [ScrollArea](/en/docs/components/scroll-area) (hover-revealed scrollbar +
+  top/bottom fade masks); the viewport height caps at `maxListHeight`
+  (default 256px).
+- Results are cached by path for the component's whole lifetime; closing and
+  reopening never re-requests. When reopening auto-expands the selected path,
+  it walks the same loading chain level by level, and labels swap from raw
+  values to `label` as the cache hits.
+- **The display needs no open popup**: with a `value`, the component preloads
+  page 0 of each unloaded level along the selected path into the same cache,
+  and labels swap in as they land — the demo shows "Province 2 / City 3 /
+  District 3" right on page load. When a paged level's target segment is not
+  on page 0, or the segment has gone stale, that segment stays at its raw
+  value — customise the display with `CascaderValue`'s children function then.
+- When the loader **rejects**, the panel is marked `data-error` (console
+  warning in dev) and the next open retries; for richer error UI, handle it
+  inside the loader yourself.
+
+## Virtualization
+
+Turn on `virtualized` for levels with tens of thousands of children: every
+panel renders through a fixed-row-height virtual window (`rowHeight`, default
+32px), and only rows near the current viewport are mounted in the DOM.
+
+<ComponentPreview name="cascader/virtualized" />
+
+Reopening auto-scrolls to where the selected item sits (the virtualized
+counterpart of submenu auto-expansion). **Know the keyboard ceiling**: the
+upstream Menu has no virtualization support (Base UI only built it for
+Combobox), so typeahead and <kbd>Home</kbd>/<kbd>End</kbd> only see the mounted
+window; <kbd>↑</kbd> <kbd>↓</kbd> row by row is unaffected — focus drags the
+window along. Virtualized rows are absolutely positioned and cannot stretch the
+panel's width, so the child-panel minimum width is raised from 96px to 192px.
+
+## Controlled
+
+The controlled trio `value` / `defaultValue` / `onValueChange`; the controlled
+empty value is `null`.
+
+<ComponentPreview name="cascader/controlled" />
+
+The callback's second parameter is always there:
+`onValueChange(value, eventDetails)` — `eventDetails.reason` is `'item-press'`
+on selection or `'clear-press'` on clearing; `eventDetails.cancel()` rejects
+the change and internal state stays put. Controlledness locks at first render —
+`undefined` is reserved for uncontrolled, and switching midway warns in DEV.
+
+## Clearable
+
+The clear is present by default: once something is selected the ✕ takes the
+chevron's spot; clicking it clears (`onValueChange` receives `null`, reason
+`'clear-press'`) and never opens the popup. `clearable={false}` is the master
+switch — off, neither the default composition's clear nor an explicitly written
+`CascaderClear` renders. The hoisted ✕ is a real `<button>` (a Tab stop), so
+keyboard users can clear too.
+
+## Form
+
+Give it a `name` and every path segment renders one hidden input under that
+name, submitted in path order (Base UI's one-input-per-value pattern from
+`multiple` Select); with no value, no input renders.
+
+<ComponentPreview name="cascader/form" />
+
+The hidden inputs are plain `type="hidden"`, rendered outside the popup (which
+unmounts when closed). Native `required` validation cannot see hidden inputs —
+do required validation at the form layer.
+
+## Disabled
+
+Two levels: `disabled` on the root disables the whole control (the trigger
+greys out, the hidden inputs carry `disabled` and skip submission); `disabled`
+on a node disables just that item — a leaf becomes unselectable, a branch stops
+expanding (the whole subtree unreachable), and the item gets `aria-disabled`
+and `data-disabled`.
+
+## When to use Cascader
+
+- Options are naturally a tree and **the path itself is the value**
+  (province/city/district, category/subcategory) → Cascader.
+- Options are a flat list → [Select](/en/docs/components/select). When
+  hierarchy is only grouping visuals, use `SelectGroup`; the value stays a
+  single segment.
+- You need **typed search** →
+  [InfiniteSelect / InfiniteCombobox](/en/docs/components/infinite-select).
+  This component does no searching; async, pagination and virtualization are
+  covered in the two sections above, but the options must still form a tree.
+
+## State and className
+
+All `data-*` here are presence attributes (empty string) — present means true;
+the negative is either absent or has a complementary word:
+
+| Attribute | Lands on | When present |
+| --- | --- | --- |
+| `data-placeholder` | trigger | empty value (placeholder showing) |
+| `data-size` | trigger | always set, value `sm` / `default` |
+| `data-popup-open` | trigger, branch items | while the corresponding popup is open (Base UI) |
+| `data-disabled` | trigger, any item | when disabled (Base UI) |
+| `data-highlighted` | any item | highlighted by keyboard/hover (Base UI) |
+| `data-checked` / `data-unchecked` | leaf items | complementary pair: currently selected or not (Base UI) |
+| `data-selected` | branch items | the branch is on the selected path (seam-written) |
+| `data-open` / `data-closed` | popups | complementary pair, enter/exit animation hooks (Base UI) |
+| `data-loading` | panel | a lazy panel's first page is in flight (seam-written) |
+| `data-error` | panel | after `loadItems` rejected (seam-written, retried on reopen) |
+| `data-empty` | panel | loaded but the level is empty (seam-written) |
+
+`data-slot` (seam-rendered parts):
+
+| data-slot | What it is |
+| --- | --- |
+| `cascader-trigger` | the trigger `<button>` |
+| `cascader-trigger-container` | the positioning container wrapping the trigger when a clear is composed in |
+| `cascader-value` | the display `<span>` |
+| `cascader-clear` | the hoisted ✕ `<button>` |
+| `cascader-popup` | the first-level popup |
+| `cascader-submenu-trigger` | a branch item |
+| `cascader-submenu-popup` | a child-level popup |
+| `cascader-item` | a leaf item |
+| `cascader-item-indicator` | the positioning container for the leaf's end-of-row checkmark |
+| `cascader-panel` | each level's positioning shell (where loading / error / empty land; the LoadingOverlay's anchor) |
+| `cascader-list` | the list container for panel rows (switches to `p-0` when virtualized, padding moves to the row shell) |
+| `cascader-load-more` | the Spinner row while the next page appends |
+| `cascader-load-more-sentinel` | the loading sentinel at a paged panel's tail (`aria-hidden`) |
+| `cascader-no-more` / `cascader-no-more-rule` | a paged level's terminator row and its fading rule |
+| `cascader-virtual-list` | the full-height spacer container of a virtualized panel |
+
+Inside panels you will also meet slots from the `scroll-area-*` (scroll
+container) and `loading-overlay` (frosted loading layer) families — they are
+reused shared parts, not this family's vocabulary.
+
+Two className channels: `CascaderTrigger` / `CascaderPopup` land on Base UI
+slots and support the function form `(state) => string`; `CascaderValue` /
+`CascaderClear` land on plain DOM elements and take only a `string`.
+
+## Keyboard interactions
+
+| Key | Effect |
+| --- | --- |
+| <kbd>Enter</kbd> / <kbd>Space</kbd> / <kbd>↓</kbd> (on the trigger) | open the popup and highlight the first item |
+| <kbd>↑</kbd> <kbd>↓</kbd> | move within the current panel (wrapping) |
+| <kbd>→</kbd> | on a branch: expand the submenu and enter its first item |
+| <kbd>←</kbd> | collapse the current submenu, back to the parent level |
+| <kbd>Enter</kbd> | on a leaf: commit the whole path and close |
+| <kbd>Esc</kbd> | close the whole popup (not just the current sublevel) |
+| Type | typeahead: jump to the matching item in the current panel (only the mounted window under virtualization) |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → className**.
+
+### Cascader
+
+The root. Renders no DOM; an explicit vocabulary — Menu.Root's menu machinery
+is not passed through (`handle` / `payload` and friends never enter the public
+surface).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `items` | `CascaderNode[]` | — | the option tree. Node: `{ value, label?, disabled?, leaf?, items? }`, `value` unique among siblings. Optional when `loadItems` exists (the first level comes from the loader instead) |
+| `defaultValue` | `string[] \| null` | `null` | uncontrolled initial path |
+| `value` | `string[] \| null` | — | controlled path; `null` for empty |
+| `defaultOpen` | `boolean` | `false` | uncontrolled initial open state |
+| `open` | `boolean` | — | controlled open state |
+| `onValueChange` | `(value, eventDetails) => void` | — | on selection / clearing; `cancel()` can reject |
+| `loadItems` | `(path, { page }) => Promise<CascaderNode[] \| CascaderPage>` | — | loader for lazy branches' children, see [Async loading](#async-loading) |
+| `onOpenChange` | `(open, eventDetails) => void` | — | on open state change |
+| `onOpenChangeComplete` | `(open) => void` | — | after the open/close animation ends |
+| `actionsRef` | `RefObject<Menu.Root.Actions>` | — | imperative `close` / `unmount` |
+| `clearable` | `boolean` | `true` | the clear's master switch |
+| `modal` | `boolean` | `false` | lock scroll and block outside interaction (Base UI defaults `true`, the seam flips it) |
+| `virtualized` | `boolean` | `false` | panels render through a fixed-row-height virtual window, see [Virtualization](#virtualization) |
+| `rowHeight` | `number` | `32` | the virtual window's fixed row height (px), read only under `virtualized` |
+| `maxListHeight` | `number` | `256` | max height (px) of each panel's scroll viewport; same name and default as InfiniteSelect |
+| `disabled` | `boolean` | `false` | disable the whole control |
+| `name` | `string` | — | form field name, see [Form](#form) |
+| `placeholder` | `string` | — | placeholder copy for the default composition's display |
+| `id` | `string` | — | forwarded to the default composition's trigger, for `FieldLabel htmlFor` |
+| `aria-label` | `string` | — | accessible name for the default composition's trigger (without a visible label) |
+| `children` | `ReactNode` | — | the composition channel: the trigger side, see [Anatomy](#anatomy) |
+
+### CascaderTrigger
+
+A real `<button>`. Without children it includes `CascaderValue` and the clear
+automatically.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `size` | `'sm' \| 'default'` | `'default'` | trigger height tier |
+| rest | Base UI `Menu.Trigger` props (native button props + ref; minus `handle` / `payload`) | — | passed through |
+
+### CascaderValue
+
+The display `<span>`. Content derives from state; children is a customisation
+function, not a slot.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `placeholder` | `string` | the root's `placeholder` | shown when empty |
+| `children` | `(labels, value) => ReactNode` | — | custom display, called only with a value |
+| rest | native `span` props (`className` is a `string`) | — | passed through |
+
+### CascaderClear
+
+A marker part: written inside `CascaderTrigger`, renders null itself, and is
+hoisted by the trigger into a sibling `<button>`. Detected only among the
+trigger's direct children or inside a Fragment.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | the ✕ icon | custom icon |
+| rest | native `button` props (minus `type`; `aria-label` defaults to `"Clear selection"`) | — | passed through to the hoisted button |
+
+### CascaderPopup
+
+Portal + Positioner + Popup in one; no children channel — content comes from
+the root's `items`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `side` | `Menu.Positioner`'s `side` | `'bottom'` | popup direction |
+| `sideOffset` | `number` | `4` | gap from the trigger |
+| `align` | `Menu.Positioner`'s `align` | `'start'` | alignment |
+| `alignOffset` | `number` | `0` | alignment offset |
+| rest | Base UI `Menu.Popup` props (minus `children`) | — | passed through to the first-level popup |
+
+Nine types are exported as well: `CascaderProps` / `CascaderNode` /
+`CascaderPage` / `CascaderTriggerProps` / `CascaderValueProps` /
+`CascaderClearProps` / `CascaderPopupProps` / `CascaderChangeEventReason` /
+`CascaderChangeEventDetails`.

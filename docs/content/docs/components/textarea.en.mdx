@@ -1,0 +1,114 @@
+---
+title: Textarea
+description: Multi-line text box — one plain textarea that grows with its content, floored at min-h-16
+---
+
+<ComponentPreview name="textarea/basic" />
+
+One plain `<textarea>`, itself from top to bottom — **no Base UI part
+anywhere**.
+
+That decides its whole temperament: `className` is honestly a `string` (no
+`(state) => string` form, and no Base UI `data-*` state table), there is **no
+`onValueChange`** (value changes only come through the native `onChange`; take
+the value from `event.target.value` yourself), and there is **none of
+[Input](/en/docs/components/input)'s `Field.Root` context line** — put it inside
+Base UI's `Field.Root` and it will not wire itself up.
+
+## Usage
+
+```tsx
+import { Field, FieldLabel, Textarea } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Field>
+  <FieldLabel htmlFor="notes">Programme notes</FieldLabel>
+  <Textarea id="notes" name="notes" placeholder="This will be printed in the programme." />
+</Field>
+```
+
+The label channel is still the most ordinary one: the `id` lands on the real
+`<textarea>`, `FieldLabel htmlFor` points at it, and the native `<label for>`
+gives both the accessible name and click-to-focus in one stroke — no
+`aria-label` to add. The table of all four channels is in
+[Field's accessibility section](/en/docs/components/field#accessibility). For
+helper text add a `FieldDescription` — that is the example at the top of the
+page.
+
+## Height
+
+`field-sizing-content`: the height **follows the content** — however many lines
+you have typed, that is how tall it is; no computing `rows` yourself, and no
+scrollbar growing inside.
+
+The floor is `min-h-16` (4rem) — empty, it never collapses into a slit. To
+change the floor pass `min-block-*` (say `min-block-32`); to cap it pass
+`max-block-*`, and only past the cap does it start scrolling.
+
+## Disabled
+
+`disabled` governs the control alone: grey background, `not-allowed`, half
+opacity. To grey **the whole text column** (label, description) with it, put
+`data-disabled` on the outer `Field` — each attribute governs its own end, see
+[State and className](#state-and-classname).
+
+## Invalid state
+
+The skin's error styling hangs on **`aria-invalid`** (consistent with
+[Input](/en/docs/components/input) and
+[InputGroup](/en/docs/components/input-group)): pass `aria-invalid` by hand and
+the red border and ring appear, with no validation logic involved. Turning the
+whole text column red is likewise the outer `Field`'s `data-invalid`.
+
+The error message itself goes to
+[`FieldError`](/en/docs/components/field#validation-and-errors): give it an `id`
+and point the `<Textarea>`'s `aria-describedby` at it — no context wires this
+line for you.
+
+## When to use InputGroup
+
+The moment anything must **share the border** with the text box — a bottom
+toolbar, a character count, an inline send button — switch to
+[`InputGroupTextarea`](/en/docs/components/input-group#textarea-and-bottom-toolbar):
+**the row owns the border there**, and putting the self-bordered `Textarea`
+inside yields two frames.
+
+Nothing sharing the border needs no `InputGroup`: for a submit button under the
+text area, a [`Button`](/en/docs/components/button) right after the `Textarea`
+inside the `Field` is enough — no machinery involved.
+
+## State and className
+
+Underneath is pure DOM with no Base UI state: `className` only takes a string.
+Nor do the attributes below ever appear on their own — **all are hung by
+hand**:
+
+| Attribute | On | Effect |
+| --- | --- | --- |
+| `disabled` | `Textarea` | grey background, `not-allowed`, half opacity |
+| `aria-invalid` | `Textarea` | red border + red focus ring |
+| `data-disabled` | outer `Field` | label and other text drop to half opacity |
+| `data-invalid` | outer `Field` | the whole text column turns destructive |
+
+The element carries `data-slot="textarea"`; use it as a selector when targeting
+from outside.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks
+→ behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | — | `FieldLabel htmlFor` points here |
+| `defaultValue` | `string \| number \| readonly string[]` | — | uncontrolled initial value |
+| `value` | `string \| number \| readonly string[]` | — | controlled value, paired with `onChange` |
+| `onChange` | `(event: ChangeEvent<HTMLTextAreaElement>) => void` | — | native callback; the value is in `event.target.value` |
+| `disabled` | `boolean` | `false` | disabled |
+| `name` | `string` | — | form field name |
+| `placeholder` | `string` | — | placeholder |
+| `className` | `string` | — | class. Underneath is a plain `<textarea>`; string only |
+| rest | native `<textarea>` props (`ref` included) | — | passed through; `readOnly` / `required` / `maxLength` are all in there |
+
+The `TextareaProps` type is exported as well.

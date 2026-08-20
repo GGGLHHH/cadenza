@@ -1,0 +1,555 @@
+---
+title: Field
+description: The layout family for form fields — label, description, error, grouping and separators; pure DOM, control-agnostic, the foundation of every field anatomy
+---
+
+<ComponentPreview name="field/basic" />
+
+The layout family for form fields, promoted from shadcn. **All of it is pure
+DOM**: `className` is a string everywhere, there are no render props, and no
+control logic is involved — what control you put inside is not its business.
+
+One `Field` is one field's column (or row): label, control, description and
+error laid out in order. Label and control associate via **`htmlFor` → `id`**:
+the control lands its `id` on the real input element, `FieldLabel htmlFor`
+points at it, and both the accessible name and click-the-text-to-focus/toggle
+come out of this one association.
+
+## Usage
+
+```tsx
+import {
+  Checkbox,
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSeparator,
+  FieldSet,
+  FieldTitle,
+  Input,
+  Slider,
+  Switch,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Field>
+  <FieldLabel htmlFor="title">Title</FieldLabel>
+  <Input id="title" placeholder="Gaspard de la nuit" />
+  <FieldDescription>Shown publicly; you can change it later.</FieldDescription>
+</Field>
+```
+
+## Composition
+
+Three layers of anatomy, each usable on its own.
+
+### Field
+
+A single field: label, control, helper text and validation — see the
+per-control examples starting at [Input](#input):
+
+```text
+Field
+├── FieldLabel
+├── <control>
+├── FieldDescription
+└── FieldError
+```
+
+### FieldGroup
+
+Related fields lined up as a batch, with a `FieldSeparator` at section
+breaks — see [Field Group](#field-group):
+
+```text
+FieldGroup
+├── Field
+├── FieldSeparator
+└── Field
+```
+
+### FieldSet [#composition-fieldset]
+
+A named semantic group (native `fieldset` / `legend`), usually holding one
+`FieldGroup` — see [Fieldset](#fieldset):
+
+```text
+FieldSet
+├── FieldLegend
+├── FieldDescription
+└── FieldGroup
+    ├── Field
+    └── Field
+```
+
+## Anatomy
+
+The structure of a typical field:
+
+```tsx
+<Field>
+  <FieldLabel htmlFor="input-id">Label</FieldLabel>
+  {/* controls such as Input, Select, Checkbox */}
+  <FieldDescription>Optional helper text.</FieldDescription>
+  <FieldError>Validation message.</FieldError>
+</Field>
+```
+
+- `Field` is the core container of a single field, rendering `role="group"`.
+- `FieldContent` is the flex column holding label + description; without a
+  description you don't need it.
+- Wrap related fields in a `FieldGroup`; for semantic grouping use `FieldSet`
+  + `FieldLegend`.
+
+## Form
+
+The family does no serialisation of its own: pure DOM, no form logic —
+submission goes through each control's own native channel: give a control a
+`name` and it enters `FormData`, with the details in each control page's Form
+section. For showing validation errors see
+[Validation and errors](#validation-and-errors): `FieldError`'s `errors` array
+eats the shape form libraries like TanStack Form emit, directly.
+
+## Input
+
+The most ordinary channel, with no tricks at all: `id` lands on the real
+`<input>`, `htmlFor` points at it:
+
+<ComponentPreview name="field/input" />
+
+With nothing attached, use [`Input`](/en/docs/components/input); **the moment
+something shares the input's border** (a leading icon, a trailing button, a
+unit suffix) switch to [`InputGroup`](/en/docs/components/input-group) — the
+border belongs to the row, and `InputGroupInput` itself has none. After the
+switch, `id` still lands on the inner input, and the label wire needs not a
+single change.
+
+[InputOTP](/en/docs/components/input-otp) and
+[ComboboxInput](/en/docs/components/combobox) belong to this class too:
+underneath each is a real `<input>`, and the `id` lands straight on it.
+
+## Textarea
+
+The same channel as [Input](#input): `id` lands on the real `<textarea>`:
+
+<ComponentPreview name="field/textarea" />
+
+For a bottom toolbar, see the textarea section of
+[InputGroup](/en/docs/components/input-group).
+
+## Select
+
+`Select`'s root renders no DOM; the trigger is the actual control — so `id`
+lands on `SelectTrigger` and `FieldLabel htmlFor` points at it:
+
+<ComponentPreview name="field/select" />
+
+**One channel covers everything.** The trigger is a real `<button>`, so the
+native `<label for>` both names it and has the browser forward the click over
+to open the popup:
+
+| Channel | What it covers |
+| --- | --- |
+| `FieldLabel htmlFor` → `SelectTrigger id` | accessible name **+** clicking the text toggles the popup |
+
+**The label is the control**: with the popup open, clicking the label again
+closes it — one clean toggle. This takes one extra cut from the seam — Base UI
+treats a press outside the popup as a close (`outside-press`, plus a
+`cancel-open` when the same gesture releases), and the browser then forwards
+the label's click to the trigger, which flips once more; the two together are a
+close-then-reopen flicker. A `<label>` pointing at our own trigger does not
+count as "outside", so the seam `cancel()`s those two closes and lets the
+forwarded click complete the toggle on its own. `InfiniteCombobox` works the
+same way (its popup is likewise non-modal).
+
+> 0.2 (the React Aria base) needed the text written twice here: it hung its
+> own `aria-labelledby` on the trigger, which outranks the native `<label for>`
+> in accessible-name computation, so a separate `aria-label` was mandatory; and
+> `usePress` does not recognise a bare click with no pointer sequence, so
+> click-the-label-to-open had to be patched in by the seam itself. When
+> upgrading, just delete that redundant `aria-label`.
+
+Checkbox / Switch / RadioGroupItem are a different case — see
+[Checkbox](#checkbox) below.
+
+## InfiniteCombobox
+
+The trigger is **an element you pass in yourself** (`children`), so the `id`
+cannot be written on a part the way `Select` does it — hand it to Base UI via
+`triggerId`:
+
+<ComponentPreview name="field/infinite-combobox" />
+
+Without `triggerId`, Base UI deals the trigger a generated id nobody could
+guess — which is exactly why `htmlFor` has no ready landing spot here.
+
+**No extra `aria-label` is needed here either** — the native `<label for>`
+just works, as with `Select`. As an aside, `InfiniteCombobox`'s `aria-label`
+prop names **the list inside the popup** (falling back to `searchPlaceholder`
+when omitted) — a different thing from the trigger's name; don't mix them up.
+
+Once the label is added, the button's accessible name changes from the button
+text to the label text, and the button text demotes to its content:
+
+```
+before the label → button "Pick a composer"
+after the label  → button "Composer": Pick a composer
+```
+
+Which is exactly the intended reading — the name is the field name, the button
+text is the current value.
+
+Clicking the label **opens** the popup here too, same as `Select`: the trigger
+is a real button and the browser forwards the click.
+
+## Slider
+
+**The one class `htmlFor` cannot reach** — use `aria-labelledby` instead,
+pointing at a [`FieldTitle`](#props)'s `id`:
+
+<ComponentPreview name="field/slider" />
+
+Why it cannot reach: `Slider`'s root is a `div` with `role="group"`, and the
+native `<label for>` only recognises labelable elements (input / select /
+textarea / button and the like) — pointing at a `div` is pointing at nothing.
+Meanwhile the `<input type="range">` inside the thumb takes an internally
+generated id you cannot guess and have no opening to inject.
+
+`FieldTitle` exists precisely for this occasion — a `div` rather than a
+`label`, made to title groupings with no single control to point at; its
+`data-slot` is still `field-label`, so the layout rules hit as usual.
+
+The two are not equivalent, so don't mix them: `aria-labelledby` is forwarded
+by Base UI **all the way down to every thumb's input**, while `aria-label`
+names only the root group and leaves the thumbs anonymous. With visible text
+use the former; only without visible text (say, a lone slider in a toolbar)
+use the latter.
+
+A `RadioGroup`'s **group name** goes through this channel too, for a different
+reason — see [Radio](#radio) below.
+
+## Fieldset
+
+Name a batch of related fields with `FieldSet` + `FieldLegend` (the semantics
+are the native `fieldset` / `legend`):
+
+<ComponentPreview name="field/fieldset" />
+
+## Checkbox
+
+The box-only archetype: the root element **is** the control itself (Checkbox's
+16px box, Switch's track), so text stuffed into children gets squeezed inside
+the control — use an external `FieldLabel` instead:
+
+<ComponentPreview name="field/checkbox" />
+
+Compared with the trigger-class controls above (Select / InfiniteCombobox),
+only three things differ:
+
+| | Trigger class (Select / InfiniteCombobox) | box-only (Checkbox / Radio / Switch) |
+| --- | --- | --- |
+| `orientation` | `vertical` (label on top) | **`horizontal`** (control first, text after) |
+| `id` lands on | the trigger, a real `<button>` | the **hidden `<input>`** |
+| with a description | the description follows the control directly | **`FieldContent`** packs label + description into one column |
+
+The naming wire is still the same one: `FieldLabel htmlFor` → control `id`,
+one channel giving both the accessible name and click-the-text-to-toggle. The
+mechanics differ slightly — the native `<label for>` points at the hidden
+input, and the click is forwarded there by the browser to complete the toggle;
+the screen reader, meanwhile, reads the visible box, whose name Base UI
+derives by looking up `input.labels` and mirroring the label's id into
+`aria-labelledby`. Neither end needs a second copy of the text from you.
+
+## Radio
+
+**The group name is the only thing wired by hand**:
+
+<ComponentPreview name="field/radio" />
+
+Each item is the same class as [Checkbox](#checkbox), `htmlFor` → hidden input
+as usual; but the group renders as a bare `role="radiogroup"` div, and Base UI
+takes the name only from **its own** `Field.Root` / `Fieldset.Legend`
+contexts — while the `FieldSet` / `FieldLegend` here are the shadcn pure-DOM
+line. The two lines never meet. Give `FieldLegend` an `id` and point
+`aria-labelledby` at it from the group, as in the demo above.
+
+## Switch
+
+Exactly the same class as [Checkbox](#checkbox): `id` lands on the hidden
+`<input>`, one `htmlFor` gives both the name and click-the-text-to-toggle;
+with a description, use `FieldContent` likewise:
+
+<ComponentPreview name="field/switch" />
+
+## Field Group
+
+`FieldGroup` lines fields up as a batch; add a `FieldSeparator` at section
+breaks — with `children`, the text sits centred on the line:
+
+<ComponentPreview name="field/separator" />
+
+## Responsive layout
+
+`orientation` has three values; `responsive` stacks when narrow and splits
+into two columns when wide:
+
+<ComponentPreview name="field/responsive" />
+
+| Value | Layout | Use |
+| --- | --- | --- |
+| `vertical` (default) | label on top, control below | regular input fields |
+| `horizontal` | control first, text after, vertically centred | box-only controls (Checkbox / Radio / Switch) with `FieldLabel` |
+| `responsive` | vertical when narrow, two columns when wide | settings-page forms |
+
+`responsive`'s breakpoint reads the `FieldGroup`'s **container width**
+(`@container` query), not the viewport — drop the same code into a sidebar and
+it returns to vertical on its own. On wide screens **the left column is the
+one that grows** (the control hugs the right), so the left column needs a
+`FieldContent` holding the label + description text block — with only a bare
+`FieldLabel` there, all that stretches is blank space.
+
+## Validation and errors
+
+`FieldError` displays **external validation errors** (`role="alert"`); its
+`errors` array eats the shape form libraries emit, directly:
+
+<ComponentPreview name="field/error" />
+
+The shape of `errors` is `{ message?: string }[]` (TanStack Form's
+`field.state.meta.errors` matches directly): duplicate messages are deduped, a
+single one renders flat, several render as a list; `children` wins over
+`errors`; with no content, nothing renders at all.
+
+- **Put `data-invalid` on the `Field`** and the whole column of text enters
+  the error state; the control itself takes `aria-invalid` for assistive
+  technology — two attributes, one end each, see
+  [State and className](#state-and-classname).
+- **Wire `aria-describedby` by hand**: give `FieldError` an `id` and point the
+  control's `aria-describedby` at it. No context wires this channel for you —
+  in exchange it works in any anatomy, bound to no particular field component.
+- **Filter nullish entries first**: `undefined` takes a slot in dedup too, so
+  one real message plus one `undefined` renders as a one-item list instead of
+  flat text.
+
+## Accessibility
+
+The label is the family's core accessibility channel. Whether `htmlFor` can
+connect depends on which element the control puts its `id` on — and that
+varies by control. Across the library there are only four cases:
+
+| Channel | `id` lands on | Who belongs here | How to write it |
+| --- | --- | --- | --- |
+| **Plain** | the real `<input>` / `<textarea>` | [Input](/en/docs/components/input), [Textarea](/en/docs/components/textarea), [InputOTP](/en/docs/components/input-otp), [ComboboxInput](/en/docs/components/combobox), `InputGroupInput` | `FieldLabel htmlFor` → control `id` |
+| **Trigger** | a real `<button>` | [Select](/en/docs/components/select), [InfiniteCombobox](/en/docs/components/infinite-select) | same as above; the browser also forwards clicks over to **open the popup** |
+| **box-only** | the **hidden** `<input>` (the visible box has its own generated id) | [Checkbox](/en/docs/components/checkbox), [Switch](/en/docs/components/switch), [RadioGroupItem](/en/docs/components/radio-group) | same as above; usually with `orientation="horizontal"` |
+| **Unreachable** | no labelable element | [Slider](/en/docs/components/slider), the `RadioGroup` group | use `aria-labelledby` pointing at a `FieldTitle`'s `id` instead |
+
+The first three classes are **written identically** — they differ only in the
+mechanics (and in why no second `aria-label` is needed); the fourth is the
+only one written differently.
+
+[Toggle / ToggleGroup](/en/docs/components/toggle) are not in the table: they
+are `<button>`s carrying their own text, named by children or `aria-label`,
+and need no `FieldLabel` at all — attaching one would actually **override**
+the button's own text as its accessible name.
+
+Three more notes:
+
+- `FieldSet` + `FieldLegend` give keyboard and assistive-technology users
+  grouping semantics (native `fieldset` / `legend`).
+- `Field` renders `role="group"`, but the pure-DOM line **never wires a group
+  name for the control** — a group like `RadioGroup` needs a manual
+  `aria-labelledby`, see [Radio](#radio).
+- Use `FieldSeparator` sparingly, so screen readers hear clean sections.
+
+## State and className
+
+This is the pure-DOM family: no Base UI state underneath, and `className` is a
+plain string everywhere; the two state attributes below never appear on their
+own — both are attached by hand (the `data-orientation` / `data-variant` the
+family emits automatically are configuration echoes, not state). A control's
+own `disabled` / `invalid` only governs the control's visuals; for the whole
+column of text to grey out / turn red along with it, attach on the `Field`:
+
+| Attribute on `Field` | Effect |
+| --- | --- |
+| `data-disabled` | label and other text drop to half opacity |
+| `data-invalid` | the whole column's text turns destructive |
+
+Every part carries `data-slot="field-*"` (`FieldTitle` is `field-label` too) —
+use them as selectors when targeting from outside.
+
+## Props
+
+Every part accepts its DOM element's native props (`className` is a string).
+
+### FieldSet
+
+The container rendering a semantic `fieldset`, with spacing presets.
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `className` | `string` | — |
+
+```tsx
+<FieldSet>
+  <FieldLegend>Shipping</FieldLegend>
+  <FieldGroup>{/* fields */}</FieldGroup>
+</FieldSet>
+```
+
+### FieldLegend
+
+`FieldSet`'s legend. The `label` variant aligns the font size to labels — for
+occasions like naming a radio group or a nested `FieldSet`.
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `variant` | `'legend' \| 'label'` | `'legend'` |
+| `required` | `boolean` | — |
+| `className` | `string` | — |
+
+`required` suffixes the text with a red asterisk (`aria-hidden`, visual
+only) — semantic requiredness goes through the control's `required` /
+`aria-required`; for the zod linkage see the
+[form guide](/en/docs/forms/tanstack-form#required-markers).
+
+```tsx
+<FieldLegend variant="label">Notification preferences</FieldLegend>
+```
+
+### FieldGroup
+
+The layout container stacking `Field`s; the container query lives on it, and
+the `responsive` orientation takes effect through it.
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `className` | `string` | — |
+
+```tsx
+<FieldGroup>
+  <Field>{/* … */}</Field>
+  <Field>{/* … */}</Field>
+</FieldGroup>
+```
+
+### Field
+
+The core container of a single field (`div`, `role="group"`): orientation,
+error-state styling, spacing.
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `orientation` | `'vertical' \| 'horizontal' \| 'responsive'` | `'vertical'` |
+| `data-invalid` / `data-disabled` | `boolean` | — |
+| `className` | `string` | — |
+
+```tsx
+<Field orientation="horizontal">
+  <Switch id="remember" />
+  <FieldLabel htmlFor="remember">Remember me</FieldLabel>
+</Field>
+```
+
+### FieldContent
+
+The flex column holding label + description when label and control sit side by
+side; not needed without a description.
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `className` | `string` | — |
+
+```tsx
+<Field orientation="horizontal">
+  <Checkbox id="notifications" />
+  <FieldContent>
+    <FieldLabel htmlFor="notifications">Notifications</FieldLabel>
+    <FieldDescription>Email, SMS and push.</FieldDescription>
+  </FieldContent>
+</Field>
+```
+
+### FieldLabel
+
+A native `label`; `ref` points at the `label` element.
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `htmlFor` | `string` | — |
+| `required` | `boolean` | — |
+| `className` | `string` | — |
+
+`required` suffixes the text with a red asterisk (`aria-hidden`, visual
+only) — semantic requiredness goes through the control's `required` /
+`aria-required`; for the zod linkage see the
+[form guide](/en/docs/forms/tanstack-form#required-markers).
+
+```tsx
+<FieldLabel htmlFor="email" required>Email</FieldLabel>
+```
+
+### FieldTitle
+
+A title for non-`label` occasions (`div`, no association semantics), used with
+`aria-labelledby` — see [Slider](#slider).
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `required` | `boolean` | — |
+| `className` | `string` | — |
+
+```tsx
+<FieldTitle id="volume-label">Master volume</FieldTitle>
+<Slider aria-labelledby="volume-label" defaultValue={60} />
+```
+
+### FieldDescription
+
+Helper text (`p`).
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `className` | `string` | — |
+
+```tsx
+<FieldDescription>Never shown publicly.</FieldDescription>
+```
+
+### FieldSeparator
+
+The separator inside a `FieldGroup`; `children` sit centred on the line.
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `className` | `string` | — |
+
+```tsx
+<FieldSeparator>Or</FieldSeparator>
+```
+
+### FieldError
+
+The accessible error container (`div`, `role="alert"`); accepts `children` or
+an `errors` array — contract details in
+[Validation and errors](#validation-and-errors).
+
+| Prop | Type | Default |
+| --- | --- | --- |
+| `errors` | `Array<{ message?: string } \| undefined>` | — |
+| `className` | `string` | — |
+
+```tsx
+<FieldError errors={field.state.meta.errors} />
+```
+
+The ten parts' props types are exported alongside: `FieldProps` /
+`FieldContentProps` / `FieldDescriptionProps` / `FieldErrorProps` /
+`FieldGroupProps` / `FieldLabelProps` / `FieldLegendProps` /
+`FieldSeparatorProps` / `FieldSetProps` / `FieldTitleProps`.

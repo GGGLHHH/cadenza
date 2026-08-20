@@ -1,0 +1,267 @@
+---
+title: Button
+description: A wrapper over Base UI Button — cva variants and sizes, plus a pending contract Base UI does not have
+---
+
+<ComponentPreview name="button/variants" />
+
+The button. Underneath is Base UI's `Button`, which is just a native
+`<button>`: the event is `onClick`, disabling is `disabled`, and keyboard
+activation is the browser's job. Looks come from shadcn's `buttonVariants`
+(cva): six variants (`default` is the primary action, the rest weaken by
+semantics, `destructive` is reserved for irreversible actions), four size
+tiers plus four icon-only tiers. The only thing the seam adds itself is the
+`pending` set (see [Pending](#pending)).
+
+## Usage
+
+```tsx
+import { Button, buttonVariants, LinkButton } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Button variant="outline">Save</Button>
+```
+
+## Cursor
+
+Tailwind v4
+[removed](https://tailwindcss.com/docs/upgrade-guide#buttons-use-the-default-cursor)
+the preflight `cursor: pointer` on buttons, and shadcn followed with the
+default arrow. **This library puts it back** — a global rule in styles.css,
+no CSS to paste and no "enable at init" switch. It matches on role rather
+than tag name alone, because Base UI renders non-button controls as `span`s
+(the boxes of the three box-only controls — Checkbox / Switch /
+RadioGroupItem — are the entire click area).
+
+The three states are a library-wide convention:
+
+| State | Cursor |
+| --- | --- |
+| clickable | `pointer` |
+| disabled | `not-allowed` |
+| pending | `wait` |
+
+**Pending is `wait`** — pending means "busy", not "forbidden", even though
+it also carries `aria-disabled`: in styles.css the `data-pending` rule sits
+after the disabled rule, winning deliberately at the same specificity (a
+global rule, nothing to write yourself). Both rules govern the subtree too,
+so an icon inside a disabled container never hands out a text cursor of its
+own.
+
+One more rule pairs with the cursor convention: **inside pending / disabled
+states and their subtrees, `hover:` feedback never fires** — hover is the
+"you can do something to me" affordance, and sharing a frame with a `wait` /
+`not-allowed` cursor is a contradiction. `:hover` itself cannot be stopped
+(it walks all the way up the ancestor chain), so styles.css redefines the
+`hover` **variant** with a guard, effective for every `hover:` utility
+(vendored classes and your own alike), nothing to handle case by case.
+
+## Sizes
+
+Four height tiers, plus four square icon-only tiers:
+
+<ComponentPreview name="button/sizes" />
+
+`icon-*` are the square tiers, holding a single icon — **an `aria-label` is
+required**: with no visible text on the button, the accessible name can
+only come from here.
+
+## With icons
+
+When icon and text share the frame, hang `data-icon="inline-start"` or
+`data-icon="inline-end"` on the icon — the padding on its side tightens by
+one step:
+
+```tsx
+<Button variant="outline">
+  <IconPlus data-icon="inline-start" />
+  New
+</Button>
+
+<Button variant="outline">
+  Next
+  <IconArrowRight data-icon="inline-end" />
+</Button>
+```
+
+Icons carry visual whitespace of their own; without the tightening the gap
+reads loose (`default` / `lg` tighten to `2`, `xs` / `sm` to `1.5`). Icon
+size follows the tier as well: an svg without `size-*` is sized by cva
+(`size-4` by default, `size-3` at `xs`, `size-3.5` at `sm`); write your own
+`size-*` and yours wins. Icon-only buttons take the `icon-*` tiers and do
+not need this attribute, see [Sizes](#sizes).
+
+## Radius
+
+Add `rounded-full` to `className` for a pill button — `cn` lets the
+later-written radius win:
+
+```tsx
+<Button className="rounded-full">Save</Button>
+```
+
+## Pending
+
+`pending` means **the action this button triggered is still in flight**
+(aligned with React's `useTransition` / `useFormStatus` vocabulary). Base
+UI has no such concept, so the seam wires up three things itself:
+
+| What | How | Without it |
+| --- | --- | --- |
+| stay focusable | `disabled` + `focusableWhenDisabled`, so Base UI writes `aria-disabled` instead of native `disabled` | focus vanishes into thin air mid-action |
+| stop submitting | `type="submit"` is rewritten to `"button"` while pending | Enter in a sibling input re-submits the same form |
+| say it | `aria-busy` | assistive tech only knows it is disabled, not that it is busy |
+
+Press and keyboard activation are both swallowed by Base UI's `disabled`
+(double-click protection for free).
+
+One thing less than the React Aria version: **no assertive follow-up
+announcement on the state switch**. That would need a live-region
+singleton, and there is nothing new to announce — this library's Spinner is
+decorative, and the base never puts text in any language into the DOM.
+
+The default visual is the library-wide
+[LoadingOverlay](/en/docs/components/loading-overlay): **a true overlay** —
+the label stays in place, frosted into the veil, faintly visible, still
+holding the width, still the accessible name, nothing replaced;
+[Spinner](/en/docs/components/spinner) floats on the veil in the
+`foreground` colour (decorative `aria-hidden`; not currentColor, which
+would camouflage against the same-coloured label under the veil). The
+button's frosting is a **content filter**, not a backdrop: on a small
+bright element 32px tall, a backdrop blur kernel smears halos along the
+edges and corners (a physical fact verified zoomed-in on real hardware), so
+instead the label itself is blurred + a flat dark veil is clipped into
+shape by the host — the frosted look is the same, and the edges sit
+pixel-perfect against the background; veil density, transition, the `wait`
+cursor and the `data-loading` hook share their source with
+tables/dropdowns exactly. Width never changes, neighbours never shift; the
+150ms cross-fade runs in both directions (waived under `motion-reduce`).
+There is no built-in anti-flicker delay — whether a fast action (say a
+request returning in 200ms) deserves a spinner is your call; if needed,
+delay setting `pending`:
+
+<ComponentPreview name="button/pending" />
+
+This structure mounts only when `pending` **is passed** (`false` counts —
+the machinery stays in the DOM so the exit animation can finish); buttons
+not using the feature render bare children at zero cost. For width that
+truly never moves, do not swap the text while pending — the spinner is
+already speaking.
+
+### Custom pending
+
+Without `pending`, nothing is injected and children are entirely yours — to
+draw the in-flight look yourself, pass `disabled`, not `pending`. Below is
+the classic "spinner beside the text + swapped text" shape; note that
+changing content changes width — the price of taking over (the default
+combination keeps width constant precisely by overlaying instead of
+replacing). One more price: the `wait` cursor and the hover waiver follow
+`data-pending`, which this route does not have, so what you get is the
+disabled state's `not-allowed`:
+
+<ComponentPreview name="button/pending-custom" />
+
+## Link button
+
+`LinkButton` is an `<a>` wearing button clothes: it has an `href`, supports
+`target`, and shares `Button`'s variants and sizes. Underneath is Base UI's
+Button with `nativeButton={false}`, so disabling brings everything it
+should: `aria-disabled`, `tabIndex={-1}`, activation swallowed. **The
+`href` is also removed entirely** — a link with only `aria-disabled` can
+still be opened from the context menu, while an `<a>` without `href` is
+neither focusable nor navigable. `:disabled` never matches on an anchor
+element, so the greying rides on `data-disabled` (already wired by the
+seam):
+
+<ComponentPreview name="button/link" />
+
+**It is still a link.** On the `nativeButton={false}` route Base UI hangs
+`role="button"` on the element, so assistive tech would read it as a button
+and drop it from the links list — the shadcn source outright bans
+`<Button render={<a />} nativeButton={false} />` for this reason. The seam
+passes `role={undefined}` on the render element to take it off (the render
+element's props win the merge), so what you get here is "link semantics +
+the full disabled contract", no either-or.
+
+If it really should read as a button (an `<a>` that never navigates, only
+triggers an action), pass it back yourself: your `role="button"` comes
+later and overrides the seam's move.
+
+When you want only the variant looks and handle everything else yourself,
+pair `buttonVariants` with a plain `<a>`:
+
+```tsx
+<a className={buttonVariants({ variant: 'outline' })} href="/docs">Docs</a>
+```
+
+## State and className
+
+The button's interactive states go through **CSS pseudo-classes**: `hover:`
+/ `active:` / `focus-visible:` / `:disabled` — `buttonVariants` itself is
+written that way. On a native `<button>` these pseudo-classes cover every
+input modality, no render-props layer needed. To vary **content** by state
+(not just styling), branch on the state yourself —
+[Custom pending](#custom-pending) is exactly that shape.
+
+`className` only takes a string, no function form — the vendored layer
+pours it into `cva`, which drops functions, so the type seals that route
+off (see [Props](#props)).
+
+There are only two state attributes, both on the root element:
+
+| State | When present | Who has it |
+| --- | --- | --- |
+| `data-disabled` | `disabled` | `Button` / `LinkButton` |
+| `data-pending` | `pending` | `Button` only |
+
+Interactive states get no data attributes: Base UI's Button exposes only
+`disabled`; hover / active / focus-visible go straight through CSS
+pseudo-classes, which cover every input modality on a native `<button>`.
+The cursor and hover guards are a library-wide convention, see
+[Cursor](#cursor).
+
+| `data-slot` | What it is |
+| --- | --- |
+| `button` | the root element (both `Button` and `LinkButton`) |
+| `button-label` | the frosted label shell of the pending combination, present only when `pending` is passed |
+
+The overlay and the Spinner carry their own `loading-overlay` / `spinner` —
+use them as selectors when targeting from outside.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+### Button
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onClick` | `(e: MouseEvent) => void` | — | native click; never fires while `disabled` (including `pending`) |
+| `disabled` | `boolean` | `false` | disabled (renders the native `disabled` attribute) |
+| `pending` | `boolean` | `false` | in flight: blocks activation while staying focusable, sets `data-pending` / `aria-busy`. The default visual is the shared LoadingOverlay (a true overlay: the label stays under the dark veil, the Spinner floats on it; no backdrop blur at button scale), see [Pending](#pending) |
+| `type` | `'button' \| 'submit' \| 'reset'` | `'button'` | does not submit forms by default (Base UI's default; the seam no longer overrides it with `undefined`). Write `type="submit"` to submit; while `pending` it is rewritten to `'button'`, so an Enter in a sibling input cannot re-submit the form this button is already submitting |
+| `variant` | `'default' \| 'secondary' \| 'outline' \| 'ghost' \| 'destructive' \| 'link'` | `'default'` | variant |
+| `size` | `'xs' \| 'sm' \| 'default' \| 'lg' \| 'icon-xs' \| 'icon-sm' \| 'icon' \| 'icon-lg'` | `'default'` | size |
+| `focusableWhenDisabled` | `boolean` | `false` | stay focusable while disabled (switches to `aria-disabled`). `pending` is implemented exactly this way |
+| `nativeButton` | `boolean` | `true` | switch off to use `render` with a non-`<button>` element (`LinkButton` does exactly this; for the price, see [Link button](#link-button)) |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | Base UI's element replacement. **Prefer the function form**: given an element, Base UI merges className by string concatenation, and a function className gets stringified |
+| `children` | `ReactNode` | — | content |
+| `className` | `string` | — | class. **String only** — the vendored layer pours it into `cva`, which silently drops functions, so the type seals that route off |
+| rest | Base UI `Button` props | — | passed through |
+
+### LinkButton
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `href` | `string` | — | target address; while `disabled` the attribute is not rendered at all |
+| `target` / `rel` etc. | native `<a>` props | — | passed through |
+| `disabled` | `boolean` | `false` | disabled: removes `href`, hangs `aria-disabled` and `tabIndex={-1}`, swallows activation, greys the visuals |
+| `variant` / `size` | same as `Button` | `'default'` | the same `buttonVariants` |
+| `className` | `string` | — | class (as above, string only) |
+
+`buttonVariants` is exported on its own — call it directly when another
+element needs to be painted as a button (fumadocs card links, say):
+`buttonVariants({ variant: 'outline', size: 'sm', className: '...' })`. The
+two types `ButtonProps` / `LinkButtonProps` are exported as well.

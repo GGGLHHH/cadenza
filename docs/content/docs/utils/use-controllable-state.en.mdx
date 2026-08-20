@@ -1,0 +1,67 @@
+---
+title: useControllableState
+description: The controlled/uncontrolled two-state hook in the shape of useState — @gedatou/cadenza-utils
+---
+
+`@gedatou/cadenza-utils` is the companion utility package; its current core is
+`useControllableState`: ahooks' `useControllableValue` condensed into **the
+shape of `useState`**, letting one component support both controlled and
+uncontrolled usage — **every controlled implementation in the library is built
+on it**.
+
+```bash
+pnpm add @gedatou/cadenza-utils
+```
+
+## Contract
+
+```ts
+const [state, setState] = useControllableState({ value, defaultValue, onChange, fallback })
+```
+
+- Returns `[state, setState]`; `setState` is a standard
+  `Dispatch<SetStateAction<T>>`: it takes a value or a `(prev) => next`
+  updater, and its **reference is constant**, safe to put in dependency
+  arrays;
+- **a non-`undefined` `value` means controlled**: state follows the prop,
+  `setState` only fires `onChange`, and internal state never moves — matching
+  the controlled convention of React's native inputs;
+- otherwise uncontrolled: the hook holds its own state, `defaultValue` is the
+  initial value, and `onChange` still fires;
+- `fallback` covers the "uncontrolled with no defaultValue" case, narrowing
+  the return type to `T` instead of `T | undefined`.
+
+## Example
+
+The same `Stepper` component: pass `value` and it is controlled, pass only
+`defaultValue` and it is uncontrolled:
+
+<ComponentPreview name="utils/controllable-state" />
+
+## Why wrap ahooks again
+
+`useControllableValue` can do the job by itself, but its API is "a props
+object + string propName configuration + a variadic setter" — nothing like
+`useState`. This wrapper presses it back into the shape of `useState`: zero
+learning cost at call sites, a drop-in replacement for an existing `useState`.
+
+## Controlled-ness locks at first render (Base UI semantics)
+
+Controlled-ness is decided by `value !== undefined` at **first render** and
+never re-judged — `undefined` belongs exclusively to "uncontrolled", and the
+controlled empty value is **`null`** (clearing the single selection in the
+library's DataTable / InfiniteSelect passes `null`). Switching controlled-ness
+midway, or changing `defaultValue` while uncontrolled, warns with
+`console.error` in development and is ignored at runtime: a component locked
+as controlled renders `undefined` when `value` goes back to `undefined`, never
+falling back to internal state. Same semantics as
+`@base-ui/utils/useControlled`, and the behaviour of a native controlled
+input.
+
+## Use sites inside the library
+
+| Where | Controlled state |
+| --- | --- |
+| `DataTable` | the selection convenience layer's `value / defaultValue / onChange` (archived across pages) |
+| `InfiniteSelect` / `InfiniteCombobox` | selection ids; popup `isOpen`, search term `inputValue` |
+| `DataPagination` | `page` and `limit`, each independently controlled |

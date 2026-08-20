@@ -1,0 +1,118 @@
+---
+title: LoadingOverlay
+description: A region-level frosted loading overlay — fills the nearest relative parent, blocks the pointer, cursor wait, content faintly visible
+---
+
+<ComponentPreview name="loading-overlay/basic" />
+
+A region-level loading overlay: put it inside a **`relative` parent** and the
+default `absolute inset-0` fills the same width and height; frosted glass made
+of a translucent background + `backdrop-blur`, the content underneath faintly
+visible — the semantics are "the content is still here, refreshing", not a
+blank skeleton screen.
+
+**Keep it rendered and toggle `loading`**: both directions get a 150ms
+cross-fade (exempt under `motion-reduce`). Hiding transitions `visibility`
+along with it: on exit it disappears only once the fade completes, and once
+gone it **leaves the accessibility tree** — no ghost "Loading" announcements,
+and no clicks blocked.
+
+## Usage
+
+```tsx
+import { LoadingOverlay } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<div className="relative overflow-hidden rounded-xl border p-4">
+  {/* content */}
+  <LoadingOverlay loading={isLoading} />
+</div>
+```
+
+## Host container
+
+Two things to remember about the parent: **`relative`** (forget it and the
+overlay spreads onto some positioned ancestor further out); rounded containers
+add **`overflow-hidden`** as well. The overlay ships `rounded-[inherit]` — not
+decoration but necessity: Chromium's `backdrop-filter` **ignores ancestors'
+corner clipping**; only the element's own radius can bound the frost, or
+square notches poke out at the four corners (verified magnified on a real
+Button; transform / isolation on the host saves nothing). The host's
+`overflow-hidden` handles the other half — clipping the background the overlay
+paints into the host's visible shape. The library's embedded instances (the
+table card, Button) already handle all this.
+
+## Custom content
+
+Without `children`, a centered [Spinner](/en/docs/components/spinner) (English
+aria fallback, zero visible copy). Passing them replaces it entirely — when
+you bring your own copy, make the Spinner decorative (`aria-hidden`) and hand
+the semantics to the text:
+
+<ComponentPreview name="loading-overlay/custom" />
+
+## Embedded instances
+
+It is the **default visual** of loading states across the library: every
+`isLoading` of [DataTable](/en/docs/components/data-table) and
+[InfiniteSelect](/en/docs/components/infinite-select), and
+[Button](/en/docs/components/button)'s `pending`, all render this same layer —
+minimum height against collapse on first paint, old content covered during a
+refresh / in flight (for the table and the dropdown, the application layer
+keeping old data with react-query's `placeholderData` is all it takes to
+trigger it).
+
+Button's instance passes `rounded-none backdrop-blur-none`, with the frost
+handed to a **content filter** on the label instead — at button scale the
+backdrop blur kernel smears halos along the edges and corners, while blurring
+the content itself looks the same with pixel-clean edges; a conclusion
+verified magnified on a real device.
+
+Customizing the embedded instances: the table and the dropdown go through
+their slotted marker parts
+`DataTableLoadingOverlay` / `InfiniteSelectLoadingOverlay` (whose props are
+this component's, minus `loading` — that is the base's wiring), with samples
+in the "Loading" sections of both component pages; Button customization takes
+the "skip `pending`, draw it in children yourself" route, see the
+[Button](/en/docs/components/button) page.
+
+## Accessibility
+
+- **Blocks the mouse, not the keyboard**: Tab can still focus controls under
+  the overlay (Mantine / antd behave the same). For a full lockout, put
+  [`inert`](https://developer.mozilla.org/docs/Web/HTML/Global_attributes/inert)
+  on the content area — that is the caller's decision, and this component will
+  not make it for you.
+- The cursor is `wait` while loading (built into the overlay, all descendants
+  included).
+- Consider marking the refreshing region `aria-busy` so assistive technology
+  knows this content is momentarily unreliable.
+
+## State and className
+
+Underneath is a plain div, not a Base UI part, with no state at all:
+`className` only takes a string, and frost strength (`backdrop-blur-*`),
+background density (`bg-background/*`) and `z-*` all come in through this one
+door.
+
+| Attribute | Effect |
+| --- | --- |
+| `data-loading` | present while `loading` is true; a hook for custom CSS (e.g. `data-loading:…`) |
+
+The overlay carries `data-slot="loading-overlay"`; use it as a selector when
+targeting from outside.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `loading` | `boolean` | `false` | shows the overlay. **Content-side vocabulary** — synonymous with a data adapter's `isLoading` (here as the bare adjective: the react-query word shape is exempt only on adapter props spread wholesale); for the action side's "in flight", use [Button](/en/docs/components/button)'s `pending` |
+| `children` | `ReactNode` | centered Spinner | replaces the default content entirely once passed, see [Custom content](#custom-content) |
+| `className` | `string` | — | class. A plain div, not a Base UI part, string only; what it can change is in [State and className](#state-and-classname) |
+| rest | native `div` attributes | — | passed through (`ref` included) |
+
+The `LoadingOverlayProps` type is exported as well.

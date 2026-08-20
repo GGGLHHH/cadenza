@@ -1,0 +1,197 @@
+---
+title: Stepper
+description: Progress indication and navigation for step-by-step flows — numbered indicators, ✓ on completion, a Spinner while advancing asynchronously, click-to-jump triggers
+---
+
+<ComponentPreview name="stepper/basic" />
+
+The step component. Base UI has no stepper; the behaviour is owned entirely by
+the seam, with the API shaped after Origin UI's stepper family: the root holds
+the current step (starting from 1), with the controlled trio `value` /
+`defaultValue` / `onValueChange`; each step derives its own state — before the
+current step it is `completed` (indicator swaps to ✓), equal to the current step
+it is `active`, and `loading` only takes effect on the current step (indicator
+swaps to a Spinner).
+
+`StepperTrigger` is a real button: clicking jumps to that step, and the current
+step carries `aria-current="step"`. Without children, `steps={4}` renders the
+complete default composition in one line (numbered indicators + connecting
+lines); when composing by hand all seven parts are available, state is
+externalized via `data-*`, and styling hooks in however you like.
+
+Advancing comes with a three-beat orchestrated animation (total duration held at
+about 450ms, matching shadcn's rhythm): the ✓ settles first → the line sweeps
+from the starting end → the next circle lights up; going back is a full mirror
+(circle dims first → the line retracts → the ✓ exits to reveal the number).
+Jumps across several steps **cascade** segment by segment with the total
+duration unchanged: one wave rolls from the departure step to the target, 450ms
+split evenly over 2n+1 beats — each part's `transition-delay` and beat length
+are computed from its distance to the wave source (the previous current step)
+and delivered via CSS variables on the item. Under `motion-reduce` everything
+degrades to instant switches.
+
+## Usage
+
+```tsx
+import { Stepper } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Stepper defaultValue={2} steps={4} />
+```
+
+## Anatomy
+
+Without `children` you get the default composition (one numbered indicator per
+step, lines between steps); once `children` is written the structure is fully
+yours, and `steps` plus the root's `loading` only feed the default composition:
+
+```text
+<Stepper>                    root: holds the current step, writes data-orientation
+  <StepperItem>              one step: derives active / completed / loading, externalized as data-*
+    <StepperTrigger>         real button: click jumps to this step; active carries aria-current="step"
+      <StepperIndicator>     numbered badge: ✓ when completed, Spinner when loading
+      <StepperTitle>         step name (optional)
+      <StepperDescription>   description (optional)
+    </StepperTrigger>
+    <StepperSeparator>       line between steps (decorative, aria-hidden)
+  </StepperItem>
+</Stepper>
+```
+
+`StepperItem` pairs with the root's `value` through its required `step`
+(from 1); the line goes inside the item, after the trigger, added on every
+non-last item (see the composition example below).
+
+## Title and description
+
+Put the title and description inside the trigger; the whole text block becomes
+clickable to jump:
+
+<ComponentPreview name="stepper/composition" />
+
+## Controlled
+
+Hand `value` to external state; the "previous / next" buttons and trigger clicks
+all converge on the same place. While advancing asynchronously, pass `loading`
+to the component and the current step's indicator spins a Spinner:
+
+<ComponentPreview name="stepper/controlled" />
+
+The second argument of `onValueChange(value, eventDetails)` is always present:
+`eventDetails.reason` says where the change came from (`'trigger-press'`: some
+step's trigger was clicked; `'none'`: programmatic), and `eventDetails.cancel()`
+rejects the change — the component runs your callback first and skips the
+internal write when it finds a cancel, controlled and uncontrolled alike.
+
+## Orientation
+
+`orientation="vertical"` stacks vertically, the lines turn vertical with it, and
+the default composition applies just the same:
+
+<ComponentPreview name="stepper/vertical" />
+
+## When to use Stepper
+
+It looks like [Tabs](/en/docs/components/tabs) (a row of triggers), but the work
+divides differently: Tabs switches **peer views** — content panels, arrow-key
+roving, no ordering semantics; Stepper shows progress through an **ordered
+flow** — no panels (lay out step content yourself), `completed` derives
+automatically from the current step, and every trigger is an ordinary Tab stop.
+For "which step, how far along", use Stepper; for "several views, pick one to
+look at", use Tabs.
+
+## State and className
+
+The whole family renders pure DOM (div / button / span / h3 / p), so
+`className` is just a string — the types do not pretend a function form exists.
+To style by state, write the `data-*` below as Tailwind variants; the parts' own
+default visuals (indicator swapping to ✓, line changing colour) go through the
+same channel:
+
+| Attribute | Where | When present |
+| --- | --- | --- |
+| `data-orientation` | root | always set, value `horizontal` \| `vertical` |
+| `data-active` | item | the step equals the current step |
+| `data-completed` | item | the step is before the current step, or `completed` was passed explicitly |
+| `data-disabled` | item, trigger | `disabled` |
+| `data-loading` | item | `loading` passed and the step is the current step |
+
+Boolean attributes are Base UI's presence attributes (empty string,
+`data-active=""`); write `data-active:` directly as a variant. The root is
+`group/stepper` and the item is `group/stepper-item`; the parts themselves wire
+state through these two group names (e.g.
+`group-data-completed/stepper-item:bg-primary`). The seven parts each carry a
+`data-slot`: `stepper` / `stepper-item` / `stepper-trigger` /
+`stepper-indicator` / `stepper-separator` / `stepper-title` /
+`stepper-description`.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks
+→ behaviour switches → appearance → className**.
+
+### Stepper
+
+The root element. Holds the current step and hands it to the items via context:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `number` | `1` | uncontrolled initial step (from 1) |
+| `value` | `number` | — | controlled current step |
+| `onValueChange` | `(value: number, eventDetails: StepperChangeEventDetails) => void` | — | every jump carries [eventDetails](#controlled); `cancel()` can reject it |
+| `steps` | `number` | — | step count for the default composition; ignored once `children` is written |
+| `loading` | `boolean` | — | default composition only: marks the current step as loading |
+| `orientation` | `'horizontal' \| 'vertical'` | `'horizontal'` | layout direction |
+| `className` | `string` | — | — |
+| rest | `ComponentProps<'div'>` (the native `defaultValue` is taken) | — | passed through |
+
+### StepperItem
+
+One step. Derives state from the root and externalizes all of it as `data-*`:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `step` | `number` | required | this step's ordinal (from 1), paired with the root's `value` |
+| `completed` | `boolean` | `false` | forces the completed state; steps before the current one complete automatically, no need to pass it |
+| `disabled` | `boolean` | `false` | disables this step (the trigger is disabled with it) |
+| `loading` | `boolean` | `false` | loading state — only takes effect while this step is the current step |
+| rest | `ComponentProps<'div'>` | — | passed through |
+
+### StepperTrigger
+
+A real `<button type="button">`. Clicking makes this step current
+(`reason: 'trigger-press'`); active carries `aria-current="step"`; disabled
+follows the item. Your `onClick` runs first, and `preventDefault()` can stop the
+jump:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| rest | `ComponentProps<'button'>` | — | passed through |
+
+### StepperIndicator
+
+The numbered badge; the default visuals need no writing: idle shows the step
+number, completed swaps to ✓, loading swaps to a Spinner. `children` only
+replaces the number cell — ✓ and the Spinner are the part's own semantics and
+stay:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | step number | content shown in the idle state |
+| rest | `ComponentProps<'span'>` | — | passed through |
+
+### StepperSeparator / StepperTitle / StepperDescription
+
+Pure styling parts, each taking its element's native props:
+
+| Part | Base | Description |
+| --- | --- | --- |
+| `StepperSeparator` | `div` (`aria-hidden`) | line between steps: recolours with its item's `data-completed`, turns horizontal/vertical with the root's orientation |
+| `StepperTitle` | `h3` | step name |
+| `StepperDescription` | `p` | description line |
+
+Nine types are exported as well: `StepperProps` / `StepperItemProps` /
+`StepperTriggerProps` / `StepperIndicatorProps` / `StepperSeparatorProps` /
+`StepperTitleProps` / `StepperDescriptionProps` / `StepperChangeEventReason` /
+`StepperChangeEventDetails`.

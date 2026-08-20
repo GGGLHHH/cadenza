@@ -1,0 +1,255 @@
+---
+title: DateRangePicker
+description: A date-range input typeable at both ends + a two-month calendar — the calendar fills whichever end holds focus
+---
+
+<ComponentPreview name="date-range-picker/basic" />
+
+The complete date-range control, the two-ended version of
+[DatePicker](/en/docs/components/date-picker). Two inputs each own one end,
+and both take typing; the calendar fills **the end holding focus**, and while
+one end is still missing, focus jumps over automatically — so two clicks in a
+row complete a range (see [Active end](#active-end)). The value keys are
+react-day-picker's `from` / `to`, passed to the calendar as is; part names use
+its UI-side words (`range_start` / `range_end`): `StartInput` edits `from`,
+`EndInput` edits `to`.
+
+A reversed order swaps automatically; neither end is ever cleared.
+
+## Usage
+
+```tsx
+import { DateRangePicker } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<DateRangePicker aria-label="Date range" startPlaceholder="Start" endPlaceholder="End" />
+```
+
+Omit children and the full default composition is there. The root is
+`role="group"`, and `aria-label` lands on the group; the two inputs carry
+English accessible names of their own (Start date / End date), overridable
+when composing. `id` is forwarded to the start input, so `FieldLabel htmlFor`
+connects to it directly.
+
+## Anatomy
+
+Writing children replaces the input side; the popup is present by default and
+only steps aside once you compose a `DateRangePickerPopup`. Marker parts must
+be direct children of the root, or wrapped in a Fragment.
+
+```text
+DateRangePicker
+├─ InputGroup
+│  ├─ DateRangePickerStartInput
+│  ├─ (separator icon)
+│  ├─ DateRangePickerEndInput
+│  ├─ DateRangePickerClear
+│  └─ DateRangePickerTrigger
+└─ DateRangePickerPopup
+   ├─ Calendar (default, numberOfMonths=2)
+   └─ DateRangePickerFooter (optional; composing it enters confirm mode)
+```
+
+## Controlled
+
+The value is `{ from?: Date, to?: Date } | null`: **both ends are optional** —
+whichever input you click first fills first (see [Active end](#active-end)),
+so a half-range with only `to` is as legal as one with only `from`.
+Half-ranges go through `onValueChange` too; both ends empty never occurs —
+that is `null`, the controlled empty value. `details.reason` /
+`details.cancel()` follow the same protocol as DatePicker.
+
+<ComponentPreview name="date-range-picker/controlled" />
+
+Clearing either input and leaving clears only that end; the other stays.
+
+## Active end
+
+**Whichever input holds focus, the calendar's next click fills that end.**
+Click the end input, then the calendar, and the date lands in the end while
+the start stays empty; while one end is still missing, focus jumps
+automatically to the empty input, so two clicks in a row complete a range with
+no backtracking. Once complete, the caret rests in **the input the last day
+landed in**. Switching inputs with Tab re-aims the same way.
+
+**A reversed order swaps automatically, and never clears either end.** Aiming
+only matters while the other end is still empty; with both days present, order
+decides which is the start. Click the 20th then the 10th and you get the
+10th–20th; pick a date in the start input later than the end, and the old end
+becomes the new start — no date is ever silently dropped. The caret follows
+the day you picked, so whichever input it lands in, that is where the caret
+is.
+
+**Typing follows the same rules**, except a change that would touch the other
+end only takes effect once the text is a complete date. Per-character parsing
+would read `2026-08-2` as the 2nd first, and applying the rules would rewrite
+the other input mid-typing; the criterion is whether formatting the parse
+result back through `format` reproduces the original text — `2026-08-1` fails
+(it formats to `2026-08-01`), and only the completed `2026-08-10` matches. So
+type a date in the end input earlier than the start, and the instant the last
+digit lands both ends are in order — no need to leave the input.
+
+Typing that only fills its own end is free of this constraint and commits as
+you type, as usual. A custom `inputToValue` uses its own spelling and cannot
+match this criterion, so it stays conservative — the draft is kept, and
+settles when you leave the input.
+
+## Month and year selection
+
+**Each month carries its own pair of month and year dropdowns, present by
+default** — ranges often span several months, jumping from either side works,
+the same intuition as the [active end](#active-end): whichever side your hand
+is on is the side you steer.
+
+The right-hand pair is **offset**: pick March in it and you get
+February–March, not March–April (you are saying what that slot shows, not
+where the whole panel starts). The two months are always adjacent —
+react-day-picker guarantees that.
+
+The year range, the `locale` linkage and the way back to a plain caption are
+all identical to
+[DatePicker's month and year selection](/en/docs/components/date-picker#month-and-year-selection),
+including the "narrowing goes through the popup's function children" part:
+
+```tsx
+<DateRangePickerPopup>
+  {calendar => (
+    <Calendar {...calendar} endMonth={new Date(2030, 11)} startMonth={new Date(2020, 0)} />
+  )}
+</DateRangePickerPopup>
+```
+
+## Confirm mode
+
+Compose a `DateRangePickerFooter` into the popup and picking switches from
+"commit immediately" to "stage" (the inputs preview live, the panel stays open
+for inspection); only `DateRangePickerClose` (or Enter) commits and closes —
+the reason is `close-press`; `DateRangePickerCancel`, Esc and outside clicks
+all discard the stage. The Footer is a pure layout shell — action parts and
+text are composed by the caller — with the exact contract of
+[DatePicker's confirm mode](/en/docs/components/date-picker#confirm-mode).
+
+<ComponentPreview name="date-range-picker/footer" />
+
+The gesture itself is the same in both modes (both go through the
+[active end](#active-end)); the only difference is when it commits: immediate
+mode commits and closes once both ends are in, while in confirm mode picking
+always stages and the confirm button declares completion — so in confirm mode
+the range can be sculpted over and over, and editing either end never closes
+the popup on you.
+
+## Form
+
+With a `name`, two permanent hidden inputs of the same name are rendered (one
+per end, `yyyy-MM-dd`, an empty end is `''`); `FormData.getAll(name)` fetches
+both ends at once. Required checks belong in the form layer. For binding with
+TanStack Form see the
+[form guide](/en/docs/forms/tanstack-form#daterangepicker).
+
+<ComponentPreview name="date-range-picker/form" />
+
+## Disabled
+
+Same as DatePicker: `disabled` disables the whole control (the hidden inputs
+stay out of submission); `readOnly` only locks editing, and the default
+composition removes the clear and calendar buttons (`InputGroup`'s
+`has-disabled` dimming contract — for the reasoning see
+[DatePicker's Disabled section](/en/docs/components/date-picker#disabled)).
+
+## When to use DateRangePicker
+
+Use it when start and end come as a pair (check-in–check-out, report ranges);
+for a single date use [DatePicker](/en/docs/components/date-picker).
+`format` / `locale` / `disabledDates` are identical to DatePicker and are not
+demonstrated again here.
+
+## State and className
+
+The root is a plain `<div>` (`role="group"`), so `className` is just a string.
+
+| Attribute | When present |
+| --- | --- |
+| `data-empty` | no value |
+| `data-open` | popup is open |
+| `data-disabled` | `disabled` |
+| `data-readonly` | `readOnly` |
+
+| data-slot | What it is |
+| --- | --- |
+| `date-range-picker` | root |
+| `date-range-picker-trigger` / `-addon` | calendar button and its addon |
+| `date-range-picker-clear` / `-addon` | clear button and its addon |
+| `date-range-picker-popup` | popup |
+
+Neither input carries a data-slot of its own (the `input-group-control`
+focus-ring contract, same as DatePicker).
+
+## Keyboard interactions
+
+| Key | Effect |
+| --- | --- |
+| <kbd>Tab</kbd> | start → end; switching inputs settles the current input's draft |
+| <kbd>ArrowDown</kbd> | opens the popup from either input |
+| <kbd>Escape</kbd> | closes the popup (value untouched) |
+| <kbd>Enter</kbd> | settles the current input; with the popup open it also closes without submitting the form |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → className**.
+
+### DateRangePicker
+
+The root. Isomorphic to
+[DatePicker's root](/en/docs/components/date-picker#datepicker); the only
+differences are the value type and the placeholders:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `DateRange \| null` | — | uncontrolled initial value |
+| `value` | `DateRange \| null` | — | controlled value; `null` is the controlled empty value |
+| `onValueChange` | `(value, details) => void` | — | fires for half-ranges too; `details.cancel()` rejects it |
+| `startPlaceholder` | `string` | — | start input placeholder |
+| `endPlaceholder` | `string` | — | end input placeholder |
+| `name` | `string` | — | when present, renders the two same-named hidden inputs |
+| `id` | `string` | — | forwarded to the start input |
+| `aria-label` | `string` | — | accessible name of the group (the root is `role="group"`) |
+| rest | same as DatePicker (the three `open` props, `format` / `locale` / `inputToValue` / `disabledDates`, `disabled` / `readOnly` / `clearable` / `modal`, `children`) + `ComponentProps<'div'>` | — | same contract; `inputToValue` is shared by both ends |
+
+### DateRangePickerStartInput / DateRangePickerEndInput
+
+The real `<input>`s at both ends, editing `from` / `to` respectively, each
+with an overridable English accessible name. Both take
+`ComponentProps<typeof InputGroupInput>`.
+
+### DateRangePickerTrigger / DateRangePickerClear
+
+Same as their DatePicker namesakes (the clear button's `aria-label` is Clear
+dates; it clears both ends at once). Both take
+`ComponentProps<typeof InputGroupButton>`.
+
+### DateRangePickerPopup
+
+The same three layers as `DatePickerPopup`; plain children render **below**
+the default calendar (where the Footer goes); function children take
+`DateRangePickerCalendarProps` (`mode: 'range'`, two months) — spread them
+into your own `<Calendar>` to change the month count, layout and so on.
+
+### DateRangePickerFooter / FooterClear / Cancel / Close
+
+The action row below the calendar (a pure layout shell; composing it enters
+[confirm mode](#confirm-mode)) and the three action buttons, shaped exactly
+like
+[their DatePicker namesakes](/en/docs/components/date-picker#datepickerfooter):
+the Footer takes `ComponentProps<'div'>`, the buttons take
+`ComponentProps<typeof Button>`.
+
+The 16 types are exported as well: `DateRange` / `DateRangePickerProps` /
+`DateRangePickerState` / `DateRangePickerStartInputProps` /
+`DateRangePickerEndInputProps` / `DateRangePickerTriggerProps` /
+`DateRangePickerClearProps` / `DateRangePickerPopupProps` /
+`DateRangePickerFooterProps` / `DateRangePickerFooterClearProps` /
+`DateRangePickerCancelProps` / `DateRangePickerCloseProps` /
+`DateRangePickerCalendarProps` / `DateRangePickerChangeEventReason` /
+`DateRangePickerChangeEventDetails` / `DateRangePickerOpenChangeEventDetails`.

@@ -1,0 +1,154 @@
+---
+title: DataPagination
+description: An offset pagination bar — page / limit independently controlled, zero-copy by design, i18n left to the application layer
+---
+
+<ComponentPreview name="data-pagination/basic" align="stretch" />
+
+An offset pagination bar: a summary on the left; on the right, a rows-per-page
+selector + a page indicator + four navigation buttons.
+The component **produces no visible copy of its own** — the page indicator
+defaults to the language-neutral `3 / 13`, while the summary and the "per page"
+label are injected from outside, so i18n naturally stays in the application
+layer. aria-labels have English fallbacks (the four navigation buttons, plus
+the rows-per-page selector's `'Rows per page'` when `rowsPerPageLabel` is not
+passed); pass translations from the application layer to override.
+
+## Usage
+
+```tsx
+import { DataPagination } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<DataPagination
+  defaultLimit={20}
+  summary={({ total }) => `${total} items in total`}
+  total={137}
+/>
+```
+
+Uncontrolled: give only `total` and initial values and the component holds its
+own state. `summary` and `pageIndicator` are both render functions, receiving
+the same `DataPaginationState`: `{ page, limit, total, totalPages }`.
+
+## Controlled
+
+Pagination state is lifted out of the component and the data slice follows it.
+When changing `limit`, remember to reset `page` to 1 (the old page number may
+run out of range under the new page count). Composing with
+[DataTable](/en/docs/components/data-table#pagination) takes exactly this
+shape:
+
+<ComponentPreview name="data-pagination/controlled" align="stretch" />
+
+`page` and `limit` each support controlled / uncontrolled
+([`useControllableState`](/en/docs/utils/use-controllable-state)
+semantics: pass `page` for controlled, `defaultPage` for uncontrolled,
+independently of each other).
+
+## Custom copy
+
+`pageIndicator` swaps out the default page indicator; a range can be computed
+inside `summary`; the four navigation buttons' aria-labels take translations
+from the application layer; `limitOptions={[]}` removes the rows-per-page
+selector (expressed by absence, not a render switch):
+
+<ComponentPreview name="data-pagination/labels" align="stretch" />
+
+## Built-in guards
+
+- **`total = 0` reads as "data not loaded yet"** and triggers no page clamping
+  — when react-query switches queries the data goes `undefined` for a moment,
+  and clamping right then would flash a stale page number into callers that
+  sync the URL.
+- **With data loaded and `page` out of range, it clamps back** to the last page
+  (happens after deleting the last page's rows, or raising `limit`).
+- **When `limit` is 0 / NaN** (parsed from a URL parameter, say), the page
+  count falls back to 1 — no `1 / Infinity`, no NaN buttons.
+
+Clamping takes the same callback as a click: `onPageChange` receives
+`eventDetails` with `reason: 'missing'`, and `cancel()` can reject it just the
+same.
+
+## Headless: useDataPaginationState
+
+The pagination state itself is exported separately (`useXxxState` style). Its
+input is the state slice from the Props table
+(`DataPaginationStateOptions`); it returns `DataPaginationStateResult`:
+`page` / `limit` / `totalPages` / `setPage` / `setLimit` / `canPrevious` /
+`canNext` — the zero and `NaN` guards and out-of-range clamping apply just the
+same. Use it when you skip rendering this pagination bar and draw your own
+pagination UI:
+
+```tsx
+import { useDataPaginationState } from '@gedatou/cadenza-ui'
+
+const { page, setPage, canNext } = useDataPaginationState({
+  total: 137,
+  defaultLimit: 20,
+})
+```
+
+`setPage` / `setLimit` both accept a `SetStateAction` (`setPage(p => p + 1)`);
+the second argument is an optional `eventDetails`, and when omitted `reason` is
+`'none'`.
+
+## When to use DataPagination
+
+Only offset pagination that counts pages uses it. Cursor pagination counts no
+pages, so there is no "page X of Y" to show — go through
+[DataTable](/en/docs/components/data-table#infinite-scroll)'s list-state props
+(`hasNextPage` / `onLoadMore`); long lists inside popups likewise, see
+[InfiniteSelect](/en/docs/components/infinite-select).
+
+## State and className
+
+The pagination bar is plain DOM structure and **puts no state attributes on
+itself** — a navigation button's unavailability is a real `disabled` (when
+`canPrevious` / `canNext` is false); style by state through that. `className`
+is a plain string landing only on the root element; there is no `...rest`
+passthrough, so other attributes never reach the DOM.
+
+Each internal part carries a `data-slot`; use it as a selector when targeting
+from outside:
+
+| `data-slot` | What it is |
+| --- | --- |
+| `data-pagination` | the root element, where `className` lands |
+| `data-pagination-summary` | the summary on the left; without `summary` it becomes a slot-less empty placeholder div that pushes the right side to the right |
+| `data-pagination-limit` | the rows-per-page selector's trigger |
+| `data-pagination-indicator` | the page indicator |
+
+## Keyboard interactions
+
+The controls are all native semantics:
+
+| Key | Effect |
+| --- | --- |
+| `Tab` | lands in turn on the rows-per-page selector and the four navigation buttons; unavailable buttons are genuinely `disabled` and simply skipped |
+| `Enter` / `Space` | triggers the focused navigation button |
+| `Arrow keys` / `Enter` / `Esc` | the rows-per-page control is this library's [Select](/en/docs/components/select#keyboard-interactions): arrow keys select, Enter confirms, Esc closes |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `total` | `number` | — | total item count; `0` reads as not yet loaded and triggers no clamping |
+| `page` / `defaultPage` / `onPageChange` | `number` | `1` | page number (controlled / uncontrolled). The callback's second argument is `DataPaginationChangeEventDetails`: `reason` is `'item-press'` (a control in the bar) / `'missing'` (out-of-range clamping) / `'none'` (programmatic `setPage`); `cancel()` rejects the change |
+| `limit` / `defaultLimit` / `onLimitChange` | `number` | `20` | rows per page (controlled / uncontrolled), callback as above |
+| `limitOptions` | `number[]` | `[10, 20, 50, 100]` | rows-per-page options; `[]` removes the whole selector from rendering |
+| `summary` | `(state) => ReactNode` | — | the summary on the left; omitted, the slot folds away |
+| `rowsPerPageLabel` | `string` | — | the visible label before the selector (not rendered when omitted), doubling as the selector's aria-label; omitted, the aria-label falls back to the English `'Rows per page'`. A `string`, not a `ReactNode` — rich content goes through composition channels, and a "per page" label is not that |
+| `pageIndicator` | `(state) => ReactNode` | `page / totalPages` | the page indicator |
+| `firstPageLabel` / `previousPageLabel` / `nextPageLabel` / `lastPageLabel` | `string` | `'First page'` etc. | aria-labels of the four icon buttons; pass translations from the application layer |
+| `className` | `string` | — | root element class |
+
+`state` is the exported `DataPaginationState`: `{ page, limit, total, totalPages }`.
+`DataPaginationProps`, `DataPaginationStateOptions` / `DataPaginationStateResult`
+(input and return value of the [headless hook](#headless-usedatapaginationstate))
+and `DataPaginationChangeEventReason` / `DataPaginationChangeEventDetails` are
+exported as well.

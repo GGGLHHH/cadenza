@@ -1,0 +1,718 @@
+---
+title: TanStack Form
+description: Build forms with the @gedatou/cadenza-form facade + the Field family — the API matches TanStack Form; the wiring and error display timing are package defaults
+---
+
+<ComponentPreview name="tanstack-form/basic" align="stretch" />
+
+This guide covers building forms with [TanStack Form](https://tanstack.com/form) —
+but instead of installing it directly, you install `@gedatou/cadenza-form`: a
+facade that re-exports the entire TanStack Form API and turns the form
+conventions into defaults — aria wiring, error display timing and submit
+handling no longer need hand-written glue. Controls and layout come from this
+library's [Field family](/en/docs/components/field).
+
+## Usage
+
+```bash
+pnpm add @gedatou/cadenza-form
+```
+
+The package re-exports all of `@tanstack/react-form` — install this one package
+and import every API from the same entry:
+
+```tsx
+import {
+  fieldControlProps,
+  fieldErrors,
+  fieldInvalidState,
+  formProps,
+  useForm,
+} from '@gedatou/cadenza-form'
+```
+
+```tsx
+<form {...formProps(form)}>
+  <form.Field name="title">
+    {field => (
+      <Field>
+        <FieldLabel htmlFor={field.name}>Title</FieldLabel>
+        <Input
+          {...fieldControlProps(field)}
+          value={field.state.value}
+          onBlur={field.handleBlur}
+          onChange={event => field.handleChange(event.target.value)}
+        />
+        <FieldError id={fieldInvalidState(field).errorId} errors={fieldErrors(field)} />
+      </Field>
+    )}
+  </form.Field>
+</form>
+```
+
+`formProps(form)` spreads `noValidate` + `onSubmit` (the submit pipeline) in one
+go. `noValidate` is applied across the board: the schema is the single source of
+truth for validation, while the browser's native constraint validation
+(`type="email"`, `required`, `pattern`) intercepts submission **before** the
+`submit` event is dispatched and shows a native bubble — the facade's entire
+submit pipeline (counting, re-validation, error revealing, focusing) never gets
+to run. When hand-writing `onSubmit={formSubmitHandler(form)}`, be sure to add
+`noValidate` yourself.
+
+## Approach
+
+Form state belongs to TanStack Form, markup to the
+[Field family](/en/docs/components/field), and the glue between the two to the
+facade:
+
+- `useForm` owns the state, and `form.Field`'s render-prop pattern does the
+  controlled binding — identical to the official usage, word for word.
+- `fieldControlProps(field)` spreads the five wires `id` / `name` /
+  `aria-describedby` / `aria-invalid` / `aria-required` in one go; the
+  hand-written version wires each of `Field`, the control and `FieldError`
+  separately.
+- `fieldErrors(field)` carries the display gate: validation runs live on
+  change, but an error only appears once the field has been **changed and
+  blurred** (or the form submitted) — see [Showing errors](#showing-errors).
+- `formProps(form)` spreads `noValidate` and the submit handling (backed by
+  `formSubmitHandler`): `preventDefault`, a full re-validation after a failed
+  submit, marking errored fields as blurred (so the gate lets their errors
+  show), then sending focus to the first invalid control.
+- Validation is zod (or any Standard Schema implementation), dropped straight
+  into `validators` — zero adapter layer.
+
+## Anatomy
+
+The complete wiring of one field — the four aria wires spread by
+`fieldControlProps`, the gate inside `fieldErrors` and the `data-invalid`
+tinting are where the three hand-wired spots of the upstream tutorial end up:
+
+```tsx
+<form {...formProps(form)}>
+  <FieldGroup>
+    <form.Field name="title">
+      {(field) => {
+        const { errorId, invalid } = fieldInvalidState(field)
+        return (
+          <Field data-invalid={invalid || undefined}>
+            <FieldLabel htmlFor={field.name}>Title</FieldLabel>
+            <Input
+              {...fieldControlProps(field)}
+              value={field.state.value}
+              onBlur={field.handleBlur}
+              onChange={event => field.handleChange(event.target.value)}
+            />
+            <FieldDescription>Sum up the problem in one sentence.</FieldDescription>
+            <FieldError id={errorId} errors={fieldErrors(field)} />
+          </Field>
+        )
+      }}
+    </form.Field>
+  </FieldGroup>
+  <Button type="submit">Submit</Button>
+</form>
+```
+
+## The form
+
+Build the bug-report form at the top of this page from scratch, in four steps.
+
+### Define the schema
+
+Shape the form with zod first. zod 4 implements Standard Schema natively — the
+schema goes straight into `validators`, no adapter of any kind:
+
+```tsx
+import { z } from 'zod'
+
+const schema = z.object({
+  title: z.string().min(5, 'Title must be at least 5 characters').max(32, 'Title must be at most 32 characters'),
+  description: z.string().min(20, 'Description must be at least 20 characters').max(100, 'Description must be at most 100 characters'),
+})
+```
+
+### Configure the form
+
+`useForm` is imported from the facade; the options are exactly the official
+ones. The site convention: hang the schema on `validators.onChange` for live
+validation — *when* errors show is governed separately by the gate, not by
+deferring validation:
+
+```tsx
+import { useForm } from '@gedatou/cadenza-form'
+import { toast } from 'sonner'
+
+const form = useForm({
+  defaultValues: { title: '', description: '' },
+  validators: { onChange: schema },
+  onSubmit: async ({ value }) => {
+    toast.success(`Received "${value.title}"`)
+  },
+})
+```
+
+### Assemble the form
+
+Assemble with `form.Field` + the Field family. Full source:
+
+<ComponentSource name="tanstack-form/basic" />
+
+### Done
+
+That's it. On submit, `formSubmitHandler` calls `preventDefault` and
+`form.handleSubmit()`; if validation passes, `onSubmit` receives the fully
+typed form values — if not, every errored field is marked as blurred, errors
+show next to their fields, and focus moves automatically to the first
+`aria-invalid` control.
+
+## Validation
+
+### Client-side validation
+
+The schema runs on every input (`validators.onChange`), so `canSubmit` /
+`isValid` always reflect the real validation state. *Showing* errors is
+deferred by the gate; validation itself never is.
+
+### Validation modes
+
+TanStack Form's `validators` support multiple channels, available as-is
+through the facade:
+
+| Channel | Fires on |
+| --- | --- |
+| `onChange` | every input change |
+| `onBlur` | field blur |
+| `onSubmit` | form submission |
+
+```tsx
+const form = useForm({
+  defaultValues: { title: '' },
+  validators: {
+    onChange: schema,
+    onBlur: schema,
+    onSubmit: schema,
+  },
+})
+```
+
+The site default hangs only the `onChange` channel: live validation keeps
+`canSubmit` trustworthy, and display timing goes to the gate. The official
+`revalidateLogic` takes the other route — deferring validation itself — with
+different semantics: on that route `isValid` is constantly `true` before
+submission.
+
+## Showing errors
+
+Errors are always read through `fieldErrors(field)`, which has the display gate
+`fieldShouldShowError` built in — only when one of the two conditions below
+holds does it hand you errors to render; otherwise it returns an empty array:
+
+| Condition | Source |
+| --- | --- |
+| the field has been changed **and** blurred | `meta.isDirty && meta.isBlurred` (dirty is sticky: typing then clearing still counts as changed) |
+| the form has been submitted | `form.state.submissionAttempts > 0` |
+
+The point of the dirty condition: whole-form schema validation writes errors
+into **untouched fields** too, and any button click (submit, add a row) blurs
+the current field — going by blur alone, users would get scolded before typing
+anything. Only fields the user actually changed reveal errors on blur;
+untouched fields all wait until submission to be revealed.
+
+After a submission the form enters **live correction mode**: every known error
+is visible in real time, including fields added afterwards (array rows) —
+`formSubmitHandler(form)` re-runs validation when a new field registers, so its
+errors appear immediately instead of waiting for the next unrelated input to
+"wake them up".
+
+The family of accessors around it all pass through the same gate:
+
+- `fieldErrors(field)` — the normalised `{ message }` array, fed straight to
+  `FieldError`'s `errors` prop; with no showable errors, `FieldError` renders
+  empty.
+- `fieldControlProps(field)` — spreads `id` / `name` / `aria-describedby` /
+  `aria-invalid` / `aria-required`; `aria-invalid` is gated the same way, so
+  the control's red ring appears in sync with the error text.
+- `fieldInvalidState(field)` — reads `{ errorId, invalid }`, for `FieldError`'s
+  `id` and `Field`'s `data-invalid`.
+
+The path around the gate still exists: reading `field.state.meta.errors`
+directly (the official native API) has no delay whatsoever. The gate is a
+convention, upheld by one discipline — errors are only read through
+`fieldErrors`.
+
+## Required markers
+
+In the site convention, "required" is **behavioural**: a field whose empty
+value fails validation is required — not zod's `optional()` structure (a
+required `z.string().min(1)` and a can-stay-empty `z.string().max(100)` are
+both structurally "non-optional", and TanStack Form itself has no notion of
+required).
+
+The linkage has **no dedicated API** — the signal is the web-standard attribute
+`aria-required`: `fieldControlProps` derives it from the schema and default
+values the form already carries (one probe per form) and emits `aria-required`
+on required fields; the Field family's CSS responds to it, and the red asterisk
+is a pure style projection (`content: "*" / ""`, silent to screen readers):
+
+```tsx
+<FieldLabel htmlFor={field.name}>Title</FieldLabel>
+<Input {...fieldControlProps(field)} … />   {/* auto aria-required when required, the red asterisk follows */}
+```
+
+For controls outside the spread, hand-write `aria-required` on its legitimate
+host (the same place you already hand-write `aria-invalid`): the Select
+trigger, the RadioGroup root, the Slider root, the Checkbox / Switch itself.
+The group title (`FieldLegend`) lights up when a group control sits as a direct
+child of `FieldSet` carrying `aria-required` — automatically true in the
+RadioGroup case.
+
+Cross-field requiredness (confirm password) is beyond the probe: hand-write
+`aria-required` on the control (where the semantics belong anyway) and the red
+asterisk follows via CSS. Fields whose default value is already valid (a switch
+that defaults to on) are never marked — the user cannot fail them.
+
+Two **ARIA vacuum corners** fall back to the label parts' `required` prop (with
+the prop asterisk present, the CSS asterisk steps aside — never both at once):
+
+- the group title of a **Checkbox multi-select group** — the `group` role is
+  not a legitimate host for `aria-required`, and setting it per item is a
+  semantic lie;
+- the label of an **InfiniteCombobox** — the trigger is `button` role, likewise
+  not a host.
+
+Outside a form you can still compute it yourself with the low-level
+`requiredFields(schema, emptyValues)`, or use the label's `required` prop
+directly. The [complex form](#complex-form) wires its whole surface this way:
+the bio (may stay empty) and the reminder switch carry no asterisk, everything
+else is lit by `aria-required`, and only the two vacuum corners go through the
+prop.
+
+## Different control types
+
+One set of wiring fits every control in the Field family; the differences are
+only the controlled props and where `id` lands — see the label-channel notes in
+the [Field family](/en/docs/components/field).
+
+### Input
+
+Hand-write the three wires `value` / `onChange` / `onBlur`; hand the rest to
+the `fieldControlProps` spread.
+
+<ComponentPreview name="tanstack-form/input" align="stretch" />
+
+### Textarea
+
+Exactly isomorphic to Input — a different control, the same writing.
+
+<ComponentPreview name="tanstack-form/textarea" align="stretch" />
+
+### NumberField
+
+The value is natively `number | null` — controlled via `value` /
+`onValueChange`, no string conversion needed.
+
+<ComponentPreview name="tanstack-form/number-field" align="stretch" />
+
+- Clearing the input yields `null`; the schema expresses required with
+  `.nullable().refine(v => v !== null, 'required message')`.
+- `id` / `name` go on the root (Base UI routes the `id` to the real input, so
+  `htmlFor` connects directly); compose `aria-invalid` / `aria-describedby` /
+  `onBlur` onto `NumberFieldInput`, and the group frame's invalid ring lights
+  up along with them.
+
+### Select
+
+Controlled via `value` / `onValueChange`; `id` lands on `SelectTrigger`.
+
+<ComponentPreview name="tanstack-form/select" align="stretch" />
+
+- Clearing the selection sends `null` through `onValueChange`; fold it back to
+  `''` before handing it to `field.handleChange`.
+- The wholesale `fieldControlProps` spread does not apply (`name` belongs to
+  the `Select` root, `id` to the trigger); use `fieldInvalidState` instead and
+  distribute `aria-invalid` and `aria-describedby` by hand.
+
+### Cascader
+
+Same shape as Select, except the value is the **whole path**: `value` /
+`onValueChange` send and receive `string[]`, the empty value is `null`, and
+`id` lands on `CascaderTrigger`.
+
+<ComponentPreview name="tanstack-form/cascader" align="stretch" />
+
+- Store `string[] | null` in the form directly; in zod write
+  `z.array(z.string()).nullable().refine(path => path !== null, '…')` — the
+  `null` from the clear ✕ enters the form as-is, never folded into a string.
+- `name` belongs to the `Cascader` root: on native submission each path
+  segment serialises as one hidden input under the same name.
+
+### DatePicker
+
+Same shape as NumberField: the value is natively `Date | null`, controlled via
+`value` / `onValueChange`, no string parsing — typing invalid text never lands
+a value, so the form only ever sees a valid `Date` or `null`.
+
+<ComponentPreview name="tanstack-form/date-picker" align="stretch" />
+
+- The clear ✕ or emptied text yields `null`; the schema expresses required
+  with `z.date().nullable().refine(value => value !== null, 'required message')`.
+- `id` / `name` go on the root (the `id` is forwarded to the input, `htmlFor`
+  connects directly); compose `aria-invalid` / `aria-describedby` / `onBlur`
+  onto `DatePickerInput`.
+- `name` belongs to the root: on native submission a hidden input serialises
+  `yyyy-MM-dd` — the TanStack form stores the `Date` object, and the two
+  channels never interfere.
+- Opening the calendar moves focus into the popup briefly, so the blur half of
+  the gate opens early — error display timing is unaffected (it still takes
+  dirty to light up).
+
+### DateRangePicker
+
+The double-ended version of the same wiring: the value is
+`{ from?, to? } | null`, both ends optional — whichever input is clicked first
+fills first, so half-ranges with only a `from` or only a `to` do enter the
+form; completeness is the refine's job.
+
+<ComponentPreview name="tanstack-form/date-range-picker" align="stretch" />
+
+- In zod write
+  `z.object({ from: z.date().optional(), to: z.date().optional() }).nullable().refine(v => v !== null && v.from !== undefined && v.to !== undefined, '…')`,
+  with one message shared between empty and half-range. **Both ends need
+  `.optional()`** — miss one, and that half-range hits zod's own required
+  error, bypassing the message you wrote.
+- `id` lands on the start input (the root's `id` is forwarded to it); the two
+  inputs **each** take `aria-invalid` / `aria-describedby` / `onBlur`.
+- `name` belongs to the root: on native submission two hidden inputs share the
+  name (one per end), and `FormData.getAll` fetches both at once.
+
+### Checkbox
+
+A checkbox list is an array field with `mode="array"`; `pushValue` /
+`removeValue` are native TanStack Form APIs, available as-is through the
+facade.
+
+<ComponentPreview name="tanstack-form/checkbox" align="stretch" />
+
+- A single boolean checkbox ("agree to the terms") needs no `mode="array"` —
+  just `checked={field.state.value}` + `onCheckedChange`, see the
+  [complex form](#complex-form).
+- Errors hang at the `FieldSet` level; each item takes only `aria-invalid` /
+  `aria-describedby`.
+
+### Radio Group
+
+Controlled on the group (`value` / `onValueChange`); `aria-invalid` on each
+item.
+
+<ComponentPreview name="tanstack-form/radio-group" align="stretch" />
+
+- The group itself has nowhere for `htmlFor` to land: give `FieldLegend` an
+  `id` and point back with `aria-labelledby` on the `RadioGroup`.
+
+### Switch
+
+The same contract as Checkbox: `checked` / `onCheckedChange`.
+
+<ComponentPreview name="tanstack-form/switch" align="stretch" />
+
+### InputOTP
+
+The one-time-code input is a form control too — its protocol is React DOM's:
+`onChange` receives the **string** directly, so `field.handleChange` can be
+passed straight through.
+
+<ComponentPreview name="tanstack-form/input-otp" align="stretch" />
+
+- `id` lands on the invisible real input spanning all the slots, so the
+  wholesale `fieldControlProps` spread holds as usual.
+- Validate with a length + character constraint like
+  `z.string().regex(/^\d{6}$/, '…')`.
+
+### InfiniteSelect / InfiniteCombobox
+
+Async paginated selection is a form control like any other; its binding has
+three dedicated points.
+
+<ComponentPreview name="tanstack-form/infinite-combobox" align="stretch" />
+
+- **The form persists the id, not the object**: single-select's controlled
+  `value` is `string | null`, while `onValueChange` reports the object — store
+  the id in the form (a preselection on an unloaded page has an id but no
+  object) and keep the object in local state for the display text.
+- `triggerId` is where `FieldLabel htmlFor` lands; `name` renders a hidden
+  input **beside the trigger** (outside the popup), so closing the popup never
+  affects serialisation.
+- The schema expresses required selection with
+  `z.string().nullable().refine(v => v !== null, '…')`.
+
+### Complex form
+
+The whole control family × common zod shapes in one example — a single run of
+facade wiring through every binding.
+
+<ComponentPreview name="tanstack-form/complex" align="stretch" />
+
+The zod shapes covered, ready to lift as needed:
+
+- **Required text**: `z.string().min(n, '…')` (name, password)
+- **Email**: `z.email('…')`, with an InputGroup icon prefix
+- **Number control**: NumberField's value is natively `number | null` —
+  `z.number().int().min().max().nullable().refine(v => v !== null, 'required message')`,
+  no string conversion (age)
+- **String to number**: collecting a number through a plain text input goes
+  `z.string().transform(Number).pipe(z.number({ error: '…' }).int().min().max())`;
+  NaN is caught by `z.number`. Note that validators **validate without
+  transforming** — take the transformed output at submit time with
+  `schema.parse(value)`
+- **Cross-field validation**: `.superRefine()` + `path: ['confirmPassword']`,
+  the error landing on the named field (confirm password)
+- **Optional with a length cap**: `z.string().max(n)`, allowed to stay empty
+  (bio)
+- **Required single choice**: `z.string().min(1, 'Select…')` (Select voice
+  part, RadioGroup experience)
+- **Multi-select minimum**: `z.array(z.string()).min(1, '…')`, `mode="array"`
+  + a Checkbox list (rehearsal slots)
+- **Number range**: `z.number().min(n)` with Slider (weekly hours)
+- **Must be checked**: `z.boolean().refine(Boolean, '…')` (agree to the code
+  of conduct)
+- **Format constraint**: `z.string().regex(/^\d{6}$/, '…')` with InputOTP (SMS
+  verification code)
+- **Async selection stores the id**:
+  `z.string().nullable().refine(v => v !== null, '…')` with InfiniteCombobox —
+  the form persists the id, the display object lives in local state (favourite
+  composer)
+- **Unvalidated field**: `z.boolean()` joins the submission as usual (the
+  rehearsal reminder Switch)
+
+## createFormHook
+
+The field shell (`Field` + aria + errors) looks the same in every form — use
+`createFormHook` to settle it into a component: register once, write
+`<field.TextField>` everywhere:
+
+<ComponentPreview name="tanstack-form/create-form-hook" align="stretch" />
+
+```tsx
+import { createFormHook, useFieldContext } from '@gedatou/cadenza-form'
+
+function TextField({ label }: { label: string }) {
+  const field = useFieldContext<string>()
+  const { errorId, invalid } = fieldInvalidState(field)
+  return (
+    <Field data-invalid={invalid || undefined}>
+      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <Input
+        {...fieldControlProps(field)}
+        value={field.state.value}
+        onBlur={field.handleBlur}
+        onChange={event => field.handleChange(event.target.value)}
+      />
+      <FieldError id={errorId} errors={fieldErrors(field)} />
+    </Field>
+  )
+}
+
+const { useAppForm } = createFormHook({ fieldComponents: { TextField } })
+```
+
+The only difference from the official `createFormHook`: contexts are injected
+automatically from the package's singletons, and `fieldComponents` /
+`formComponents` may both be omitted. `useFieldContext` / `useFormContext` are
+exported by the package too, for field components to read from. When custom
+contexts are needed, go to `@tanstack/react-form` directly.
+
+## Resetting the form
+
+`form.reset()` returns to the default values. For async-loaded defaults (an
+edit form renders empty first, then backfills once data arrives), let
+`useFormReset` absorb the boilerplate — the whole form backfills when the
+`defaultValues` reference changes:
+
+```tsx
+import { useFormReset } from '@gedatou/cadenza-form'
+
+const form = useForm({ defaultValues, onSubmit })
+useFormReset(form, defaultValues)
+```
+
+```tsx
+<Button type="button" variant="outline" onClick={() => form.reset()}>
+  Reset
+</Button>
+```
+
+## Submitting state
+
+`useFormSubmitting(form)` subscribes to `isSubmitting`; feed it straight to
+the button's `pending`:
+
+```tsx
+import { useFormSubmitting } from '@gedatou/cadenza-form'
+
+const submitting = useFormSubmitting(form)
+
+return <Button type="submit" pending={submitting}>Submit</Button>
+```
+
+## Array fields
+
+Array-field management under `mode="array"` (adding, removing, per-item
+validation) is native TanStack Form capability, available as-is through the
+facade.
+
+<ComponentPreview name="tanstack-form/array" align="stretch" />
+
+### Array structure
+
+The parent field turns on `mode="array"`, and `field.state.value` is the array
+itself:
+
+```tsx
+<form.Field name="emails" mode="array">
+  {field => (
+    <FieldGroup>
+      {field.state.value.map((_, index) => (
+        // one nested subfield per item
+      ))}
+    </FieldGroup>
+  )}
+</form.Field>
+```
+
+### Nested fields
+
+Properties inside an item are addressed with brackets:
+`emails[${index}].address`. Subfields go through `fieldControlProps` /
+`fieldErrors` as usual:
+
+```tsx
+<form.Field name={`emails[${index}].address`}>
+  {subField => (
+    <InputGroupInput
+      {...fieldControlProps(subField)}
+      value={subField.state.value}
+      onBlur={subField.handleBlur}
+      onChange={event => subField.handleChange(event.target.value)}
+    />
+  )}
+</form.Field>
+```
+
+### Adding items
+
+`field.pushValue(item)`; disable the button at the cap:
+
+```tsx
+<Button
+  type="button"
+  variant="outline"
+  disabled={field.state.value.length >= 5}
+  onClick={() => void field.pushValue({ address: '' })}
+>
+  Add email
+</Button>
+```
+
+### Removing items
+
+`field.removeValue(index)`; with only one item left, the remove button
+retracts:
+
+```tsx
+{field.state.value.length > 1 && (
+  <InputGroupButton
+    aria-label={`Remove email ${index + 1}`}
+    onClick={() => void field.removeValue(index)}
+  >
+    <IconX aria-hidden />
+  </InputGroupButton>
+)}
+```
+
+### Array validation
+
+The array itself and its items validate separately, both written in the same
+schema:
+
+```tsx
+const schema = z.object({
+  emails: z
+    .array(z.object({ address: z.email('Enter a valid email address') }))
+    .min(1, 'Enter at least one email')
+    .max(5, 'At most 5 emails'),
+})
+```
+
+## Multi-step form
+
+The stepped version of the [complex form](#complex-form): one `useForm` runs
+through five steps, with a controlled [Stepper](/en/docs/components/stepper)
+showing progress — values live in the form store, so switching steps merely
+unmounts field components, and neither input nor validation state is lost.
+Every advance passes through a 200–500ms async confirmation, during which the
+current step's indicator turns into a Spinner:
+
+<ComponentPreview name="tanstack-form/multi-step" align="stretch" />
+
+Everything about stepping is in the single act of advancing:
+
+- **"Next" is this step's submission attempt, not a form submission.** A real
+  submission makes `submissionAttempts > 0` and opens the gate form-wide (the
+  second gate condition in [Showing errors](#showing-errors)) — fields on
+  later steps would render already scolded with errors. So intermediate steps
+  never touch `handleSubmit`.
+- **Re-run validation first, then look at this step.** Untouched fields have
+  no validation record yet, so `form.validate('change')` forces one dispatch;
+  then check only this step's fields via `getFieldMeta(name).errors` — other
+  fields' errors stay blocked by the gate, unaffected. Cross-field validation
+  works as usual: the confirm-password `superRefine` error lands on step one's
+  own field.
+- **On errors, open the gate by hand:** mark this step's errored fields via
+  `setFieldMeta` as `isDirty` + `isBlurred` (the gate's first condition), so
+  errors and red rings appear on those fields only, then send focus over with
+  `focusFirstInvalidControl`. Semantically this treats "trying to advance" as
+  that step's submission attempt.
+- **Async advancing locks the whole surface with one `advancing` state.** The
+  async confirmation fires only after local validation passes; meanwhile
+  "Next" is `pending`, the Stepper is `loading` (the current step turns into a
+  Spinner), and the triggers and "Previous" are blocked along with them.
+  `pending` is not decoration but mis-submit protection: "Next" and "Submit"
+  render in the same position (React even reuses the same button node), so the
+  instant advancing completes, the second hit of a fast double-click lands on
+  "Submit" — without `pending` in the way, the form gets submitted by
+  accident.
+- **Going back is free; going forward must pass.** The Stepper is controlled
+  on an external `step`; in `onValueChange`, call `eventDetails.cancel()` for
+  `next > step` and for clicks during `advancing`, while clicks on completed
+  steps pass straight through.
+- **The real submission happens only on the last step**, with
+  `formProps(form)` taking over as usual: failure revealing + focusing + the
+  submit pipeline are all package defaults.
+
+## API
+
+The complete exports of `@gedatou/cadenza-form`. The official API is
+re-exported in full; the table lists only what the facade adds:
+
+| Export | Description |
+| --- | --- |
+| `createFormHook(options?)` | overrides the official export of the same name: contexts injected from the package singletons, `fieldComponents` / `formComponents` optional, returns the official `{ useAppForm, withForm, … }` |
+| `useFieldContext` / `useFormContext` | accessor hooks for the package's singleton contexts, for custom field components |
+| `formProps(form, options?)` | spread helper for `<form>`: `{ noValidate: true, onSubmit: formSubmitHandler(form, options) }` — switches off native constraint validation across the board (it intercepts submission before the `submit` event) and connects the submit pipeline |
+| `formSubmitHandler(form, options?)` | `<form onSubmit>` handler: `preventDefault` + `stopPropagation`; after a failed submission, re-runs one full validation (form-core skips form-level validation when field-level validation fails, so newly added fields would miss their errors), reveals errored fields (`revealFieldErrors`) and focuses the first invalid control (switch off with `focusFirstError: false`). Also accepts a bare `handleSubmit` callback, but that form has no form api — no re-validation, no error revealing |
+| `revealFieldErrors(form)` | marks fields that have errors but were never blurred as blurred — the display gate can then open on field-local state alone (`submissionAttempts` lives in the form store, which field components do not subscribe to) |
+| `focusFirstInvalidControl(form)` | focuses the first non-disabled `aria-invalid` control in the form, scheduled on rAF |
+| `fieldErrors(field)` | the gated `{ message }` array, fed to `FieldError`'s `errors` |
+| `fieldErrorMessage(field)` | the first error's message, `undefined` while gated |
+| `fieldHasError(field)` | whether there is a showable error |
+| `fieldShouldShowError(field)` | the gate itself: changed (dirty) and blurred, or submitted |
+| `fieldErrorId(name)` | the error element's id: illegal characters cleaned, then `-error` appended |
+| `fieldInvalidState(field)` | `{ errorId, invalid }`, for `FieldError`'s `id` and `Field`'s `data-invalid` |
+| `fieldControlProps(field)` | spreads the five wires `id` / `name` / `aria-describedby` / `aria-invalid` / `aria-required` (required derived automatically; optional fields omit the attribute) |
+| `normalizeFieldErrors(errors)` | recursively flattens error values: strings and objects carrying a `message` normalise to `{ message }` |
+| `requiredFields(schema, emptyValues)` | the low-level required probe: runs the schema once, synchronously, against the empty values, returning the set of failing field paths (same format as `field.name`). Not needed inside a form — `fieldControlProps`'s `aria-required` has the same derivation built in, and the red asterisk is the Field family's CSS responding to that attribute |
+| `silentFieldUpdateOptions` | third argument for `setFieldValue`: no listeners, no meta update, no validation |
+| `validatingFieldUpdateOptions` | third argument for `setFieldValue`: skips listeners only, validates as usual |
+| `useFormReset(form, defaultValues)` | backfills the whole form when the `defaultValues` reference changes |
+| `useFormSubmitting(form)` | subscribes to `isSubmitting` |
+| `FormFieldError` / `AppFieldControlProps` | types for error entries and the aria wiring props |

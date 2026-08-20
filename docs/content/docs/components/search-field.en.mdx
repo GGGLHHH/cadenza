@@ -1,0 +1,330 @@
+---
+title: SearchField
+description: A search field with a debounced query — input, clear button, Escape and Enter semantics all wired by the seam itself
+---
+
+<ComponentPreview name="search-field/basic" />
+
+The search field. Base UI has no search field part, so the whole behaviour is
+owned by the seam: the input is `type="search"` (hence `role="searchbox"`),
+Escape clears, Enter fires `onSubmit`, and the clear button empties the field
+and bails out of the debounce. Each part claims these behaviours via context —
+wherever you write it, it wires up.
+
+It is called **`SearchField`**, not SearchInput, because it is a *field*: the
+root holds the text, the query value, disabled and read-only; the input is just
+one of its parts. Beyond the field itself we add exactly one thing: **the
+debounced query value**.
+
+## Usage
+
+```tsx
+import {
+  InputGroupAddon,
+  InputGroupButton,
+  SearchField,
+  SearchFieldClear,
+  SearchFieldInput,
+  useSearchQuery,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<SearchField
+  aria-label="Search composers"
+  placeholder="Search composers..."
+  onQueryValueChange={setQuery}
+/>
+```
+
+## Anatomy
+
+Without `children` you get the default composition (magnifier + input + clear
+button):
+
+```text
+SearchField                 ← holds the text, query value, disabled and read-only
+└── InputGroup              ← border, radius and focus ring all painted on this row
+    ├── InputGroupAddon     ← the magnifier
+    ├── SearchFieldInput    ← type="search"; Escape / Enter wired here
+    └── SearchFieldClear    ← ships its own InputGroupAddon shell, hidden when empty
+```
+
+With `children` you take over the internal structure entirely and place the
+parts yourself. Placement uses shadcn's
+[`InputGroup`](/en/docs/components/input-group) family itself, not renamed
+forwarding shells. Below, a keyboard-shortcut hint sits at the tail and steps
+aside for the clear button once there is content:
+
+<ComponentPreview name="search-field/composition" />
+
+Each part hooks itself up to the root via context; nothing needs passing down —
+`SearchFieldInput` takes the text, handlers and accessible name from context,
+`SearchFieldClear` takes the clear action and disabled state. Ordering is
+yours; the wiring is unaffected.
+
+`SearchField` itself exports only two parts, because only these two actually
+add something: `SearchFieldInput` covers the browser's native search cancel
+button, `SearchFieldClear` wires up "hidden when empty". The rest of the
+structure uses the `InputGroup` family directly: `InputGroup` /
+`InputGroupAddon` / `InputGroupButton` / `InputGroupInput` / `InputGroupText` /
+`InputGroupTextarea` — themselves public components of this library.
+
+Border, radius and focus ring are all painted on the `InputGroup`: the ring
+senses the inner control via
+`has-[[data-slot=input-group-control]:focus-visible]`, the control's own ring
+is suppressed with `focus-visible:ring-0`, and the whole group shows exactly
+one ring. `InputGroupAddon`'s `align` decides head or tail of the row.
+
+Text inputs hit `:focus-visible` on mouse click too (the browser assumes
+typing is coming), so one click shows the ring — native behaviour, not
+something we added.
+We wrap no renamed shells around these parts — that would only hide where they
+come from.
+
+## Label
+
+The channel is the most ordinary of
+[Field](/en/docs/components/field#accessibility)'s four — `id` lands on the
+actual `<input>`; only **the default composition has no `id` landing spot**:
+the root is a `<div>`, so an `id` passed to it stops at that div and never
+reaches the input. Hence two forms:
+
+| Scenario | Form |
+| --- | --- |
+| no visible label | pass `aria-label` on the root — it is forwarded to the input via context and does **not** stay on the root `div` |
+| a visible `FieldLabel` | go [composable](#anatomy): pass `id` to `SearchFieldInput` and point `FieldLabel htmlFor` at it |
+
+The clear button's own accessible name is a separate matter, see
+[SearchFieldClear](#searchfieldclear).
+
+## Debounced query
+
+While typing, `value` updates on every keystroke; `queryValue` settles only
+after a `debounceMs` pause (default 300) and arrives **already normalized** —
+leading and trailing whitespace stripped, empty string turned into
+`undefined` — ready to drop straight into a request or write into a URL. The
+hero demo above displays this time gap directly.
+
+The split shares its vocabulary with
+[InfiniteCombobox](/en/docs/components/infinite-select): `value` is for the
+input, `queryValue` is for the data layer. Keeping them apart is what stops
+every keystroke from firing a request.
+
+`debounceMs` is **read once at mount**; later changes have no effect — the
+same convention as `defaultValue`. Clearing is an explicit action and **skips
+the debounce**, taking effect immediately: a filter that lingers 300ms after
+the clear was pressed reads as lag, not smoothness.
+
+## Debounced state hook
+
+`useSearchQuery()` is the debounce logic above itself, exported on its own. Use
+it when the debounced query lives elsewhere (driving a table's filter, syncing
+with the URL) and you do not want to render our field:
+
+```tsx
+import { useSearchQuery } from '@gedatou/cadenza-ui'
+
+const { value, setValue, queryValue, resetSearch } = useSearchQuery({
+  debounceMs: 500,
+})
+```
+
+| Field | Description |
+| --- | --- |
+| `value` | the raw text, in sync with the input |
+| `setValue(text)` | writes the text and restarts the timer. With `eventDetails` omitted, `reason` is `'none'` |
+| `queryValue` | the settled query value: trimmed, `undefined` when blank |
+| `resetSearch()` | clears both at once and cancels any pending debounce. With `eventDetails` omitted, `reason` is `'imperative-action'` |
+
+It takes the same controlled props as `SearchField` (`SearchQueryOptions`) —
+passing that batch of props to the component is its shorthand.
+
+## Controlled
+
+`value` + `onValueChange` hand the text to external state and the component
+just renders — filling in or clearing from outside the field works exactly
+through this:
+
+<ComponentPreview name="search-field/controlled" />
+
+The debounced value can be controlled too (`queryValue` +
+`onQueryValueChange`), and the two pairs are independent: controlling only the
+text leaves the debounced value internally managed, and vice versa.
+
+Each callback's `eventDetails.cancel()` guards its own layer: reject the text
+change and the debounced one never happens; reject only the debounced one and
+the input still shows the new text while the query value stays put.
+
+## Form
+
+The root is a `<div>`, not a `<form>`: `onSubmit` is **our Enter callback**,
+unrelated to native form submission. Like `onChange` it is stripped from the
+div's props and never reaches the element — the same-named native handlers'
+signatures do not line up, and keeping them would only have the types force you
+into a callback satisfying both.
+
+Serialization still goes native, just landing on the input: pass `name` to
+`SearchFieldInput`, which means taking the [composable](#anatomy) path — a
+`name` passed to the root only stays on that `div`. Most search boxes never
+take part in serialization at all; only inside a `<form role="search">` is this
+step needed.
+
+## Disabled
+
+`disabled` makes the whole field unusable (the clear button goes down with it);
+`readOnly` keeps focus and selection, just no editing. Read-only **does not
+render the clear button** — the value cannot change anyway, so there is nothing
+to clear:
+
+<ComponentPreview name="search-field/disabled" />
+
+When composing yourself, remember to handle the read-only tier too, and not
+with `hidden` alone: `InputGroup` greys out wholesale for **any** disabled
+descendant (`has-disabled:opacity-50`), so a read-only field would look exactly
+like a disabled one — and a `display: none` element is still matched by
+`:has(:disabled)`. Hiding does nothing; it must not render.
+
+## When to use SearchField
+
+All three are "typing" controls — choose the right one before reading usage:
+
+| Component | When |
+| --- | --- |
+| **SearchField** | the query is **free text**, handed to a server or a table's filter — no candidate list to select from |
+| [Combobox](/en/docs/components/combobox) / [InfiniteCombobox](/en/docs/components/infinite-select) | typing is for **selecting one item from a list**; what you end up with is the selected value, not text |
+| [`useSearchQuery`](#debounced-state-hook) | you want the same debounced query, but the input lives elsewhere (table toolbar, URL sync) and this field never renders |
+
+## State and className
+
+The root element is a plain `<div>`, so its `className` is a string — the
+types do not pretend a function form exists. To style by state, use the
+`data-*` in the left column below (`data-disabled:opacity-50`, straight
+Tailwind variants) — the default composition hides its own clear button exactly
+this way. Only `SearchFieldInput`'s `className` takes both forms; underneath it
+is Base UI's `Input`.
+
+The right column is the same state's name inside the function `children`:
+
+| State | When present | Name in function children |
+| --- | --- | --- |
+| `data-empty` | the field has no content (the clear button shows and hides by it) | `empty` |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-readonly` | `readOnly` | `readOnly` |
+
+The three seam-rendered parts each carry a `data-slot`:
+
+| `data-slot` | What it is |
+| --- | --- |
+| `search-field` | the root `div`. It is also `group/search-field` — state travels down through this group name: the clear button hides with `group-data-empty/search-field:hidden`, and the shortcut hint in [Anatomy](#anatomy) shows itself the other way round with `group-data-empty/search-field:inline` |
+| `search-field-clear-addon` | the clear button's own `InputGroupAddon` shell (`align="inline-end"`); the show/hide rule hangs on it |
+| `search-field-clear` | the clear button itself |
+
+**`SearchFieldInput` has no `data-slot` of its own — and do not pass it one.**
+The `data-slot="input-group-control"` it carries is a wiring contract, not a
+marker — `InputGroup`'s focus ring is painted precisely through
+`has-[[data-slot=input-group-control]:focus-visible]`. And `InputGroupInput`
+writes the attribute first and spreads props after, so a same-named attribute
+passed from outside overrides the contract value and the focus ring silently
+vanishes: no error, it just stops appearing.
+
+## Keyboard interactions
+
+| Key | Behaviour |
+| --- | --- |
+| `Esc` | clear the field (equivalent to pressing the clear button, likewise skipping the debounce) |
+| `Enter` | fire `onSubmit` with the current raw text + `eventDetails` (`reason: 'keyboard'`) |
+| `Tab` | the clear button takes **no** Tab stop (`tabIndex={-1}`; keyboard users clear with Esc); when empty it stays in the DOM, hidden via CSS by `data-empty` |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+State attributes and the two `className` channels are in
+[State and className](#state-and-classname).
+
+### SearchField
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `aria-label` | `string` | — | the field's accessible name, **required** without a visible `Label`, see [Label](#label) |
+| `defaultValue` | `string` | `''` | uncontrolled initial text |
+| `defaultQueryValue` | `string` | — | uncontrolled initial query value |
+| `value` | `string` | — | controlled text |
+| `queryValue` | `string` | — | controlled query value |
+| `onValueChange` | `(value, eventDetails) => void` | — | fires on every text change. `eventDetails.reason` names the source (`input-change` / `clear-press` / `escape-key` / `imperative-action` / `none`), `cancel()` rejects the change |
+| `onQueryValueChange` | `(value, eventDetails) => void` | — | fires after the debounce, trimmed, blank normalized to `undefined`. It receives a **separate** `eventDetails` (same reason and event), and its `cancel()` blocks only this layer |
+| `onSubmit` | `(value, eventDetails) => void` | — | fires on Enter with the current raw text. The second parameter is `SearchFieldSubmitEventDetails` — **generic details, no `cancel()`** (submitting writes no internal state, so there is nothing to skip), `reason` is `'keyboard'` |
+| `clearable` | `boolean` | `true` | the clear button's master switch — `false` also switches off an explicitly composed `SearchFieldClear`. Escape clearing is outside its reach (that is the search input's own keyboard semantics) |
+| `debounceMs` | `number` | `300` | debounce interval. **Read once at mount**; later changes have no effect (the `defaultValue` convention) |
+| `disabled` | `boolean` | `false` | disable the whole field |
+| `readOnly` | `boolean` | `false` | read-only: focusable, selectable, not editable |
+| `placeholder` | `string` | — | placeholder for the default composition's input |
+| `children` | `ReactNode \| (state) => ReactNode` | the default composition | written, it takes over the internal structure entirely. The function form receives the three states from the state table's right column, plus `defaultChildren` (the default composition, extendable) |
+| `className` | `string` | — | root element class |
+| rest | native `<div>` props (`ref` included) | — | passed through to the root |
+
+`children` takes both forms: a ReactNode, or a `(state) => ReactNode`
+function — the parameter carries the three states from the
+[state table](#state-and-classname)'s right column, **plus `defaultChildren`
+(the default composition itself)**. The function form is a **complete
+take-over**: nothing is injected automatically; but to extend rather than
+rebuild, render `defaultChildren` and add alongside:
+
+```tsx
+<SearchField aria-label="Search">
+  {({ defaultChildren }) => (
+    <>
+      {defaultChildren}
+      <InputGroupAddon align="inline-end">
+        <InputGroupButton aria-label="Filter"><IconFilter /></InputGroupButton>
+      </InputGroupAddon>
+    </>
+  )}
+</SearchField>
+```
+
+The default composition uses this very capability itself (folding the clear
+button away when read-only); after a take-over the same states arrive in your
+hands unchanged.
+
+### SearchFieldInput
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `placeholder` | `string` | — | placeholder |
+| `className` | `string \| (state) => string` | — | class |
+| rest | Base UI `Input` props (`ref` included) | — | passed through |
+
+No `value` / `onValueChange` / `aria-label` needed — all three come from the
+field's context. `type="search"`, Escape-to-clear and Enter-to-submit are wired
+here too, and **cannot be knocked off** — both handlers are chained after the
+spread: your `onChange` runs after the field has written the text, your
+`onKeyDown` runs before ours, and only a `preventDefault()` keeps Escape /
+Enter from their turn. The native `::-webkit-search-cancel-button` is already
+hidden so it never duplicates our clear button.
+`data-slot` is the one prop that **cannot** be passed; the reason is in
+[State and className](#state-and-classname).
+
+### SearchFieldClear
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | ✕ | swap the icon here |
+| `aria-label` | `string` | `'Clear search'` | the button's accessible name. The default is the aria-only English fallback (the `'Search'` / `'Loading'` house rule); application code overrides it with a translation |
+| `className` | `string` | — | class |
+| rest | `InputGroupButton` props | — | passed through to the button |
+
+The clear behaviour needs **no wiring**: it takes the clear action and disabled
+state from the field's context. It hides along with the root's `data-empty`
+when the field is empty, and the default composition simply does not render it
+when read-only. It takes no Tab stop either (`tabIndex={-1}`) — keyboard users
+use Escape. Under `clearable={false}` it returns `null` entirely.
+
+For the `InputGroup` parts used in composition, props are in
+[InputGroup](/en/docs/components/input-group).
+
+Eight types are exported as well: `SearchFieldProps` / `SearchFieldState` /
+`SearchQueryOptions` / `SearchQueryState` / `SearchFieldChangeEventReason` /
+`SearchFieldChangeEventDetails` / `SearchFieldSubmitEventReason` /
+`SearchFieldSubmitEventDetails`.

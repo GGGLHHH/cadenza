@@ -1,0 +1,47 @@
+---
+title: Introduction
+description: Base UI drives behaviour and accessibility, Tailwind + cva drive the looks.
+---
+
+Cadenza is a component library built on [Base UI](https://base-ui.com): behaviour,
+keyboard interaction and accessibility semantics are all delegated to Base UI, while
+the looks follow shadcn's (`base-nova` preset) Tailwind + cva system.
+
+## Installation
+
+```bash
+pnpm add @gedatou/cadenza-ui
+```
+
+In your entry CSS:
+
+```css
+@import "tailwindcss";
+@import "@gedatou/cadenza-ui/styles.css";
+```
+
+`styles.css` ships with `@source "./dist"`, so Tailwind picks up every class the
+components use — no extra configuration needed.
+
+## Where to start
+
+- [Button](/en/docs/components/button) — buttons and link buttons, cva variant / size system, `pending` comes with a built-in Spinner
+- [Spinner](/en/docs/components/spinner) — `role="status"` loading indicator, size and colour fully driven by className
+- [LoadingOverlay](/en/docs/components/loading-overlay) — region-level frosted loading overlay, fills the nearest `relative` parent
+- [DataTable](/en/docs/components/data-table) — column-definition-driven data table: sorting, row selection, pinned columns, pagination, infinite scroll, virtualization, column picker (visibility + drag reorder)
+- [InfiniteSelect / InfiniteCombobox](/en/docs/components/infinite-select) — infinitely scrolling dropdowns: search, multi-select, cross-page archiving, composable slots. Base panel and popup convenience layer share one page
+- [DataPagination](/en/docs/components/data-pagination) — offset pagination bar: page / limit independently controllable, zero-copy design
+- [SearchField](/en/docs/components/search-field) — search field with debounced querying, split `value` / `queryValue` pair
+- [Select](/en/docs/components/select) — composable dropdown select: single/multiple, groups, dynamic collections, labels go through Field
+- [Cascader](/en/docs/components/cascader) — cascading select: a tree of options unfolds level by level as submenus, the value is a single root-to-leaf path; stepwise async loading, scroll pagination, virtualization
+- [Field](/en/docs/components/field) — layout family for form fields: label, description, error, group, separator — pure DOM, control-agnostic
+- [InputGroup](/en/docs/components/input-group) — icons, text, buttons and the input share one border, with the focus ring drawn around the whole group
+- [ScrollArea](/en/docs/components/scroll-area) — scroll container with overlay scrollbars, naturally compatible with scroll-fade masks
+- [Tabs](/en/docs/components/tabs) — composable TabsTab / TabsPanel, keyboard navigation and pairing fully managed, plus an indicator that glides along hover and focus
+- [useControllableState](/en/docs/utils/use-controllable-state) — the single implementation behind controlled/uncontrolled dual mode
+
+Every `className` that lands on a Base UI slot supports both forms across the
+library — a string, or a `(state) => string` state function; the state table on each
+component page doubles as the dictionary for that function's argument. Ones that
+land on plain DOM elements are honestly narrowed to `string`, and styling there
+goes through `data-*` attributes.

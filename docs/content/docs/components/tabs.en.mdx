@@ -1,0 +1,316 @@
+---
+title: Tabs
+description: A wrapper over Base UI Tabs — a composable tab family with behaviour and accessibility fully delegated to Base UI, plus an indicator that glides along hover and focus
+---
+
+<ComponentPreview name="tabs/basic" />
+
+The tab family. Behaviour is entirely Base UI's: `TabsList` is one roving focus
+group (the whole strip takes a single Tab stop), arrow keys move between tabs and
+switch axis with `orientation`, and the `aria-controls` / `aria-labelledby` pairing
+between `TabsTab` and `TabsPanel` is wired automatically by `value`.
+Composition is the whole API — the root `Tabs` has no `items` and no config object.
+When the tab set is computed from data, it is just an ordinary `.map()`.
+
+The public names match what these parts actually are: **`Tabs` / `TabsList` /
+`TabsTab` / `TabsPanel`**. The `TabsList` / `TabsTrigger` / `TabsContent` set in the
+shadcn source is a leftover Radix alias — the components underneath are Base UI, yet
+the names speak another library's dialect. The seam deliberately renames them back,
+so the props (`value` / `onValueChange` / `activateOnFocus`) and the component names
+speak the same language.
+
+## Usage
+
+```tsx
+import {
+  Tabs,
+  TabsIndicator,
+  TabsList,
+  TabsPanel,
+  TabsTab,
+  TabsViewport,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Tabs defaultValue="overview">
+  <TabsList aria-label="Project dashboard">
+    <TabsTab value="overview">Overview</TabsTab>
+    <TabsTab value="analytics">Analytics</TabsTab>
+  </TabsList>
+  <TabsPanel value="overview">Overall progress and this week's tasks.</TabsPanel>
+  <TabsPanel value="analytics">Weekly traffic and conversion trends.</TabsPanel>
+</Tabs>
+```
+
+A `TabsTab`'s `value` is its key; the `TabsPanel` with the same `value` pairs up
+automatically. `defaultValue` sets the initial selection (omitted, the first
+**non-disabled** tab is selected). `TabsList`'s `aria-label` is required — it is the
+accessible name of this tab group.
+
+The gliding selection marker ([`TabsIndicator`](#sliding-indicator)) and the
+cross-fading panels ([`TabsViewport`](#panel-transition)) are **both present by
+default** — the snippet above needs not a single extra line.
+
+## Anatomy
+
+The structure is always: a `Tabs` containing one `TabsList` (with `TabsTab`s
+inside), followed by the `TabsPanel`s.
+
+```text
+Tabs
+├── TabsList
+│   ├── TabsIndicator   ← rendered automatically by default
+│   ├── TabsTab
+│   └── TabsTab
+└── TabsViewport        ← wrapped automatically by default
+    ├── TabsPanel
+    └── TabsPanel
+```
+
+The two parts marked ← are rendered implicitly by the seam: present whether you
+write them or not, yours takes over once written, and each can be switched off
+explicitly — see [Sliding indicator](#sliding-indicator) and
+[Panel transition](#panel-transition).
+
+## Line
+
+`TabsList`'s `variant` changes looks only, never behaviour: `default` is a pill
+background, `line` drops the background for a 2px indicator line under the tabs:
+
+<ComponentPreview name="tabs/line" />
+
+## Sliding indicator
+
+`TabsIndicator` replaces per-tab selection styling with **one element that
+glides**: switching tabs tweens it over (200ms ease-out) instead of A switching
+off and B switching on.
+
+It follows **hover → focus → selection**, in that order: hover another tab and it
+glides there, move away and it glides back to the actually selected one — so what
+it expresses is "the tab you are about to select". The middle tier, focus, is the
+very reason it exists — Base UI defaults to manual activation, where arrow keys
+move focus without changing selection, and only an indicator that follows focus
+shows which tab is about to be selected.
+
+> Base UI ships its own `Tabs.Indicator`, but it only follows the **selected** tab.
+> This one is written by the library; the extra part is precisely the hover and
+> focus tiers.
+
+**It is present by default** — `TabsList` renders one automatically; this is simply
+what this library's tabs look like. Three states:
+
+```tsx
+<TabsList aria-label="…">…</TabsList>                    // omitted: present by default
+<TabsList aria-label="…">
+  <TabsIndicator className="…" />                        // written: fully yours, the default one steps aside
+  …
+</TabsList>
+<TabsList aria-label="…" indicator={false}>…</TabsList>  // switched off: back to per-tab selection styling
+```
+
+While the indicator is present, tabs stop painting their own selected background —
+both `variant`s are supported (`default` glides as a pill, `line` glides as an
+underline). Under `prefers-reduced-motion` it degrades to instant movement; on
+first render it snaps into place with no slide-in. Tab width changes (fonts
+finishing loading, a badge count changing) trigger automatic re-measurement.
+
+## Panel transition
+
+**Cross-sliding is present by default** — same parameters as Base UI's official
+[animated panels](https://base-ui.com/react/components/tabs#animated-panels)
+(opacity 175ms ease, translation 350ms `cubic-bezier(0.22,1,0.36,1)`, ±50%
+travel): the old panel slides out fading while the new one slides in from the side
+its tab sits on (direction comes from `data-activation-direction`; vertical tabs
+slide up and down). Translation is skipped under `prefers-reduced-motion`, the
+fade stays.
+
+The official example asks you to hand-write a viewport container; here **the root
+does it implicitly** — consecutive `TabsPanel` direct children (`.map()` arrays
+included) are gathered into a `TabsViewport`, panels stack into the same grid
+cell, both sides animate overlapped, and layout never jumps. The usual three
+states:
+
+```tsx
+<Tabs>…</Tabs>                              // omitted: cross-slide by default
+<Tabs>
+  <TabsViewport className="…">…panels…</TabsViewport>   // write your own viewport: structure is yours
+</Tabs>
+<Tabs viewport={false}>…</Tabs>             // viewport off: fall back to container-free entry nudge
+<TabsPanel animated={false} …>              // per-panel animation off
+```
+
+Boundary: panels hidden inside custom wrapper components cannot be gathered into
+the viewport (the same "direct children" boundary as every implicit part) and fall
+back to the entry nudge.
+
+## Orientation
+
+With `orientation="vertical"` the `TabsList` stacks vertically and arrow keys
+switch axis (up/down to move) — the axis switch is Base UI reading `orientation`
+on its own, nothing extra to configure. The indicator switches axis too: it glides
+vertically and tweens height (under the [`line`](#line) variant the indicator line
+also moves to the side):
+
+<ComponentPreview name="tabs/vertical" />
+
+## Controlled
+
+`value` + `onValueChange` hand selection to external state and the component just
+renders — switching tabs from outside the `Tabs` (the "Next" button below) works
+exactly through this:
+
+<ComponentPreview name="tabs/controlled" />
+
+## Disabled
+
+`<TabsTab disabled>` is declared per tab. When the disabled set is computed from
+data, write `disabled={disabledIds.has(id)}` right in the `.map()` — Base UI has
+no root-level disabled collection. Disabled tabs are skipped by keyboard
+navigation, and the indicator never follows onto them:
+
+<ComponentPreview name="tabs/disabled" />
+
+## Keyboard activation
+
+**Manual activation is the default**: arrow keys only move focus; Enter / Space
+switches the panel. When panels are expensive (requests, large charts), keyboard
+passers-by never trigger them for nothing. When panels are cheap and you want one
+less Enter, turn on `activateOnFocus` on the `TabsList`:
+
+<ComponentPreview name="tabs/keyboard-activation" />
+
+> This is the opposite of React Aria's default (there, selection follows focus).
+> When upgrading from 0.2, places that relied on the old default need an explicit
+> `activateOnFocus`.
+
+## State and className
+
+Every `className` takes both forms: a string, or a `(state) => string` function.
+The left column below is the `data-*` Base UI puts on the DOM — Tailwind uses it
+directly as a variant (`data-active:bg-background`); the right column is the same
+state's name inside the function `className` — two outlets for one set of states,
+use whichever is at hand.
+
+| Part | `data-*` | When present | Name in function `className` |
+| --- | --- | --- | --- |
+| all four parts | `data-orientation` | always set: `horizontal` / `vertical`. Decided on the root, the rest follow | `orientation` |
+| all four parts | `data-activation-direction` | direction relative to the previously selected tab: `left` / `right` / `up` / `down` / `none` | `tabActivationDirection` |
+| `TabsList` | `data-variant` | always set: `default` / `line` (ours, not Base UI's) | — |
+| `TabsTab` | `data-active` | is the currently selected tab | `active` |
+| `TabsTab` | `data-disabled` | `disabled` | `disabled` |
+| `TabsPanel` | `data-hidden` | panel kept by `keepMounted` but not currently selected | `hidden` |
+
+Hover, press and focus get no data attributes — `TabsTab` is a native `<button>`,
+so `hover:` / `active:` / `focus-visible:` pseudo-classes cover every input
+modality directly.
+
+`TabsIndicator` is the exception to the rule: it is a plain span, its `className`
+only takes a string, and it has no state (see
+[its Props section](#tabsindicator)). `children` are ordinary ReactNode
+everywhere — Base UI has no collection API and no state render props; to vary
+content by state, branch on `value` yourself.
+
+For targeting from outside, use `data-slot`:
+
+| `data-slot` | What it is |
+| --- | --- |
+| `tabs` | root element |
+| `tabs-list` | the tab strip |
+| `tabs-indicator` | the gliding indicator (seam-rendered) |
+| `tabs-trigger` | a single `TabsTab`. **The name is a shadcn-source leftover** — the part was renamed, the selector was not |
+| `tabs-viewport` | the panel stage (seam-rendered) |
+| `tabs-panel` | a single `TabsPanel` (renamed by the seam to match the part; the vendored file says `tabs-content`) |
+
+## Keyboard interactions
+
+| Key | Behaviour |
+| --- | --- |
+| `→` / `←` | horizontal (default): move to the adjacent tab, wrapping at the ends |
+| `↓` / `↑` | `orientation="vertical"`: move to the adjacent tab |
+| `Home` / `End` | jump to the first / last tab |
+| `Tab` | entering lands on the selected tab (the strip takes one stop); pressing again leaves the TabsList into the panel |
+| `Enter` / `Space` | confirm the focused tab (under `activateOnFocus` the arrow key has already switched) |
+
+Disabled tabs are skipped in all of the navigation above.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks →
+behaviour switches → appearance → `className`**.
+
+Each part's state attributes and function-`className` parameters are in
+[State and className](#state-and-classname).
+
+### Tabs
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `string \| number \| null` | first non-disabled tab | uncontrolled initial selection |
+| `value` | `string \| number \| null` | — | controlled selected value; `null` means none selected |
+| `onValueChange` | `(value, eventDetails) => void` | — | selection change callback |
+| `viewport` | `boolean` | `true` | whether consecutive `TabsPanel` direct children are gathered into a `TabsViewport`, see [Panel transition](#panel-transition) |
+| `orientation` | `'horizontal' \| 'vertical'` | `'horizontal'` | layout direction, also decides the arrow-key axis |
+| `className` | `string \| (state) => string` | — | root element class |
+| rest | Base UI `Tabs.Root` props | — | passed through |
+
+### TabsList
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `aria-label` | `string` | — | accessible name of this tab group, **required** |
+| `activateOnFocus` | `boolean` | `false` | whether arrow keys also switch panels, see [Keyboard activation](#keyboard-activation) |
+| `indicator` | `boolean` | `true` | whether a `TabsIndicator` is rendered automatically; ignored once you write your own, see [Sliding indicator](#sliding-indicator) |
+| `variant` | `'default' \| 'line'` | `'default'` | pill background / bottom indicator line |
+| `className` | `string \| (state) => string` | — | class |
+| rest | Base UI `Tabs.List` props | — | passed through |
+
+The seam only adds a `relative` — `TabsIndicator` is absolutely positioned inside
+and needs this positioning context.
+
+### TabsIndicator
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class (colour, radius and transition duration all come from here) |
+
+Write it anywhere inside `TabsList` — Base UI's List renders children as-is, so it
+renders where you put it and measures exactly its own parent. It has no state:
+which tab it follows is read off the DOM (`[data-active]`, `:focus-visible`, one
+pointer listener), not readable from outside — nor should it be.
+
+### TabsTab
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `string \| number` | **required** | this tab's key, equal to the paired `TabsPanel`'s `value` (strict equality, no index fallback) |
+| `disabled` | `boolean` | `false` | disable this one tab |
+| `nativeButton` | `boolean` | `true` | switch off to use `render` with an `<a>` (router-driven tabs) |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | element replacement. Prefer the function form |
+| `className` | `string \| (state) => string` | — | class |
+| rest | Base UI `Tabs.Tab` props | — | passed through |
+
+### TabsViewport
+
+The panel stage: panels inside stack into the same grid cell. The root creates one
+implicitly by default; writing your own takes over the structure, see
+[Panel transition](#panel-transition).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class |
+| rest | native `div` props + `ref` | — | passed through |
+
+### TabsPanel
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `string \| number` | **required** | equal to the paired `TabsTab`'s `value` |
+| `keepMounted` | `boolean` | `false` | keep in the DOM while unselected (by default only the selected one renders) |
+| `animated` | `boolean` | `true` | this panel's transition; switching it off affects only itself |
+| `className` | `string \| (state) => string` | — | class |
+| rest | Base UI `Tabs.Panel` props | — | passed through |
+
+The six types `TabsProps` / `TabsListProps` / `TabsTabProps` / `TabsPanelProps` /
+`TabsIndicatorProps` / `TabsViewportProps` are exported as well — reuse them
+directly when wrapping another layer in application code.

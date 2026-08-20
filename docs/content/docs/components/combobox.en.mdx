@@ -1,0 +1,597 @@
+---
+title: Combobox
+description: A combobox that filters in the browser — the whole list lives in items, and Base UI narrows it as you type
+---
+
+<ComponentPreview name="combobox/basic" />
+
+A text box that filters a list. **The whole list is right in `items`** — you
+type, Base UI narrows this array in the browser, and `ComboboxList`'s render
+function always receives the narrowed copy.
+
+When the list lives on the server and needs paging, do not try to keep
+`items` topped up here — that is another component's job, see
+[When to use Combobox](#when-to-use-combobox).
+
+## Usage
+
+```tsx
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxPopup,
+  InputGroupAddon,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Combobox<string> id="composer" items={composers}>
+  <ComboboxInput placeholder="Search composers" />
+  <ComboboxPopup>
+    <ComboboxEmpty>No matching composers</ComboboxEmpty>
+    <ComboboxList>
+      {(composer: string) => (
+        <ComboboxItem key={composer} value={composer}>{composer}</ComboboxItem>
+      )}
+    </ComboboxList>
+  </ComboboxPopup>
+</Combobox>
+```
+
+Writing `id` on the root is enough: Base UI routes it to the `<input>` inside
+`ComboboxInput`, and [Field](/en/docs/components/field)'s `FieldLabel
+htmlFor` points straight at it.
+
+## Anatomy
+
+`ComboboxInput` is the text box row, `ComboboxPopup` the floating layer, and
+writing `ComboboxList`'s children as a render function renders each item into
+a `ComboboxItem`. Three shapes:
+
+### Single row
+
+One text box row with one flat list — see the example at the top of the page
+and [Usage](#usage):
+
+```text
+Combobox
+├── ComboboxInput
+└── ComboboxPopup
+    ├── ComboboxEmpty
+    └── ComboboxList
+        ├── ComboboxItem
+        └── ComboboxItem
+```
+
+### With chips
+
+Under `multiple` the input row becomes a chips row, see
+[Multiple selection](#multiple-selection):
+
+```text
+Combobox
+├── ComboboxChips
+│   └── ComboboxValue
+│       ├── ComboboxChip
+│       └── ComboboxChipsInput
+└── ComboboxPopup
+    ├── ComboboxEmpty
+    └── ComboboxList
+        ├── ComboboxItem
+        └── ComboboxItem
+```
+
+### Groups and Collection
+
+Each group's items are rendered by the `ComboboxCollection` inside a
+`ComboboxGroup`, with an optional `ComboboxSeparator` between groups, see
+[Groups](#groups):
+
+```text
+Combobox
+├── ComboboxInput
+└── ComboboxPopup
+    ├── ComboboxEmpty
+    └── ComboboxList
+        ├── ComboboxGroup
+        │   ├── ComboboxGroupLabel
+        │   └── ComboboxCollection
+        │       ├── ComboboxItem
+        │       └── ComboboxItem
+        ├── ComboboxSeparator
+        └── ComboboxGroup
+            ├── ComboboxGroupLabel
+            └── ComboboxCollection
+                ├── ComboboxItem
+                └── ComboboxItem
+```
+
+A `ComboboxItem`'s `value` is what lands in the combobox value once selected.
+
+`ComboboxEmpty` shows itself only when the filtered result is empty, and **it
+depends on the root's `items`** — that data is what upstream uses to judge
+"empty", so it never lights up when you hand-write `ComboboxItem`s without
+giving `items`. It must stay mounted in the DOM at all times (it announces
+via its own `aria-live`), so never conditionally render the component itself
+— to change the content, change its children.
+
+## Multiple selection
+
+Under `multiple` the value retypes into an array wholesale, and the input row
+changes hands too: `ComboboxChips` is the bordered row, each selected item
+inside it is a `ComboboxChip`, and a borderless `ComboboxChipsInput` trails
+at the end:
+
+<ComponentPreview name="combobox/multiple" />
+
+**The chips row must be handed to the popup as its anchor yourself.** By
+default the popup attaches to the input, but here the input is only a small
+stretch of the row, and enough selections wrap and grow the whole row taller.
+So give `ComboboxChips` a ref and hand the same ref to `ComboboxPopup`'s
+`anchor` — the popup follows the whole row. The seam recognises this: with
+`anchor` given, the popup gains an extra `data-chips` (see
+[State and className](#state-and-classname)), a ready-made selector when
+styling by this branch.
+
+Chip removal goes by index
+(`selectedValue.filter((_, i) => i !== index)`, the index being its render
+order inside `ComboboxChips`), so **the chips' order must match the value's
+order** — render by iterating the current value with `ComboboxValue`'s
+function children, and the orders align by construction.
+
+`ComboboxChip` ships with its ✕ by default (`removable={false}` switches it
+off, leaving keyboard removal only); for how to move between chips see
+[Keyboard interactions](#keyboard-interactions).
+
+## Clearable
+
+The clear button is **not always there**: Base UI mounts it into the DOM only
+when "there is something to clear", and "something" splits three ways by
+selection mode:
+
+| Selection mode | What "something to clear" means |
+| --- | --- |
+| single (default) | **a value is selected** (`selectedValue != null`) |
+| `multiple` | **there are chips** — the selected array is non-empty |
+| `selectionMode="none"` | the input **has text** |
+
+The third is the mode of upstream's `Autocomplete` root; this library's
+`Combobox` only translates `multiple` into `'multiple'` / `'single'` — there
+is no third tier.
+
+The point is in the first row: **in single selection, having only typed
+without picking from the list, the clear does not appear and the arrow
+stays.** It is precisely this conditional mounting that lets the arrow and
+the clear **share one position** — `ComboboxInput` hangs
+`group-has-data-[slot=combobox-clear]/input-group:hidden` on the arrow: the
+moment a clear button appears in the row, the arrow steps aside on its own.
+To switch off both, `trigger={false}` / `clearable={false}`.
+
+Pressing clear empties the text and clears the selected value to `null`
+(`[]` in multi-select), with `reason` `'clear-press'`, then focus returns to
+the input.
+
+## Groups
+
+Grouped data is `items`' second shape: an array whose every element is **a
+group**.
+
+<ComponentPreview name="combobox/groups" />
+
+**The only required key is `items`** — upstream recognises grouped data
+precisely by "does the first element carry `items`" (`isGroupedItems`). Call
+the group name whatever you like (the demo uses `value`, the Base UI official
+example's spelling); neither the seam nor Base UI reads that key — you print
+it yourself in `ComboboxGroupLabel`.
+
+The render functions are therefore two levels:
+
+| Level | Receives | Does |
+| --- | --- | --- |
+| `ComboboxList`'s children | each **group** | render a `ComboboxGroup`, handing it `group.items` |
+| `ComboboxCollection`'s children | each **item** in the group | render a `ComboboxItem` |
+
+`ComboboxGroup items` is not decoration: it opens a context that the
+`ComboboxCollection` inside recognises — that is how it knows which group to
+iterate; without it, `ComboboxCollection` iterates the entire filtered
+result.
+
+Filtering runs per group: matched items stay in their group (the group
+object's other keys carried over as-is), and **a group with no matches at all
+disappears entirely** — no empty heading left behind.
+
+`ComboboxGroupLabel` is **the group's heading**, not the control's label —
+the control's label lives over in [Field](/en/docs/components/field). That is
+also why the port renamed it, see
+[the naming section](#this-is-the-seams-own-port).
+
+## Custom items
+
+When items are objects, give the root a pair of `itemToString*` to translate
+them into strings — one for people to read, one for the form to submit:
+
+```tsx
+interface Composer { id: string, name: string }
+
+const COMPOSERS: Composer[] = [
+  { id: 'bach', name: 'Bach' },
+  { id: 'mozart', name: 'Mozart' },
+]
+
+<Combobox<Composer>
+  items={COMPOSERS}
+  itemToStringLabel={composer => composer.name}
+  itemToStringValue={composer => composer.id}
+>
+  <ComboboxInput placeholder="Search composers" />
+  <ComboboxPopup>
+    <ComboboxEmpty>No matching composers</ComboboxEmpty>
+    <ComboboxList>
+      {(composer: Composer) => (
+        <ComboboxItem key={composer.id} value={composer}>{composer.name}</ComboboxItem>
+      )}
+    </ComboboxList>
+  </ComboboxPopup>
+</Combobox>
+```
+
+If the shape happens to be `{ value, label }`, upstream recognises it
+automatically and both can be omitted; when comparison is not by reference,
+provide `isItemEqualToValue`.
+
+**The generics never degrade.** `Combobox<Value, Multiple>`'s two type
+parameters travel all the way to the callbacks:
+
+```tsx
+<Combobox<string> onValueChange={value => …}>          // value: string | null
+<Combobox<string, true> multiple onValueChange={…}>    // value: string[]
+```
+
+`Multiple` is the second parameter; in single selection just leave it out.
+Note that TS does no partial type-argument inference — to write `multiple`
+you must spell out both (`<Combobox<string, true> multiple>`); writing only
+the first lets the second fall back to its default `false`, and the
+`multiple` line errors.
+
+## Controlled
+
+Two channels, each minding its own — do not mix them:
+
+| Channel | Owns | Trio |
+| --- | --- | --- |
+| selected value | which item the user **selected** (an array under multiple) | `value` / `defaultValue` / `onValueChange` |
+| text | what the input **displays** | `inputValue` / `defaultInputValue` / `onInputValueChange` |
+
+Popup open state is a third: `open` / `defaultOpen` / `onOpenChange`.
+
+Both callbacks' second argument is `ComboboxChangeEventDetails`, whose
+`reason` says where this one came from — `'item-press'` (picked an item),
+`'clear-press'` (pressed clear), `'chip-remove-press'` (removed a chip),
+`'input-change'` (typing), `'input-clear'` (the text was emptied),
+`'escape-key'` / `'outside-press'` / `'focus-out'` (popup closing), and so
+on; `cancel()` rejects the change.
+
+One thing easy to run into: **in single selection, deleting all the input's
+text clears the selected value to `null` along with it**
+(`reason: 'input-clear'`) — upstream holds that "the box is empty" and "an
+item is selected" should never be true at once.
+
+With neither `inputValue` nor `defaultInputValue` given, single-selection
+text is derived from the selected value, so at mount the box already shows
+the current selection.
+
+## Invalid state
+
+`aria-invalid`, like the rest of the props, goes into the inner `<input>`,
+and **the whole row turns red with it**: `InputGroup` recognises it via
+`has-[[data-slot][aria-invalid=true]]:`, while the inner input suppresses its
+own ring (`aria-invalid:ring-0`), so there is exactly one ring.
+
+```tsx
+<ComboboxInput aria-invalid aria-describedby="composer-error" />
+```
+
+Same for the multi-select row: give `aria-invalid` to `ComboboxChipsInput`,
+and `ComboboxChips` turns red via `has-aria-invalid:`. To put the **whole
+text column** (label, description) into the error state too, hang
+`data-invalid` on [`Field`](/en/docs/components/field) — this library's
+`Field` is pure DOM, not Base UI's `Field.Root`, so the `data-valid` /
+`data-invalid` family on the control never moves here, see
+[State and className](#state-and-classname).
+
+## Disabled
+
+**Whole-control disabling is written on the root**: `<Combobox disabled>`.
+
+The seam no longer forwards it downward — Base UI's `Input` already resolves
+`fieldDisabled || comboboxDisabled || disabledProp` itself and writes it on
+the element it renders, and the render element's own props win that merge:
+the vendored version forwarded a default `disabled = false`, which displaced
+exactly the one the root had computed — so with `disabled` written on the
+root, the box still took typing and the row never greyed out. The arrow and
+the clear each read from the root's state
+(`useStore(store, selectors.disabled)`), and a `disabled` you pass yourself
+still goes through via the spread.
+
+`disabled` on `ComboboxInput` disables **this input only**; `disabled` on a
+`ComboboxItem` disables that one row, and keyboard navigation skips it.
+
+## Input Group
+
+The row `ComboboxInput` assembles **is an**
+[`InputGroup`](/en/docs/components/input-group), so putting an
+`InputGroupAddon` into its children adds a leading icon or a unit suffix:
+
+```tsx
+<ComboboxInput placeholder="Search composers">
+  <InputGroupAddon>
+    <IconSearch />
+  </InputGroupAddon>
+</ComboboxInput>
+```
+
+In the DOM the children come after the arrow/clear addon, but that addon is
+`align="inline-end"` (with `order-last`), so **as painted** it stays
+rightmost; the addon default `align="inline-start"` carries `order-first`,
+landing the icon at the start of the row.
+
+## This is the seam's own port
+
+Not a re-export. The vendored `src/primitives/combobox.tsx` is **one of the
+two files on the typecheck exclude list** (the other is accordion): its
+`ComboboxInput` declared Base UI's function `className`, then turned around
+and routed it to `InputGroup` — a pure-DOM div that takes strings only. The
+type promised a contract the element could not honour, and `tsc` told the
+truth. The byte-pinned vendored source cannot be edited, so the seam rewrote
+its own copy, stating the routing plainly (`className?: string`) and settling
+the names while at it:
+
+| vendored | the seam | Why |
+| --- | --- | --- |
+| `ComboboxContent` | **`ComboboxPopup`** | a floating layer is called Popup; Content is reserved for "content moved into a floating layer" (the navigation-menu kind) |
+| `ComboboxLabel` | **`ComboboxGroupLabel`** | it was always the `ComboboxGroup`'s heading, not the control's label |
+| `showTrigger` / `showClear` | **`trigger`** / **`clearable`** | the library has no `show*` booleans anywhere |
+| `useComboboxAnchor` | **deleted** | its entire implementation was `useRef(null)`. Publishing a hook is a public promise, and this one had no content — pass an ordinary ref to `ComboboxPopup`'s `anchor` |
+
+One default changed along the way too: vendored `showClear` defaulted to
+`false`, while the seam's `clearable` defaults to **`true`**, taking
+[Select](/en/docs/components/select)'s "clear present by default" meaning.
+But only half of it: Select's `clearable` lives on the root as the **master
+switch** that turns off even an explicitly composed clear, while this
+`clearable` lives on `ComboboxInput` and only governs whether **its own
+default composition** renders that button — a hand-written `<ComboboxClear />`
+is unaffected by it.
+
+Everything else is Base UI's, passed through as-is.
+
+## When to use Combobox
+
+Pick the right component first:
+
+| | **Combobox** | [**InfiniteCombobox**](/en/docs/components/infinite-select) |
+| --- | --- | --- |
+| Where the list lives | in memory, one whole `items` | on the server, page by page |
+| Who filters | Base UI (`Intl.Collator` contains-matching) | your API — the keyword goes over, it decides what comes back |
+| The right scale | tens to hundreds of items, all given at once | no upper bound; scroll to the bottom and ask for the next page |
+| Wiring needed | none — hand over the array | a data adapter, paging, loading / error slots |
+
+When the list lives on the server and needs paging, do not try to keep
+`items` topped up here — that is the other component's job. No typing to
+filter, fixed options: use [Select](/en/docs/components/select).
+
+## State and className
+
+`ComboboxInput` is the one exception, so let's get it straight first: it is
+not an `<input>` — it assembles a whole row itself, an
+[InputGroup](/en/docs/components/input-group) holding the real input, the
+arrow and the clear button. So one thing to remember:
+
+- **`className` lands on the row** (the `InputGroup`, pure DOM), so it is
+  honestly a `string` — no Base UI function form;
+- **every other prop goes into the inner `<input>`** — `placeholder`,
+  `aria-label`, `onKeyDown` and `ref` are all for it.
+
+The `data-*` Base UI writes (`data-popup-open` / `data-disabled` /
+`data-list-empty`…) is likewise on the inner `<input>`, not on the row. To
+colour the whole row by state, use `has-*` selectors (say
+`has-data-[popup-open]:border-ring`) — do not expect the row to carry these
+attributes itself. The upstream vendored version got this wrong — it declared
+Base UI's function `className` yet routed it to `InputGroup`, see
+[the previous section](#this-is-the-seams-own-port).
+
+**Every other part connects through to a Base UI slot**, so the function form
+holds: `(state) => string | undefined`, with the state's fields being each
+part's `data-*` table under [Props](#props). The type names of these states
+live upstream (`Combobox.Item.State` and the like); the seam re-exports only
+the root's `ComboboxState`.
+
+Every part carries `data-slot="combobox-*"`, usable as a selector when
+targeting from outside. Two of them are **wiring contracts, not mere
+markers**: `ComboboxClear`'s `data-slot="combobox-clear"` is what the arrow's
+hiding rule recognises (see [Clearable](#clearable)), and the ✕ inside
+`ComboboxChip` is `data-slot="combobox-chip-remove"`, which the chip relies
+on to collapse its right padding. Passing in an attribute of the same name
+displaces the contract value: no error — the rule just stops matching.
+
+## Keyboard interactions
+
+| Key | Effect |
+| --- | --- |
+| `↓` / `↑` | move the highlight through the list; whether it wraps back to the input at the ends depends on `loopFocus` (wraps by default). Under `grid`, arrow keys walk rows and columns |
+| `Enter` | select the currently highlighted item |
+| `Escape` | close the popup (`reason: 'escape-key'`) |
+| `←` (caret at the input's far left) | jump to the last chip |
+| `←` / `→` (on a chip) | move between chips (left/right swapped under RTL) |
+| `Backspace` / `Delete` (on a chip) | remove the current chip |
+| any character (on a chip) | jump back to the input and keep typing |
+
+The last four rows hold only inside the `multiple` + `ComboboxChips` row, see
+[Multiple selection](#multiple-selection).
+
+## Exported types
+
+`ComboboxProps` / `ComboboxState` / `ComboboxChangeEventDetails` /
+`ComboboxValueProps` / `ComboboxTriggerProps` / `ComboboxClearProps` /
+`ComboboxInputProps` / `ComboboxPopupProps` / `ComboboxListProps` /
+`ComboboxItemProps` / `ComboboxGroupProps` / `ComboboxGroupLabelProps` /
+`ComboboxCollectionProps` / `ComboboxEmptyProps` / `ComboboxSeparatorProps` /
+`ComboboxChipsProps` / `ComboboxChipProps` / `ComboboxChipsInputProps`.
+
+`ComboboxState` is the root's state — and the root renders no DOM, so that
+type is an **empty object**; expect to read nothing from it. Each part's own
+state type lives upstream (`Combobox.Item.State` and the like).
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+### Combobox
+
+The root component renders no DOM, so it has no `className` and no state
+attributes.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `items` | `readonly Value[] \| readonly Group[]` | — | the whole list. Filtering, `ComboboxEmpty`'s emptiness test and `ComboboxValue`'s label resolution all depend on it. Grouped shape in [Groups](#groups) |
+| `defaultValue` | `Value \| Value[] \| null` | `[]` in multiple, none in single | uncontrolled initial selected value |
+| `value` | `Value \| Value[] \| null` | — | controlled selected value; an array under `multiple` |
+| `onValueChange` | `(value, eventDetails: ComboboxChangeEventDetails) => void` | — | selection change. Single selection may give `null` |
+| `defaultInputValue` | `string \| number \| readonly string[]` | single: derived from the selected value | uncontrolled initial text |
+| `inputValue` | `string \| number \| readonly string[]` | — | controlled text |
+| `onInputValueChange` | `(inputValue: string, eventDetails: ComboboxChangeEventDetails) => void` | — | text change |
+| `defaultOpen` | `boolean` | `false` | uncontrolled initial open state |
+| `open` | `boolean` | — | controlled open state |
+| `onOpenChange` | `(open: boolean, eventDetails: ComboboxChangeEventDetails) => void` | — | open state change |
+| `onOpenChangeComplete` | `(open: boolean) => void` | — | after the enter/exit animation finishes |
+| `onItemHighlighted` | `(value: Value \| undefined, eventDetails) => void` | — | highlighted item change; `reason` is `'keyboard'` / `'pointer'` / `'none'` |
+| `multiple` | `boolean` | `false` | multi-select; on, the value becomes an array wholesale, see [Multiple selection](#multiple-selection) |
+| `disabled` | `boolean` | `false` | ignore user interaction, see [Disabled](#disabled) |
+| `readOnly` | `boolean` | `false` | the selection cannot change |
+| `required` | `boolean` | `false` | a value is required before submitting |
+| `filter` | `null \| ((itemValue, query, itemToString?) => boolean)` | `Intl.Collator` contains-matching | replace the filtering rule; `null` means **no filtering** |
+| `filteredItems` | `readonly Value[] \| readonly Group[]` | — | a result you filtered outside yourself; given, internal filtering is skipped (pairs with upstream's `useFilter()`) |
+| `limit` | `number` | `-1` | how many items to render at most; `-1` is unlimited |
+| `locale` | `Intl.LocalesArgument` | the runtime locale | the string-comparison locale used for filtering |
+| `itemToStringLabel` | `(itemValue: Value) => string` | — | object value → display string (the `{ value, label }` shape is recognised automatically), see [Custom items](#custom-items) |
+| `itemToStringValue` | `(itemValue: Value) => string` | — | object value → submission string |
+| `isItemEqualToValue` | `(itemValue: Value, value: Value) => boolean` | `Object.is` | provide it when object values are not reference-equal |
+| `openOnInputClick` | `boolean` | `true` | clicking the input opens the popup |
+| `autoHighlight` | `boolean` | `false` | auto-highlight the first item after filtering |
+| `highlightItemOnHover` | `boolean` | `true` | highlight on pointer-over. Switched off, CSS `:hover` becomes distinguishable from `data-highlighted` |
+| `loopFocus` | `boolean` | `true` | whether arrow keys wrap back to the input at the ends |
+| `modal` | `boolean` | `false` | whether opening locks page scroll and outside interaction |
+| `inline` | `boolean` | `false` | the list skips its own floating layer and lays flat in the page (also pass `open` unconditionally) |
+| `grid` | `boolean` | `false` | the list is a grid layout; arrow keys walk rows and columns |
+| `virtualized` | `boolean` | `false` | the list is virtualized externally |
+| `id` | `string` | — | lands on `ComboboxInput`'s `<input>`; `FieldLabel htmlFor` points here |
+| `name` | `string` | — | form field name |
+| `form` | `string` | — | id of the form owning the hidden input, for a control rendered outside its form |
+| `autoComplete` | `string` | — | browser autofill hint, landing on the hidden input |
+| `inputRef` | `Ref<HTMLInputElement>` | — | get hold of the hidden `<input>` |
+| `actionsRef` | `RefObject<{ unmount: () => void } \| null>` | — | imperative actions; call `unmount()` after an externally controlled close animation finishes |
+| rest | Base UI `Combobox.Root` props | — | passed through |
+
+### ComboboxInput
+
+The text box row. Every prop besides `className` goes into the inner
+`<input>` (Base UI `Combobox.Input` props).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `trigger` | `boolean` | `true` | render the dropdown arrow. Switch it off when the input lives inside a popup |
+| `clearable` | `boolean` | `true` | render the clear button. It mounts only when "there is something to clear", see [Clearable](#clearable) |
+| `disabled` | `boolean` | — | disables this input only. **Whole-control disabling goes on the root**, see [Disabled](#disabled) |
+| `children` | `ReactNode` | — | appended into the row, see [Input Group](#input-group) |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | slots in after the seam's own `InputGroupInput`: passing one replaces it |
+| `className` | `string` | — | class of **the row** (the `InputGroup`). Pure DOM, strings only, see [State and className](#state-and-classname) |
+| rest | Base UI `Combobox.Input` props (native `input` props + `ref`) | — | passed through to the inner `<input>` |
+
+**States** (all on the inner `<input>`, not on the row)
+
+| `data-*` | When present |
+| --- | --- |
+| `data-popup-open` | the popup is open |
+| `data-pressed` | being pressed |
+| `data-disabled` / `data-readonly` | the corresponding prop |
+| `data-popup-side` | the side the popup actually attached to |
+| `data-list-empty` | the filtered result is empty |
+| `data-valid` / `data-invalid` / `data-touched` / `data-dirty` / `data-filled` / `data-focused` | move only inside Base UI's `Field.Root` — this library's `Field` is pure DOM layout, not that |
+
+### ComboboxPopup
+
+The whole Portal + Positioner + Popup set. The positioning props are borrowed
+up from the Positioner; the rest go into the Popup.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `anchor` | `Element \| null \| VirtualElement \| RefObject<Element \| null> \| (() => Element \| VirtualElement \| null)` | the input | what to attach to. In multi-select, give it `ComboboxChips`'s ref |
+| `side` | `'top' \| 'bottom' \| 'left' \| 'right' \| 'inline-start' \| 'inline-end'` | `'bottom'` | which side to attach to (may flip on collision) |
+| `sideOffset` | `number \| ((data) => number)` | `6` | gap from the anchor (**the seam's default**; upstream is `0`) |
+| `align` | `'start' \| 'center' \| 'end'` | `'start'` | cross-axis alignment (**the seam's default**; upstream is `'center'`) |
+| `alignOffset` | `number \| ((data) => number)` | `0` | cross-axis offset |
+| `initialFocus` | `boolean \| RefObject<HTMLElement \| null> \| ((openType) => …)` | — | who gets focus on open |
+| `finalFocus` | `boolean \| RefObject<HTMLElement \| null> \| ((closeType) => …)` | — | who focus returns to on close |
+| `className` | `string \| ((state) => string \| undefined)` | — | popup class |
+| rest | Base UI `Combobox.Popup` props (native `div` props + `ref`) | — | passed through |
+
+**States**
+
+| `data-*` | When present |
+| --- | --- |
+| `data-open` / `data-closed` | open / closed (enter/exit animations hang on these) |
+| `data-starting-style` / `data-ending-style` | entry starting / exit in progress |
+| `data-side` / `data-align` | the side actually attached to, the actual alignment |
+| `data-empty` | the filtered result is empty |
+| `data-instant` | skip the animation this time |
+| `data-chips` | **added by the seam**: set when `anchor` is given (empty-string value), absent otherwise |
+
+Width follows the anchor (`inline-(--anchor-width)`), height is capped by
+`--available-height`. The anchor is **the whole row**, not the input stretch
+in the middle — the input row renders as `Combobox.InputGroup` and registers
+itself with Base UI, so `--anchor-width` measures the full width including
+leading and trailing addons, and the arrow and clear need no extra
+compensation.
+
+### ComboboxItem
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `any` | `null` | this item's value; once selected, it is what lands in the combobox value |
+| `disabled` | `boolean` | `false` | disable this row; keyboard navigation skips it |
+| `index` | `number` | inferred from the DOM | given explicitly it skips the inference — faster for long lists |
+| `onClick` | `(event) => void` | — | fires on selection (a pointer click, or `Enter` while highlighted) |
+| `nativeButton` | `boolean` | `false` | turn on when using `render` to swap in a real `<button>` |
+| `className` | `string \| ((state) => string \| undefined)` | — | class |
+| rest | Base UI `Combobox.Item` props (native `div` props + `ref`, minus `id`) | — | passed through |
+
+**States**
+
+| `data-*` | Name in state | When present |
+| --- | --- | --- |
+| `data-selected` | `selected` | is the currently selected item |
+| `data-highlighted` | `highlighted` | keyboard or pointer highlighted it |
+| `data-disabled` | `disabled` | `disabled` |
+
+The checkmark at the end of the row is rendered by the part itself
+(`ItemIndicator`); there are no replaceable children.
+
+### Other parts
+
+| Part | Element | Key props | Description |
+| --- | --- | --- | --- |
+| `ComboboxList` | `div` (`role="listbox"`) | `children: ReactNode \| ((item, index) => ReactNode)` | the scrolling list. Function children are implicitly wrapped in a `ComboboxCollection`. State `data-empty` |
+| `ComboboxCollection` | renders no element | `children: (item, index) => ReactNode` (required) | iterates "whatever is current to iterate": inside a `ComboboxGroup items` that is the group, otherwise the whole filtered result |
+| `ComboboxGroup` | `div` (`role="group"`) | `items` | one group of options. `items` opens the context for the `ComboboxCollection` inside |
+| `ComboboxGroupLabel` | `div` | — | the group's heading, associated to its group automatically (`aria-labelledby`) |
+| `ComboboxEmpty` | `div` | — | appears when the filtered result is empty, judged from the root's `items`. Announces on its own — never conditionally render the component itself |
+| `ComboboxSeparator` | `div` | `orientation` | the separator line |
+| `ComboboxTrigger` | `button` | `disabled` | the dropdown arrow. `ComboboxInput` already renders one by default; write it only when used standalone. States `data-popup-open` / `data-pressed` / `data-disabled` / `data-readonly` / `data-popup-side` / `data-list-empty` / `data-placeholder` |
+| `ComboboxClear` | `button` | `disabled`, `keepMounted` | the clear. Conditional-mounting rules in [Clearable](#clearable); `keepMounted` keeps it in the DOM at all times. States `data-visible` / `data-popup-open` / `data-disabled` |
+| `ComboboxValue` | renders no element | `placeholder`, `children: ReactNode \| ((value) => ReactNode)` | the current value. Function children receive the selected value — multi-select renders its chips through it |
+| `ComboboxChips` | `div` (`role="toolbar"` when chips exist) | — | the multi-select row. Give it a ref and hand it to `ComboboxPopup`'s `anchor` |
+| `ComboboxChip` | `div` | `removable` (default `true`) | one selected item. With `removable` off, only keyboard removal remains. State `data-disabled` |
+| `ComboboxChipsInput` | `input` | — | the borderless input among the chips |

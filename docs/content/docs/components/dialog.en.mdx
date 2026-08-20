@@ -1,0 +1,512 @@
+---
+title: Dialog
+description: A modal dialog — portal, backdrop and scroll viewport gathered into one DialogPopup, so content scrolls however long it grows
+---
+
+<ComponentPreview name="dialog/basic" />
+
+A dialog built on Base UI, wearing the shadcn base-nova skin. Composition is the
+whole API: there is no `title` / `description` / `actions` config object, because
+a dialog's body is by definition arbitrary content.
+
+The seam does three things: it renames the Radix-flavoured shadcn aliases back to
+the Base UI part names (`DialogContent` → `DialogPopup`, `DialogOverlay` →
+`DialogBackdrop` — the same rule as [Tabs](/en/docs/components/tabs)); it adds
+[scrolling for long content](#scrolling-long-content) — `DialogPopup` ships its
+own scroll viewport, and adding a `DialogBody` switches to an inner scroll with
+pinned header and footer; and it makes the popup
+[expand from where the pointer went down](#entrance-animation).
+
+## Usage
+
+```tsx
+import {
+  createDialogHandle,
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPopup,
+  DialogTitle,
+  DialogTrigger,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Dialog>
+  <DialogTrigger render={<Button variant="outline" />}>Open</DialogTrigger>
+  <DialogPopup>
+    <DialogHeader>
+      <DialogTitle>Title</DialogTitle>
+      <DialogDescription>Description</DialogDescription>
+    </DialogHeader>
+    Body
+    <DialogFooter>
+      <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+      <Button>OK</Button>
+    </DialogFooter>
+  </DialogPopup>
+</Dialog>
+```
+
+`DialogTrigger` and `DialogClose` each render a bare `<button>`; use
+`render={<Button />}` to borrow the library's button for clothing — do not nest
+another `Button` inside, which would produce two nested buttons. The wording is
+always the caller's: the seam never writes "Cancel" or "Close" for you.
+
+## Anatomy
+
+One `DialogPopup` expands into four Base UI parts, three of which it renders
+itself:
+
+```text
+Dialog                     ← root: holds only the open state, renders no element
+├── DialogTrigger          ← the opening button, there can be several
+└── DialogPopup            ← write this one, the three layers below fall into place
+    ├── Portal             ← escapes the trigger's stacking / overflow context
+    ├── Backdrop           ← the dimmed, blurred background (backdropClassName)
+    └── Viewport           ← full-screen, scrollable positioning container (viewportClassName)
+        └── Popup          ← the dialog itself, className refers to it
+            ├── DialogHeader ─ DialogTitle + DialogDescription
+            ├── DialogBody   ─ optional; writing it switches to inner scroll, header and footer pinned
+            └── DialogFooter ─ usually holds DialogClose
+```
+
+`Portal` / `Backdrop` / `Viewport` are **not exported separately**: everything
+tunable is reachable through `backdropClassName` and `viewportClassName`; needing
+more structural freedom than that means you have crossed what the seam should
+manage — composing `@base-ui/react/dialog` directly is more honest.
+
+`DialogTitle` is not actually optional — Base UI wires it to the popup's
+`aria-labelledby`; without it the dialog is a nameless box. When the title is
+visually redundant, give it `sr-only` instead of deleting it:
+
+```tsx
+<DialogTitle className="sr-only">Search documentation</DialogTitle>
+```
+
+`DialogHeader` and `DialogFooter` are two plain `<div>`s, not Base UI parts. The
+footer cancels the popup's padding so the grey action bar runs edge to edge, and
+reverses its order on narrow screens — primary action on top.
+
+## Scrolling long content
+
+When content is taller than the screen, **the whole dialog scrolls, header and
+footer included**, without writing any `overflow`:
+
+<ComponentPreview name="dialog/scroll" />
+
+The scrollbar is not necessarily visible — macOS overlay scrollbars stay hidden
+until you scroll. The list is numbered so you can tell how far you have got;
+"Close" sits at the very bottom, reachable only after scrolling all the way.
+
+This one is added by the seam. The shadcn original pins the popup dead centre
+with `fixed top-1/2 left-1/2 -translate-1/2`; the moment content grows too tall
+it overflows from top and bottom at once, and **cannot scroll** — the popup is
+`fixed`, so the page cannot scroll it; it is itself the overflow root, so it
+cannot scroll itself either. Base UI provides `Dialog.Viewport` for exactly this;
+the vendored source simply predates the part.
+
+One detail worth noting: centring comes from the popup's own `m-auto`, not the
+viewport's `items-center`. In a scrollable flex container, `align-items: center`
+**clips the start edge** of a child taller than the container (the overflow is
+split evenly to both sides, and the part above the scroll origin is out of
+reach). Auto margins distribute leftover space the same way, but collapse to 0
+when there is none, so an over-tall popup falls back to sitting flush with the
+top — and still scrolls.
+
+### Header and footer pinned, only the middle scrolls
+
+The other way to scroll: wrap the middle section in a `DialogBody`. No prop to
+pass, no class to copy — on seeing this part the popup caps itself at screen
+height and switches to a vertical flex layout.
+
+<ComponentPreview name="dialog/scroll-inside" />
+
+```tsx
+<DialogPopup>
+  <DialogHeader>…</DialogHeader>
+  <DialogBody>…</DialogBody>
+  <DialogFooter>…</DialogFooter>
+</DialogPopup>
+```
+
+The switch is one `:has()` rule (`popup:has(> [data-slot=dialog-body])`), so the
+two scrolling modes **can never be active at once**: a capped popup no longer
+exceeds the screen, the outer viewport has nothing left to scroll, and steps
+aside on its own. To cap at another height, override the popup's
+`max-block-full`:
+
+```tsx
+<DialogPopup className="max-block-[32rem]">
+```
+
+`DialogBody` is a plain `<div>` with `overflow-y-auto` built in, not a
+[ScrollArea](/en/docs/components/scroll-area). ScrollArea cannot be used here:
+what actually scrolls in a ScrollArea is its inner viewport, which is sized with
+`block-full` (a percentage), and percentages require the parent's `height` to be
+a definite value — the height here is a flex **main-axis** size, resolved by the
+flex algorithm during layout, while the `height` property itself stays `auto`,
+so the percentage never resolves and content is never clipped. Putting
+`overflow` directly on the flex item bypasses percentages entirely.
+
+The cost is the scrollbar: ScrollArea exists precisely to keep the scrollbar
+independent of the scrolling element, undimmed by the scroll-fade mask, whereas
+the native scrollbar here sits inside the mask. `scroll-fade-y` stays on by
+default — a line of text half cut off at the edge is the only hint that there is
+more below, all the more since a macOS scrollbar is invisible until it moves.
+
+## Dismissal and interception
+
+`onOpenChange`'s second argument is a `ChangeEventDetails`: `reason` says where
+this change came from, and `cancel()` pushes it back — once called, internal
+state stays put.
+
+<ComponentPreview name="dialog/controlled" />
+
+```tsx
+<Dialog
+  open={open}
+  onOpenChange={(next, details) => {
+    // with unsaved changes, backdrop clicks and Esc are refused; footer buttons pass
+    if (!next && dirty && details.reason !== 'close-press') {
+      details.cancel()
+      return
+    }
+    setOpen(next)
+  }}
+>
+```
+
+What makes this easier than turning dismissal off with
+`disablePointerDismissal` and rebuilding the checks yourself is that `reason`
+distinguishes the seven origins finely, so you can reject only some of them:
+
+| `reason` | From |
+| --- | --- |
+| `'trigger-press'` | `DialogTrigger` pressed |
+| `'close-press'` | `DialogClose` pressed (the corner ✕ included) |
+| `'outside-press'` | a click outside the popup |
+| `'escape-key'` | `Esc` pressed |
+| `'focus-out'` | focus left the popup (non-modal only) |
+| `'imperative-action'` | code called `actionsRef.current.close()` |
+| `'none'` | everything else, e.g. setting `open` directly |
+
+When origins do not matter and you only want to forbid closing on outside press,
+the single `disablePointerDismissal` switch is enough.
+
+`details` also carries `preventUnmountOnClose()`: call it when you take over the
+closing animation yourself — the popup stays in the DOM until you unmount it
+manually via `actionsRef.current.unmount()`.
+
+## Async submission
+
+When saving sends a request, there is a trap: **the action button must not be a
+`DialogClose`**. `Close` shuts the box the instant the request departs — the
+user watches it vanish with no idea whether anything was saved. Use a plain
+`Button` for the action, and call `setOpen(false)` yourself once the request
+returns.
+
+<ComponentPreview name="dialog/async" />
+
+```tsx
+const [open, setOpen] = useState(false)
+const [pending, setPending] = useState(false)
+
+async function save() {
+  setPending(true)
+  await api.save(draft)
+  setPending(false)
+  setOpen(false) // ← close only after the request returns
+}
+
+<Dialog
+  open={open}
+  onOpenChange={(next, details) => {
+    // while the request is in flight, block every attempt to close
+    if (!next && pending) {
+      details.cancel()
+      return
+    }
+    setOpen(next)
+  }}
+>
+  …
+  <DialogFooter>
+    <DialogClose disabled={pending} render={<Button variant="outline" />}>Cancel</DialogClose>
+    {/* not a Close: it has to wait for the request */}
+    <Button pending={pending} onClick={() => void save()}>Save</Button>
+  </DialogFooter>
+</Dialog>
+```
+
+There are three escape routes to block: the corner ✕, backdrop clicks and `Esc`.
+Fortunately `cancel()` **ignores `reason`** and blocks them all at once — so
+neither `disablePointerDismissal` nor `showCloseButton={false}` is needed here:
+those two are permanent, while the lock should last only until the request
+returns. [AlertDialog](/en/docs/components/alert-dialog#async-confirmation) is
+written exactly the same way, minus the ✕ route.
+
+[`pending`](/en/docs/components/button#pending) on the action button keeps it
+focusable but unresponsive, its label veiled by a spinner, its width unchanged.
+
+On failure **do nothing**: `setOpen(false)` was never called, so the box is
+naturally still open — surface the error and let the user retry.
+
+## Imperative opening
+
+`createDialogHandle()` builds a handle that wires the dialog to its triggers —
+a trigger need not be a child of the dialog, and no state is threaded through
+the middle. Triggers can also carry a `payload`; write the root's `children` as
+a function to receive it:
+
+<ComponentPreview name="dialog/handle" />
+
+```tsx
+const handle = createDialogHandle<Person>()
+
+// triggers anywhere, in any number
+<DialogTrigger handle={handle} payload={person} render={<Button />}>
+  {person.name}
+</DialogTrigger>
+
+// only one dialog
+<Dialog handle={handle}>
+  {({ payload: person }) => (
+    <DialogPopup>
+      <DialogTitle>{person?.name}</DialogTitle>
+      …
+    </DialogPopup>
+  )}
+</Dialog>
+```
+
+The function receives an **object** `{ payload }`, not the bare payload; and
+`payload` may be `undefined` (a dialog is not necessarily opened by a trigger).
+This route means "which row is currently selected" never needs to become
+component state at all — one table sharing one dialog rests exactly on it.
+
+The handle is re-exported by this library because `@base-ui/react` is the
+library's dependency, not yours — `Dialog.createHandle` cannot be imported from
+application code.
+
+## Modality
+
+`modal` defaults to `true`: focus is trapped inside the dialog, page scroll is
+locked, and pointer events on outside elements are disabled.
+
+| `modal` | Focus trap | Page scroll lock | Outside pointer events |
+| --- | --- | --- | --- |
+| `true` (default) | yes | locked | disabled |
+| `'trap-focus'` | yes | not locked | available |
+| `false` | no | not locked | available |
+
+`'trap-focus'` is for dialogs that coexist with the page but whose keyboard
+interaction should not wander out.
+
+When modal (`true` or `'trap-focus'`), the popup **must** keep one
+`DialogClose`: touch screen-reader users have no `Esc` key, and the corner ✕ is
+their only exit. So `showCloseButton={false}` does not mean "no close button" —
+it means "I provide another exit in the body".
+
+## Focus
+
+`initialFocus` / `finalFocus` go straight through to Base UI with the same
+values: a `RefObject` picks an element, `false` leaves focus alone, and a
+function decides on the fly by how the dialog was opened (`mouse` / `touch` /
+`pen` / `keyboard`).
+
+By default, opening puts focus on the first focusable element inside the popup,
+**except when opened by touch** — then the popup itself takes focus, so the
+virtual keyboard stays down. Closing returns focus to the trigger.
+
+```tsx
+// focus the search box on open
+<DialogPopup initialFocus={inputRef}>
+```
+
+## Entrance animation
+
+The dialog grows **from where you pressed** and shrinks back to the same point
+on close. Nothing to configure — `DialogTrigger` remembers the pointer's landing
+spot by itself.
+
+The technique is FLIP: the seam records viewport coordinates on the trigger's
+`pointerdown`; when the popup mounts, it computes the "shrink and translate to
+that point" transform, writes it as a CSS variable on the scroll viewport, and
+the popup inherits it as both ends of the transition:
+
+```css
+/* --dialog-flip e.g. translate(-212px, -184px) scale(0.3) */
+transition: transform .25s, opacity .25s;
+
+&[data-starting-style],
+&[data-ending-style] {
+  transform: var(--dialog-flip);
+  opacity: 0;
+}
+```
+
+The translation is "pointer coordinates minus screen centre" with no popup
+measurement needed: the popup is centred by `m-auto` in a viewport that fills
+the screen, so **its own centre is the screen centre**.
+
+`transform-origin` is not used here because it cannot do the job. Scaling
+around a point only moves the element by `(1 − scale) × distance to the anchor`
+— it **never reaches the anchor**, only leans that way; `translate` is exact.
+Likewise, the animation runs on `transition` rather than keyframes:
+`data-starting-style` / `data-ending-style` are driven by Base UI itself, which
+waits for the transition (the opacity leg, to be precise) to finish before
+unmounting the popup — only then does the exit play out in full.
+
+**Keyboard opening falls back to dead centre.** Any `keydown` on the trigger
+clears the recorded coordinates — if the keyboard could walk to the trigger, the
+user's attention long left the spot of the last click. The variable then
+degrades to `scale(0.95)`, a plain in-place zoom. The variable has a value at
+all times: `transform: var(--x)` is an invalid declaration when the variable is
+absent, and the shorthand syntax has no place to write a fallback.
+
+**Programmatic opening reuses the last click position**, deliberately: a dialog
+opened by controlled `open` or a `handle` (say, an error box popping up after a
+failed save) flying out of the button just pressed makes more sense than
+materialising at screen centre.
+
+To change the feel, override the corresponding classes:
+
+```tsx
+{/* slower */}
+<DialogPopup className="duration-400" />
+
+{/* no translation, back to in-place zoom */}
+<DialogPopup className="data-starting-style:transform-none data-ending-style:transform-none" />
+```
+
+With the system's reduced-motion setting on, the transform automatically becomes
+`none` — translation and scale disappear together, leaving only the fade.
+
+## State and className
+
+Every `className` takes both forms: a string, or a `(state) => string`
+function. The left column below is the `data-*` put on the DOM — Tailwind uses
+it directly as a variant (`data-starting-style:opacity-0`); the right column is
+the same state's name inside the function `className`.
+
+| Part | `data-*` | When present | Name in function `className` |
+| --- | --- | --- | --- |
+| popup / backdrop / viewport | `data-open` / `data-closed` | open / closed | `open` |
+| popup / backdrop / viewport | `data-starting-style` | the first frame of the entrance animation | `transitionStatus === 'starting'` |
+| popup / backdrop / viewport | `data-ending-style` | while the exit animation runs | `transitionStatus === 'ending'` |
+| popup / backdrop / viewport | `data-nested` | this dialog is nested inside another dialog | `nested` |
+| popup / backdrop / viewport | `data-nested-dialog-open` | a nested dialog is open inside this one | `nestedDialogOpen` |
+| trigger | `data-popup-open` | its dialog is open (note: not `data-open`) | `open` |
+| trigger / close button | `data-disabled` | the button is disabled | `disabled` |
+
+`nested` and `nestedDialogOpen` merely expose the state — base-nova paints no
+styles for nesting (the scale-and-stack effect for stacked dialogs is yours to
+write).
+
+For targeting from outside, use `data-slot`:
+
+| `data-slot` | What it is |
+| --- | --- |
+| `dialog-trigger` | the trigger button |
+| `dialog-backdrop` | the backdrop |
+| `dialog-viewport` | the full-screen scroll viewport |
+| `dialog-popup` | the dialog itself |
+| `dialog-header` / `dialog-footer` | header / footer |
+| `dialog-body` | the scroll region under inner scroll; the popup's `:has()` matches exactly this name |
+| `dialog-title` / `dialog-description` | title / description |
+| `dialog-close` | the close button (the corner ✕ included) |
+
+## Keyboard interactions
+
+| Key | Behaviour |
+| --- | --- |
+| `Enter` / `Space` | on the trigger: open; on a close button: close |
+| `Esc` | close (`onOpenChange` receives `reason: 'escape-key'`) |
+| `Tab` / `Shift` + `Tab` | cycles inside the popup, no way out while modal |
+
+After closing, focus returns to the trigger automatically — see
+[Focus](#focus).
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks →
+behaviour switches → appearance → `className`**.
+
+### Dialog
+
+The root component; renders no element.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultOpen` | `boolean` | `false` | uncontrolled initial open state |
+| `open` | `boolean` | — | controlled open state |
+| `onOpenChange` | `(open, details) => void` | — | `details`: see [Dismissal and interception](#dismissal-and-interception) |
+| `onOpenChangeComplete` | `(open: boolean) => void` | — | fires only after the animation ends |
+| `modal` | `boolean \| 'trap-focus'` | `true` | see [Modality](#modality) |
+| `disablePointerDismissal` | `boolean` | `false` | forbid closing on outside press; when non-modal, also forbid closing on focus-out |
+| `handle` | `DialogHandle<Payload>` | — | see [Imperative opening](#imperative-opening) |
+| `actionsRef` | `RefObject<DialogActions>` | — | imperative `close()` / `unmount()` |
+| `children` | `ReactNode \| ({ payload }) => ReactNode` | — | function form receives the `payload` |
+
+### DialogPopup
+
+The dialog itself; also renders the portal, backdrop and viewport.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `initialFocus` | `boolean \| RefObject \| (openType) => …` | — | see [Focus](#focus) |
+| `finalFocus` | `boolean \| RefObject \| (closeType) => …` | — | see [Focus](#focus) |
+| `showCloseButton` | `boolean` | `true` | the corner ✕ |
+| `backdropClassName` | `string \| (state) => string` | — | backdrop class |
+| `viewportClassName` | `string \| (state) => string` | — | scroll viewport class; the popup-to-screen-edge gap (`p-4`) is changed here |
+| `className` | `string \| (state) => string` | — | popup class; the width cap (`sm:max-inline-sm`) and the height cap are changed here |
+| rest | Base UI `Dialog.Popup` props | — | passed through |
+
+### DialogTrigger / DialogClose
+
+Both render a `<button>`, both take `render` to swap the shell.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `handle` | `DialogHandle<Payload>` | — | trigger only: which dialog to wire to |
+| `payload` | `Payload` | — | trigger only: data carried to the dialog on open |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | replace with another element or component |
+| `disabled` | `boolean` | `false` | disabled |
+
+### DialogBody
+
+A plain `<div>` with `overflow-y-auto` built in; takes native props only. Its
+presence switches the popup to
+[inner scroll](#header-and-footer-pinned-only-the-middle-scrolls). It defaults
+to `scroll-fade-y`, plus `-mx-4 px-4` — cancelling the popup's padding and
+adding it straight back, so the scroll region stretches to the popup's full
+width and the scrollbar rides the popup's edge, while the text moves not one
+character. Override with `className`.
+
+### DialogHeader / DialogFooter / DialogTitle / DialogDescription
+
+`DialogHeader` and `DialogFooter` are plain `<div>`s, taking native props only.
+`DialogTitle` renders an `<h2>`, `DialogDescription` renders a `<p>`, and both
+take Base UI's `render`.
+
+`DialogFooter` drops the shadcn original's `showCloseButton`: that one renders a
+button hardcoded to say `Close`, while the wording of the closing action belongs
+to the caller. Write the one line yourself, and the wording is yours:
+
+```tsx
+<DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+```
+
+## Exported types
+
+`DialogProps<Payload>` / `DialogPopupProps` / `DialogPopupState` /
+`DialogTriggerProps<Payload>` / `DialogCloseProps` / `DialogHeaderProps` /
+`DialogBodyProps` / `DialogFooterProps` / `DialogTitleProps` /
+`DialogDescriptionProps`,
+plus `DialogChangeEventDetails` (the second argument of `onOpenChange`),
+`DialogActions` (the `close` / `unmount` exposed by `actionsRef`) and
+`DialogHandle<Payload>`.

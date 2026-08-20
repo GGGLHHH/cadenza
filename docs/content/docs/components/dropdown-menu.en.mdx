@@ -1,0 +1,382 @@
+---
+title: Dropdown Menu
+description: "An action menu — a button-triggered set of actions: groups, checkbox items, radio groups and submenus, in the Base UI Menu vocabulary"
+---
+
+<ComponentPreview name="dropdown-menu/basic" />
+
+The action menu. Base UI `Menu` in the shadcn base-nova skin; the seam only sets
+the shape: the menu's content is your actions, **composition is the only API**,
+and there is no one-line `items` (the data channel belongs to value-bearing
+controls like `Select` / `Cascader`). `modal` defaults to `false` (Base UI
+defaults to `true`; the seam flips it, consistent with Select / Cascader):
+opening the menu locks no page scroll and blocks no outside interaction.
+
+Part names follow the Base UI vocabulary; migrating from shadcn renames five:
+`Content → Popup`, `Label → GroupLabel` (it titles a group, never labels a
+control), `Sub → Submenu`, `SubTrigger → SubmenuTrigger`,
+`SubContent → SubmenuPopup`. The styling hook `data-slot` keeps the shadcn word
+forms — see the mapping in [State and className](#state-and-classname).
+
+## Usage
+
+```tsx
+import {
+  DropdownMenu,
+  DropdownMenuGroup,
+  DropdownMenuGroupLabel,
+  DropdownMenuItem,
+  DropdownMenuPopup,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<DropdownMenu>
+  <DropdownMenuTrigger render={<Button variant="outline" />}>
+    Open
+  </DropdownMenuTrigger>
+  <DropdownMenuPopup>
+    <DropdownMenuGroup>
+      <DropdownMenuGroupLabel>My account</DropdownMenuGroupLabel>
+      <DropdownMenuItem>Profile</DropdownMenuItem>
+      <DropdownMenuItem>Billing</DropdownMenuItem>
+    </DropdownMenuGroup>
+    <DropdownMenuSeparator />
+    <DropdownMenuGroup>
+      <DropdownMenuItem>Team</DropdownMenuItem>
+      <DropdownMenuItem>Subscription</DropdownMenuItem>
+    </DropdownMenuGroup>
+  </DropdownMenuPopup>
+</DropdownMenu>
+```
+
+## Anatomy
+
+```text
+DropdownMenu
+├── DropdownMenuTrigger
+└── DropdownMenuPopup
+    ├── DropdownMenuGroup
+    │   ├── DropdownMenuGroupLabel
+    │   ├── DropdownMenuItem
+    │   └── DropdownMenuItem
+    ├── DropdownMenuSeparator
+    ├── DropdownMenuGroup
+    │   ├── DropdownMenuGroupLabel
+    │   ├── DropdownMenuCheckboxItem
+    │   └── DropdownMenuCheckboxItem
+    ├── DropdownMenuSeparator
+    ├── DropdownMenuGroup
+    │   ├── DropdownMenuGroupLabel
+    │   └── DropdownMenuRadioGroup
+    │       ├── DropdownMenuRadioItem
+    │       └── DropdownMenuRadioItem
+    └── DropdownMenuSubmenu
+        ├── DropdownMenuSubmenuTrigger
+        └── DropdownMenuSubmenuPopup
+            └── DropdownMenuGroup
+                ├── DropdownMenuGroupLabel
+                ├── DropdownMenuItem
+                └── DropdownMenuItem
+```
+
+`DropdownMenuPopup` is Portal + Positioner + Popup folded into one part: the
+positioning props (`side` / `sideOffset` / `align` / `alignOffset`) go to the
+positioner, everything else goes to the popup. `DropdownMenuSubmenuPopup` is
+isomorphic, with defaults retuned for sideways expansion.
+
+## Submenu
+
+The `DropdownMenuSubmenu` trio tucks away secondary actions.
+
+<ComponentPreview name="dropdown-menu/submenu" />
+
+Hover or `ArrowRight` expands, `ArrowLeft` returns to the parent; sweeping
+diagonally across adjacent items does not switch the submenu away (Base UI's
+built-in safePolygon, the same one as
+[Cascader](/en/docs/components/cascader#safe-triangle)'s).
+`DropdownMenuSubmenuTrigger` is an item-shaped trigger with a built-in trailing
+`›` arrow; nested menus ignore `modal`.
+
+## Shortcuts
+
+`DropdownMenuShortcut` shows a key hint at the end of the row.
+
+<ComponentPreview name="dropdown-menu/shortcuts" />
+
+A purely visual part: a right-aligned `<span>` that **binds no keyboard
+events** — the real shortcut listener is still yours to register. It lands as
+plain DOM, so its `className` is a `string`, with no function form.
+
+## Icons
+
+Icons are written straight into the item, in leading position.
+
+<ComponentPreview name="dropdown-menu/icons" />
+
+The item's styles already lay out inner svgs with size (`size-4`) and spacing —
+no manual alignment needed.
+
+## Checkbox items
+
+`DropdownMenuCheckboxItem` makes a toggle.
+
+<ComponentPreview name="dropdown-menu/checkboxes" />
+
+A click flips it in place and the menu stays open (`closeOnClick` defaults to
+`false`, the opposite of a plain item) — a settings menu survives consecutive
+toggling. Controlled use goes through the `checked` / `onCheckedChange` trio.
+
+## Radio group
+
+`DropdownMenuRadioGroup` makes a mutually exclusive choice within a group.
+
+<ComponentPreview name="dropdown-menu/radio-group" />
+
+The `value` / `defaultValue` / `onValueChange` trio lives on the group, which
+distributes the selected state; a `DropdownMenuRadioItem` carries only its own
+`value`. The menu likewise stays open after a choice.
+
+## Destructive actions
+
+`variant="destructive"` is for irreversible actions.
+
+<ComponentPreview name="dropdown-menu/destructive" />
+
+Text, inner icons and the focus background all turn to the warning colour for
+the whole row; it is only a visual variant and intercepts no clicks — actions
+that need confirmation connect to an
+[AlertDialog](/en/docs/components/alert-dialog).
+
+## Complex example
+
+Groups, icons, shortcuts and submenus on one stage.
+
+<ComponentPreview name="dropdown-menu/complex" />
+
+## When to use DropdownMenu
+
+A menu performs **actions** — click and go, never entering a form. The moment
+the menu's job becomes "pick a value and keep it", that is another control:
+single / multiple choice over a flat list is
+[Select](/en/docs/components/select), drilling level by level into a tree of
+values is [Cascader](/en/docs/components/cascader) — both have trigger echo and
+form serialization, a menu has neither. Checkbox items and radio groups are
+**in-place settings** inside the menu (view toggles, sort order): the value
+lives in state outside the menu, not in a form field.
+
+## State and className
+
+Every part takes `className`; parts of the popup family land on Base UI slots
+and support the `className={(state) => …}` function form
+(`DropdownMenuShortcut` excepted — plain DOM, `string`). State is externalised
+via `data-*`:
+
+| Attribute | Appears on | When |
+| --- | --- | --- |
+| `data-open` / `data-closed` | Popup, SubmenuPopup, SubmenuTrigger | popup open / closed (exit animation included) |
+| `data-popup-open` | Trigger, SubmenuTrigger | while its own popup is open |
+| `data-checked` / `data-unchecked` | CheckboxItem, RadioItem | the checked-state complementary pair |
+| `data-highlighted` | each item | keyboard / hover highlight (Base UI's virtual-focus exception word) |
+| `data-disabled` | each item | disabled |
+| `data-variant` | Item | value-typed: `"default"` / `"destructive"` |
+| `data-inset` | items / labels given `inset` | left inset, aligned with the check column |
+| `data-side` / `data-align` | Popup, SubmenuPopup | actual landing (value-typed), for entrance-direction styling |
+| `data-starting-style` / `data-ending-style` | Popup, SubmenuPopup | first / last frame of the entrance / exit animation |
+
+`data-slot` keeps the vendored (shadcn) word forms — three differ from the
+public part names; when writing style selectors, this table is authoritative:
+
+| Part | `data-slot` |
+| --- | --- |
+| DropdownMenuTrigger | `dropdown-menu-trigger` |
+| DropdownMenuPopup | `dropdown-menu-content` |
+| DropdownMenuGroup | `dropdown-menu-group` |
+| DropdownMenuGroupLabel | `dropdown-menu-label` |
+| DropdownMenuItem | `dropdown-menu-item` |
+| DropdownMenuCheckboxItem | `dropdown-menu-checkbox-item` |
+| DropdownMenuRadioGroup | `dropdown-menu-radio-group` |
+| DropdownMenuRadioItem | `dropdown-menu-radio-item` |
+| DropdownMenuSeparator | `dropdown-menu-separator` |
+| DropdownMenuShortcut | `dropdown-menu-shortcut` |
+| DropdownMenuSubmenu | `dropdown-menu-sub` |
+| DropdownMenuSubmenuTrigger | `dropdown-menu-sub-trigger` |
+| DropdownMenuSubmenuPopup | `dropdown-menu-sub-content` |
+
+## Keyboard interactions
+
+| Key | Effect |
+| --- | --- |
+| `Enter` / `Space` / `ArrowDown` (on the trigger) | open the menu and focus the first item |
+| `ArrowDown` / `ArrowUp` | move between items |
+| `ArrowRight` | expand the submenu and focus its first item |
+| `ArrowLeft` | close the submenu, focus returns to the parent trigger item |
+| `Enter` / `Space` | activate the current item |
+| character keys | typeahead, locating by item text (or `label`) |
+| `Esc` | close the whole menu chain, focus returns to the trigger |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks →
+behaviour switches → appearance → className**.
+
+### DropdownMenu
+
+The root. Renders no DOM; the seam's only behaviour change is `modal`
+defaulting to `false`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultOpen` | `boolean` | `false` | uncontrolled initial open state |
+| `open` | `boolean` | — | controlled open state |
+| `onOpenChange` | `(open, eventDetails) => void` | — | on open-state change; `cancel()` can refuse it |
+| `onOpenChangeComplete` | `(open) => void` | — | after the open/close animation ends |
+| `actionsRef` | `RefObject<Menu.Root.Actions>` | — | imperative `unmount` |
+| `disabled` | `boolean` | `false` | disable the whole menu |
+| `modal` | `boolean` | `false` | lock scroll, block outside interaction (Base UI defaults to `true`, the seam flips it; hover-opened and nested menus are always non-modal) |
+| rest | Base UI `Menu.Root` props | — | passed through |
+
+### DropdownMenuTrigger
+
+A real `<button>`; to use your own button (such as `Button`), go through
+`render`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| rest | Base UI `Menu.Trigger` props (including `render` / `nativeButton`, plus ref) | — | passed through |
+
+### DropdownMenuPopup
+
+Portal + Positioner + Popup folded into one; the four positioning props go to
+the positioner, the rest to the popup.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `side` | `'top' \| 'right' \| 'bottom' \| 'left' \| 'inline-start' \| 'inline-end'` | `'bottom'` | which side to expand on |
+| `sideOffset` | `number` | `4` | gap from the trigger (px) |
+| `align` | `'start' \| 'center' \| 'end'` | `'start'` | alignment |
+| `alignOffset` | `number` | `0` | alignment offset (px) |
+| rest | Base UI `Menu.Popup` props (native element props + ref) | — | passed through |
+
+### DropdownMenuGroup
+
+A container for a set of related items, titled by a `DropdownMenuGroupLabel`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| rest | Base UI `Menu.Group` props | — | passed through |
+
+### DropdownMenuGroupLabel
+
+The group's title — not a control's label; not focusable, not in typeahead.
+**Must sit inside a `DropdownMenuGroup` or `DropdownMenuRadioGroup`**: Base UI
+relies on the group's context to wire it up as the group's `aria-labelledby`,
+and placing it bare in the Popup throws.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `inset` | `boolean` | — | left inset, aligned with items that have a check column |
+| rest | Base UI `Menu.GroupLabel` props | — | passed through |
+
+### DropdownMenuItem
+
+The action item.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onClick` | `(event) => void` | — | on activation (clicks and keyboard both come here) |
+| `closeOnClick` | `boolean` | `true` | close the menu after activation |
+| `disabled` | `boolean` | `false` | disabled |
+| `label` | `string` | — | typeahead text (defaults to the content text) |
+| `variant` | `'default' \| 'destructive'` | `'default'` | warning-colour variant |
+| `inset` | `boolean` | — | left inset |
+| rest | Base UI `Menu.Item` props | — | passed through |
+
+### DropdownMenuCheckboxItem
+
+The toggle item, check indicator built in.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultChecked` | `boolean` | `false` | uncontrolled initial checked state |
+| `checked` | `boolean` | — | controlled checked state |
+| `onCheckedChange` | `(checked, eventDetails) => void` | — | on toggle |
+| `closeOnClick` | `boolean` | `false` | close the menu after activation (the opposite of a plain item) |
+| `disabled` | `boolean` | `false` | disabled |
+| `inset` | `boolean` | — | left inset |
+| rest | Base UI `Menu.CheckboxItem` props | — | passed through |
+
+### DropdownMenuRadioGroup
+
+The group for a mutually exclusive choice; the value lives on the group.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `unknown` | — | uncontrolled initial value |
+| `value` | `unknown` | — | controlled value |
+| `onValueChange` | `(value, eventDetails) => void` | — | on selection change |
+| `disabled` | `boolean` | `false` | disable the whole group |
+| rest | Base UI `Menu.RadioGroup` props | — | passed through |
+
+### DropdownMenuRadioItem
+
+The radio item, selection indicator built in.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `unknown` | required | the value this item stands for |
+| `closeOnClick` | `boolean` | `false` | close the menu after activation |
+| `disabled` | `boolean` | `false` | disabled |
+| `inset` | `boolean` | — | left inset |
+| rest | Base UI `Menu.RadioItem` props | — | passed through |
+
+### DropdownMenuSeparator
+
+The separator between groups.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| rest | Base UI `Menu.Separator` props | — | passed through |
+
+### DropdownMenuShortcut
+
+The end-of-row key hint; a purely visual `<span>` binding no keyboard events.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| rest | native `<span>` props (`className` is a `string`) | — | passed through |
+
+### DropdownMenuSubmenu
+
+The submenu's root (Base UI `Menu.SubmenuRoot`). Renders no DOM; ignores
+`modal`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| rest | Base UI `Menu.SubmenuRoot` props | — | passed through |
+
+### DropdownMenuSubmenuTrigger
+
+The item-shaped submenu trigger (a `<div>`, not a button), with a built-in
+trailing `›` arrow.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `inset` | `boolean` | — | left inset |
+| rest | Base UI `Menu.SubmenuTrigger` props | — | passed through |
+
+### DropdownMenuSubmenuPopup
+
+The submenu popup, isomorphic with `DropdownMenuPopup`, defaults retuned for
+sideways expansion: `side='right'`, `align='start'`, `alignOffset=-3`,
+`sideOffset=0`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| rest | same as `DropdownMenuPopup` | — | passed through |
+
+All 22 types are exported as well: each part's `XxxProps`, the interactive
+parts' `XxxState` (Trigger / Popup / Item / CheckboxItem / RadioItem /
+SubmenuTrigger), and `DropdownMenuOpenChangeEventDetails`.

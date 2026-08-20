@@ -1,0 +1,174 @@
+---
+title: NumberField
+description: A numeric input flanked by stepper buttons — typing, arrow keys, ± buttons, Intl formatting and min/max/step in one
+---
+
+<ComponentPreview name="number-field/basic" />
+
+The complete numeric input control, built on Base UI's `NumberField`
+composition. In the middle is a real `<input>`: type directly, or step with the
+arrow keys and the ± buttons on either side; `format` takes
+`Intl.NumberFormatOptions` — the display is formatted, the value stays a plain
+number.
+
+## Usage
+
+```tsx
+import { NumberField } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<NumberField defaultValue={4} min={0} max={99} />
+```
+
+Without children you get the complete default composition. The label goes
+through the ordinary channel: the `id` on the root is routed by Base UI straight
+to the inner input, so `FieldLabel htmlFor` connects directly; with no visible
+label pass `aria-label`, and the default composition forwards it to the input.
+
+## Anatomy
+
+A one-row group box, four parts; once children are written the default
+composition steps aside entirely.
+
+```text
+NumberField
+└─ NumberFieldGroup
+   ├─ NumberFieldDecrement
+   ├─ NumberFieldInput
+   └─ NumberFieldIncrement
+```
+
+Without children, the stepper buttons render the default plus/minus icons and
+come with upstream's English `aria-label`s (Increase / Decrease) and
+`tabIndex={-1}` — the keyboard path is the input's arrow keys. To localize the
+button names, compose and override:
+
+```tsx
+<NumberField defaultValue={4}>
+  <NumberFieldGroup>
+    <NumberFieldDecrement aria-label="Decrease" />
+    <NumberFieldInput />
+    <NumberFieldIncrement aria-label="Increase" />
+  </NumberFieldGroup>
+</NumberField>
+```
+
+## Controlled
+
+`value` / `defaultValue` / `onValueChange(value, details)` — the controlled
+empty value is `null` (returned when the input is cleared); `details.reason`
+tells change sources apart. After an interaction settles there is also
+`onValueCommitted(value, details)`; hang expensive work on it.
+
+<ComponentPreview name="number-field/controlled" />
+
+## Formatting
+
+`format` takes `Intl.NumberFormatOptions`; `locale` defaults to the runtime's.
+Display and value are separate — the display carries the currency symbol,
+`onValueChange` still receives the plain number.
+
+<ComponentPreview name="number-field/format" />
+
+## Form
+
+The hidden input renders only with a `name`; the value submits natively with the
+form. Binding to TanStack Form is covered in the
+[form guide](/en/docs/forms/tanstack-form#numberfield).
+
+## Keyboard interactions
+
+With focus on the input:
+
+| Key | Effect |
+| --- | --- |
+| `↑` / `↓` | ± `step` (default 1) |
+| `Shift + ↑/↓` | ± `largeStep` (default 10) |
+| `Alt + ↑/↓` | ± `smallStep` (default 0.1) |
+| `Home` / `End` | jump to `min` / `max` |
+
+## State and className
+
+Each part externalizes the Base UI Field ecosystem's state vocabulary (presence
+attributes, empty string):
+
+| Attribute | When present |
+| --- | --- |
+| `data-disabled` | while `disabled`, on all parts in sync |
+| `data-invalid` / `data-valid` | once the validation state settles (inside the Base UI Field ecosystem) |
+| `data-dirty` / `data-touched` / `data-filled` / `data-focused` | as interaction progresses |
+| `data-scrubbing` | during a wheel scrub (`allowWheelScrub`) |
+
+| `data-slot` | What it is |
+| --- | --- |
+| `number-field` | root container |
+| `number-field-group` | the one-row group box; border / focus ring / invalid ring paint here |
+| `number-field-input` | the real input |
+| `number-field-decrement` / `number-field-increment` | the stepper buttons |
+
+`className` reaches Base UI slots everywhere; the function form
+`(state) => string` works.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks
+→ behaviour switches → appearance → className**.
+
+### NumberField
+
+The root part; owns all the state. Without children, renders the default
+composition.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `number` | — | uncontrolled initial value |
+| `value` | `number \| null` | — | controlled value; `null` means empty |
+| `onValueChange` | `(value: number \| null, details) => void` | — | change callback; details can cancel |
+| `onValueCommitted` | `(value: number \| null, details) => void` | — | fires after the interaction settles; details has no cancel |
+| `min` / `max` | `number` | — | value range |
+| `step` | `number \| 'any'` | `1` | step size |
+| `largeStep` / `smallStep` | `number` | `10` / `0.1` | Shift / Alt step sizes |
+| `snapOnStep` | `boolean` | `false` | snap to multiples of step while stepping |
+| `allowWheelScrub` | `boolean` | `false` | allow the wheel to change the value while focused and hovered |
+| `allowOutOfRange` | `boolean` | `false` | allow typing out-of-range values directly (left to native validation) |
+| `format` | `Intl.NumberFormatOptions` | — | display formatting |
+| `locale` | `Intl.LocalesArgument` | runtime | formatting locale |
+| `required` / `disabled` / `readOnly` | `boolean` | `false` | form states |
+| `name` / `form` | `string` | — | form serialization; the hidden input renders only with a `name` |
+| `id` | `string` | — | lands on the inner input, for a direct `htmlFor` connection |
+| `placeholder` | `string` | — | the default composition's input placeholder; when composing, write it on `NumberFieldInput` |
+| rest | Base UI `NumberField.Root` props (native `div` props + ref) | — | passed through |
+
+### NumberFieldGroup / NumberFieldInput
+
+The group box and the real input, pure pass-through: the matching Base UI
+parts' props (each element's native props + ref); the seam only adds default
+styling.
+
+### NumberFieldDecrement
+
+The minus stepper button; without children renders the default minus icon;
+`aria-label` defaults upstream to Decrease.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | minus icon | custom button content |
+| rest | Base UI `NumberField.Decrement` props (native `button` props + ref) | — | passed through |
+
+### NumberFieldIncrement
+
+The plus stepper button; without children renders the default plus icon;
+`aria-label` defaults upstream to Increase.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | plus icon | custom button content |
+| rest | Base UI `NumberField.Increment` props (native `button` props + ref) | — | passed through |
+
+Twelve types are exported as well: `NumberFieldProps` / `NumberFieldState` /
+`NumberFieldChangeEventDetails` / `NumberFieldCommitEventDetails` /
+`NumberFieldGroupProps` / `NumberFieldGroupState` / `NumberFieldInputProps` /
+`NumberFieldInputState` / `NumberFieldIncrementProps` /
+`NumberFieldIncrementState` / `NumberFieldDecrementProps` /
+`NumberFieldDecrementState`.

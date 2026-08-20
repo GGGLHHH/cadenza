@@ -1,0 +1,205 @@
+---
+title: Input
+description: Single-line text box — self-contained with its own border; the plain htmlFor channel, plus Base UI's onValueChange
+---
+
+<ComponentPreview name="input/basic" />
+
+Base UI's `Input` in shadcn's base-nova box. Use it when **the field is just a
+field** — border, radius and focus ring all live on the element itself.
+
+## Usage
+
+```tsx
+import { Field, FieldDescription, FieldLabel, Input } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Input id="title" name="title" placeholder="Gaspard de la nuit" />
+```
+
+## Field
+
+`Field` + `FieldLabel htmlFor` + `Input id` + `FieldDescription` — exactly the
+hero's shape:
+
+```tsx
+<Field>
+  <FieldLabel htmlFor="title">Work title</FieldLabel>
+  <Input id="title" name="title" placeholder="Gaspard de la nuit" />
+  <FieldDescription>Shown publicly; can be changed later.</FieldDescription>
+</Field>
+```
+
+The label channel is **the most ordinary one**: the `id` lands on the real
+`<input>`, `FieldLabel htmlFor` points at it, and the native `<label for>` gives
+both the accessible name and click-to-focus in one stroke. None of the box-only
+controls' ([Checkbox](/en/docs/components/checkbox) /
+[Switch](/en/docs/components/switch)) detour where "the id actually sits on a
+hidden input", and no `aria-label` to add. The library-wide table of all four
+channels is in [Field](/en/docs/components/field#accessibility).
+
+Lining a batch of fields into a column, and whether to wrap them in a semantic
+group, are the [Field](/en/docs/components/field) family's business
+(`FieldGroup` / `FieldSet`) — this page does not repeat it.
+
+## Disabled
+
+`disabled` governs this one input only: interaction ignored, grey background,
+half opacity, plus `data-disabled` rendered. To grey the whole text column,
+follow the state convention in
+[Field](/en/docs/components/field#state-and-classname) and put `data-disabled`
+on the `Field` **by hand** — the pure-DOM line does not sync it for you.
+
+`readOnly` is the other tier: focusable, selectable and copyable, but
+unchangeable; unlike `disabled`, it still participates in submission.
+
+## Invalid state
+
+`aria-invalid` goes on the control, `data-invalid` on the field column — each
+attribute governs its own end:
+
+| Where | Effect |
+| --- | --- |
+| `aria-invalid` on `Input` | the input paints a destructive border and ring |
+| `data-invalid` on `Field` | the whole text column turns destructive, see [Field](/en/docs/components/field#state-and-classname) |
+
+The skin's error styling hangs on **`aria-invalid`**, not `data-invalid`
+(consistent with [InputGroup](/en/docs/components/input-group)): pass
+`aria-invalid` by hand and the red border and ring appear, no Base UI validation
+involved — in this library that `data-invalid` line never lights up on its own;
+why is in [State and className](#state-and-classname). The error message goes to
+the [`FieldError`](/en/docs/components/field#validation-and-errors) in the same
+`Field`.
+
+## File
+
+`type="file"` is the native file picker; the skin only tucks the "choose file"
+button into the input —
+`file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground`:
+drops the browser's default grey-block border, same height and text colour as
+the input.
+
+```tsx
+<Field>
+  <FieldLabel htmlFor="score">Full score</FieldLabel>
+  <Input id="score" name="score" type="file" accept=".pdf,.musicxml" />
+</Field>
+```
+
+**File inputs can only be uncontrolled**: `value` cannot be pushed in (a native
+restriction); take the files from `onChange`'s `event.target.files`.
+`onValueChange` is no use here either — its first argument is `input.value`,
+which for files is that `C:\fakepath\…` string.
+
+## Value changes
+
+The native `onChange` works as usual; Base UI gives **an extra**
+`onValueChange(value, details)` beside it: the first argument is the string
+itself, skipping the `event.target.value` hop.
+
+The two callbacks **fire together**, not either-or — Base UI merges event
+handlers (`mergeProps` chains internal and external `on*` to run in turn), so
+your `onChange` never displaces the part's internal one.
+
+Inside the second argument `InputChangeEventDetails`:
+
+- `reason` is **always `'none'`** — upstream dispatches only this one for field
+  controls; do not rely on it to tell sources apart.
+- `event` is the native event.
+- `cancel()` has **no receiver** here: the part reads the value and moves on,
+  never checking `isCanceled`. To stop an input, the only way is to stay
+  controlled and not write the new value back.
+
+## When to use InputGroup
+
+To add icons, text or buttons to the input, do not modify this one — switch to
+[InputGroup](/en/docs/components/input-group): **the moment anything shares the
+input's border, switch** — a leading icon, a trailing button, a unit suffix, a
+keyboard-shortcut hint, any one of them counts.
+
+Because border ownership changes: inside an `InputGroup`, **the row owns the
+border and focus ring**, and `InputGroupInput` has no border of its own at all.
+So this is not "attaching an add-on to `Input`" but swapping the part — stuffing
+an add-on next to an `Input` only yields two boxes. For a ready-made search box
+use [SearchField](/en/docs/components/search-field) directly, no assembling
+needed.
+
+Conversely, a single bare input needs no `InputGroup` — `Input` is complete by
+itself; for multi-line text use [Textarea](/en/docs/components/textarea).
+
+## Form
+
+Serialization is native; the seam stays out: given a `name` it enters
+`FormData`, `disabled` fields do not submit, and `required` / `readOnly` /
+`autoComplete` are all the native set. When the control renders outside the
+`<form>`, use the native `form` attribute to name which form it belongs to.
+
+Pre-submit validation is likewise the browser's — Base UI's field validation
+only runs inside its own `Field.Root`, and this library's
+[Field](/en/docs/components/field) is a pure DOM line, see the next section.
+
+## State and className
+
+`className` reaches Base UI's slot, so the function form holds:
+`(state) => string | undefined`, the argument being `InputState`:
+
+| `data-*` | Name in `InputState` | When present |
+| --- | --- | --- |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-valid` / `data-invalid` | `valid` | validation passed / failed. The initial value is `null`: neither appears |
+| `data-touched` | `touched` | blurred at least once |
+| `data-dirty` | `dirty` | value differs from the initial |
+| `data-filled` | `filled` | has a value |
+| `data-focused` | `focused` | focused |
+
+Apart from `data-disabled`, this set **only moves inside Base UI's
+`Field.Root`** — this library's [Field](/en/docs/components/field) is not it
+(that one is pure DOM layout), so here `valid` stays `null` and the other four
+stay `false`. That is why the error state hangs on `aria-invalid` instead, see
+[Invalid state](#invalid-state).
+
+`data-slot="input"` sits on the real `<input>`; use it as a selector when
+targeting from outside. Why the function `className` genuinely works is in the
+next section.
+
+## Why a single cast
+
+The seam wraps no component; it makes exactly one type cast — the same one
+`InputGroupInput` needs.
+
+Before promotion, the vendored file typed the props as
+`ComponentProps<'input'>`, and that flattening erased two things the underlying
+`Input` actually understands: **the function-form `className`**, and
+**`onValueChange` with details**. `defaultValue` is not among them —
+`BaseUIComponentProps` does strip the native one first, but `Input` immediately
+declares it back, typed as the native `ComponentProps<'input'>['defaultValue']`,
+so flattening it loses nothing. Every prop was spread through as-is all along;
+the runtime was always connected — **only the types needed restoring**.
+
+The function `className` genuinely works: this library's `cn` returns a function
+when it meets one and resolves it once state arrives (clsx would just swallow
+it), so your classes still sort after the seam's set — on conflict, yours wins.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks
+→ behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `id` | `string` | — | lands on the real `<input>`; `FieldLabel htmlFor` points here |
+| `defaultValue` | `string \| number \| readonly string[]` | — | uncontrolled initial value. The one Base UI re-declares |
+| `value` | `string \| number \| readonly string[]` | — | controlled value |
+| `onValueChange` | `(value: string, eventDetails: InputChangeEventDetails) => void` | — | value change, the first argument is the string itself. `reason` is always `'none'`; `cancel()` has no effect |
+| `onChange` | `(event: ChangeEvent<HTMLInputElement>) => void` | — | native callback, fires together with `onValueChange` |
+| `disabled` | `boolean` | `false` | ignores user interaction, also renders `data-disabled` |
+| `name` | `string` | — | form field name |
+| `type` | `string` | — | native `<input>` type; omitted, the browser default is `text` |
+| `placeholder` | `string` | — | placeholder |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | replaces the rendered element |
+| `className` | `string \| ((state: InputState) => string \| undefined)` | — | class. Sorts after the seam's set; on conflict, yours wins |
+| rest | Base UI `Input` props (native `input` props + `ref`) | — | passed through; `readOnly` / `required` / `autoComplete` / `aria-invalid` / `form` are all in there |
+
+The three types `InputProps` / `InputState` / `InputChangeEventDetails` are
+exported as well.

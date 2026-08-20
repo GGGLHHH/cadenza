@@ -1,0 +1,448 @@
+---
+title: Select
+description: A wrapper over Base UI Select — a composable dropdown select; omit children for the full default composition, with the clear ✕ present by default
+---
+
+<ComponentPreview name="select/basic" />
+
+The dropdown select. Behaviour is entirely Base UI's: the trigger is a real
+`<button>`, the popup goes through a Portal, and typeahead, arrow-key
+navigation, Escape to close and the `aria-controls` / `aria-activedescendant`
+pairing are all its business. Composition is the whole API.
+
+**Present by default is this family's house rule**: without children, `Select`
+renders the full default composition from `items` (trigger + value display +
+clear ✕ + popup + options); once children are written you take over layer by
+layer, and a `SelectTrigger` without children still includes `SelectValue` and
+the clear automatically.
+
+## Usage
+
+```tsx
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+const VOICES = { soprano: 'Soprano', alto: 'Alto', tenor: 'Tenor' }
+
+// One-liner: items feeds the data, placeholder / aria-label sit on the root,
+// everything else defaults (clear ✕ included)
+<Select aria-label="Voice part" items={VOICES} placeholder="Pick a voice part" />
+
+// Composition: write children to customise a layer; unwritten layers keep their defaults
+<Select items={VOICES}>
+  <SelectTrigger>
+    <SelectValue placeholder="Pick a voice part" />
+  </SelectTrigger>
+  <SelectPopup>
+    {Object.entries(VOICES).map(([value, label]) => (
+      <SelectItem key={value} value={value}>{label}</SelectItem>
+    ))}
+  </SelectPopup>
+</Select>
+```
+
+## Anatomy
+
+When composing, the structure is always: a `Select` containing one
+`SelectTrigger` (with `SelectValue` inside), followed by one `SelectPopup`
+(with `SelectItem`s inside):
+
+```text
+Select
+├── SelectTrigger
+│   ├── SelectValue
+│   └── SelectClear
+└── SelectPopup
+    ├── SelectEmpty
+    ├── SelectGroup
+    │   ├── SelectLabel
+    │   ├── SelectItem
+    │   └── SelectItem
+    ├── SelectSeparator
+    └── SelectGroup
+        ├── SelectLabel
+        └── SelectItem
+```
+
+**`SelectGroup` is optional** — when omitted, `SelectPopup` wraps an implicit
+group automatically (the list's padding lives on the group); once written it is
+fully yours, see [Groups](#groups). When customising a layer: a `SelectItem`'s
+`value` is its value, `SelectValue` displays the current selection (in which
+case `placeholder` goes on the `SelectValue`), and `SelectTrigger` is the
+actual control — `aria-label` lands on it. Written layers are fully yours;
+unwritten layers keep their defaults — the clear included: when hand-writing
+trigger children, write `<SelectClear />` if you want it, see
+[Clearable](#clearable).
+
+## Label
+
+The trigger is a real `<button>`, so **one channel covers everything**: a
+native `<label for>` both names it and lets the browser forward clicks to it to
+open the popup. The `id` lands on the `SelectTrigger`; on the one-liner path
+just write `id` on the root — Base UI routes it to the trigger, and
+`FieldLabel htmlFor` points straight at it:
+
+<ComponentPreview name="field/select" />
+
+**The label is the control**: clicking the label while the popup is open closes
+it — one clean open-close cycle. This takes one extra cut from the seam —
+Base UI treats any press outside the popup as a close (`outside-press`, plus a
+`cancel-open` when the same gesture releases), then the browser forwards the
+label's click to the trigger, which toggles once more; the two together read as
+a close-then-reopen flicker. A `<label>` pointing at our own trigger does not
+count as "outside", so the seam `cancel()`s those two closes. The full table of
+the four label channels is in [Field](/en/docs/components/field#accessibility).
+
+> The React Aria version needed the copy written twice here: it hung its own
+> `aria-labelledby` on the trigger, which outranks a native `<label for>` in
+> accessible-name computation, so a separate `aria-label` was mandatory; and
+> `usePress` refuses bare clicks with no pointer sequence, so "click the label
+> to open" had to be patched in by the seam. Neither debt exists on Base UI.
+
+## Aligning the selected item with the trigger
+
+`alignItemWithTrigger` decides how the popup appears: on, **the selected item
+is aligned right under the cursor** (what a native macOS select does); off, it
+is an ordinary edge-attached dropdown. This library switches it **off by
+default** — pass `alignItemWithTrigger` to get the macOS-style alignment back.
+
+With alignment on, the popup opens on **pointer down**; if an item happens to
+land under the cursor, the pointer is already on it at release — an ordinary
+click would mis-select. Base UI blocks this upstream, along two axes:
+
+| Axis | Threshold | Meaning |
+| --- | --- | --- |
+| time | held 400ms | holding before releasing is a deliberate press–drag–release gesture |
+| travel | dragged 8px | the pointer has moved off an item, meaning a drag-select is underway |
+
+Either one must hold before that release commits. The guard is designed as a
+companion to `alignItemWithTrigger`: "moved 8px away" is equivalent to "left
+the original item". With alignment off by default, the popup never opens under
+the pointer and the guard stands by; switch alignment back on and it takes
+effect with it (same for the scroll lock — the upstream Positioner's lock
+condition is `alignItemWithTrigger || modal`).
+
+The previous version (on the React Aria base) implemented its own guard here —
+an attribute hung on `<html>` plus one style rule. That whole passage is now
+deleted, and the `PRESS_GRACE_ATTRIBUTE` export is gone with it.
+
+## Groups
+
+`SelectLabel` is a group label, not the control's label — the control's label
+lives over in [Field](/en/docs/components/field). `SelectSeparator` can sit
+between groups or between items within a group:
+
+<ComponentPreview name="select/group" />
+
+## Multiple selection
+
+With `multiple`, `value` / `onValueChange` change type wholesale: `string[]`
+instead of `string | null`. The multi-selection display on the trigger is
+assembled by `SelectValue`, comma-separated by default:
+
+<ComponentPreview name="select/multiple" />
+
+## Dynamic collections
+
+Data-driven options are just one `.map()` — there is no collection API:
+
+<ComponentPreview name="select/dynamic" />
+
+Two places, do not mix them up:
+
+| Passed to | Controls |
+| --- | --- |
+| the root's `items` | what gets printed on the trigger |
+| `SelectItem`'s `label` | what typeahead searches. **Required** when `children` is not a plain string |
+
+### `items` only controls the trigger display
+
+This is the easiest trap when upgrading from the React Aria version:
+**`SelectValue` never looks at the option list**. It only knows the current
+value; to translate the value into human language, give the root an `items`
+table:
+
+```tsx
+<Select items={{ apple: 'Apple', pear: 'Pear' }}>       // a record map
+<Select items={fruits.map(f => ({ value: f.id, label: f.name }))}>  // an array
+<Select items={[{ value: 'Strings', items: [{ value: 'violin', label: 'Violin' }] }]}>
+                          // grouped form (the heading key is value, Base UI's official convention)
+<SelectValue>{value => labels[value] ?? '—'}</SelectValue>          // or a function
+```
+
+Without it, the trigger prints the raw value itself (`apple` instead of
+"Apple"). On the composition path `items` **renders nothing** — the options
+are still your own `.map()`; on the one-liner path (no children) the default
+composition renders the options from it. **The grouped form is flattened when
+rendered** (group labels never appear; DEV warns) — this is how Base UI uses
+it: the grouped form only feeds label resolution (internally it is a flatMap),
+and **rendering groups always goes through the composition path**
+(`SelectGroup` + `SelectLabel`; even Combobox's official grouping has the
+caller map it out). When values and labels are identical anyway (page sizes
+10 / 20 / 50), ignore this whole point.
+
+## Empty state
+
+`SelectEmpty` is written alongside the options and **shows up automatically**
+when the list has no options at all — pure CSS (`:only-child`), zero wiring:
+
+<ComponentPreview name="select/empty" />
+
+On the default implicit group this is the whole story; only **hand-written**
+`SelectGroup` carries one constraint: do not render empty group shells when the
+data is empty, or it stops being the only child. A `Select` with an empty
+collection still opens.
+
+> The React Aria version had a trap here: react-stately blocks empty
+> collections right inside `open()`, and without an explicit
+> `allowsEmptyCollection` the empty state never shows. Base UI has no such
+> gate.
+
+## Clearable
+
+**The clear is present by default**: with a value, a ✕ stands in the chevron's
+spot; clicking it clears (`null` for single, `[]` for multiple,
+`reason: 'clear-press'`) and **never opens the popup**. With no value, or under
+`disabled` / `readOnly`, it does not render and the chevron returns.
+`clearable={false}` is the master switch — for cases where being clearable is a
+semantic error, like required form fields; it also disables an explicitly
+composed `SelectClear`:
+
+<ComponentPreview name="select/clearable" />
+
+When hand-writing trigger children, the clear never appears implicitly — the
+composition path is fully yours; write `<SelectClear />` if you want it
+(aria-label / icon customisable). It is a marker part: written inside the
+trigger but rendered **beside** it — HTML forbids a button inside a button, so
+the seam hoists it into a sibling of the trigger (a real `<button>`, in the Tab
+order: clearing has no other keyboard path, and a mouse-only design would lock
+keyboard users out). Clearing an uncontrolled Select works only because the
+seam takes over value state internally (always controlled towards Base UI).
+
+## Pending
+
+Mark the save round-trip after a re-selection with `pending` — an action-side
+word, under the same rules as
+[Button's pending](/en/docs/components/button#pending) (`loading` belongs to
+the content side).
+
+<ComponentPreview name="select/pending" />
+
+The trigger **stays focusable but the popup no longer opens** (underneath it
+goes through `readOnly`, the form control's ready-made "focusable but inert"
+channel — Button lacks it, which is why it has to assemble `disabled` +
+`focusableWhenDisabled`); the Spinner takes the chevron's spot (the same
+position as the clear ✕), and the clear steps aside. `aria-busy` and
+`data-pending` are both derived from `pending` on the trigger — callers cannot
+set just one half.
+
+## Disabled
+
+Two granularities: `disabled` on the `Select` disables the whole control (the
+popup will not open); on a `SelectItem` it disables just that row (keyboard
+navigation skips it):
+
+<ComponentPreview name="select/disabled" />
+
+## Invalid state
+
+The error state is two attributes, each owning one end: `data-invalid` on the
+`Field` recolours the whole column of text, `aria-invalid` on the
+`SelectTrigger` paints the destructive border and ring — and tells assistive
+technology:
+
+```tsx
+<Field data-invalid>
+  <FieldLabel htmlFor="fruit">Fruit</FieldLabel>
+  <Select>
+    <SelectTrigger aria-invalid id="fruit">
+      <SelectValue placeholder="Pick one" />
+    </SelectTrigger>
+    <SelectPopup>{/* … */}</SelectPopup>
+  </Select>
+  <FieldError>Please select a fruit.</FieldError>
+</Field>
+```
+
+The error message goes to the `FieldError` inside the same `Field`; the
+contract is in
+[Field's validation and errors](/en/docs/components/field#validation-and-errors).
+
+## When to use Select
+
+Three pickers — choose the right one before reading usage:
+
+| Component | When |
+| --- | --- |
+| **Select** | options are fixed, no typing to find them |
+| [Combobox](/en/docs/components/combobox) | you need **type-to-filter** and the full list is already at hand — filtering happens in the browser |
+| [InfiniteCombobox](/en/docs/components/infinite-select) | type-to-filter, but the list lives on the server and loads page by page |
+
+## State and className
+
+Every `className` takes both forms: a string, or a `(state) => string` function
+(the parameter carries each state table's right column). The root renders no
+DOM itself, so it has no `className` and no state attributes.
+
+**SelectTrigger**
+
+| State | When present |
+| --- | --- |
+| `data-popup-open` | the popup is open |
+| `data-placeholder` | no value selected yet |
+| `data-disabled` | `disabled` |
+| `data-size` | always set: `sm` / `default` (ours) |
+| `data-pending` | the root's `pending` (seam-derived, paired with `aria-busy`) |
+
+**SelectPopup**
+
+| State | When present |
+| --- | --- |
+| `data-open` / `data-closed` | during enter/exit transitions |
+| `data-side` | the side actually attached to (may be flipped) |
+| `data-align-trigger` | echo of `alignItemWithTrigger` (ours) |
+
+**SelectItem**
+
+| State | When present | Name in function className |
+| --- | --- | --- |
+| `data-selected` | is the currently selected item | `selected` |
+| `data-highlighted` | highlighted by keyboard or pointer | `highlighted` |
+| `data-disabled` | `disabled` | `disabled` |
+
+Every part carries its own `data-slot` (`select-trigger` / `select-value` /
+`select-content` / `select-group` / `select-label` / `select-item` /
+`select-separator` / `select-clear` / `select-empty` / `select-pending`) — use
+them as selectors when targeting from outside.
+Among them `select-value` **is a wiring contract, not a marker** — do not pass
+it a `data-slot` of your own: `SelectTrigger`'s layout rules hit it via
+`*:data-[slot=select-value]:…`, and replacing it fails silently. The rest are
+just markers; changing them breaks nothing (the selected item's highlight goes
+through `focus:bg-accent` and never reads `data-slot`).
+
+## Keyboard interactions
+
+| Key | Behaviour |
+| --- | --- |
+| `Space` / `Enter` / `↓` / `↑` | open the popup |
+| `↓` / `↑` | once open: move between options |
+| `Home` / `End` | jump to the first / last item |
+| Type | jump to the matching item by `label` (or text content) |
+| `Enter` | select the highlighted item and close |
+| `Esc` | close without changing selection |
+| `Tab` | close and hand focus to the next control |
+
+Disabled items are skipped in all of the navigation above.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+### Select
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `Value \| Value[] \| null` | `null` | uncontrolled initial value |
+| `value` | `Value \| Value[] \| null` | — | controlled value; an array under `multiple` |
+| `onValueChange` | `(value, eventDetails) => void` | — | selection change callback |
+| `items` | `Record<string, ReactNode> \| Array<{ value, label }> \| Array<{ value, items }>` | — | with children written it **only feeds `SelectValue`**; on the childless one-liner path it is also the option data source (the grouped form is flattened — write `SelectGroup` yourself to render groups), see [`items` only controls the trigger display](#items-only-controls-the-trigger-display) |
+| `multiple` | `boolean` | `false` | multiple selection; once on, the value type becomes an array wholesale |
+| `pending` | `boolean` | — | re-selection save in flight: focusable but the popup stays closed, Spinner in the chevron's spot, see [Pending](#pending) |
+| `disabled` | `boolean` | `false` | disable the whole control |
+| `readOnly` | `boolean` | `false` | read-only |
+| `required` | `boolean` | `false` | required (for form validation) |
+| `name` | `string` | — | form field name; renders a hidden input |
+| `modal` | `boolean` | `false` | whether opening locks page scroll and outside interaction. **The seam flips Base UI's default `true` to `false`** — the page keeps scrolling |
+| `open` / `defaultOpen` / `onOpenChange` | — | — | controlled / uncontrolled channels for the popup's open state |
+| `clearable` | `boolean` | `true` | the clear's **master switch**: `false` also switches off an explicitly written `SelectClear` |
+| `placeholder` | `string` | — | used only by the **childless** default composition, fed to the auto-rendered `SelectValue`; ignored once you write your own trigger |
+| `aria-label` | `string` | — | accessible name for the default composition's trigger (needed only without a visible label); hang it on your own `SelectTrigger` instead once you write one |
+| `id` | `string` | — | Base UI routes it to the trigger, so `FieldLabel htmlFor` can point at the root |
+| rest | Base UI `Select.Root` props | — | passed through |
+
+The root renders no DOM itself, so it has no `className` and no state
+attributes.
+
+### SelectTrigger
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `aria-label` / `id` | `string` | — | the control's accessible name lands here, not on the root |
+| `size` | `'sm' \| 'default'` | `'default'` | height tier, echoed as `data-size` |
+| `nativeButton` | `boolean` | `true` | switch off to replace the element via `render` |
+| `className` | `string \| (state) => string` | — | class, both forms in [State and className](#state-and-classname) |
+| rest | Base UI `Select.Trigger` props (native `button` props + `ref`) | — | passed through — this is exactly where `aria-invalid` goes in |
+
+The trigger appends an up-down chevron icon at the end, after `children`.
+
+### SelectValue
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `placeholder` | `ReactNode` | — | content shown when no value is selected |
+| `children` | `ReactNode \| (value) => ReactNode` | — | the function form receives the current value and decides what to print |
+| `className` | `string \| (state) => string` | — | class |
+| rest | Base UI `Select.Value` props | — | passed through (`data-slot` excepted, see [State and className](#state-and-classname)) |
+
+### SelectPopup
+
+Portal + Positioner + Popup + List in one, scroll arrows included. Positioning
+props go to the positioner, the rest to the popup.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `alignItemWithTrigger` | `boolean` | `false` | align the selected item with the trigger (cursor) position (macOS-style). **The seam defaults it off** — an ordinary edge-attached popup; while on, the scroll lock takes effect with it (the upstream Positioner's lock condition is `alignItemWithTrigger \|\| modal`), see [Aligning the selected item with the trigger](#aligning-the-selected-item-with-the-trigger) |
+| `side` | `'top' \| 'bottom' \| 'left' \| 'right' \| 'inline-start' \| 'inline-end'` | `'bottom'` | which side to attach to |
+| `sideOffset` | `number` | `4` | gap from the trigger |
+| `align` | `'start' \| 'center' \| 'end'` | `'center'` | cross-axis alignment |
+| `alignOffset` | `number` | `0` | cross-axis offset |
+| `className` | `string \| (state) => string` | — | popup class |
+| rest | Base UI `Select.Positioner` / `Select.Popup` props | — | passed through |
+
+Width follows the trigger by default (`w-(--anchor-width)`); height is capped
+at `--available-height`, and overflow scrolls inside the popup.
+
+### SelectGroup / SelectLabel / SelectSeparator
+
+| Part | Element | Description |
+| --- | --- | --- |
+| `SelectGroup` | `div` (`role="group"`) | one group of options. When omitted, `SelectPopup` wraps an implicit group automatically; once written it is fully yours |
+| `SelectLabel` | `div` | group label, associated with its group automatically |
+| `SelectSeparator` | `div` | separator line, non-interactive |
+
+### SelectItem
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `any` | `null` | this item's value |
+| `label` | `string` | text content | for typeahead; required when `children` is not a plain string |
+| `disabled` | `boolean` | `false` | disable this one item |
+| `className` | `string \| (state) => string` | — | class |
+| rest | Base UI `Select.Item` props | — | passed through (`data-slot` excepted, see [State and className](#state-and-classname)) |
+
+The selection mark (the checkmark) is rendered by the part itself at the end of
+the row.
+
+### SelectClear / SelectEmpty
+
+| Part | Element | Description |
+| --- | --- | --- |
+| `SelectClear` | `button` | the clear marker part, written inside `SelectTrigger` and rendered beside it; takes native `button` props (`type` excepted), default `aria-label="Clear selection"`, default children an ✕ icon |
+| `SelectEmpty` | `div` (`role="status"`) | the empty-state slot, takes native `div` props |
+
+The ten parts' props types are exported as well: `SelectProps` /
+`SelectPopupProps` / `SelectGroupProps` / `SelectItemProps` /
+`SelectLabelProps` / `SelectSeparatorProps` / `SelectTriggerProps` /
+`SelectValueProps` / `SelectClearProps` / `SelectEmptyProps`; on the callback
+side there are also `SelectChangeEventReason` / `SelectChangeEventDetails`.

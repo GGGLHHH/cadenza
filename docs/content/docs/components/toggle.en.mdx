@@ -1,0 +1,178 @@
+---
+title: Toggle
+description: A button that stays pressed — a real button + aria-pressed, the name goes through children, variant/size are shadcn's cva knobs
+---
+
+<ComponentPreview name="toggle/basic" />
+
+Base UI's `Toggle` in shadcn's base-nova skin. The seam **adds no behaviour** —
+every prop is one plain spread down to the underlying part; it does only two
+things: visually separates **pressed** from **hover** (see
+[State and className](#state-and-classname)), and touches the types in two
+places — narrowing `className` to a string, and keeping the `Value` generic on
+`value` from collapsing into `string`.
+
+It is a **real `<button aria-pressed>`**: the root element is the button itself;
+keyboard activation (`Enter` / `Space`), `disabled`, and the `hover` /
+`focus-visible` pseudo-classes are all native.
+
+## Usage
+
+```tsx
+import { Toggle } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Toggle aria-label="Bold" defaultPressed>
+  <IconBold />
+</Toggle>
+```
+
+## Label
+
+**The name goes through `children`**, because a button's accessible name is its
+own content — so there is **no [Checkbox](/en/docs/components/checkbox) /
+[Switch](/en/docs/components/switch) `id` + `FieldLabel htmlFor` channel** here,
+and the seam need not provide one: those two are box-only (the root is a box / a
+track, text cannot go inside and can only hang on a sibling label), while a
+Toggle's text already lives inside the button. With visible text, write it
+straight into `children`; icon beside text works the same (the third one in the
+hero is exactly that).
+
+Icon-only, with no visible text, add `aria-label` — the same rule as
+[Button](/en/docs/components/button)'s `icon-*` sizes.
+
+Conversely, **do not hang a `FieldLabel` on it**: that would override the
+button's own text as the accessible name, which is also why the channel table on
+the [Field](/en/docs/components/field#accessibility) page does not include
+Toggle.
+
+## Variants and sizes
+
+<ComponentPreview name="toggle/variants" />
+
+`variant` and `size` are **shadcn's cva knobs, not Base UI's** — `Toggle` has
+neither prop. The three heights are `h-7` / `h-8` / `h-9`, each paired with a
+`min-w-*` of the same size, so the icon-only form is naturally square. Icons
+need no sizing of their own: the cva gives `svg`s without an explicit size a
+`size-4` fallback (`size-3.5` at `size="sm"`).
+
+The two `variant`s differ while not pressed: `default` is fully transparent,
+`outline` keeps a border whether pressed or not.
+
+`toggleVariants` is exported as well; call it directly when some other element
+needs to be painted like a toggle.
+
+## Controlled
+
+The controlled trio is `pressed` / `defaultPressed` / `onPressedChange`. The
+callback's second argument is a real `ChangeEventDetails` (exported as
+`ToggleChangeEventDetails`): `reason` is **always `'none'`** (upstream
+dispatches only this one for toggles; do not rely on it to tell sources apart),
+and `cancel()` **is honoured** — call it and the component's internal state does
+not advance:
+
+```tsx
+<Toggle
+  aria-label="Bold"
+  pressed={bold}
+  onPressedChange={(pressed, eventDetails) => {
+    if (locked) {
+      eventDetails.cancel() // internal state does not advance; the button stays put
+      return
+    }
+    setBold(pressed)
+  }}
+/>
+```
+
+Controlled, what shows is your `pressed` anyway; what `cancel()` stops is the
+component's internal, invisible copy. With only `defaultPressed`, that copy is
+the one shown, so `cancel()` directly stops the press. This line is fully shared
+with [Checkbox](/en/docs/components/checkbox#controlled) / Switch.
+
+## When to use Toggle
+
+**A single Toggle is a button, not a form field**: it has no `name`, its `value`
+never renders to the DOM, and it submits nothing with the form; Base UI also
+hard-codes `type` to `"button"` (`type` and `form` are ignored when passed), so
+clicking it inside a `<form>` never submits by accident.
+
+| Control | Reads as | Typical scene |
+| --- | --- | --- |
+| `Toggle` | a **mode switch that takes effect immediately**; pressed = the mode is on | toolbar bold / italic, show grid lines |
+| [`Switch`](/en/docs/components/switch) | a **setting** that takes effect immediately | "Dark mode" on a settings page |
+| [`Checkbox`](/en/docs/components/checkbox) | a tick **pending submission** | "Agree to terms", multi-select in a list |
+
+The test: if the press changes **the current view's mode** and the state does
+not travel with a form, use Toggle; if the state belongs to a form (serialized,
+`required`, possibly indeterminate), use Checkbox; if it is a settings switch,
+use Switch.
+
+When several related toggles share one value, use
+[ToggleGroup](/en/docs/components/toggle-group) — that is where `value` earns
+its keep (it identifies this toggle inside the group's value array).
+
+## State and className
+
+`className` **only takes a string**: the vendored layer pours it into `cva`, and
+a function would be silently dropped — the element still gets its variant
+classes; only your share vanishes into thin air. The types therefore close this
+path (the same route, and the same narrowing, as
+[Button](/en/docs/components/button)).
+
+To style by state, use the `data-*` Base UI writes on the button, straight as
+Tailwind variants:
+
+```tsx
+<Toggle aria-label="Bold" className="data-pressed:text-primary">
+  <IconBold />
+</Toggle>
+```
+
+| `data-*` | Name in `ToggleState` | When present |
+| --- | --- | --- |
+| `data-pressed` | `pressed` | pressed. At the same moment `aria-pressed="true"`; the cva's background hangs on `aria-pressed`, the seam's set on `data-pressed` — both selectors hit at once |
+| `data-disabled` | `disabled` | `disabled` |
+
+(`ToggleState` is exported as usual, but since `className` is a string there is
+no function-form outlet for it here.)
+
+Hover, the press instant, and focus get no data attributes — on a native
+`<button>` use `hover:` / `active:` / `focus-visible:` / `disabled:`
+pseudo-classes directly, covering every input modality. The root carries
+`data-slot="toggle"`; use it as a selector when targeting from outside.
+
+**Pressed and hover must not look the same — this is the seam's only stroke.**
+base-nova paints `bg-muted` for both, and in this theme `--muted` / `--accent` /
+`--secondary` are one value; swapping tokens cannot tell them apart. So the
+seam: drops the unpressed hover to half strength (same variant, same twMerge
+group, replacing the vendored `hover:bg-muted` rather than stacking on it);
+keeps pressed solid and restates it with `data-pressed:hover:`, so an
+already-pressed button is not washed out by that lighter tint; and adds an inset
+ring on pressed — in greyscale the fill strengths differ by only about 1.5%
+lightness, so the ring is the part you actually see at a glance, and it survives
+callers repainting the background.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks
+→ behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultPressed` | `boolean` | `false` | uncontrolled initial pressed state |
+| `pressed` | `boolean` | — | controlled pressed state |
+| `onPressedChange` | `(pressed: boolean, eventDetails: ToggleChangeEventDetails) => void` | — | pressed-state change callback. `reason` is always `'none'`; `cancel()` rejects the change |
+| `disabled` | `boolean` | `false` | renders native `disabled`: no interaction, not focusable |
+| `value` | `Value extends string` (default `string`) | — | **only meaningful inside [ToggleGroup](/en/docs/components/toggle-group)**: it is this toggle's identity in the group's value array. Standalone, omit it; it never appears in the DOM |
+| `variant` | `'default' \| 'outline'` | `'default'` | shadcn's cva knob |
+| `size` | `'default' \| 'sm' \| 'lg'` | `'default'` | same; `h-8` / `h-7` / `h-9` |
+| `nativeButton` | `boolean` | `true` | switch off to use `render` with a non-`<button>` element |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | replaces the rendered element |
+| `children` | `ReactNode` | — | content, and at the same time its accessible name |
+| `className` | `string` | — | class. **String only**, see [State and className](#state-and-classname) |
+| rest | Base UI `Toggle` props (native `button` props + `ref`, `aria-label` included) | — | passed through. Except `type` and `form`: Base UI swallows them; the button is always `type="button"` |
+
+The three types `ToggleProps` / `ToggleState` / `ToggleChangeEventDetails` are
+exported as well, along with `toggleVariants`.

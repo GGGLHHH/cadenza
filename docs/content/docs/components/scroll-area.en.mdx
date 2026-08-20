@@ -1,0 +1,167 @@
+---
+title: ScrollArea
+description: A scroll container with overlay scrollbars — rendered outside the viewport, naturally compatible with the scroll-fade masks
+---
+
+<ComponentPreview name="scroll-area/basic" />
+
+A scroll container built on Base UI: what actually scrolls is the **viewport**,
+and the scrollbars render as the viewport's **siblings** (overlay-style, taking
+no layout width). This structure is its reason to exist — the library's
+scroll-fade is a mask hung on the scrolling element, and a native scrollbar
+living inside the scrolling element gets dimmed along with it by the mask,
+while a sibling scrollbar stays crisp throughout.
+
+Inside the library, [DataTable](/en/docs/components/data-table),
+[InfiniteSelect](/en/docs/components/infinite-select) and the code areas of
+this site's demo cards all scroll through this same ScrollArea.
+
+## Usage
+
+```tsx
+import { ScrollArea } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<ScrollArea className="rounded-xl border block-64 inline-72">
+  {/* overflowing content */}
+</ScrollArea>
+```
+
+Size the root element and the viewport fills it automatically. Vertical by
+default, scrollbars shown on hover — one prop for each of those two things:
+[Orientation](#orientation) and [Scrollbar visibility](#scrollbar-visibility).
+
+## Anatomy
+
+A `ScrollArea` unfolds into four parts, of which only the scrollbar is
+exported separately:
+
+```text
+ScrollArea                 ← root: size constraints live here; it does not scroll itself
+├── viewport               ← the element that actually scrolls (what viewportClassName / viewportRef refer to)
+├── ScrollAreaScrollbar    ← the viewport's sibling, overlay-style; 1–2 rendered per orientation
+│   └── thumb
+└── corner                 ← the small square where the two scrollbars meet
+```
+
+viewport / thumb / corner are rendered automatically by the seam according to
+`orientation` and `scrollbars`; the outside reaches them through
+`viewportClassName` and [`data-slot`](#state-and-classname).
+
+The separately exported `ScrollAreaScrollbar` serves custom composition
+scenarios and is rarely needed — the name follows the family (Base UI's part is
+called `ScrollArea.Scrollbar`), not shadcn's bare `ScrollBar`.
+It carries no hover fade of its own: that set of classes is what `ScrollArea`
+passes in according to `scrollbars`.
+
+## Orientation
+
+`orientation` decides which scrollbars render: `vertical` (default) renders
+only the vertical one, `horizontal` only the horizontal one, `both` renders
+both. For horizontal scrolling, let the content size itself with something
+like `inline-max`:
+
+<ComponentPreview name="scroll-area/horizontal" />
+
+## Scrollbar visibility
+
+`scrollbars` has three settings: `always` always shown, `hover` (default)
+shown while hovering or scrolling is underway, `hidden` not rendered:
+
+<ComponentPreview name="scroll-area/scrollbars" align="stretch" />
+
+Without overflow, Base UI simply unmounts the scrollbar from the DOM
+(`keepMounted` defaults to `false`); no need to check yourself. The `hover`
+setting does not rely on unmounting — it presses the scrollbar down to
+`opacity-0` and lets `data-hovering` / `data-scrolling` lift it back to opaque
+— and a transparent bar never blocks clicks, because `data-hovering` only
+exists while the pointer is inside the area, precisely when the bar is opaque.
+
+## Scroll fade
+
+Hang the scroll-fade utility classes on the **viewport** (`viewportClassName`,
+not the root element):
+
+<ComponentPreview name="scroll-area/scroll-fade" />
+
+`scroll-fade-y` is vertical, `scroll-fade-x` horizontal, and
+`scroll-fade-inset` covers both axes with support for sticky-header /
+pinned-column offsets. The fades follow the scroll position — reach an end and
+that edge's fade disappears on its own; this step relies on
+`animation-timeline: scroll(self)`, which **only has progress when the element
+itself scrolls**: hung on the root it gets no progress and dims the sibling
+scrollbars too, right back in the native scrollbar's predicament.
+Browsers without scroll-driven animation degrade to fades always shown at both
+ends.
+
+Tune the size with `--scroll-fade-size` (or utility classes like
+`scroll-fade-8`); see the scroll-fade family in
+`@gedatou/cadenza-ui/styles.css`.
+
+## State and className
+
+Every `className` takes both forms: a string, or a `(state) => string`
+function. The left column below is the `data-*` on the DOM — Tailwind uses it
+directly as a variant (`data-scrolling:opacity-100`); the right column is the
+same state's name inside the function `className`.
+
+| Part | `data-*` | When present | Name in function `className` |
+| --- | --- | --- | --- |
+| root / viewport / scrollbar | `data-scrolling` | scrolling underway (gone 500ms after it stops) | `scrolling` |
+| root / viewport / scrollbar | `data-has-overflow-x` / `-y` | content overflows the viewport on that axis | `hasOverflowX` / `hasOverflowY` |
+| root / viewport / scrollbar | `data-overflow-x-start` / `-x-end` / `-y-start` / `-y-end` | unscrolled content remains past that edge | `overflowXStart` / `overflowXEnd` / `overflowYStart` / `overflowYEnd` |
+| scrollbar / thumb | `data-orientation` | always set: `vertical` / `horizontal` | `orientation` (only in the scrollbar's state) |
+| scrollbar | `data-hovering` | the pointer is anywhere inside the scroll area | `hovering` (likewise only in the scrollbar's state) |
+| root | `data-orientation` | always set: `vertical` / `horizontal` / `both`. The seam echoing the `orientation` config, not Base UI state | — |
+
+`className` (root) and `viewportClassName` receive the same set of fields —
+the viewport's state is the root's state, plus a `cornerHidden` that only the
+root's state has (whether the corner square is hidden; no corresponding
+`data-*`). **`hovering` and `orientation` live only on the scrollbar
+elements**: to restyle the root on hover, use the `hover:` pseudo-class.
+
+For targeting from outside, use `data-slot`:
+
+| `data-slot` | What it is |
+| --- | --- |
+| `scroll-area` | root element |
+| `scroll-area-viewport` | the viewport that actually scrolls |
+| `scroll-area-scrollbar` | a single scrollbar |
+| `scroll-area-thumb` | the thumb inside a scrollbar |
+| `scroll-area-corner` | where the two scrollbars meet |
+
+## Keyboard interactions
+
+| Key | Behaviour |
+| --- | --- |
+| `Tab` | with overflowing content the viewport enters the Tab order (`tabIndex=0`; `-1` without overflow), and landing on it shows a focus ring |
+| `↑` / `↓` / `←` / `→` | scroll by line / by column |
+| `PageUp` / `PageDown` | flip a full screen |
+| `Home` / `End` | scroll to top / bottom |
+
+Scrolling itself is the browser's native behaviour for a **focusable scroll
+container**. Only two things here are the component's doing: Base UI makes an
+overflowing viewport focusable (keyboard-only users could not reach the scroll
+area otherwise), and the seam gives it the `focus-visible` ring.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `orientation` | `'vertical'` \| `'horizontal'` \| `'both'` | `'vertical'` | which scrollbars render, see [Orientation](#orientation) |
+| `scrollbars` | `'always'` \| `'hover'` \| `'hidden'` | `'hover'` | scrollbar visibility policy (exported type `ScrollAreaScrollbars`), see [Scrollbar visibility](#scrollbar-visibility) |
+| `viewportRef` | `Ref<HTMLDivElement>` | — | viewport ref (scroll position and virtualization both need it) |
+| `viewportClassName` | `string \| (state) => string` | — | viewport class; [scroll-fade](#scroll-fade) hangs here. The function form receives the viewport state (`scrolling`, `hasOverflowX/Y` and the four overflow-edge flags — exactly what scroll-fade reads) |
+| `viewportStyle` | `CSSProperties \| (state) => CSSProperties` | — | viewport inline style (e.g. `maxHeight`), function form supported as well |
+| `className` | `string \| (state) => string` | — | root element class; size constraints live here. The function form receives Base UI Root's state (`scrolling`, `hasOverflowX/Y`, the overflow directions like `overflowXStart`, and `cornerHidden` — `hovering` is not among them, living only on the scrollbar elements' `data-hovering`) |
+| rest | Base UI `ScrollArea.Root` props (native element attributes + `ref`) | — | passed through |
+
+Three types are exported alongside: `ScrollAreaProps` (the root component's
+full props: Base UI Root's props + the seam extensions in the table above) /
+`ScrollAreaScrollbarProps` (the scrollbar part's props, i.e.
+`ScrollArea.Scrollbar.Props`) / `ScrollAreaScrollbars` (the union of
+`scrollbars` values).

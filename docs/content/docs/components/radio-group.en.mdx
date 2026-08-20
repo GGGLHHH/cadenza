@@ -1,0 +1,263 @@
+---
+title: Radio Group
+description: A set of mutually exclusive options — the value lives on the group, items carry only their value, and the group's own name is wired by hand
+---
+
+<ComponentPreview name="radio-group/basic" />
+
+A set of mutually exclusive options. **The value lives on the group**
+(`value` / `defaultValue` / `onValueChange`); one `RadioGroupItem` is one
+option, carrying only its own `value`. Behaviour is entirely Base UI's:
+arrow-key roving, select-on-move, and the native serialization of the hidden
+`<input type="radio">` are all its business.
+
+## Usage
+
+```tsx
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  RadioGroup,
+  RadioGroupItem,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<FieldSet>
+  <FieldLegend id="voice">Voice part</FieldLegend>
+  <RadioGroup aria-labelledby="voice" defaultValue="alto" name="voice">
+    <Field orientation="horizontal">
+      <RadioGroupItem id="voice-soprano" value="soprano" />
+      <FieldLabel htmlFor="voice-soprano">Soprano</FieldLabel>
+    </Field>
+    <Field orientation="horizontal">
+      <RadioGroupItem id="voice-alto" value="alto" />
+      <FieldLabel htmlFor="voice-alto">Alto</FieldLabel>
+    </Field>
+  </RadioGroup>
+</FieldSet>
+```
+
+## Anatomy
+
+Two public parts; `FieldSet` / `FieldLegend` / `Field` / `FieldLabel` come
+from the [Field](/en/docs/components/field) family:
+
+```text
+RadioGroup
+├── RadioGroupItem
+└── RadioGroupItem
+```
+
+## Label
+
+Two naming jobs, only one of them automatic:
+
+| Who gets named | How it wires | By hand? |
+| --- | --- | --- |
+| each item | `FieldLabel htmlFor` → `RadioGroupItem id` | automatic |
+| the group itself | `aria-labelledby` → `FieldLegend id` | **yes** |
+
+**Each item is box-only**, exactly like Checkbox / Switch: the root element
+is the radio dot's box itself, and text stuffed into children would be
+squeezed into the box — so use an external `FieldLabel` (see
+[Field](/en/docs/components/field)). One `htmlFor` buys two things — the
+`id` lands on the **hidden `<input>`** (the visible box keeps a generated id
+of its own), so the native `<label for>` forwards clicks to that input,
+which is what toggles the selection; meanwhile Base UI looks up
+`input.labels` and mirrors the label's id onto the box as `aria-labelledby`,
+which is what provides the accessible name. No second copy of the text is
+needed.
+
+**The group itself has no such automatic channel.** `RadioGroup` renders a
+bare `role="radiogroup"` div: Base UI would pick the name up from **its
+own** `Field.Root` / `Fieldset.Legend` context, but this library's
+`FieldSet` / `FieldLegend` take shadcn's **plain DOM** route (`fieldset` /
+`legend` elements, no context at all) — the two routes never meet, so a
+group without `aria-labelledby` is a group without a name. Give the
+`FieldLegend` an `id` and point the group's `aria-labelledby` at it; use
+`aria-label` when there is no visible legend.
+
+## Description
+
+When an item needs a description, use `FieldContent` to pack "label +
+description" into a column — the same shape as
+[Checkbox](/en/docs/components/checkbox#description):
+
+```tsx
+<Field orientation="horizontal">
+  <RadioGroupItem id="voice-alto" value="alto" />
+  <FieldContent>
+    <FieldLabel htmlFor="voice-alto">Alto</FieldLabel>
+    <FieldDescription>Needs a reliable F3.</FieldDescription>
+  </FieldContent>
+</Field>
+```
+
+A description for the whole group goes into a `FieldDescription` after the
+`FieldLegend` and before the `RadioGroup`.
+
+## Controlled
+
+`value` + `onValueChange` both sit on the group; items stay unchanged:
+
+<ComponentPreview name="radio-group/controlled" />
+
+The callback's second argument is a `ChangeEventDetails`: `reason` is always
+`'none'` (upstream never prepared a second reason for radios), and
+`cancel()` is honoured — call it and the internal state does not move
+forward:
+
+```tsx
+<RadioGroup
+  value={minutes}
+  onValueChange={(next, eventDetails) => {
+    if (locked) {
+      eventDetails.cancel()
+      return
+    }
+    setMinutes(next)
+  }}
+>
+```
+
+For uncontrolled, swap in `defaultValue`; everything else stays the same.
+
+## Form
+
+Serialization is native: give the group a `name`, every item's hidden
+`<input type="radio">` shares it, and the selected item submits by native
+rules — `FormData` picks it up directly, no extra wiring. Non-string values
+are serialized to strings when written into the DOM (the number `45`
+submits as `"45"`). When the group renders outside the `<form>`, point
+`form` at the form it belongs to.
+
+## Disabled
+
+To disable the whole group, write `disabled` on the `RadioGroup`; it is
+passed down to every item.
+
+To disable a single item, write `disabled` on that `RadioGroupItem`; to
+grey that row's text as well, hang `data-disabled` on its `Field` per the
+[Field](/en/docs/components/field) state convention — the control's
+`disabled` covers only the control's own visuals. Disabled items are
+skipped by keyboard navigation, see
+[Keyboard interactions](#keyboard-interactions).
+
+`readOnly` is a separate tier: focusable, but unchangeable.
+
+## Invalid state
+
+The same set as Checkbox: `aria-invalid` on the item draws the destructive
+border and ring, `data-invalid` on the `Field` recolours that column of
+text (see [Field](/en/docs/components/field#state-and-classname)). The
+group's error message goes into a `FieldError` after the group.
+
+## Generics
+
+**Values never decay to `any`.** Both parts are **re-declared as generic
+functions** in the seam rather than re-exported — the pre-promotion wrapper
+typed its props as `Props<any>`, and copying that would hand every caller's
+`value` and `onValueChange` an `any`. So both spellings below hold, with
+`Value = string` as the default:
+
+```tsx
+<RadioGroup<number> value={minutes} onValueChange={setMinutes}>  // explicit
+<RadioGroup defaultValue="alto">                                 // inferred from defaultValue
+```
+
+Each `RadioGroupItem` infers its own `value` type — matching it to the
+group is the caller's job; the type system does not tie the two sides
+together for you.
+
+## State and className
+
+Both parts' `className` take both forms: a string, or a
+`(state) => string | undefined` function (the argument is each part's state
+table).
+
+**RadioGroup**
+
+| State | When present | Name in function className |
+| --- | --- | --- |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-readonly` | `readOnly` | `readOnly` |
+| `data-required` | `required` | `required` |
+
+**RadioGroupItem**
+
+| State | When present | Name in function className |
+| --- | --- | --- |
+| `data-checked` / `data-unchecked` | whether this is the selected item | `checked` |
+| `data-disabled` | `disabled` | `disabled` |
+| `data-readonly` | `readOnly` | `readOnly` |
+| `data-required` | `required` | `required` |
+
+`RadioGroupState` is `disabled` / `readOnly` / `required` plus the Field set
+(`valid` / `touched` / `dirty` / `filled` / `focused`);
+`RadioGroupItemState` adds one more, `checked`. The Field set **only moves
+inside Base UI's own `Field.Root`** — and this library's `Field` is not it,
+so those values stay at their defaults.
+
+The group carries `data-slot="radio-group"`, items carry
+`data-slot="radio-group-item"`, and the dot inside each item carries
+`data-slot="radio-group-indicator"` — the dot is rendered by the part
+itself, no children to write.
+
+## Keyboard interactions
+
+| Key | Behaviour |
+| --- | --- |
+| `Tab` | the group takes a single Tab stop; entering lands on the selected item (the first item when none is selected) |
+| `↑` / `↓` / `←` / `→` | move between items, **selecting wherever focus moves** (the native radio reading); wraps at the ends |
+| `Space` | select the current item |
+| `Enter` | **does not select** — upstream intercepts it, per the native radio reading |
+
+Disabled items are skipped by arrow-key navigation (in the
+[Controlled](#controlled) demo, pressing ↓ from "45 minutes" lands straight
+on "30 minutes", passing over the disabled "90 minutes" and wrapping back to
+the start). `Home` / `End` are not wired.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+### RadioGroup
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `Value` | — | uncontrolled initial value |
+| `value` | `Value` | — | controlled value |
+| `onValueChange` | `(value: Value, eventDetails: RadioGroupChangeEventDetails) => void` | — | selection change callback; the second argument can `cancel()` |
+| `name` | `string` | — | form field name, landing on every item's hidden input |
+| `form` | `string` | — | when the group sits outside the `<form>`, points at the form it belongs to |
+| `disabled` | `boolean` | `false` | disable the whole group |
+| `readOnly` | `boolean` | `false` | read-only: focusable, but unchangeable |
+| `required` | `boolean` | `false` | required (echoed as `aria-required`) |
+| `inputRef` | `Ref<HTMLInputElement>` | — | grabs the currently effective hidden input |
+| `className` | `string \| ((state: RadioGroupState) => string \| undefined)` | — | class |
+| rest | Base UI `RadioGroup` props (native `div` props + `ref`) | — | passed through — `aria-labelledby` enters exactly here |
+
+### RadioGroupItem
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `Value` | — | **required**, this item's identity within the group |
+| `id` | `string` | — | lands on the hidden input, for `FieldLabel htmlFor` to point at |
+| `disabled` | `boolean` | `false` | disables only this item (the group's `disabled` also comes down) |
+| `readOnly` | `boolean` | `false` | read-only |
+| `required` | `boolean` | `false` | required |
+| `inputRef` | `Ref<HTMLInputElement>` | — | grabs this item's hidden input |
+| `nativeButton` | `boolean` | `false` | switch on only when `render` swaps in a real `<button>` |
+| `className` | `string \| ((state: RadioGroupItemState) => string \| undefined)` | — | class |
+| rest | Base UI `Radio.Root` props (native `span` props + `ref`) | — | passed through (the root element is a `span`; the hidden input is its sibling) |
+
+The five types are exported as well: `RadioGroupProps` / `RadioGroupState` /
+`RadioGroupChangeEventDetails` / `RadioGroupItemProps` /
+`RadioGroupItemState`.

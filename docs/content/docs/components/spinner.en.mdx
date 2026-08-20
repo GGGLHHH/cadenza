@@ -1,0 +1,121 @@
+---
+title: Spinner
+description: A spinning loading indicator — a semantic svg with role="status", size and colour all through className
+---
+
+<ComponentPreview name="spinner/basic" />
+
+A spinning `IconLoader` (`animate-spin`) with `role="status"`. Underneath is a
+plain svg, not a Base UI part — no state at all, `className` only takes a
+string, and the remaining native svg attributes (`ref` included) are passed
+through as-is. Size defaults to `size-4`, colour inherits the text colour, and
+both change from `className`.
+
+It is also the one moving part of loading feedback across the library:
+[Button](/en/docs/components/button)'s `pending`,
+[LoadingOverlay](/en/docs/components/loading-overlay)'s default content, and
+the "load more" rows of [DataTable](/en/docs/components/data-table) and
+[InfiniteSelect](/en/docs/components/infinite-select) — what spins in the
+middle of each is this.
+
+## Usage
+
+```tsx
+import { Spinner } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Spinner />
+```
+
+## Size
+
+Change size with the **logical utility classes**: `block-6 inline-6` gives a
+fixed size, `block-[1em] inline-[1em]` makes it track the local font size
+(Button's pending uses the latter). The three tiers in the hero above
+demonstrate exactly this.
+
+Why not just another `size-*`: `size-4` is the class baked into the component,
+and utilities of the same family share specificity — the winner is whichever
+comes later in the output, which is not safe; the logical utilities
+(`block-*` / `inline-*`) sort after the physical `size-*` in the generated
+stylesheet, so the override lands reliably.
+
+Colour works the same way through text-colour classes in `className`
+(`text-primary`…) — omitted, it inherits the local text colour.
+
+Every spinner carries `data-slot="spinner"`; use it as a selector when
+targeting uniformly by container from outside (say, growing every spinner in
+one region together).
+
+## Button
+
+[Button](/en/docs/components/button)'s `pending` default composition is this:
+the label frosts open in place, the spinner floats on the dark veil, and the
+button's width never changes.
+
+<ComponentPreview name="button/pending" />
+
+Here the spinner is injected decoratively with **`aria-hidden`**: the spinner
+is mere decoration, and the state is spoken by the button's own `aria-busy`.
+The colour is hard-coded `text-foreground` rather than inherited — inside a
+button the inherited colour is the label's, which would smear the spinner into
+the frosted label. The line between the two injection modes is in
+[Accessibility](#accessibility).
+
+## Accessibility
+
+The boundary between the two usages: **standing alone** (a page region
+loading), keep `role="status"` and let it announce itself; **appearing
+decoratively** (tucked into a component that already carries its own state
+semantics), pass `aria-hidden` — never let two live regions fight for the
+floor.
+
+The library has examples on both sides:
+
+| Where | How it is injected |
+| --- | --- |
+| [LoadingOverlay](/en/docs/components/loading-overlay)'s default content | a bare `<Spinner />`, announcing itself. When the overlay hides, `visibility` transitions along with the fade and it leaves the accessibility tree — no ghost announcements left behind |
+| [Button](/en/docs/components/button)'s `pending` | `aria-hidden`; the button carries `aria-busy` itself |
+| the "load more" rows of [DataTable](/en/docs/components/data-table) / [InfiniteSelect](/en/docs/components/infinite-select) | `aria-hidden` — there it is a mark, not a sentence |
+
+`aria-label` defaults to the English `'Loading'` — the house rule's English
+fallback (like `SearchField`'s `'Search'` and `DataPagination`'s
+`'Rows per page'`): aria-only, never on screen, and passing a translation
+overrides it, because the underlying svg spreads props after the default.
+
+## When to use Spinner
+
+A bare `Spinner` only draws the spin. "A whole region is loading" is another
+component's job — don't force it to fake one:
+
+| The job | Use |
+| --- | --- |
+| mark one small spot as "spinning" (end of a row, a custom slot, your own layout) | `Spinner` |
+| a whole stretch of content unavailable: covered, pointer blocked, cross-fade both ways | [LoadingOverlay](/en/docs/components/loading-overlay) |
+| an action in flight (submit, save) | [Button](/en/docs/components/button)'s `pending` |
+| table / dropdown paging and refreshing | built into [DataTable](/en/docs/components/data-table) and [InfiniteSelect](/en/docs/components/infinite-select), slots swappable |
+
+The action side only ever says `pending`, the content side only `loading` —
+the two words correspond, they do not alias. When choosing a component, first
+know which side you are on.
+
+**There is no prop opening for swapping the icon**: the icon is hard-coded as
+`IconLoader`, which lives in the vendored shadcn source (`src/primitives` is
+byte-for-byte verified; no edits go in there). For another icon, drop in your
+own svg directly — the consumption points above all take `children`
+(`LoadingOverlay`'s children, the loading slots of `DataTable` and
+`InfiniteSelect`) and never demand the concrete `Spinner` type.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `aria-label` | `string` | `'Loading'` | the `role="status"` accessible name. The default is aria-only, never on screen (the house rule's English fallback); passing a translation overrides it. In decorative settings pass `aria-hidden` instead, see [Accessibility](#accessibility) |
+| `className` | `string` | — | class. Underneath is a plain svg, not a Base UI part, string only; size via the logical utilities, colour via text-colour classes — see [Size](#size) |
+| rest | native `svg` attributes | — | passed through (`ref` included) |
+
+The `SpinnerProps` type is exported as well.

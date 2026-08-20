@@ -1,0 +1,197 @@
+---
+title: Collapsible
+description: A trigger plus an expandable panel — the height transition is the default, no animation to write yourself
+---
+
+<ComponentPreview name="collapsible/basic" align="start" />
+
+Expand/collapse built on Base UI. The seam adds exactly one thing: **the panel's
+height transition**. Base UI publishes the panel's measured height as
+`--collapsible-panel-height` and marks the two ends of the transition with
+`data-starting-style` / `data-ending-style`; the seam wires the three into one
+CSS transition — without it, the panel just pops open within a frame. Root and
+trigger carry no appearance at all: layout belongs to the caller, the trigger is
+a bare `<button>`, and dressing it up goes through `render`.
+
+The part names follow Base UI's vocabulary: content that expands in place is
+called **Panel** (shadcn calls it `CollapsibleContent`, a Radix-era name; what
+Base UI itself exports is `Collapsible.Panel`).
+
+## Usage
+
+```tsx
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Collapsible>
+  <CollapsibleTrigger render={<Button variant="outline" />}>Details</CollapsibleTrigger>
+  <CollapsiblePanel>
+    <p className="p-4 text-sm">Panel content.</p>
+  </CollapsiblePanel>
+</Collapsible>
+```
+
+**Put padding on elements inside the panel, not on the panel itself** — what the
+animation animates is precisely the panel's height, and its own padding would be
+crushed along the way.
+
+## Anatomy
+
+Three parts, all exported:
+
+```text
+Collapsible                ← root: holds the open state, unstyled itself
+├── CollapsibleTrigger     ← real <button>; aria-expanded / aria-controls wired by Base UI
+└── CollapsiblePanel       ← the expanded content; the height transition lives here
+```
+
+Order is free: the panel before the trigger (expanding upward) works just as
+well — `aria-controls` matches by id, not by position.
+
+## Controlled
+
+`open` + `onOpenChange` hand the state out; the callback's second argument
+`details.reason` says who made the change (`trigger-press`, or programmatic
+`none`):
+
+<ComponentPreview name="collapsible/controlled" align="start" />
+
+Omit `open` for uncontrolled; set the initial value with `defaultOpen`.
+Controlledness locks in on first render — switching midway errors in
+development mode.
+
+## Settings panel
+
+The most common use: frequent items stay put, rarely-changed ones fold into the
+panel.
+
+<ComponentPreview name="collapsible/settings" align="start" />
+
+## File tree
+
+Nesting: each directory is an independent `Collapsible`, with the next level
+inside its panel.
+
+<ComponentPreview name="collapsible/file-tree" align="start" />
+
+Each level keeps its own open state; nothing is shared between levels. The
+trigger's `data-panel-open` is the hook for the chevron's rotation and the
+folder icon's face swap — note it is `data-panel-open`, not the panel's
+`data-open`.
+
+## When to use Collapsible
+
+- **Showing/hiding one block of content** → Collapsible. It governs "should this
+  block be visible" and has no notion of siblings.
+- **A set of mutually exclusive views, one visible at a time** →
+  [Tabs](/en/docs/components/tabs). It has a selected value, roving focus and
+  arrow-key navigation; Collapsible has none of these.
+- **A stack of collapsible sections where opening one closes the others** → that
+  is an Accordion, which the library does not publicly wrap yet. Stack several
+  Collapsibles and manage exclusivity yourself (lift `open` outside), or use
+  `@base-ui/react/accordion` directly.
+
+## State and className
+
+`className` / `style` / `render` all take both forms: a value, or a
+`(state) => value` function. The left column below is the `data-*` on the DOM —
+Tailwind uses it directly as a variant (`data-open:border-primary`); the right
+column is the same state's name in the function form.
+
+| Part | `data-*` | When present | Name in function `className` |
+| --- | --- | --- | --- |
+| root / panel | `data-open` | panel expanded | `open` is `true` |
+| root / panel | `data-closed` | panel collapsed | `open` is `false` |
+| trigger | `data-panel-open` | panel expanded (the trigger has **no** `data-closed`; collapsed, the attribute simply disappears) | `open` is `true` |
+| root / trigger / panel | `data-disabled` | `disabled` passed on the root | `disabled` |
+| root / panel | `data-starting-style` | first frame of entry | `transitionStatus` is `'starting'` |
+| root / panel | `data-ending-style` | exit animation in progress | `transitionStatus` is `'ending'` |
+
+The panel's state has one field more than the root: `transitionStatus`
+(`'starting'` / `'ending'` / `undefined`); the default height transition is made
+exactly by using `data-starting-style` / `data-ending-style` to pin both ends to
+`h-0`. For a horizontal collapse, swap the default
+`h-(--collapsible-panel-height)` for `w-(--collapsible-panel-width)` and
+`transition-[height]` for `transition-[width]` (`cn` merges; later wins).
+
+For targeting from outside, use `data-slot`:
+
+| `data-slot` | What it is |
+| --- | --- |
+| `collapsible` | root element |
+| `collapsible-trigger` | the trigger button |
+| `collapsible-panel` | the panel |
+
+## Keyboard interactions
+
+| Key | Behaviour |
+| --- | --- |
+| `Tab` | the trigger is in the Tab order; once the panel is open, focusables inside it follow right after |
+| `Enter` / `Space` | toggles open/closed on the trigger |
+
+Collapsed, the panel unmounts from the DOM by default, so its contents are
+naturally out of the Tab order. `keepMounted` keeps it in the DOM — Base UI also
+sets `hidden`, so what stays is still unfocusable and unannounced.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks
+→ behaviour switches → appearance → `className`**.
+
+### Collapsible
+
+The root; holds the open state. Renders a `<div>`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultOpen` | `boolean` | `false` | uncontrolled initial open state |
+| `open` | `boolean` | — | controlled open state. Once passed, controlledness locks in; no switching after first render |
+| `onOpenChange` | `(open: boolean, details: CollapsibleChangeEventDetails) => void` | — | open-state change. `details.reason` is `'trigger-press'` or `'none'` |
+| `disabled` | `boolean` | `false` | the whole component ignores interaction; all three parts get `data-disabled` |
+| `className` | `string \| (state) => string` | — | the function form receives `{ open, disabled, transitionStatus }` |
+| rest | Base UI `Collapsible.Root` props (native element props + `ref`) | — | passed through |
+
+```tsx
+<Collapsible defaultOpen onOpenChange={(open, details) => log(details.reason)}>…</Collapsible>
+```
+
+### CollapsibleTrigger
+
+The button that toggles. Renders a real `<button type="button">` by default;
+`aria-expanded` / `aria-controls` wired by Base UI.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `nativeButton` | `boolean` | `true` | set `false` when `render` swaps in a non-button element (such as a `<div>`); Base UI supplies keyboard handling and role |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | replaces the host element. The proper way to dress the trigger: `render={<Button />}` |
+| `className` | `string \| (state) => string` | — | the function form receives `{ open, disabled, transitionStatus }` |
+| rest | Base UI `Collapsible.Trigger` props (native `<button>` props + `ref`) | — | passed through |
+
+```tsx
+<CollapsibleTrigger className="group/trigger" render={<Button variant="ghost" />}>
+  Advanced options
+  <IconChevronDown className="transition-transform group-data-panel-open/trigger:rotate-180" />
+</CollapsibleTrigger>
+```
+
+### CollapsiblePanel
+
+The expanded content. Renders a `<div>`, height transition built in.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `keepMounted` | `boolean` | `false` | stays in the DOM while collapsed (with `hidden`: unfocusable, unannounced). Ignored while `hiddenUntilFound` is on |
+| `hiddenUntilFound` | `boolean` | `false` | switches to `hidden="until-found"`: the browser's built-in in-page find can hit collapsed text and auto-expand. The cost: the content is always in the DOM |
+| `className` | `string \| (state) => string` | — | merged with the default transition classes (`cn`; later wins). The function form receives `{ open, disabled, transitionStatus }` |
+| rest | Base UI `Collapsible.Panel` props (native element props + `ref`) | — | passed through |
+
+```tsx
+<CollapsiblePanel hiddenUntilFound>
+  <div className="p-4">Ctrl+F can find this text</div>
+</CollapsiblePanel>
+```
+
+Seven types are exported as well: `CollapsibleProps` / `CollapsibleState` /
+`CollapsibleChangeEventDetails` / `CollapsibleTriggerProps` /
+`CollapsibleTriggerState` / `CollapsiblePanelProps` / `CollapsiblePanelState`.

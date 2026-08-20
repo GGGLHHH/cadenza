@@ -1,0 +1,351 @@
+---
+title: DatePicker
+description: A typeable date input + calendar popup — typing takes effect at once, picking commits
+---
+
+<ComponentPreview name="date-picker/basic" />
+
+The complete date-selection control. At its centre is a real `<input>`: type
+"2026-08-16" and the moment it parses it takes effect, with the calendar
+jumping to that month in sync; or press the calendar button (or ArrowDown) to
+open the popup and pick. Base UI has no date component — this behaviour is the
+seam's own: the input shell reuses `InputGroup`, the popup is a Base UI
+Popover, and the panel is the equally exported `Calendar` (react-day-picker).
+
+Invalid input never lands as a value: the last valid value is kept throughout,
+and on leaving the field invalid text falls back to the formatted display of
+the last committed value; clearing the text and leaving clears the value.
+
+## Usage
+
+```tsx
+import { DatePicker } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<DatePicker aria-label="Date" placeholder="Pick a date" />
+```
+
+Omit children and the full default composition is there. Labelling goes
+through the ordinary channel: the root `id` is forwarded to the inner input,
+so `FieldLabel htmlFor` connects directly; without a visible label, pass
+`aria-label` and the default composition hands it to the input.
+
+## Anatomy
+
+Writing children replaces the input side (input, clear, calendar button); the
+popup is present by default and only steps aside once you compose a
+`DatePickerPopup`. Marker parts must be direct children of the root, or
+wrapped in a Fragment.
+
+```text
+DatePicker
+├─ InputGroup
+│  ├─ DatePickerInput
+│  ├─ DatePickerClear
+│  └─ DatePickerTrigger
+└─ DatePickerPopup
+   ├─ Calendar (default)
+   └─ DatePickerFooter (optional; composing it enters confirm mode)
+```
+
+The visible parts on the input side live in an `InputGroup` frame — when
+composing yourself, use it under its own name as usual:
+
+```tsx
+<DatePicker aria-label="Date">
+  <InputGroup>
+    <DatePickerInput placeholder="Pick a date" />
+    <DatePickerTrigger />
+  </InputGroup>
+</DatePicker>
+```
+
+## Format and localisation
+
+`format` is a date-fns token string that governs both display and parsing;
+`locale` is fed to formatting and to the calendar alike.
+
+<ComponentPreview name="date-picker/format" />
+
+`locale` covers every piece of **visible** text in the panel: the weekday row,
+the [month and year dropdowns](#month-and-year-selection), and the formatted
+value in the input — one single date-fns channel, so no spot follows the
+browser language while another stays on the English default. Omitted, the
+whole thing is react-day-picker's English.
+
+**Accessible text is a separate channel**: react-day-picker's `labels`.
+`locale` can only translate text that is **formatted**, while rdp has a set of
+**hard-coded English literals** — `labelYearDropdown` (Choose the Year),
+`labelMonthDropdown`, `labelPrevious` (Go to the Previous Month), `labelNext`,
+`labelWeekNumber`, `labelWeekNumberHeader` — six in total that no locale can
+touch. This library puts no text of any language into the DOM, so it does not
+translate them for you; it only keeps the channel open.
+
+They affect the panel only, never the input, so like `startMonth` and friends
+they go through [Custom calendar](#custom-calendar), not the root:
+
+```tsx
+<DatePickerPopup>
+  {calendar => (
+    <Calendar
+      {...calendar}
+      labels={{ labelYearDropdown: () => 'Choose year', labelMonthDropdown: () => 'Choose month' }}
+    />
+  )}
+</DatePickerPopup>
+```
+
+It is a `Partial`: write only the ones you change. The remaining labels
+(`labelGrid` / `labelWeekday` / `labelDayButton`) go through `locale` anyway
+and need no attention.
+
+The root holds only what affects **both the input and the panel**: `locale`
+takes part in parsing typed text, `format` governs display and parsing,
+`disabledDates` rejects typing too. Panel-only configuration always goes
+through the popup's function children — so "where does this prop go" always
+has exactly one answer, no table to memorise.
+
+Form serialisation does not follow `format` — the hidden input is always
+`yyyy-MM-dd` (see [Form](#form)). Mind the token case: months are `MM`;
+lowercase `mm` means **minutes** in date-fns semantics, and getting it wrong
+throws no error — it just quietly displays the wrong thing (dayjs-migration
+`YYYY`/`DD`, by contrast, makes date-fns throw outright as a reminder).
+
+`format` is a strict match — typing must follow it exactly. To accept several
+spellings leniently, use `inputToValue` to swap the parsing side only: display
+still goes through `format`, formatted uniformly after blur.
+
+<ComponentPreview name="date-picker/input-to-value" />
+
+Returning `null` means "not a date yet" (the draft is kept, blur falls back);
+a returned `Date` is normalised to midnight and run through the
+`disabledDates` check as usual. The parser must be a pure function.
+
+## Disabled dates
+
+`disabledDates` takes react-day-picker matchers (single days, ranges,
+`before`/`after`, functions all work). Unclickable in the calendar, and typing
+them is rejected just the same.
+
+<ComponentPreview name="date-picker/disabled-dates" />
+
+## Month and year selection
+
+**The year and month atop the panel are themselves dropdowns, present by
+default** — jumping three years back does not take 36 arrow presses. The
+dropdowns are this library's [Select](/en/docs/components/select), not native
+`<select>`s: not stealing focus on mousedown inside the popup is this
+control's established behaviour (the input's caret never flickers), while a
+native dropdown opens precisely through that cancelled default action — left
+alone, the whole caption row would be dead to clicks.
+
+<ComponentPreview name="date-picker/caption-nav" />
+
+**The year range defaults to the current year ±100.** react-day-picker's own
+default is "100 years back through the end of this year" — a birthday picker's
+measure, where even next year is unreachable — so here the upper bound is
+topped up to be symmetric. Real cases are usually narrower: `startMonth` /
+`endMonth` tighten it; both are calendar props, passed through the popup's
+function children (see the demo above). Once given, the arrows cannot leave
+that range either.
+
+**Dropdown text follows `locale`**, the same channel as the weekday row and
+input formatting — see [Format and localisation](#format-and-localisation).
+Without a `locale` the whole panel is react-day-picker's English default; the
+months never chase the browser language on their own.
+
+To go back to a plain, unclickable caption, pass `captionLayout="label"` after
+the spread:
+
+```tsx
+<DatePickerPopup>
+  {calendar => <Calendar {...calendar} captionLayout="label" />}
+</DatePickerPopup>
+```
+
+## Custom calendar
+
+`DatePickerPopup`'s function children receive fully wired calendar props;
+spread them into your own `<Calendar>` and layer configuration on top.
+`captionLayout` is part of those props, so layering never loses the month and
+year dropdowns.
+
+<ComponentPreview name="date-picker/custom-calendar" />
+
+## Confirm mode
+
+Compose a `DatePickerFooter` into the popup and picking and typing switch from
+"commit immediately" to "stage": the input previews the staged value live, and
+only `DatePickerClose` (or Enter) commits and closes — the reason is
+`close-press`; `DatePickerCancel`, Esc and outside clicks all discard the
+stage.
+
+<ComponentPreview name="date-picker/footer" />
+
+The Footer is a pure layout shell (same as `AlertDialogFooter`): action parts,
+text and variants are all composed by the caller — the library ships no
+default text in any language. Three action parts: `DatePickerFooterClear`
+stages `null` without closing (the Footer in its name only disambiguates it
+from the input-side `DatePickerClear`); `DatePickerCancel` closes and discards
+the stage; `DatePickerClose` commits and closes — the proper Base UI name for
+"close and commit". It should usually include a `DatePickerClose`, otherwise
+only Enter can commit.
+
+## Controlled
+
+`value` / `defaultValue` / `onValueChange(value, details)` — the controlled
+empty value is `null`; `details.reason` tells the sources apart (typing
+`input-change`, picking `item-press`, clearing `clear-press` /
+`input-clear`), and `details.cancel()` rejects the change. Popup open state is
+a parallel set: `open` / `defaultOpen` / `onOpenChange(open, details)`.
+
+<ComponentPreview name="date-picker/controlled" />
+
+## Form
+
+With a `name`, a permanent hidden input is rendered: the empty value
+serialises to `''`, a value to `yyyy-MM-dd`, regardless of the display format.
+The hidden input is invisible to native constraint validation, so required
+checks belong in the form layer; the visual asterisk goes to
+`FieldLabel required`. For binding with TanStack Form see the
+[form guide](/en/docs/forms/tanstack-form#datepicker).
+
+<ComponentPreview name="date-picker/form" />
+
+## Disabled
+
+`disabled` disables the whole control (the hidden input is `disabled` along
+with it and stays out of submission). `readOnly` only locks editing: the
+default composition removes the clear and calendar buttons — not to save
+effort, but because `InputGroup` dims itself for any disabled descendant
+(`has-disabled:opacity-50`), and a leftover disabled button would make a
+read-only field look like a disabled one.
+
+## When to use DatePicker
+
+Use it to pick a single date; for a range (check-in–check-out, start and end
+dates) use [DateRangePicker](/en/docs/components/date-range-picker) — two
+inputs plus a two-month calendar, with a `{ from, to }` value. When you want
+the calendar panel without the input, use `Calendar` directly.
+
+## State and className
+
+The root is a plain `<div>`, so `className` is just a string; state is read
+from data attributes on the root.
+
+| Attribute | When present |
+| --- | --- |
+| `data-empty` | no value |
+| `data-open` | popup is open |
+| `data-disabled` | `disabled` |
+| `data-readonly` | `readOnly` |
+
+| data-slot | What it is |
+| --- | --- |
+| `date-picker` | root |
+| `date-picker-trigger` / `-addon` | calendar button and its addon |
+| `date-picker-clear` / `-addon` | clear button and its addon |
+| `date-picker-popup` | popup |
+
+`DatePickerInput` deliberately carries no data-slot of its own:
+`InputGroupInput`'s `data-slot="input-group-control"` is the contract
+`InputGroup` uses to paint the focus ring — override it and the whole frame
+stops lighting up.
+
+## Keyboard interactions
+
+| Key | Effect |
+| --- | --- |
+| <kbd>ArrowDown</kbd> | opens the popup from the input |
+| <kbd>Escape</kbd> | closes the popup (value untouched; the event does not bubble to an outer dialog) |
+| <kbd>Enter</kbd> | settles the current input; with the popup open it also closes without submitting the form (in confirm mode this is the confirm) |
+| Arrow keys in the calendar | react-day-picker's own date roaming |
+
+The clear and calendar buttons both sit outside the Tab order — the keyboard
+path is the input: clearing the text clears the value, ArrowDown opens the
+calendar.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → className**.
+
+### DatePicker
+
+The root. Without children it renders the full default composition; with a
+`name` it renders a permanent hidden input outside the popup.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `Date \| null` | — | uncontrolled initial value |
+| `value` | `Date \| null` | — | controlled value; `null` is the controlled empty value |
+| `onValueChange` | `(value, details) => void` | — | every committed change; `details.cancel()` rejects it |
+| `defaultOpen` | `boolean` | `false` | initial popup open state |
+| `open` | `boolean` | — | controlled popup |
+| `onOpenChange` | `(open, details) => void` | — | popup open/close; `details.cancel()` keeps it as is |
+| `onOpenChangeComplete` | `(open) => void` | — | after the open/close animation completes |
+| `actionsRef` | Base UI Popover actions | — | imperative `unmount` / `close` |
+| `format` | `string` | `'yyyy-MM-dd'` | display and parsing format (date-fns tokens) |
+| `locale` | date-fns `Locale` | — | formatting, parsing and calendar text |
+| `inputToValue` | `(text) => Date \| null` | strict parse by `format` | overrides the parsing side; `null` = not a date yet |
+| `disabledDates` | `Matcher \| Matcher[]` | — | dates barred from selection; typing them is rejected too |
+| `name` | `string` | — | when present, renders the hidden input (`yyyy-MM-dd`) |
+| `disabled` | `boolean` | `false` | disables the control |
+| `readOnly` | `boolean` | `false` | read-only; the default composition removes both buttons |
+| `clearable` | `boolean` | `true` | master switch for clearing; `false` disables even an explicitly composed one |
+| `modal` | Base UI's `modal` | `false` | pinned to false: an inline control never locks the page |
+| `placeholder` | `string` | — | placeholder of the default composition's input |
+| `id` | `string` | — | forwarded to the input; `FieldLabel htmlFor` connects directly |
+| `aria-label` | `string` | — | accessible name of the default composition's input |
+| `children` | `ReactNode \| (state & { defaultChildren }) => ReactNode` | — | replaces the input side |
+| rest | `ComponentProps<'div'>` | — | passed through to the root |
+
+### DatePickerInput
+
+The real `<input>`; it reads text and wiring from context and composes
+anywhere inside the `InputGroup`. Shows the raw draft while focused, the
+formatted value when blurred. Takes `ComponentProps<typeof InputGroupInput>`.
+
+### DatePickerTrigger
+
+The calendar button (with its own `InputGroupAddon`); clicking toggles the
+popup. Defaults to a calendar icon + an English `aria-label` (Open calendar),
+`tabIndex={-1}`. Takes `ComponentProps<typeof InputGroupButton>`.
+
+### DatePickerClear
+
+The clear button (with its own addon), hidden via the root's `data-empty` when
+there is no value; not rendered at all when `clearable` is `false`. Defaults
+to a ✕ icon + an English `aria-label` (Clear date), `tabIndex={-1}`. Takes
+`ComponentProps<typeof InputGroupButton>`.
+
+### DatePickerPopup
+
+Portal → Positioner → Popup in one, anchored to the root's box. The four
+positioning props (`align` / `alignOffset` / `side` / `sideOffset`) go to the
+Positioner, the rest to the Popup; `initialFocus` / `finalFocus` are pinned by
+the seam (focus stays in the input, and returns to it after picking). Plain
+children render **below** the default calendar (where the Footer goes);
+function children take `DatePickerCalendarProps` and replace the calendar (see
+[Custom calendar](#custom-calendar)).
+
+### DatePickerFooter
+
+The action row below the calendar, a pure layout shell; composing it enters
+[confirm mode](#confirm-mode). Takes `ComponentProps<'div'>`.
+
+### DatePickerFooterClear / DatePickerCancel / DatePickerClose
+
+The three action buttons of confirm mode; all take
+`ComponentProps<typeof Button>` (text is children, variant is yours):
+`FooterClear` stages `null` without closing, `Cancel` closes discarding the
+stage, `Close` commits the stage (`close-press`) and closes.
+
+The 15 types are exported as well: `DatePickerProps` / `DatePickerState` /
+`DatePickerInputProps` / `DatePickerTriggerProps` / `DatePickerClearProps` /
+`DatePickerPopupProps` / `DatePickerFooterProps` /
+`DatePickerFooterClearProps` / `DatePickerCancelProps` /
+`DatePickerCloseProps` / `DatePickerCalendarProps` /
+`DatePickerChangeEventReason` / `DatePickerChangeEventDetails` /
+`DatePickerOpenChangeEventReason` / `DatePickerOpenChangeEventDetails`.

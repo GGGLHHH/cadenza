@@ -1,0 +1,382 @@
+---
+title: AlertDialog
+description: A confirmation box — alertdialog semantics, an icon cell and a two-column footer; no ✕, and every exit carries a label
+---
+
+<ComponentPreview name="alert-dialog/basic" />
+
+For asking a question that needs an answer: delete, revoke, overwrite. It shares
+its entire underpinnings with [Dialog](/en/docs/components/dialog); the
+differences are these: `role="alertdialog"` (screen readers announce it more
+assertively), **no corner ✕**, plus an [icon cell](#icon) and [`size`](#size).
+
+### About outside-press dismissal
+
+Base UI's own AlertDialog **never closes on an outside press**, and offers no
+switch — its Root hardcodes `disablePointerDismissal`, and the type plainly
+`Omit`s the prop.
+
+This library does not adopt that root; it uses Dialog's instead:
+
+```js
+// in Base UI's useRenderDialogRoot, alert-dialog mode changes only two lines
+const disablePointerDismissal = isAlertDialog || disablePointerDismissalProp // ← welded shut
+const role = isAlertDialog ? 'alertdialog' : 'dialog'
+```
+
+The seam restores the second line itself (`AlertDialogPopup` passes
+`role="alertdialog"` — Base UI merges caller props last, so it can override),
+and hands the first line back to you. Hence:
+
+- **Outside press closes by default**, same as Dialog
+- `modal` and `disablePointerDismissal` are both usable again
+- the accessibility semantics of `role="alertdialog"` are kept intact
+
+For a confirmation that truly cannot tolerate a stray press, lock it yourself:
+
+```tsx
+<AlertDialog disablePointerDismissal>
+```
+
+## Usage
+
+```tsx
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogPopup,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  createAlertDialogHandle,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<AlertDialog>
+  <AlertDialogTrigger render={<Button variant="destructive" />}>Delete</AlertDialogTrigger>
+  <AlertDialogPopup>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Delete this draft?</AlertDialogTitle>
+      <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogClose render={<Button variant="outline" />}>Cancel</AlertDialogClose>
+      <AlertDialogClose render={<Button variant="destructive" />} onClick={remove}>
+        Delete
+      </AlertDialogClose>
+    </AlertDialogFooter>
+  </AlertDialogPopup>
+</AlertDialog>
+```
+
+**Both exits are `AlertDialogClose`** — the one that does the work puts it in
+`onClick`, since closing is what it does anyway. shadcn offers
+`AlertDialogAction` / `AlertDialogCancel` for this pair; neither was promoted:
+`Action` is just a `Button` with a `data-slot`, `Cancel` is just `Close` plus
+`variant="outline"` — a line the caller writes anyway, and writing it out keeps
+the wording and the variant where they belong.
+
+## Differences from Dialog
+
+| | Dialog | AlertDialog |
+| --- | --- | --- |
+| `role` | `dialog` | **`alertdialog`** |
+| close on backdrop click | yes | yes (see [above](#about-outside-press-dismissal)) |
+| `modal` / `disablePointerDismissal` | yes | yes |
+| corner ✕ | present by default (`showCloseButton`) | **absent**, with no switch |
+| size | tune via `className` | `size="default" \| "sm"` |
+| icon cell | none | [`AlertDialogMedia`](#icon) |
+| inner scroll | `DialogBody` | none — a confirmation needing long content is a signal, not a requirement |
+
+No ✕ is design, not omission: the cross in the corner is an exit that **answers
+nothing**, and this component asks a question that needs an answer. The vendored
+source has none either. Every exit should carry a label — the backdrop and `Esc`
+are the way out kept for "not deciding yet", not part of the answer.
+
+The rest matches Dialog and is not repeated here: the
+[scroll viewport](/en/docs/components/dialog#scrolling-long-content) (the whole
+box scrolls when content exceeds screen height) and the
+[entrance animation from the pointer position](/en/docs/components/dialog#entrance-animation)
+(the same `--dialog-flip`; the two components share one implementation).
+
+## Anatomy
+
+```text
+AlertDialog                    ← root: holds only the open state, renders no element
+├── AlertDialogTrigger         ← the opening button, there can be several
+└── AlertDialogPopup           ← write this one, the three layers below fall into place
+    ├── Portal
+    ├── Backdrop               ← the dimmed, blurred background (backdropClassName)
+    └── Viewport               ← full-screen, scrollable positioning container (viewportClassName)
+        └── Popup              ← the dialog itself, className refers to it
+            ├── AlertDialogHeader
+            │   ├── AlertDialogMedia        ← optional icon cell
+            │   ├── AlertDialogTitle
+            │   └── AlertDialogDescription
+            └── AlertDialogFooter ─ a row of AlertDialogClose
+```
+
+`AlertDialogTitle` is not optional — Base UI wires it to the popup's
+`aria-labelledby`.
+
+## Icon
+
+`AlertDialogMedia` is the icon cell above the title (to its left at the
+`default` size on wide screens): a muted rounded square that automatically sizes
+a bare `svg` child to `size-6`.
+
+<ComponentPreview name="alert-dialog/media" />
+
+It is a part rather than a `<div>` you nest yourself, because **its presence
+changes the header's grid shape** — the header detects it with `:has()` and
+opens an extra row (or, on wide screens, an extra column that moves the icon to
+the title's left).
+
+## Size
+
+<ComponentPreview name="alert-dialog/size" />
+
+`size="sm"` is one notch narrower, the header always centred, the footer laid
+out as **two equal-width columns**. Use it when the two options carry equal
+weight and there is no obvious "default" — equal width itself says "you choose".
+
+`default` left-aligns above the `sm` breakpoint, with the footer right-aligned
+and the primary action on the right.
+
+## Imperative opening
+
+`createAlertDialogHandle()` lets one confirmation box serve a whole list: each
+row's trigger carries its own `payload`, and writing the root's `children` as a
+function receives it.
+
+<ComponentPreview name="alert-dialog/handle" />
+
+```tsx
+const handle = createAlertDialogHandle<Track>()
+
+<AlertDialogTrigger handle={handle} payload={track} render={<Button />}>Delete</AlertDialogTrigger>
+
+<AlertDialog handle={handle}>
+  {({ payload: track }) => (
+    <AlertDialogPopup>
+      <AlertDialogTitle>Delete “{track?.name}”?</AlertDialogTitle>
+      …
+    </AlertDialogPopup>
+  )}
+</AlertDialog>
+```
+
+The function receives an **object** `{ payload }`, not the bare payload; and
+`payload` may be `undefined` (a dialog is not necessarily opened by a trigger).
+"Which row is about to be deleted" thus never needs to become component state.
+
+## Dismissal
+
+`onOpenChange`'s second argument is still a `ChangeEventDetails`, and `cancel()`
+works as ever. `reason` matches Dialog exactly — **`'outside-press'`
+included**:
+
+| `reason` | From |
+| --- | --- |
+| `'trigger-press'` | `AlertDialogTrigger` pressed |
+| `'close-press'` | `AlertDialogClose` pressed |
+| `'outside-press'` | a click outside the popup |
+| `'escape-key'` | `Esc` pressed |
+| `'focus-out'` | focus left the popup (non-modal only) |
+| `'imperative-action'` | code called `actionsRef.current.close()` |
+| `'none'` | everything else, e.g. setting `open` directly |
+
+The box has three non-committal ways out: a backdrop click, `Esc`, and the
+cancel button you wrote yourself. So **the destructive action must hang on the
+button's `onClick`**, never inside `onOpenChange` — otherwise one stray click
+sliding outside the box triggers it:
+
+```tsx
+// right: deletion travels with the button
+<AlertDialogClose onClick={remove} render={<Button variant="destructive" />}>Delete</AlertDialogClose>
+
+// wrong: backdrop clicks and Esc both end up here
+<AlertDialog onOpenChange={next => !next && remove()}>
+```
+
+To block the stray-press routes, lock wholesale:
+
+```tsx
+<AlertDialog disablePointerDismissal>
+```
+
+Or intercept only specific origins:
+
+```tsx
+onOpenChange={(next, details) => {
+  if (!next && details.reason === 'escape-key') {
+    details.cancel()
+    return
+  }
+  setOpen(next)
+}}
+```
+
+## Async confirmation
+
+Confirming is followed by a request — delete, revoke, submit. This is the
+easiest section to get wrong, because there is a trap:
+
+**The action button must not be an `AlertDialogClose`.** `Close` shuts the box
+the instant the request departs — the user watches it vanish with no idea
+whether the operation succeeded. Use a plain `Button` for the action, and call
+`setOpen(false)` yourself once the request returns.
+
+<ComponentPreview name="alert-dialog/async" />
+
+```tsx
+const [open, setOpen] = useState(false)
+const [pending, setPending] = useState(false)
+
+async function remove() {
+  setPending(true)
+  await api.remove(id)
+  setPending(false)
+  setOpen(false) // ← close only after the request returns
+}
+
+<AlertDialog
+  open={open}
+  onOpenChange={(next, details) => {
+    // while the request is in flight, block every attempt to close
+    if (!next && pending) {
+      details.cancel()
+      return
+    }
+    setOpen(next)
+  }}
+>
+  …
+  <AlertDialogFooter>
+    <AlertDialogClose disabled={pending} render={<Button variant="outline" />}>
+      Cancel
+    </AlertDialogClose>
+    {/* not a Close: it has to wait for the request */}
+    <Button pending={pending} variant="destructive" onClick={() => void remove()}>
+      Delete
+    </Button>
+  </AlertDialogFooter>
+</AlertDialog>
+```
+
+All three pieces are indispensable:
+
+1. **`open` is controlled** — otherwise step 3 has no way to close.
+2. **The action button is a `Button`, not a `Close`**, and carries
+   [`pending`](/en/docs/components/button#pending): the button stays focusable
+   but unresponsive, its label veiled by a spinner, its width unchanged.
+3. **While pending, `cancel()` every close** — the cancel button and `Esc`
+   included. Left unblocked, the user can close the box mid-request and come
+   back to an interface that cannot say whether the deed was done.
+
+On failure **do nothing**: `setOpen(false)` was never called, so the box is
+naturally still open. Show the error in the description and the user can retry
+right away:
+
+```tsx
+catch (error) {
+  setPending(false)
+  setError(String(error)) // the box is still open — updating the copy is enough
+}
+```
+
+## State and className
+
+Every `className` takes both forms: a string, or a `(state) => string`
+function. The state fields match
+[Dialog's table](/en/docs/components/dialog#state-and-classname) exactly
+(`data-open` / `data-closed` / `data-starting-style` / `data-ending-style` /
+`data-nested` / `data-nested-dialog-open`); only `data-slot` is listed here:
+
+| `data-slot` | What it is |
+| --- | --- |
+| `alert-dialog-trigger` | the trigger button |
+| `alert-dialog-backdrop` | the backdrop |
+| `alert-dialog-viewport` | the full-screen scroll viewport |
+| `alert-dialog-popup` | the dialog itself, also carrying `data-size` |
+| `alert-dialog-header` / `alert-dialog-footer` | header / footer |
+| `alert-dialog-media` | the icon cell |
+| `alert-dialog-title` / `alert-dialog-description` | title / description |
+| `alert-dialog-close` | the close button |
+
+The popup also carries a `group/alert-dialog-content`: header, footer, title and
+icon cell all read it via `group-data-[size=…]/alert-dialog-content:` to decide
+their alignment. That is a vendored internal convention, not public API — do not
+delete it when changing the popup's classes.
+
+## Keyboard interactions
+
+| Key | Behaviour |
+| --- | --- |
+| `Enter` / `Space` | on the trigger: open; on a close button: close |
+| `Esc` | close (`reason: 'escape-key'`, interceptable with `cancel()`) |
+| `Tab` / `Shift` + `Tab` | cycles inside the popup, no way out |
+
+After closing, focus returns to the trigger automatically.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks →
+behaviour switches → appearance → `className`**.
+
+### AlertDialog
+
+The root component; renders no element.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultOpen` | `boolean` | `false` | uncontrolled initial open state |
+| `open` | `boolean` | — | controlled open state |
+| `onOpenChange` | `(open, details) => void` | — | see [Dismissal](#dismissal) |
+| `onOpenChangeComplete` | `(open: boolean) => void` | — | fires only after the animation ends |
+| `modal` | `boolean \| 'trap-focus'` | `true` | same as [Dialog](/en/docs/components/dialog#modality) |
+| `disablePointerDismissal` | `boolean` | `false` | lock the backdrop way out, see [above](#about-outside-press-dismissal) |
+| `handle` | `AlertDialogHandle<Payload>` | — | see [Imperative opening](#imperative-opening) |
+| `actionsRef` | `RefObject<AlertDialogActions>` | — | imperative `close()` / `unmount()` |
+| `children` | `ReactNode \| ({ payload }) => ReactNode` | — | function form receives the `payload` |
+
+### AlertDialogPopup
+
+The dialog itself; also renders the portal, backdrop and viewport.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `size` | `'default' \| 'sm'` | `'default'` | see [Size](#size); exported type `AlertDialogSize` |
+| `initialFocus` | `boolean \| RefObject \| (openType) => …` | — | where focus goes on open |
+| `finalFocus` | `boolean \| RefObject \| (closeType) => …` | — | where focus goes on close |
+| `backdropClassName` | `string \| (state) => string` | — | backdrop class |
+| `viewportClassName` | `string \| (state) => string` | — | scroll viewport class; the popup-to-screen-edge gap (`p-4`) is changed here |
+| `className` | `string \| (state) => string` | — | popup class |
+| rest | Base UI `AlertDialog.Popup` props | — | passed through |
+
+There is no `showCloseButton`.
+
+### AlertDialogTrigger / AlertDialogClose
+
+Both render a `<button>`, both take `render` to swap the shell. The trigger
+additionally has `handle` and `payload`.
+
+### AlertDialogHeader / AlertDialogMedia / AlertDialogFooter
+
+Three plain `<div>`s, taking native props only. `AlertDialogTitle` renders an
+`<h2>`, `AlertDialogDescription` renders a `<p>`, and both take Base UI's
+`render`.
+
+## Exported types
+
+`AlertDialogProps<Payload>` / `AlertDialogPopupProps` / `AlertDialogPopupState` /
+`AlertDialogTriggerProps<Payload>` / `AlertDialogCloseProps` /
+`AlertDialogHeaderProps` / `AlertDialogMediaProps` / `AlertDialogFooterProps` /
+`AlertDialogTitleProps` / `AlertDialogDescriptionProps` / `AlertDialogSize`,
+plus `AlertDialogChangeEventDetails` (the second argument of `onOpenChange`),
+`AlertDialogActions` (the `close` / `unmount` exposed by `actionsRef`) and
+`AlertDialogHandle<Payload>`.

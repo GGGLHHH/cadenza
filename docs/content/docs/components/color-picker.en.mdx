@@ -1,0 +1,223 @@
+---
+title: ColorPicker
+description: A colour-picking popup opened from a swatch button — React Aria colour kernel, Base UI popup shell
+---
+
+<ComponentPreview name="color-picker/basic" />
+
+A colour picker. Base UI has no colour component, so this family is a marriage
+of two kernels: colour state, colour math, and the drag and keyboard
+interaction of the area and sliders come from React Aria's Color parts (kept
+in sync through React Aria's own context), while the trigger and popup are a
+Base UI Popover — open/close, positioning, focus and outside-press behave
+exactly like every other popup in the library.
+
+Everything in the popup is present by default: the saturation/brightness area,
+the hue and alpha sliders, the hex input — write no composition and you have a
+complete colour picker; to trim it down, compose your own (see
+[Custom popup](#custom-popup)).
+
+## Usage
+
+```tsx
+import { ColorPicker } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<ColorPicker aria-label="Accent colour" defaultValue="#6366f1" />
+```
+
+## Anatomy
+
+The trigger sits on the page and the editing controls all live in the popup;
+`ColorPickerSwatch` can also be used on its own to display any colour.
+
+```text
+ColorPicker
+├─ ColorPickerTrigger        trigger button (default content is the Swatch)
+│  └─ ColorPickerSwatch      current-colour swatch (checkerboard underlay)
+└─ ColorPickerPopup          Portal + Positioner + Popup in one
+   ├─ ColorPickerArea        two-dimensional area (default HSB: saturation × brightness)
+   ├─ ColorPickerSlider      single-channel slider (channel="hue" / "alpha" / …)
+   └─ ColorPickerInput       text input (default hex)
+```
+
+## Labelling
+
+The trigger is a box-only control — a visible label never goes into children;
+it goes through [Field](/en/docs/components/field)'s `FieldLabel htmlFor`,
+with the `id` landing on the trigger button.
+
+<ComponentPreview name="color-picker/label" />
+
+Without a visible label, write `aria-label` directly. The two channels have a
+yielding relationship: with no `id` the trigger carries an English aria
+fallback (`Open color picker`); the moment an `id` is passed, the fallback
+disappears — aria-label ranks before label elements in accessible-name
+computation, and without yielding, a written `FieldLabel` would count for
+nothing.
+
+## Controlled
+
+The controlled trio `value` / `defaultValue` / `onValueChange`. Strings come
+in leniently (hex, rgb and hsl are all parsed by `parseColor`); the callback
+goes out strictly with React Aria's `Color` object —
+`toString('hex' | 'hexa' | 'css' | …)` gets a string back, and
+`eventDetails.cancel()` rejects the change outright.
+
+<ComponentPreview name="color-picker/controlled" />
+
+React Aria's picker context does not reveal which control a gesture came from
+(area, slider or input), so interactive changes carry a single-word `reason`,
+`control-change`; programmatic changes are `none`.
+
+## Custom popup
+
+Composition is configuration: write the popup content yourself, and a part
+left out is a capability left out — omit the `channel="alpha"` slider and it
+is a picker that only ever produces opaque colours.
+
+<ComponentPreview name="color-picker/opaque" />
+
+## Form
+
+The hidden input renders only with a `name` (mounted outside the popup, so
+closing the popup never affects serialisation). Opaque values serialise to
+`#rrggbb`, values with transparency to 8-digit hex.
+
+<ComponentPreview name="color-picker/form" />
+
+## State and className
+
+Each kernel writes its own state attributes; all are presence attributes:
+
+| Attribute | Where | When present |
+| --- | --- | --- |
+| `data-popup-open` | trigger | popup is open (Base UI) |
+| `data-disabled` | trigger, controls in the popup | disabled |
+| `data-dragging` | area/slider thumbs | dragging (React Aria) |
+| `data-focus-visible` | area/slider thumbs, hex input | keyboard focus (React Aria) |
+
+| data-slot | What it is |
+| --- | --- |
+| `color-picker-trigger` | trigger button |
+| `color-picker-swatch` | the swatch |
+| `color-picker-popup` | the popup |
+| `color-picker-area` | the two-dimensional area |
+| `color-picker-slider` | single-channel slider |
+| `color-picker-input` | the text input's wrapper element (`className` lands on the inner `<input>`) |
+
+`ColorPickerTrigger` and `ColorPickerPopup` are Base UI parts, so the function
+`className` contract `(state) => string` holds as usual; the React Aria-based
+parts (Area / Slider / Input / Swatch) support their own render-prop shape,
+which is not this library's contract — so those parts' `className` honestly
+takes only a `string`.
+
+## Keyboard interactions
+
+| Key | Effect |
+| --- | --- |
+| <kbd>Enter</kbd> / <kbd>Space</kbd> | on the trigger: opens the popup |
+| <kbd>Tab</kbd> | moves between the controls in the popup |
+| Arrow keys | area: two-dimensional movement; sliders: step |
+| <kbd>PageUp</kbd> / <kbd>PageDown</kbd> | area/sliders: large step |
+| <kbd>Home</kbd> / <kbd>End</kbd> | sliders: jump to either end |
+| <kbd>Esc</kbd> | closes the popup, focus returns to the trigger |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → className**.
+
+### ColorPicker
+
+The state container; renders no DOM. Its props surface is closed (nothing is
+passed through to any element).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `Color \| string` | `'#000000'` | uncontrolled initial value |
+| `value` | `Color \| string` | — | controlled value; strings are parsed by `parseColor` |
+| `open` | `boolean` | — | controlled popup open state |
+| `defaultOpen` | `boolean` | — | initial popup open state |
+| `onValueChange` | `(value: Color, eventDetails) => void` | — | every change; `cancel()` rejects it |
+| `onOpenChange` | same as Base UI Popover | — | open/close callback, complete with `cancel()` and reason |
+| `onOpenChangeComplete` | `(open: boolean) => void` | — | after the open/close animation completes |
+| `actionsRef` | same as Base UI Popover | — | imperative popup handle |
+| `modal` | `boolean` | `false` | pinned to `false`: an inline control never locks the page |
+| `name` | `string` | — | the hidden input renders only when set |
+| `disabled` | `boolean` | `false` | |
+| `id` | `string` | — | lands on the trigger, the target for `FieldLabel htmlFor` |
+| `aria-label` | `string` | — | accessible name of the default composition's trigger |
+| `children` | `ReactNode \| ReactNode[]` | the default composition | compose the parts yourself |
+
+### ColorPickerTrigger
+
+Base UI's Popover.Trigger; the popup anchors to it.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | `<ColorPickerSwatch />` | |
+| rest | Base UI Popover.Trigger props (native button props + ref) | — | passed through |
+
+### ColorPickerSwatch
+
+The current colour's swatch; a checkerboard underlay keeps transparency
+visible.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `color` | `Color \| string` | the picker's current value | display any colour standalone |
+| `className` | `string` | — | React Aria base, honestly narrowed |
+| rest | React Aria ColorSwatch props | — | passed through |
+
+### ColorPickerPopup
+
+Portal + Positioner + Popup in one, anchored to the trigger.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `align` / `alignOffset` / `side` / `sideOffset` | same as Base UI Positioner | `'start'` / `0` / `'bottom'` / `4` | positioning |
+| `children` | `ReactNode \| ReactNode[]` | area + hue/alpha sliders + hex input | composition is configuration |
+| rest | Base UI Popover.Popup props | — | passed through |
+
+### ColorPickerArea
+
+The two-dimensional channel area, thumb built in.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `colorSpace` | `ColorSpace` | `'hsb'` | |
+| `xChannel` / `yChannel` | `ColorChannel` | `'saturation'` / `'brightness'` | |
+| `className` | `string` | — | React Aria base, honestly narrowed |
+| rest | React Aria ColorArea props | — | passed through |
+
+### ColorPickerSlider
+
+A single-channel slider, thumb built in.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `channel` | `ColorChannel` | — | required: `'hue'`, `'alpha'` or any channel |
+| `colorSpace` | `ColorSpace` | `'hsb'` | |
+| `className` | `string` | — | React Aria base, honestly narrowed |
+| rest | React Aria ColorSlider props | — | passed through |
+
+### ColorPickerInput
+
+The text input — whole-value hex by default, turning into a single-channel
+number input with `channel`. `className` lands on the inner `<input>`; React
+Aria's wrapper div takes no styles.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `channel` | `ColorChannel` | — (whole-value hex) | single-channel mode |
+| `className` | `string` | — | lands on the inner `<input>` |
+| rest | React Aria ColorField props | — | passed through |
+
+The 9 types are exported as well: `ColorPickerProps` /
+`ColorPickerTriggerProps` / `ColorPickerSwatchProps` /
+`ColorPickerPopupProps` / `ColorPickerAreaProps` / `ColorPickerSliderProps` /
+`ColorPickerInputProps` / `ColorPickerChangeEventReason` /
+`ColorPickerChangeEventDetails`; the `parseColor` function and the `Color`
+type are re-exported too, so controlled usage works out of the box.
