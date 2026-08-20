@@ -2,6 +2,7 @@ import type { ChangeEvent, ComponentProps, ReactElement } from 'react'
 import type { DropdownProps } from 'react-day-picker'
 import { useMemo, useRef } from 'react'
 import { defaultDateLib } from 'react-day-picker'
+import { cn } from '#lib/utils'
 import { CalendarDayButton, Calendar as CalendarPrimitive } from '#primitives/calendar'
 import { Select, SelectItem, SelectPopup, SelectTrigger } from './select'
 
@@ -135,6 +136,7 @@ function CalendarNavDropdown({
 
 export function Calendar({
   captionLayout,
+  className,
   components,
   endMonth,
   formatters,
@@ -151,6 +153,14 @@ export function Calendar({
   }, [])
   return (
     <CalendarPrimitive
+      // The vendored root paints `bg-background` and only goes transparent
+      // under shadcn's own hosts (`card-content`, `popover-content`). This
+      // library's popups are named `<family>-popup`, so inside any of them the
+      // panel would sit as a `background`-coloured plate on a `popover`-
+      // coloured shell — invisible while the two tokens are near-identical,
+      // glaring the moment a theme separates them. One suffix-matched
+      // exemption covers every popup host of this library, present and future.
+      className={cn('in-data-[slot$="-popup"]:bg-transparent', className)}
       captionLayout={captionLayout}
       endMonth={endMonth ?? (yearDropdown ? reach.end : undefined)}
       startMonth={startMonth ?? (yearDropdown ? reach.start : undefined)}
