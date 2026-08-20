@@ -40,6 +40,12 @@ export default antfu(
       // that. src/components is ours and is linted normally.
       'packages/*/src/primitives',
       'packages/*/src/hooks',
+      // Vendored React Bits source, same deal as the shadcn primitives above:
+      // kept as pulled so `shadcn add -o` still diffs cleanly against upstream.
+      // The logical-property and class-order fixers would rewrite every line.
+      // Adaptations live in the docs/components/home-*.tsx wrappers instead —
+      // see docs/components/reactbits/README.md.
+      'docs/components/reactbits',
     ],
   },
 ).append({

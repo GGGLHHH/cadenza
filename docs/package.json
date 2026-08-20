@@ -21,6 +21,7 @@
     "fumadocs-mdx": "catalog:docs",
     "next": "catalog:docs",
     "next-themes": "catalog:ui",
+    "ogl": "catalog:docs",
     "react": "catalog:react",
     "react-dom": "catalog:react",
     "rehype-pretty-code": "catalog:docs",

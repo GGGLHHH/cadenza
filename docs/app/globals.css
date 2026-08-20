@@ -21,6 +21,11 @@
 }
 
 :root {
+  /* 首页卡片的鼠标跟随光晕。定义成变量而不是在 HomeCard 里按 resolvedTheme
+     三元选值:那样 SSR 拿不到主题(undefined 走亮色分支),客户端首帧却已经是
+     暗色,React 当场报 hydration 不匹配。color-mix 让亮暗自动各就各位,
+     服务端和客户端输出的是同一个字符串 */
+  --home-spotlight: color-mix(in oklab, var(--foreground) 6%, transparent);
   --surface: oklch(0.98 0 0);
   --surface-foreground: var(--foreground);
   --code: var(--surface);

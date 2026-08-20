@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import type { ReactElement, ReactNode } from 'react'
-import { ThemeProvider } from 'next-themes'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { SiteHeader } from '@/components/site-header'
 import { Toaster } from '@/components/sonner'
+import { ThemeProvider } from '@/components/theme-provider'
 import { htmlLang, i18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import '@/app/globals.css'
@@ -47,12 +47,7 @@ export default async function RootLayout({ params, children }: {
       )}
     >
       <body className="bg-background font-sans antialiased min-block-svh">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <ThemeProvider>
           <div className="relative flex flex-col min-block-svh">
             <SiteHeader lang={lang} />
             <main className="flex flex-1 flex-col">{children}</main>

@@ -20,7 +20,7 @@ export function SiteHeader({ lang }: { lang: string }): ReactElement {
       "
       >
         <Link
-          href={localizedHref(lang, '/docs')}
+          href={localizedHref(lang, '/')}
           className="flex items-center gap-2 text-base font-semibold"
         >
           Cadenza

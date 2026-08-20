@@ -13,7 +13,10 @@ export type Locale = (typeof i18n.languages)[number]
 
 /** 站内链接补语言前缀;默认语言不带前缀是 hideLocale 的约定,写死会被 proxy 弹回 */
 export function localizedHref(lang: string, path: string): string {
-  return lang === i18n.defaultLanguage ? path : `/${lang}${path}`
+  if (lang === i18n.defaultLanguage)
+    return path
+  // 首页要的是 /en 而不是 /en/ —— 后者会被 Next 再重定向一次
+  return path === '/' ? `/${lang}` : `/${lang}${path}`
 }
 
 /** `<html lang>` 用 BCP 47 全称,路由段用短码,两套词形只在这换算 */
