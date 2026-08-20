@@ -34,6 +34,7 @@ export * from './components/stepper'
 export * from './components/switch'
 export * from './components/tabs'
 export * from './components/textarea'
+export * from './components/theme-editor'
 export * from './components/toggle'
 export * from './components/toggle-group'
 // The change-callback protocol every onXxxChange second argument follows.
