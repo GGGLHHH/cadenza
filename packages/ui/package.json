@@ -63,6 +63,7 @@
     "date-fns": "catalog:ui",
     "input-otp": "catalog:ui",
     "motion": "catalog:ui",
+    "react-aria-components": "catalog:ui",
     "react-day-picker": "catalog:ui",
     "tailwind-merge": "catalog:ui"
   },
