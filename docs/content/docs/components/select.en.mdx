@@ -320,13 +320,20 @@ DOM itself, so it has no `className` and no state attributes.
 | `data-highlighted` | highlighted by keyboard or pointer | `highlighted` |
 | `data-disabled` | `disabled` | `disabled` |
 
-Every part carries its own `data-slot` (`select-trigger` / `select-value` /
-`select-content` / `select-group` / `select-label` / `select-item` /
-`select-separator` / `select-clear` / `select-empty` / `select-pending`) — use
-them as selectors when targeting from outside.
+Every part carries its own `data-slot` (`select-trigger` /
+`select-trigger-container` / `select-value` / `select-content` /
+`select-group` / `select-label` / `select-item` / `select-separator` /
+`select-clear` / `select-empty` / `select-pending`) — use them as selectors
+when targeting from outside.
 Among them `select-value` **is a wiring contract, not a marker** — do not pass
 it a `data-slot` of your own: `SelectTrigger`'s layout rules hit it via
-`*:data-[slot=select-value]:…`, and replacing it fails silently. The rest are
+`*:data-[slot=select-value]:…`, and replacing it fails silently.
+`select-trigger-container` is not a marker either but a positioning box: when
+clearing is available (`clearable` is true and either the default composition
+is used or the hand-written children include `SelectClear`), an extra `<span>`
+wraps the trigger to hold the lifted ✕, and the trigger becomes its `flex-1`
+child — count it in when writing child selectors like
+`> [data-slot=select-trigger]`, or when laying out around a Select. The rest are
 just markers; changing them breaks nothing (the selected item's highlight goes
 through `focus:bg-accent` and never reads `data-slot`).
 

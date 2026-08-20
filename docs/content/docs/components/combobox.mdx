@@ -294,7 +294,8 @@ children 在 DOM 上排在箭头/清除那个 addon 之后，但那个 addon 是
 的两个文件之一**（另一个是 accordion）：它的 `ComboboxInput` 声明了 Base UI 的函数
 `className`，转手又把它路由给 `InputGroup` —— 一个纯 DOM 的 div，只收字符串。
 类型承诺了元素兑现不了的契约，`tsc` 说了实话。byte-pinned 的 vendored 源码改不得，
-于是封装层自己重写了一份，把路由说清楚（`className?: string`），顺手把名字定了形：
+于是封装层自己重写了一份，把路由改对 —— 那一行直接渲染 Base UI 的 `Combobox.InputGroup`，
+函数 `className` 这才有人兑现 —— 顺手把名字定了形：
 
 | vendored | 封装层 | 为什么 |
 | --- | --- | --- |
@@ -331,16 +332,17 @@ children 在 DOM 上排在箭头/清除那个 addon 之后，但那个 addon 是
 一个 [InputGroup](/docs/components/input-group)，里面装着真正的 input、箭头和清除按钮。
 于是有一条要记住：
 
-- **`className` 落在那一行**（`InputGroup`，纯 DOM），所以它老实是 `string`，
-  没有 Base UI 的函数形态；
+- **`className` 落在那一行**（Base UI 的 `Combobox.InputGroup`，shadcn 的 `InputGroup`
+  只是它的 render 元素），所以 Base UI 的函数形态在这里也成立；
 - **其余 props 都进里面那个 `<input>`** —— `placeholder`、`aria-label`、`onKeyDown`、
   `ref` 都是给它的。
 
-Base UI 写的那些 `data-*`（`data-popup-open` / `data-disabled` / `data-list-empty`…）
-也在里面那个 `<input>` 上，不在行上。想按状态给整行上色，用 `has-*` 选择器
-（比如 `has-data-[popup-open]:border-ring`），别指望行自己带这些属性。
-上游 vendored 的那版把这里搞错了 —— 它声明了 Base UI 的函数 `className` 却路由到
-`InputGroup`，见[上一节](#这份是封装层自己的移植)。
+Base UI 写的那些 `data-*`（`data-popup-open` / `data-disabled` / `data-list-empty`…），
+行和里面那个 `<input>` 各带一份，想按状态给整行上色直接写在行上就行
+（`data-[popup-open]:border-ring`）；`has-*` 选择器（比如 `has-data-[popup-open]:border-ring`）
+一样能用，认里面 input 独有的状态时用它。
+上游 vendored 的那版仍是错的 —— 它声明了 Base UI 的函数 `className` 却路由到纯 DOM 的
+`InputGroup`；封装层是靠改路由、不是靠窄类型把两边对上的，见[上一节](#这份是封装层自己的移植)。
 
 **其余部件都通到 Base UI 的 slot**，所以函数形态成立：`(state) => string | undefined`，
 state 的字段就是[Props](#props) 里各部件那张 `data-*` 表。这些 state 的类型名住在上游
@@ -438,10 +440,10 @@ state 的字段就是[Props](#props) 里各部件那张 `data-*` 表。这些 st
 | `disabled` | `boolean` | — | 只禁这个输入框。**整控件禁用写在根上**，见[禁用](#禁用) |
 | `children` | `ReactNode` | — | 追加到行里，见 [Input Group](#input-group) |
 | `render` | `ReactElement \| (props, state) => ReactElement` | — | 排在封装层那个 `InputGroupInput` 之后：传了就把它换掉 |
-| `className` | `string` | — | **那一行**（`InputGroup`）的类名。纯 DOM，只收字符串，见[状态与 className](#状态与-classname) |
+| `className` | `string \| ((state) => string \| undefined)` | — | **那一行**（Base UI 的 `Combobox.InputGroup`）的类名，见[状态与 className](#状态与-classname) |
 | 其余 | Base UI `Combobox.Input` 的 props（`input` 的原生属性 + `ref`） | — | 透传给里面那个 `<input>` |
 
-**状态**（都在里面那个 `<input>` 上，不在行上）
+**状态**（行和里面那个 `<input>` 各带一份，`data-placeholder` 除外）
 
 | `data-*` | 出现时机 |
 | --- | --- |
@@ -450,6 +452,7 @@ state 的字段就是[Props](#props) 里各部件那张 `data-*` 表。这些 st
 | `data-disabled` / `data-readonly` | 对应的 prop |
 | `data-popup-side` | 弹层实际贴的那一边 |
 | `data-list-empty` | 过滤结果为空 |
+| `data-placeholder` | 还没有选中值 —— **只在行上**，里面那个 `<input>` 没有这一个。想让占位态影响整行（比如 `data-placeholder:text-muted-foreground`），选择器就得落在行上 |
 | `data-valid` / `data-invalid` / `data-touched` / `data-dirty` / `data-filled` / `data-focused` | 只在 Base UI 的 `Field.Root` 里才会动 —— 本库的 `Field` 是纯 DOM 布局，不是它 |
 
 ### ComboboxPopup

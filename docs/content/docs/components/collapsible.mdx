@@ -93,8 +93,9 @@ DOM 上的 `data-*`,Tailwind 直接当变体写(`data-open:border-primary`);右�
 | 根 / 面板 | `data-starting-style` | 进场的第一帧 | `transitionStatus` 为 `'starting'` |
 | 根 / 面板 | `data-ending-style` | 退场动画进行中 | `transitionStatus` 为 `'ending'` |
 
-面板的 state 比根多一个 `transitionStatus`(`'starting'` / `'ending'` / `undefined`),
-默认的高度过渡就是拿 `data-starting-style` / `data-ending-style` 把两端压到 `h-0` 做的。
+根与面板的 state 是同一组字段,都含 `transitionStatus`(`'starting'` / `'ending'` /
+`'idle'` / `undefined`),默认的高度过渡就是拿 `data-starting-style` /
+`data-ending-style` 把两端压到 `h-0` 做的。
 要改成横向折叠,把默认的 `h-(--collapsible-panel-height)` 换成
 `w-(--collapsible-panel-width)`、`transition-[height]` 换成 `transition-[width]` 即可
 (`cn` 合并,后写的赢)。

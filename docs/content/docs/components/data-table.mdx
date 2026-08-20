@@ -571,8 +571,10 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | `DataTableColumnsSelectListProps` / `ItemProps` / `GripProps` | 三个[组合部件](#组合部件)各自的 props |
 | `DataTableColumnsSelectChangeEventReason` / `ChangeEventDetails` | `onValueChange` / `onOrderChange` 的第二参：`'item-press' \| 'drag' \| 'none'`，可 `cancel()` |
 | `DataTableColumnsSelectOrderEventDetails` | `onOrderCommitted` 的第二参 —— 通知语义，无 `cancel()` |
+| `DataTableChangeEventReason` / `DataTableChangeEventDetails` | 行选择 `onValueChange` / `onSelectionChange` 的第二参：`'item-press' \| 'select-all-press' \| 'none'`，可 `cancel()` |
+| `DataTableSortEventDetails` | `onSortChange` 的第二参，reason 恒为 `'sort-press'` —— 通知语义，无 `cancel()`：`sortDescriptor` 完全受控，没有内部状态可跳过 |
 | `DataTableProps<T>` | `DataTable` 完整 props，业务层包一层时直接复用 |
-| `DataTableSelectionProps<T>` | 便利层选择的判别联合（单选 `value?: string` / 多选 `value?: string[]`，`onValueChange` 签名随之切换） |
+| `DataTableSelectionProps<T>` | 便利层选择的判别联合（单选 `value?: string \| null`，`null` 是受控空值、`undefined` 表示非受控 / 多选 `value?: string[]`，`onValueChange` 签名随之切换） |
 | `DataPaginationProps` / `DataPaginationState` | 分页器 props 与 `summary` / `pageIndicator` 收到的状态 |
 | `SortDescriptor` / `Selection` / `Key` | 本库自己的集合词汇，排序与选择回调的类型 |
 
@@ -593,7 +595,7 @@ sticky 表头、边框、列布局与非虚拟模式完全一致。下面的 dem
 | `loadMoreScrollOffset` | `number` | `1` | 预取距离：提前多少个视口高度触发 `onLoadMore` |
 | `selectionMode` | `'none' \| 'single' \| 'multiple'` | `'none'` | 行选择模式 |
 | `value` / `defaultValue` / `onValueChange` | `string` \| `string[]` | — | 便利层选择（跨页存档），签名随 `selectionMode` 切换，见[行选择与行动作](#行选择与行动作) |
-| `selectedKeys` / `onSelectionChange` | — | — | 原始选择透传。便利层激活时前者被忽略；`onSelectionChange` 仍触发，仅作观察 |
+| `selectedKeys` / `onSelectionChange` | — | — | 原始选择透传。便利层激活时前者被忽略；`onSelectionChange` 仍触发，仅作观察 —— 但它的 `eventDetails.cancel()` 会连便利层的写入一起挡下 |
 | `selectionColumn` | `boolean` | `false` | 合成复选框列（行勾选 + 表头全选），见[行选择与行动作](#行选择与行动作) |
 | `selectAllLabel` / `selectRowLabel` | `string` | `'Select all rows'` / `'Select row'` | 复选框的无障碍名，英文兜底，业务层传译文 |
 | `sortDescriptor` / `onSortChange` | `SortDescriptor` | — | 排序意图（受控） |

@@ -613,6 +613,8 @@ Base UI `Combobox.Item`）
 | `InfiniteSelectActions<T>` | 动作上下文的值形状（`useInfiniteSelectActions()` 的返回 / `InfiniteSelectActionsProvider` 的入参），见[动作上下文](#动作上下文) |
 | `InfiniteComboboxState<T>` / `InfiniteComboboxStateOptions` | `useInfiniteComboboxState` 的返回值与入参 |
 | `InfiniteComboboxChildren<T>` | children 的类型：`ReactNode` / `ReactNode[]`（首个是触发器，其余进组合通道），或接收状态的函数 |
+| `InfiniteSelectChangeEventReason` / `InfiniteSelectChangeEventDetails` | `onValueChange` 与 `useInfiniteComboboxState` 的 `onInputValueChange` 的第二参：Base UI `Combobox` 的 reason 词加上 `'none'` / `'cancel-press'`，可 `cancel()` |
+| `InfiniteComboboxOpenChangeEventReason` / `InfiniteComboboxOpenChangeEventDetails` | `onOpenChange` 的第二参：`Popover` 的 reason 词并上前一套 |
 
 ## Props
 
@@ -723,7 +725,7 @@ Base UI `Combobox.Item`）
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `value` | `InfiniteSelectActions<T>` | — | 必填。`{ selectedItems, selectedIds, clear, close }` |
+| `value` | `InfiniteSelectActions<T>` | — | 必填。`{ selectedItems, selectedIds, clear, close, cancel }`；没有草稿可丢弃时 `cancel` 直接传 `close` |
 | `children` | `ReactNode` | — | 消费这份上下文的子树 |
 
 ### 状态插槽与 footer

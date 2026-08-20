@@ -28,7 +28,7 @@ const dictionaries = {
     home: {
       eyebrow: 'Base UI 行为 × shadcn 外观',
       tagline: 'Base UI 负责行为与无障碍，Tailwind + cva 负责外观。',
-      lede: '33 个组件、一套 base-nova token、每页都能打开的主题编辑器。键盘交互与 ARIA 语义交给 Base UI，样式留给你改。',
+      lede: '33 个组件、一套 base-nova token、每个文档页都能打开的主题编辑器。键盘交互与 ARIA 语义交给 Base UI，样式留给你改。',
       cta: {
         start: '开始使用',
         components: '浏览组件',
@@ -50,7 +50,7 @@ const dictionaries = {
         },
         {
           title: '主题实时可编辑',
-          body: '右下角的调色盘按钮每页都在，亮暗两套 token 分开调，改完导出成 CSS 直接引进项目。',
+          body: '右下角的调色盘按钮每个文档页都在，亮暗两套 token 分开调，改完导出成 CSS 直接引进项目。',
         },
         {
           title: '一行起步，需要时再拆开',
@@ -93,7 +93,7 @@ const dictionaries = {
     home: {
       eyebrow: 'Base UI behaviour × shadcn looks',
       tagline: 'Base UI drives behaviour and accessibility, Tailwind + cva drive the looks.',
-      lede: '33 components, one base-nova token set, and a theme editor you can open on any page. Keyboard interaction and ARIA semantics go to Base UI; the styling stays yours to change.',
+      lede: '33 components, one base-nova token set, and a theme editor you can open on any docs page. Keyboard interaction and ARIA semantics go to Base UI; the styling stays yours to change.',
       cta: {
         start: 'Get started',
         components: 'Browse components',
@@ -115,7 +115,7 @@ const dictionaries = {
         },
         {
           title: 'Themes editable live',
-          body: 'The palette button sits in the corner of every page — tune light and dark tokens separately, then export the CSS straight into your project.',
+          body: 'The palette button sits in the corner of every docs page — tune light and dark tokens separately, then export the CSS straight into your project.',
         },
         {
           title: 'One line to start, open it up later',

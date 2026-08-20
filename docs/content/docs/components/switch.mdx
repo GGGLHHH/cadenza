@@ -1,12 +1,12 @@
 ---
 title: Switch
-description: 开关 —— Base UI Switch.Root 原样转正，box-only、没有 indeterminate，size 是 shadcn 加的
+description: 开关 —— 封装层自己组合的 Switch.Root + Switch.Thumb，box-only、没有 indeterminate，size 与 pending 是加的
 ---
 
 <ComponentPreview name="switch/basic" />
 
-Base UI 的 `Switch.Root`，在 shadcn 的 base-nova 轨道里**原样转正** —— 封装层没有加行为，
-只加了一个 `size`。
+Base UI 的 `Switch.Root` + `Switch.Thumb`，在 shadcn 的 base-nova 轨道里由封装层**自己组合**
+而成 —— 类名照抄，加的只有 [`size`](#尺寸) 和 [`pending`](#进行中)。
 
 它和 [Checkbox](/docs/components/checkbox) **同形**：根元素渲染一个 `<span role="switch">`，
 旁边跟一个隐藏的 `<input type="checkbox">`。也就是说根元素**就是那条轨道**，别的什么都不是

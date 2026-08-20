@@ -704,8 +704,10 @@ controls inside:
 | `DataTableColumnsSelectListProps` / `ItemProps` / `GripProps` | props of each of the three [composed parts](#composed-parts) |
 | `DataTableColumnsSelectChangeEventReason` / `ChangeEventDetails` | second argument of `onValueChange` / `onOrderChange`: `'item-press' \| 'drag' \| 'none'`, supports `cancel()` |
 | `DataTableColumnsSelectOrderEventDetails` | second argument of `onOrderCommitted` — notification semantics, no `cancel()` |
+| `DataTableChangeEventReason` / `DataTableChangeEventDetails` | second argument of row selection's `onValueChange` / `onSelectionChange`: `'item-press' \| 'select-all-press' \| 'none'`, supports `cancel()` |
+| `DataTableSortEventDetails` | second argument of `onSortChange`, its reason always `'sort-press'` — notification semantics, no `cancel()`: `sortDescriptor` is fully controlled, so there is no internal state a cancel could skip |
 | `DataTableProps<T>` | `DataTable`'s full props; reuse directly when wrapping a layer in application code |
-| `DataTableSelectionProps<T>` | the convenience-layer selection discriminated union (single `value?: string` / multiple `value?: string[]`, with the `onValueChange` signature switching along) |
+| `DataTableSelectionProps<T>` | the convenience-layer selection discriminated union (single `value?: string \| null`, where `null` is the controlled empty value and `undefined` means uncontrolled / multiple `value?: string[]`, with the `onValueChange` signature switching along) |
 | `DataPaginationProps` / `DataPaginationState` | the pagination bar's props and the state received by `summary` / `pageIndicator` |
 | `SortDescriptor` / `Selection` / `Key` | this library's own collection vocabulary; the types of sort and selection callbacks |
 
@@ -727,7 +729,7 @@ callbacks → behaviour switches → appearance → `className`**.
 | `loadMoreScrollOffset` | `number` | `1` | prefetch distance: how many viewport heights ahead `onLoadMore` fires |
 | `selectionMode` | `'none' \| 'single' \| 'multiple'` | `'none'` | row selection mode |
 | `value` / `defaultValue` / `onValueChange` | `string` \| `string[]` | — | convenience-layer selection (cross-page archive); signatures switch with `selectionMode`, see [Row selection and row actions](#row-selection-and-row-actions) |
-| `selectedKeys` / `onSelectionChange` | — | — | raw selection, passed through. The former is ignored while the convenience layer is active; `onSelectionChange` still fires, observation only |
+| `selectedKeys` / `onSelectionChange` | — | — | raw selection, passed through. The former is ignored while the convenience layer is active; `onSelectionChange` still fires, observation only — but its `eventDetails.cancel()` also stops the convenience layer from writing |
 | `selectionColumn` | `boolean` | `false` | synthesized checkbox column (row ticks + header select-all), see [Row selection and row actions](#row-selection-and-row-actions) |
 | `selectAllLabel` / `selectRowLabel` | `string` | `'Select all rows'` / `'Select row'` | accessible names of the checkboxes; English fallback, the application layer passes translations |
 | `sortDescriptor` / `onSortChange` | `SortDescriptor` | — | sort intent (controlled) |

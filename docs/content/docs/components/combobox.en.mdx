@@ -346,8 +346,9 @@ two files on the typecheck exclude list** (the other is accordion): its
 and routed it to `InputGroup` — a pure-DOM div that takes strings only. The
 type promised a contract the element could not honour, and `tsc` told the
 truth. The byte-pinned vendored source cannot be edited, so the seam rewrote
-its own copy, stating the routing plainly (`className?: string`) and settling
-the names while at it:
+its own copy and fixed the routing — the row renders Base UI's
+`Combobox.InputGroup`, so the function `className` finally has something to
+honour it — settling the names while at it:
 
 | vendored | the seam | Why |
 | --- | --- | --- |
@@ -389,18 +390,21 @@ not an `<input>` — it assembles a whole row itself, an
 [InputGroup](/en/docs/components/input-group) holding the real input, the
 arrow and the clear button. So one thing to remember:
 
-- **`className` lands on the row** (the `InputGroup`, pure DOM), so it is
-  honestly a `string` — no Base UI function form;
+- **`className` lands on the row** (Base UI's `Combobox.InputGroup`, with
+  shadcn's `InputGroup` merely its render element), so Base UI's function
+  form holds here too;
 - **every other prop goes into the inner `<input>`** — `placeholder`,
   `aria-label`, `onKeyDown` and `ref` are all for it.
 
 The `data-*` Base UI writes (`data-popup-open` / `data-disabled` /
-`data-list-empty`…) is likewise on the inner `<input>`, not on the row. To
-colour the whole row by state, use `has-*` selectors (say
-`has-data-[popup-open]:border-ring`) — do not expect the row to carry these
-attributes itself. The upstream vendored version got this wrong — it declared
-Base UI's function `className` yet routed it to `InputGroup`, see
-[the previous section](#this-is-the-seams-own-port).
+`data-list-empty`…) land on the row and on the inner `<input>` alike, so
+colouring the whole row by state can be written straight on the row
+(`data-[popup-open]:border-ring`); `has-*` selectors (say
+`has-data-[popup-open]:border-ring`) work just as well, and are what you want
+for state only the inner input carries. The upstream vendored version is
+still wrong — it declares Base UI's function `className` yet routes it to the
+pure-DOM `InputGroup`; the seam settled it by fixing the routing, not by
+narrowing the type, see [the previous section](#this-is-the-seams-own-port).
 
 **Every other part connects through to a Base UI slot**, so the function form
 holds: `(state) => string | undefined`, with the state's fields being each
@@ -507,10 +511,10 @@ The text box row. Every prop besides `className` goes into the inner
 | `disabled` | `boolean` | — | disables this input only. **Whole-control disabling goes on the root**, see [Disabled](#disabled) |
 | `children` | `ReactNode` | — | appended into the row, see [Input Group](#input-group) |
 | `render` | `ReactElement \| (props, state) => ReactElement` | — | slots in after the seam's own `InputGroupInput`: passing one replaces it |
-| `className` | `string` | — | class of **the row** (the `InputGroup`). Pure DOM, strings only, see [State and className](#state-and-classname) |
+| `className` | `string \| ((state) => string \| undefined)` | — | class of **the row** (Base UI's `Combobox.InputGroup`), see [State and className](#state-and-classname) |
 | rest | Base UI `Combobox.Input` props (native `input` props + `ref`) | — | passed through to the inner `<input>` |
 
-**States** (all on the inner `<input>`, not on the row)
+**States** (carried by the row and the inner `<input>` alike, `data-placeholder` excepted)
 
 | `data-*` | When present |
 | --- | --- |
@@ -519,6 +523,7 @@ The text box row. Every prop besides `className` goes into the inner
 | `data-disabled` / `data-readonly` | the corresponding prop |
 | `data-popup-side` | the side the popup actually attached to |
 | `data-list-empty` | the filtered result is empty |
+| `data-placeholder` | no value selected yet — **on the row only**, the inner `<input>` does not carry this one. To let the placeholder state drive the whole row (say `data-placeholder:text-muted-foreground`), the selector has to land on the row |
 | `data-valid` / `data-invalid` / `data-touched` / `data-dirty` / `data-filled` / `data-focused` | move only inside Base UI's `Field.Root` — this library's `Field` is pure DOM layout, not that |
 
 ### ComboboxPopup

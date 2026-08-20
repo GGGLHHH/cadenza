@@ -110,8 +110,9 @@ InputOTP
 
 ## 分隔符
 
-`InputOTPSeparator` 是这个页面里唯一被封装层**重新包过**的部件，其余三个都是原样转出。
-它渲染的是一个 `IconMinus`，带 `role="separator"`。
+`InputOTPGroup` / `InputOTPSlot` / `InputOTPSeparator` 三个都被封装层**重新包过**，只有
+`InputOTP` 是原样转出（一次类型 cast）。前两个包的是无效态桥接（见[无效态](#无效态)），
+`InputOTPSeparator` 包的是一次 `cn` 合并。它渲染的是一个 `IconMinus`，带 `role="separator"`。
 
 原因是 vendored 那份把自己的 `className` 写在 props 展开的**前面**：
 
@@ -150,16 +151,18 @@ demo 那样。
 
 ## 无效态
 
-`aria-invalid` 要挂在**格子**上，不是挂在 `InputOTP` 上：
+`aria-invalid` 挂在 `InputOTP` 上还是挂在单个格子上，是两种粒度，都有效：
 
 | 挂在哪 | 效果 |
 | --- | --- |
+| `InputOTP` 的 `aria-invalid` | 整行格子画 destructive 边框与环 —— 属性落在那个隐形真 input 上，容器的 `.cn-input-otp:has(input[aria-invalid="true"])` 把状态桥接给每个 group 和 slot |
 | `InputOTPSlot` 的 `aria-invalid` | 这个格子画 destructive 边框；它所在的 `InputOTPGroup` 靠 `has-aria-invalid:` 整组画出 destructive 边框与环 |
 | `Field` 的 `data-invalid` | 整列文字变 destructive 色，见 [Field](/docs/components/field#状态与-classname) |
 
-挂在 `InputOTP` 上不会有任何可见效果：那个 input 本身是隐形的，而且它是可见容器里
-`InputOTPGroup` 的**兄弟**而不是后代，`has-` 选择器够不着它。一行都算错时把
-`aria-invalid` 铺给每个 `InputOTPSlot`。
+那个真 input 是可见容器里 `InputOTPGroup` 的**兄弟**而不是后代，vendored 那套
+`has-aria-invalid:` 配方够不着它；封装层给 `InputOTPGroup` / `InputOTPSlot` 各补了一组
+`in-[.cn-input-otp:has(input[aria-invalid="true"])]` 类，把这条桥接上。所以表单库的常规
+接线（`aria-invalid` 给控件本身）就能点亮整行，**不用**手动铺给每个 `InputOTPSlot`。
 
 ## 表单
 
@@ -185,7 +188,7 @@ demo 那样。
 | 属性 | 效果 |
 | --- | --- |
 | `data-active` | 封装层自动挂在每个 `InputOTPSlot` 上，光标所在的那格描边加环、抬到 `z-10`，并画出闪烁的假光标 |
-| `aria-invalid` | 你自己挂在格子上，见[无效态](#无效态) |
+| `aria-invalid` | 你自己挂：挂在 `InputOTP` 上点亮整行，挂在单个格子上只红那一格，见[无效态](#无效态) |
 | `disabled` | 你自己挂在 `InputOTP` 上，容器整行半透明，见[禁用](#禁用) |
 
 | `data-slot` | 是什么 |
@@ -249,8 +252,8 @@ demo 那样。
 | `className` | `string` | — | 三个都是纯 `div`，只收字符串 |
 | 其余 | 原生 `div` 属性 | — | 透传（含 `ref`） |
 
-`InputOTPGroup` 与 `InputOTPSlot` 是原样转出的，`InputOTPSeparator`
-[被包过一层](#分隔符)。
+三个部件都被封装层包过一层：`InputOTPSeparator` 是为了
+[`cn` 合并](#分隔符)，`InputOTPGroup` / `InputOTPSlot` 是为了[无效态桥接](#无效态)。
 
 四个类型一并导出：`InputOTPProps` / `InputOTPGroupProps` / `InputOTPSlotProps` /
 `InputOTPSeparatorProps`。

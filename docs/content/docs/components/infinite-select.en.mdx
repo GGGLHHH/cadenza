@@ -730,6 +730,8 @@ application-layer wrappers and data adapters:
 | `InfiniteSelectActions<T>` | the action context's value shape (the return of `useInfiniteSelectActions()` / the input of `InfiniteSelectActionsProvider`), see [Action context](#action-context) |
 | `InfiniteComboboxState<T>` / `InfiniteComboboxStateOptions` | the return value and options of `useInfiniteComboboxState` |
 | `InfiniteComboboxChildren<T>` | the type of children: `ReactNode` / `ReactNode[]` (the first is the trigger, the rest go into the composition channel), or a state-receiving function |
+| `InfiniteSelectChangeEventReason` / `InfiniteSelectChangeEventDetails` | the second argument of `onValueChange` and of `useInfiniteComboboxState`'s `onInputValueChange`: Base UI `Combobox`'s reason words plus `'none'` / `'cancel-press'`, with `cancel()` available |
+| `InfiniteComboboxOpenChangeEventReason` / `InfiniteComboboxOpenChangeEventDetails` | the second argument of `onOpenChange`: `Popover`'s reason words unioned with the previous set |
 
 ## Props
 
@@ -850,7 +852,7 @@ only when placing the footer outside the popup, see
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `value` | `InfiniteSelectActions<T>` | — | required. `{ selectedItems, selectedIds, clear, close }` |
+| `value` | `InfiniteSelectActions<T>` | — | required. `{ selectedItems, selectedIds, clear, close, cancel }`; with no draft to discard, pass `close` as `cancel` |
 | `children` | `ReactNode` | — | the subtree consuming this context |
 
 ### Status slots and footer

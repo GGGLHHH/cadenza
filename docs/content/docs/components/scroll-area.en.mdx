@@ -115,11 +115,12 @@ same state's name inside the function `className`.
 | scrollbar | `data-hovering` | the pointer is anywhere inside the scroll area | `hovering` (likewise only in the scrollbar's state) |
 | root | `data-orientation` | always set: `vertical` / `horizontal` / `both`. The seam echoing the `orientation` config, not Base UI state | — |
 
-`className` (root) and `viewportClassName` receive the same set of fields —
-the viewport's state is the root's state, plus a `cornerHidden` that only the
-root's state has (whether the corner square is hidden; no corresponding
-`data-*`). **`hovering` and `orientation` live only on the scrollbar
-elements**: to restyle the root on hover, use the `hover:` pseudo-class.
+`className` (root) and `viewportClassName` receive **exactly the same** set of
+fields — the viewport's state is the root's state
+(`ScrollAreaViewportState extends ScrollAreaRootState`), `cornerHidden`
+included (whether the corner square is hidden; no corresponding `data-*`).
+**`hovering` and `orientation` live only on the scrollbar elements**: to
+restyle the root on hover, use the `hover:` pseudo-class.
 
 For targeting from outside, use `data-slot`:
 

@@ -181,6 +181,8 @@ The root is a plain `<div>` (`role="group"`), so `className` is just a string.
 | `date-range-picker-trigger` / `-addon` | calendar button and its addon |
 | `date-range-picker-clear` / `-addon` | clear button and its addon |
 | `date-range-picker-popup` | popup |
+| `date-range-picker-footer` | the confirm-mode action row |
+| `date-range-picker-footer-clear` / `date-range-picker-cancel` / `date-range-picker-close` | the three action buttons |
 
 Neither input carries a data-slot of its own (the `input-group-control`
 focus-ring contract, same as DatePicker).
@@ -245,11 +247,13 @@ like
 the Footer takes `ComponentProps<'div'>`, the buttons take
 `ComponentProps<typeof Button>`.
 
-The 16 types are exported as well: `DateRange` / `DateRangePickerProps` /
+The 17 types are exported as well: `DateRange` / `DateRangePickerProps` /
 `DateRangePickerState` / `DateRangePickerStartInputProps` /
 `DateRangePickerEndInputProps` / `DateRangePickerTriggerProps` /
 `DateRangePickerClearProps` / `DateRangePickerPopupProps` /
 `DateRangePickerFooterProps` / `DateRangePickerFooterClearProps` /
 `DateRangePickerCancelProps` / `DateRangePickerCloseProps` /
 `DateRangePickerCalendarProps` / `DateRangePickerChangeEventReason` /
-`DateRangePickerChangeEventDetails` / `DateRangePickerOpenChangeEventDetails`.
+`DateRangePickerChangeEventDetails` /
+`DateRangePickerOpenChangeEventReason` /
+`DateRangePickerOpenChangeEventDetails`.

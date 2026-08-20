@@ -109,7 +109,7 @@ real grace area is whatever `safePolygon` says.
 One `loadItems` covers both on-demand and pagination: children no longer need
 to be laid out up front — panels fetch when they open; levels with too many
 entries return the paged form, and scrolling to the bottom appends
-automatically. In the demo the province and city levels lazy-load level by
+automatically. In the demo the state and city levels lazy-load level by
 level, and the district level pages 20 per page across 3 pages.
 
 <ComponentPreview name="cascader/async" />
@@ -145,7 +145,7 @@ The contract:
   values to `label` as the cache hits.
 - **The display needs no open popup**: with a `value`, the component preloads
   page 0 of each unloaded level along the selected path into the same cache,
-  and labels swap in as they land — the demo shows "Province 2 / City 3 /
+  and labels swap in as they land — the demo shows "State 2 / City 3 /
   District 3" right on page load. When a paged level's target segment is not
   on page 0, or the segment has gone stale, that segment stays at its raw
   value — customise the display with `CascaderValue`'s children function then.

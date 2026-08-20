@@ -1,12 +1,13 @@
 ---
 title: Switch
-description: A switch — Base UI's Switch.Root promoted as-is, box-only, no indeterminate; size is shadcn's addition
+description: A switch — the seam's own composition of Switch.Root + Switch.Thumb, box-only, no indeterminate; size and pending are its additions
 ---
 
 <ComponentPreview name="switch/basic" />
 
-Base UI's `Switch.Root`, **promoted as-is** on shadcn's base-nova track — the seam
-adds no behaviour, only a `size`.
+The seam's **own composition** of Base UI's `Switch.Root` + `Switch.Thumb` on
+shadcn's base-nova track — class names copied verbatim, the only additions are
+[`size`](#sizes) and [`pending`](#pending).
 
 It has the **same shape** as [Checkbox](/en/docs/components/checkbox): the root
 renders a `<span role="switch">` with a hidden `<input type="checkbox">` beside

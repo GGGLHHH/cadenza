@@ -279,12 +279,16 @@ macOS select 的做法），关着时就是普通贴边下拉。本库把它**�
 | `data-highlighted` | 键盘或指针高亮到它 | `highlighted` |
 | `data-disabled` | `disabled` | `disabled` |
 
-每个部件都带自己的 `data-slot`（`select-trigger` / `select-value` /
-`select-content` / `select-group` / `select-label` / `select-item` /
-`select-separator` / `select-clear` / `select-empty` / `select-pending`），
-需要从外部定位时当选择器用。
+每个部件都带自己的 `data-slot`（`select-trigger` / `select-trigger-container` /
+`select-value` / `select-content` / `select-group` / `select-label` /
+`select-item` / `select-separator` / `select-clear` / `select-empty` /
+`select-pending`），需要从外部定位时当选择器用。
 其中 `select-value` **是接线契约，不是标记**，别给它传自己的 `data-slot` ——
 `SelectTrigger` 的布局规则靠 `*:data-[slot=select-value]:…` 命中它，换掉就静默失效。
+`select-trigger-container` 也不是标记而是定位盒：清除可用时（`clearable` 为真，
+且走默认组合、或手写 children 里写了 `SelectClear`），触发器外面会多包一层这个
+`<span>` 来托住提升上去的 ✕，触发器本身此时是它的 `flex-1` 子项——写
+`> [data-slot=select-trigger]` 这类子选择器、或给 Select 做外层布局时要算上它。
 其余几个只是标记，改了不会弄坏什么（选中项的高亮走的是 `focus:bg-accent`，
 不读 `data-slot`）。
 

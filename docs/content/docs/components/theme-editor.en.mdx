@@ -19,8 +19,9 @@ Whether you are editing light or dark follows `<html>`'s own dark marker (the
 observed with a MutationObserver, no theming library required.
 
 The editor at this site's bottom right is exactly this (a global instance
-mounted by the docs layout, with Chinese text passed in). The demo above is a
-second, inline-placed instance: its changes likewise apply to the whole site
+mounted by the docs layout; on the English site it passes no copy at all — the
+editor's own defaults are already English). The demo above is a second,
+inline-placed instance: its changes likewise apply to the whole site
 immediately, and `storageKey={null}` keeps it from fighting the global
 instance over storage.
 

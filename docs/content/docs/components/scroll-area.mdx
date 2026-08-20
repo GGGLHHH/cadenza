@@ -97,10 +97,10 @@ viewport / thumb / corner 由封装层按 `orientation` 与 `scrollbars` 自动�
 | 滚动条 | `data-hovering` | 指针在整个滚动区域内 | `hovering`（同样只在滚动条的 state 里） |
 | 根 | `data-orientation` | 始终有值：`vertical` / `horizontal` / `both`。封装层回显 `orientation` 的配置，不是 Base UI 的状态 | — |
 
-`className`（根）与 `viewportClassName` 收到的是同一组字段——视口的 state 就是根的
-state，外加一个只有根 state 有的 `cornerHidden`（角落方块是否隐藏，没有对应的
-`data-*`）。**`hovering` 与 `orientation` 只在滚动条元素上**：想按悬停改根元素的
-样子，用 `hover:` 伪类。
+`className`（根）与 `viewportClassName` 收到的是**完全同一组**字段——视口的 state 就是
+根的 state（`ScrollAreaViewportState extends ScrollAreaRootState`），两边都含
+`cornerHidden`（角落方块是否隐藏，没有对应的 `data-*`）。**`hovering` 与 `orientation`
+只在滚动条元素上**：想按悬停改根元素的样子，用 `hover:` 伪类。
 
 需要从外部定位时用 `data-slot`：
 

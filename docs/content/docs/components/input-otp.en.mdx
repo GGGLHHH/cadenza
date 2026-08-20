@@ -126,8 +126,10 @@ when accepting letters, remember to change it to `'text'` as well.
 
 ## Separator
 
-`InputOTPSeparator` is the only part on this page the seam has **rewrapped**;
-the other three are re-exported as-is. It renders an `IconMinus` with
+`InputOTPGroup`, `InputOTPSlot` and `InputOTPSeparator` are all **rewrapped** by
+the seam; only `InputOTP` itself is re-exported as-is (a single type cast). The
+first two wrap an invalid-state bridge (see [Invalid state](#invalid-state));
+`InputOTPSeparator` wraps a `cn` merge. It renders an `IconMinus` with
 `role="separator"`.
 
 The reason: the vendored copy writes its own `className` **before** the props
@@ -172,18 +174,22 @@ above.
 
 ## Invalid state
 
-`aria-invalid` goes on the **slots**, not on the `InputOTP`:
+`aria-invalid` works at two grains — on the `InputOTP` or on a single slot —
+and both take effect:
 
 | Where | Effect |
 | --- | --- |
+| `aria-invalid` on the `InputOTP` | the whole row of slots paints the destructive border and ring — the attribute lands on the invisible real input, and the container's `.cn-input-otp:has(input[aria-invalid="true"])` bridges that state onto every group and slot |
 | `aria-invalid` on an `InputOTPSlot` | that slot paints a destructive border; its `InputOTPGroup` paints the group-wide destructive border and ring via `has-aria-invalid:` |
 | `data-invalid` on the `Field` | the whole column of text turns destructive, see [Field](/en/docs/components/field#state-and-classname) |
 
-Hanging it on `InputOTP` has no visible effect at all: that input is itself
-invisible, and inside the visible container it is a **sibling** of the
-`InputOTPGroup`s, not a descendant, so `has-` selectors cannot reach it. When
-the whole row counts as wrong, spread `aria-invalid` onto every
-`InputOTPSlot`.
+That real input is a **sibling** of the `InputOTPGroup`s inside the visible
+container, not a descendant, so the vendored `has-aria-invalid:` recipe cannot
+reach it; the seam adds a set of
+`in-[.cn-input-otp:has(input[aria-invalid="true"])]` classes on `InputOTPGroup`
+and `InputOTPSlot` to bridge it. So the ordinary form-library wiring
+(`aria-invalid` on the control itself) lights the whole row — no need to spread
+it onto every `InputOTPSlot` by hand.
 
 ## Form
 
@@ -212,7 +218,7 @@ There are only three state attributes, none of them from Base UI:
 | Attribute | Effect |
 | --- | --- |
 | `data-active` | hung by the seam on every `InputOTPSlot` automatically; the slot under the caret gets the outline and ring, is raised to `z-10`, and paints the blinking fake caret |
-| `aria-invalid` | hung by you on the slots, see [Invalid state](#invalid-state) |
+| `aria-invalid` | hung by you: on the `InputOTP` it lights the whole row, on a single slot only that slot turns red, see [Invalid state](#invalid-state) |
 | `disabled` | hung by you on the `InputOTP`; the container's whole row goes translucent, see [Disabled](#disabled) |
 
 | `data-slot` | What it is |
@@ -282,8 +288,9 @@ callbacks → behaviour switches → appearance → `className`**.
 | `className` | `string` | — | all three are plain `div`s, string only |
 | rest | native `div` props | — | passed through (`ref` included) |
 
-`InputOTPGroup` and `InputOTPSlot` are re-exported as-is; `InputOTPSeparator`
-is [rewrapped once](#separator).
+All three parts are wrapped by the seam: `InputOTPSeparator` for the
+[`cn` merge](#separator), `InputOTPGroup` / `InputOTPSlot` for the
+[invalid-state bridge](#invalid-state).
 
 Four types are exported as well: `InputOTPProps` / `InputOTPGroupProps` /
 `InputOTPSlotProps` / `InputOTPSeparatorProps`.

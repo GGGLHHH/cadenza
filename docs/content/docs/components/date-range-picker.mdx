@@ -152,6 +152,8 @@ DateRangePicker
 | `date-range-picker-trigger` / `-addon` | 日历按钮及其 addon |
 | `date-range-picker-clear` / `-addon` | 清除按钮及其 addon |
 | `date-range-picker-popup` | 弹层 |
+| `date-range-picker-footer` | 确认模式的动作行 |
+| `date-range-picker-footer-clear` / `date-range-picker-cancel` / `date-range-picker-close` | 三个动作按钮 |
 
 两个输入框都不带自己的 data-slot（`input-group-control` 焦点环契约，
 同 DatePicker）。
@@ -210,11 +212,13 @@ Footer 的位置）；函数 children 收 `DateRangePickerCalendarProps`
 完全同款：Footer 收 `ComponentProps<'div'>`，按钮收
 `ComponentProps<typeof Button>`。
 
-16 个类型一并导出：`DateRange` / `DateRangePickerProps` /
+17 个类型一并导出：`DateRange` / `DateRangePickerProps` /
 `DateRangePickerState` / `DateRangePickerStartInputProps` /
 `DateRangePickerEndInputProps` / `DateRangePickerTriggerProps` /
 `DateRangePickerClearProps` / `DateRangePickerPopupProps` /
 `DateRangePickerFooterProps` / `DateRangePickerFooterClearProps` /
 `DateRangePickerCancelProps` / `DateRangePickerCloseProps` /
 `DateRangePickerCalendarProps` / `DateRangePickerChangeEventReason` /
-`DateRangePickerChangeEventDetails` / `DateRangePickerOpenChangeEventDetails`。
+`DateRangePickerChangeEventDetails` /
+`DateRangePickerOpenChangeEventReason` /
+`DateRangePickerOpenChangeEventDetails`。

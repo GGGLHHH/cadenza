@@ -108,10 +108,10 @@ column is the same state's name in the function form.
 | root / panel | `data-starting-style` | first frame of entry | `transitionStatus` is `'starting'` |
 | root / panel | `data-ending-style` | exit animation in progress | `transitionStatus` is `'ending'` |
 
-The panel's state has one field more than the root: `transitionStatus`
-(`'starting'` / `'ending'` / `undefined`); the default height transition is made
-exactly by using `data-starting-style` / `data-ending-style` to pin both ends to
-`h-0`. For a horizontal collapse, swap the default
+The root and the panel receive the same state fields, `transitionStatus`
+(`'starting'` / `'ending'` / `'idle'` / `undefined`) included; the default height
+transition is made exactly by using `data-starting-style` / `data-ending-style`
+to pin both ends to `h-0`. For a horizontal collapse, swap the default
 `h-(--collapsible-panel-height)` for `w-(--collapsible-panel-width)` and
 `transition-[height]` for `transition-[width]` (`cn` merges; later wins).
 
