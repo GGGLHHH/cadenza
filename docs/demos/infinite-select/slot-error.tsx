@@ -12,7 +12,8 @@ import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 
-// 首次加载必定失败;InfiniteSelectRetry 自动接上基座的 onRetry,点重试恢复
+// The first load always fails; InfiniteSelectRetry hooks into the base's
+// onRetry automatically, and pressing Retry recovers
 export default function ErrorSlotDemo(): ReactElement {
   const state = useInfiniteComboboxState()
   const list = useFakeInfiniteList(state.queryValue, { failFirst: true })
@@ -21,16 +22,16 @@ export default function ErrorSlotDemo(): ReactElement {
     <InfiniteCombobox<Person>
       getOption={getOption}
       list={list}
-      searchPlaceholder="搜索作曲家…"
+      searchPlaceholder="Search composers…"
       state={state}
     >
-      <DemoButton>首次加载会失败</DemoButton>
-      <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
+      <DemoButton>First load will fail</DemoButton>
+      <InfiniteSelectEmpty>No matching results</InfiniteSelectEmpty>
       <InfiniteSelectError>
-        加载失败
-        <InfiniteSelectRetry>重试</InfiniteSelectRetry>
+        Failed to load
+        <InfiniteSelectRetry>Retry</InfiniteSelectRetry>
       </InfiniteSelectError>
-      <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
+      <InfiniteSelectLoadingMore>Loading more…</InfiniteSelectLoadingMore>
     </InfiniteCombobox>
   )
 }

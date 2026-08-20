@@ -9,8 +9,9 @@ import {
 import { IconPaperclip, IconSend } from '@tabler/icons-react'
 import { useState } from 'react'
 
-// block-end:addon 横跨整行、排到下方,InputGroup 自动从一行变成竖向布局。
-// 换成 block-start 就排到上方
+// block-end: the addon spans the full row and sits below; InputGroup
+// switches from one row to a vertical layout automatically.
+// Use block-start to place it above instead
 export default function TextareaDemo(): ReactElement {
   const [value, setValue] = useState('')
 
@@ -18,21 +19,21 @@ export default function TextareaDemo(): ReactElement {
     <div className="inline-full max-inline-md">
       <InputGroup>
         <InputGroupTextarea
-          aria-label="留言"
-          placeholder="写点什么..."
+          aria-label="Message"
+          placeholder="Write something..."
           rows={3}
           value={value}
           onChange={event => setValue(event.target.value)}
         />
         <InputGroupAddon align="block-end">
-          <InputGroupButton aria-label="添加附件" size="icon-xs">
+          <InputGroupButton aria-label="Add attachment" size="icon-xs">
             <IconPaperclip aria-hidden />
           </InputGroupButton>
           <InputGroupText className="ms-auto">
             {`${value.length} / 500`}
           </InputGroupText>
           <InputGroupButton disabled={value.trim() === ''} variant="default">
-            发送
+            Send
             <IconSend aria-hidden />
           </InputGroupButton>
         </InputGroupAddon>

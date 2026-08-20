@@ -18,10 +18,10 @@ import {
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// Switch 绑定:checked/onCheckedChange,与 Checkbox 同一契约;
-// 横排布局下错误随 FieldContent 一列展示
+// Switch binding: checked/onCheckedChange, the same contract as Checkbox;
+// in the horizontal layout the error shows in the FieldContent column
 const schema = z.object({
-  twoFactor: z.boolean().refine(value => value, '提交前需开启两步验证'),
+  twoFactor: z.boolean().refine(value => value, 'Enable two-factor authentication before submitting'),
 })
 
 export default function SwitchDemo(): ReactElement {
@@ -29,7 +29,7 @@ export default function SwitchDemo(): ReactElement {
     defaultValues: { twoFactor: false },
     validators: { onChange: schema },
     onSubmit: ({ formApi, value }) => {
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -56,9 +56,9 @@ export default function SwitchDemo(): ReactElement {
             return (
               <Field orientation="horizontal" data-invalid={invalid || undefined}>
                 <FieldContent>
-                  <FieldLabel htmlFor={field.name}>两步验证</FieldLabel>
+                  <FieldLabel htmlFor={field.name}>Two-factor authentication</FieldLabel>
                   <FieldDescription>
-                    开启两步验证保护你的账号。
+                    Enable two-factor authentication to protect your account.
                   </FieldDescription>
                   <FieldError id={errorId} errors={fieldErrors(field)} />
                 </FieldContent>
@@ -76,7 +76,7 @@ export default function SwitchDemo(): ReactElement {
           }}
         </form.Field>
         <Field orientation="horizontal">
-          <Button type="submit">提交</Button>
+          <Button type="submit">Submit</Button>
         </Field>
       </FieldGroup>
     </form>

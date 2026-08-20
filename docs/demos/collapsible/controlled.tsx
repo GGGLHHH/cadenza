@@ -2,8 +2,9 @@ import type { ReactElement } from 'react'
 import { Button, Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// open + onOpenChange 把开合状态交出来:外部按钮和 trigger 改的是同一个 state,
-// 第二参 details.reason 能分出这次是谁按的
+// open + onOpenChange hand the open state over: the external button and the
+// trigger mutate the same state, and the second argument's details.reason
+// tells you which one fired this change
 export default function ControlledDemo(): ReactElement {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState<string>('—')
@@ -19,18 +20,18 @@ export default function ControlledDemo(): ReactElement {
         open={open}
       >
         <CollapsibleTrigger render={<Button variant="outline" />}>
-          {open ? '收起' : '展开'}
+          {open ? 'Collapse' : 'Expand'}
         </CollapsibleTrigger>
         <CollapsiblePanel>
           <p className="rounded-md border p-4 text-sm text-muted-foreground">
-            面板内容。开合状态存在外面的 useState 里。
+            Panel content. The open state lives in an external useState.
           </p>
         </CollapsiblePanel>
       </Collapsible>
 
       <div className="flex items-center gap-2">
         <Button onClick={() => setOpen(value => !value)} size="sm" variant="secondary">
-          在外面切换
+          Toggle from outside
         </Button>
         <span className="text-xs text-muted-foreground">
           reason:

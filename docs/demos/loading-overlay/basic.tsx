@@ -2,8 +2,10 @@ import type { ReactElement } from 'react'
 import { Button, LoadingOverlay } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// 纯覆盖层:放进 relative 父容器,默认铺满同宽高。磨砂玻璃下内容隐约可见,
-// 指针被挡住、光标是 wait;切换时两个方向都有 150ms 交叉淡入
+// Pure overlay: drop it into a relative parent and it fills the same box by
+// default. Content stays faintly visible under the frosted glass, the
+// pointer is blocked, the cursor is wait; toggling cross-fades 150ms in
+// both directions
 export default function BasicDemo(): ReactElement {
   const [loading, setLoading] = useState(true)
   return (
@@ -12,17 +14,17 @@ export default function BasicDemo(): ReactElement {
         relative overflow-hidden rounded-xl border p-4 inline-full max-inline-sm
       "
       >
-        <p className="text-sm font-medium">巴黎场次</p>
+        <p className="text-sm font-medium">Paris dates</p>
         <p className="mbs-1 text-sm text-muted-foreground">
-          拉威尔《G 大调钢琴协奏曲》，香榭丽舍剧院，10 月 14 日。
+          Ravel's Piano Concerto in G, Théâtre des Champs-Élysées, October 14.
         </p>
         <p className="mbs-1 text-sm text-muted-foreground">
-          斯特拉文斯基《春之祭》，同场加演。
+          Stravinsky's The Rite of Spring on the same bill.
         </p>
         <LoadingOverlay loading={loading} />
       </div>
       <Button size="sm" variant="outline" onClick={() => setLoading(v => !v)}>
-        {loading ? '停止加载' : '开始加载'}
+        {loading ? 'Stop loading' : 'Start loading'}
       </Button>
     </div>
   )

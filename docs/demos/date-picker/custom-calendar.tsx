@@ -1,13 +1,15 @@
 import type { ReactElement } from 'react'
 import { Calendar, DatePicker, DatePickerPopup } from '@gedatou/cadenza-ui'
 
-// 弹层的函数 children 拿到 seam 接好线的日历 props(mode/selected/
-// onSelect/month/captionLayout…),spread 进自己的 <Calendar> 再往上叠
-// 配置 —— 这里叠成双月并显示周数。组合了 DatePickerPopup,默认弹层
-// 自动让位;年月下拉照旧在场,因为它也在 spread 进来的 props 里。
+// The popup's function children receive the calendar props the seam has
+// already wired (mode/selected/onSelect/month/captionLayout...). Spread
+// them into your own <Calendar> and layer config on top -- here two
+// months side by side with week numbers. Composing DatePickerPopup makes
+// the default popup step aside automatically; the year/month dropdowns
+// stay in place because they also ride in the spread props.
 export default function CustomCalendarDemo(): ReactElement {
   return (
-    <DatePicker aria-label="日期" placeholder="选择日期">
+    <DatePicker aria-label="Date" placeholder="Pick a date">
       {({ defaultChildren }) => (
         <>
           {defaultChildren}

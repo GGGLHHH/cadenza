@@ -11,9 +11,10 @@ export default function MultiSelectionDemo(): ReactElement {
 
   return (
     <div className="flex flex-col gap-2">
-      {/* onRowAction 在场时,点击行是"打开",勾选走 checkbox 列 */}
+      {/* With onRowAction present, clicking a row means "open";
+          selection goes through the checkbox column */}
       <DataTable<Person>
-        aria-label="作曲家(可多选)"
+        aria-label="Composers (multi-select)"
         columns={personColumns}
         items={PEOPLE.slice(0, 6)}
         onValueChange={(_items, nextIds) => setIds(nextIds)}
@@ -23,12 +24,10 @@ export default function MultiSelectionDemo(): ReactElement {
         value={ids}
       />
       <p className="text-sm text-muted-foreground">
-        已选
-        {' '}
         {ids.length}
         {' '}
-        行
-        {lastOpened !== undefined && `,最近打开:${lastOpened}`}
+        rows selected
+        {lastOpened !== undefined && `, last opened: ${lastOpened}`}
       </p>
     </div>
   )

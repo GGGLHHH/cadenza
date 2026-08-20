@@ -24,17 +24,19 @@ import { IconArrowNarrowRight } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// DateRangePicker 绑定:值是 { from?, to? } | null。两端都可选 —— 先点哪个
-// 输入框就先填哪一端,所以只有 from 或只有 to 的半程都会入表。两端都写
-// optional,否则半程会撞上 zod 自己的必填报错、绕过下面这句文案;完整性
-// 统一由 refine 把关,半程和空值给同一句。
+// DateRangePicker binding: the value is { from?, to? } | null. Both ends
+// are optional — whichever input is clicked first fills its end first, so
+// half-ranges with only from or only to do enter the form. Mark both ends
+// optional, or a half-range hits zod's own required error and bypasses the
+// message below; completeness is gated by refine alone, giving half-ranges
+// and null the same sentence.
 const schema = z.object({
   stay: z
     .object({ from: z.date().optional(), to: z.date().optional() })
     .nullable()
     .refine(
       value => value !== null && value.from !== undefined && value.to !== undefined,
-      '请选择完整的入住区间',
+      'Select a complete stay range',
     ),
 })
 
@@ -43,7 +45,7 @@ export default function DateRangePickerDemo(): ReactElement {
     defaultValues: { stay: null as DateRange | null },
     validators: { onChange: schema },
     onSubmit: ({ formApi, value }) => {
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -69,7 +71,7 @@ export default function DateRangePickerDemo(): ReactElement {
             const { errorId, invalid } = fieldInvalidState(field)
             return (
               <Field data-invalid={invalid || undefined}>
-                <FieldLabel htmlFor={field.name}>入住区间</FieldLabel>
+                <FieldLabel htmlFor={field.name}>Stay range</FieldLabel>
                 <DateRangePicker
                   id={field.name}
                   name={field.name}
@@ -81,7 +83,7 @@ export default function DateRangePickerDemo(): ReactElement {
                       aria-describedby={errorId}
                       aria-invalid={invalid}
                       aria-required
-                      placeholder="入住"
+                      placeholder="Check-in"
                       onBlur={field.handleBlur}
                     />
                     <IconArrowNarrowRight
@@ -94,21 +96,21 @@ export default function DateRangePickerDemo(): ReactElement {
                       aria-describedby={errorId}
                       aria-invalid={invalid}
                       aria-required
-                      placeholder="退房"
+                      placeholder="Check-out"
                       onBlur={field.handleBlur}
                     />
                     <DateRangePickerClear />
                     <DateRangePickerTrigger />
                   </InputGroup>
                 </DateRangePicker>
-                <FieldDescription>日历里第一次点定起点，第二次点收尾。</FieldDescription>
+                <FieldDescription>In the calendar, the first click sets the start, the second closes the range.</FieldDescription>
                 <FieldError id={errorId} errors={fieldErrors(field)} />
               </Field>
             )
           }}
         </form.Field>
         <Field orientation="horizontal">
-          <Button type="submit">提交</Button>
+          <Button type="submit">Submit</Button>
         </Field>
       </FieldGroup>
     </form>

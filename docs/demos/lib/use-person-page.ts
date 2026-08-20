@@ -2,7 +2,8 @@ import type { Person } from './people'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchPeoplePage } from './people'
 
-// 数据适配器:offset 分页。真实项目里通常是 react-query 的 useQuery。
+// Data adapter: offset pagination. In a real project this is usually
+// react-query's useQuery.
 export function usePersonPage(page: number, limit: number): {
   items: Person[]
   total: number

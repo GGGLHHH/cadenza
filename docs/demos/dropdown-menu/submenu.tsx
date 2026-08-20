@@ -11,20 +11,21 @@ import {
   DropdownMenuTrigger,
 } from '@gedatou/cadenza-ui'
 
-// 子菜单:Submenu 三件套嵌进 Popup。悬停或 ArrowRight 展开,
-// 斜向移入子面板不丢焦点(Base UI 内置 safePolygon,与 Cascader 同款)。
+// Submenu: nest the Submenu trio inside Popup. Hover or ArrowRight expands it,
+// and moving diagonally into the panel keeps focus (Base UI's built-in
+// safePolygon, same as Cascader).
 export default function SubmenuDemo(): ReactElement {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" />}>
-        文件
+        File
       </DropdownMenuTrigger>
       <DropdownMenuPopup>
-        <DropdownMenuItem>重命名</DropdownMenuItem>
-        <DropdownMenuItem>移动到…</DropdownMenuItem>
+        <DropdownMenuItem>Rename</DropdownMenuItem>
+        <DropdownMenuItem>Move to…</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuSubmenu>
-          <DropdownMenuSubmenuTrigger>导出为</DropdownMenuSubmenuTrigger>
+          <DropdownMenuSubmenuTrigger>Export as</DropdownMenuSubmenuTrigger>
           <DropdownMenuSubmenuPopup>
             <DropdownMenuItem>PDF</DropdownMenuItem>
             <DropdownMenuItem>CSV</DropdownMenuItem>

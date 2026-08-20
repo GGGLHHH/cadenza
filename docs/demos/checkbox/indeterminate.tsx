@@ -10,14 +10,16 @@ import {
 import { useState } from 'react'
 
 const SECTIONS = [
-  { id: 'strings', label: '弦乐' },
-  { id: 'winds', label: '木管' },
-  { id: 'brass', label: '铜管' },
+  { id: 'strings', label: 'Strings' },
+  { id: 'winds', label: 'Woodwinds' },
+  { id: 'brass', label: 'Brass' },
 ]
 
-// checked 与 indeterminate 是两个正交状态:全选框只在「全勾」时 checked,
-// 「勾了一部分」时 indeterminate(aria-checked="mixed"),两者都为 false 才是空。
-// Base UI 的 parent 需要 CheckboxGroup,本库没提升,所以这两个值自己算。
+// checked and indeterminate are two orthogonal states: the select-all box is
+// checked only when everything is ticked, indeterminate (aria-checked=
+// "mixed") when only some are, and empty when both are false.
+// Base UI's parent requires CheckboxGroup, which this library does not
+// promote, so compute both values yourself.
 export default function IndeterminateDemo(): ReactElement {
   const [selected, setSelected] = useState<string[]>(['strings'])
   const allChecked = selected.length === SECTIONS.length
@@ -25,7 +27,7 @@ export default function IndeterminateDemo(): ReactElement {
 
   return (
     <FieldSet className="inline-full max-inline-sm">
-      <FieldLegend variant="label">参演声部</FieldLegend>
+      <FieldLegend variant="label">Performing sections</FieldLegend>
       <FieldGroup>
         <Field orientation="horizontal">
           <Checkbox
@@ -34,7 +36,7 @@ export default function IndeterminateDemo(): ReactElement {
             indeterminate={someChecked}
             onCheckedChange={next => setSelected(next ? SECTIONS.map(section => section.id) : [])}
           />
-          <FieldLabel htmlFor="checkbox-indeterminate-all">全选</FieldLabel>
+          <FieldLabel htmlFor="checkbox-indeterminate-all">Select all</FieldLabel>
         </Field>
         <FieldGroup className="ps-6">
           {SECTIONS.map(section => (

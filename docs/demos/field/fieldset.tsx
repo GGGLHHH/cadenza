@@ -10,26 +10,26 @@ import {
   InputGroupInput,
 } from '@gedatou/cadenza-ui'
 
-// 一批相关字段:FieldSet + FieldLegend 给整组命名(语义是原生
-// fieldset/legend),FieldGroup 负责纵向排布
+// A batch of related fields: FieldSet + FieldLegend name the whole group
+// (semantically native fieldset/legend); FieldGroup handles vertical layout
 export default function FieldsetDemo(): ReactElement {
   return (
     <FieldSet className="max-inline-sm">
-      <FieldLegend>演出信息</FieldLegend>
-      <FieldDescription>将原样印在节目单上。</FieldDescription>
+      <FieldLegend>Concert details</FieldLegend>
+      <FieldDescription>Printed on the programme as-is.</FieldDescription>
       <FieldGroup>
         <Field>
-          <FieldLabel htmlFor="fieldset-piece">曲目</FieldLabel>
+          <FieldLabel htmlFor="fieldset-piece">Piece</FieldLabel>
           <InputGroup>
-            <InputGroupInput id="fieldset-piece" placeholder="水之嬉戏" />
+            <InputGroupInput id="fieldset-piece" placeholder="Jeux d'eau" />
           </InputGroup>
         </Field>
         <Field>
-          <FieldLabel htmlFor="fieldset-composer">作曲家</FieldLabel>
+          <FieldLabel htmlFor="fieldset-composer">Composer</FieldLabel>
           <InputGroup>
-            <InputGroupInput id="fieldset-composer" placeholder="拉威尔" />
+            <InputGroupInput id="fieldset-composer" placeholder="Ravel" />
           </InputGroup>
-          <FieldDescription>拿不准就先留空。</FieldDescription>
+          <FieldDescription>Leave blank if you're not sure.</FieldDescription>
         </Field>
       </FieldGroup>
     </FieldSet>

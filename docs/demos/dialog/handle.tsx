@@ -14,9 +14,11 @@ import {
 } from '@gedatou/cadenza-ui'
 import { PEOPLE } from '../lib/people'
 
-// 一个 handle 把三个触发器接到同一个对话框上 —— 触发器不必是它的子节点,
-// 中间也不用一路传 state。每个触发器带自己的 payload,root 的 children
-// 写成函数就能收到,于是「当前选中哪一行」根本不用变成组件状态。
+// One handle wires three triggers to the same dialog -- the triggers need
+// not be its children, and no state is threaded through the layers in
+// between. Each trigger carries its own payload; write the root's
+// children as a function to receive it, so "which row is selected" never
+// has to become component state.
 const handle = createDialogHandle<Person>()
 
 export default function HandleDemo(): ReactElement {
@@ -40,17 +42,15 @@ export default function HandleDemo(): ReactElement {
               <DialogTitle>{person?.name}</DialogTitle>
               <DialogDescription>
                 {person?.role}
-                ，
+                {', born '}
                 {person?.born}
-                {' '}
-                年生，
+                {', '}
                 {person?.works}
-                {' '}
-                部作品。
+                {' works.'}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <DialogClose render={<Button variant="outline" />}>关闭</DialogClose>
+              <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
             </DialogFooter>
           </DialogPopup>
         )}

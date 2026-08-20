@@ -16,13 +16,15 @@ import { useState } from 'react'
 interface Track { id: string, name: string }
 
 const INITIAL: Track[] = [
-  { id: 't1', name: '夜之加斯帕' },
-  { id: 't2', name: '水之嬉戏' },
-  { id: 't3', name: '库普兰之墓' },
+  { id: 't1', name: 'Gaspard de la nuit' },
+  { id: 't2', name: 'Miroirs' },
+  { id: 't3', name: 'Le Tombeau de Couperin' },
 ]
 
-// 一个确认框服务整张列表:每行的触发器带着自己的 payload,root 的 children
-// 写成函数就能收到。于是"正要删哪一行"根本不用变成组件状态。
+// One confirm dialog serves the whole list: each row's trigger carries
+// its own payload, and the root's children written as a function receive
+// it. So "which row is about to be deleted" never has to become
+// component state.
 const handle = createAlertDialogHandle<Track>()
 
 export default function HandleDemo(): ReactElement {
@@ -38,30 +40,30 @@ export default function HandleDemo(): ReactElement {
             payload={track}
             render={<Button size="sm" variant="ghost" />}
           >
-            删除
+            Delete
           </AlertDialogTrigger>
         </div>
       ))}
-      {tracks.length === 0 && <p className="text-sm text-muted-foreground">列表空了</p>}
+      {tracks.length === 0 && <p className="text-sm text-muted-foreground">The list is empty</p>}
 
       <AlertDialog handle={handle}>
         {({ payload: track }) => (
           <AlertDialogPopup>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                删除《
+                Delete “
                 {track?.name}
-                》?
+                ”?
               </AlertDialogTitle>
-              <AlertDialogDescription>这一条会从曲目表里移除,无法撤销。</AlertDialogDescription>
+              <AlertDialogDescription>This entry will be removed from the track list; it cannot be undone.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogClose render={<Button variant="outline" />}>取消</AlertDialogClose>
+              <AlertDialogClose render={<Button variant="outline" />}>Cancel</AlertDialogClose>
               <AlertDialogClose
                 onClick={() => setTracks(rest => rest.filter(item => item.id !== track?.id))}
                 render={<Button variant="destructive" />}
               >
-                删除
+                Delete
               </AlertDialogClose>
             </AlertDialogFooter>
           </AlertDialogPopup>

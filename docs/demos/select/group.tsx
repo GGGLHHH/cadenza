@@ -10,36 +10,37 @@ import {
   SelectValue,
 } from '@gedatou/cadenza-ui'
 
-// SelectLabel 是分组的标题,不是控件的标签 —— 控件的标签在 Field 那边。
-// SelectSeparator 分组之间、组内条目之间都能放
+// SelectLabel titles a group, not the control — the control's label lives on
+// the Field side. SelectSeparator works between groups and between items
+// within a group
 const INSTRUMENTS = {
-  violin: '小提琴',
-  viola: '中提琴',
-  cello: '大提琴',
-  flute: '长笛',
-  oboe: '双簧管',
-  clarinet: '单簧管',
+  violin: 'Violin',
+  viola: 'Viola',
+  cello: 'Cello',
+  flute: 'Flute',
+  oboe: 'Oboe',
+  clarinet: 'Clarinet',
 }
 
 export default function GroupDemo(): ReactElement {
   return (
     <Select items={INSTRUMENTS}>
-      <SelectTrigger aria-label="乐器" className="inline-56">
-        <SelectValue placeholder="选一件乐器" />
+      <SelectTrigger aria-label="Instrument" className="inline-56">
+        <SelectValue placeholder="Pick an instrument" />
       </SelectTrigger>
       <SelectPopup>
         <SelectGroup>
-          <SelectLabel>弦乐</SelectLabel>
-          <SelectItem value="violin">小提琴</SelectItem>
-          <SelectItem value="viola">中提琴</SelectItem>
-          <SelectItem value="cello">大提琴</SelectItem>
+          <SelectLabel>Strings</SelectLabel>
+          <SelectItem value="violin">Violin</SelectItem>
+          <SelectItem value="viola">Viola</SelectItem>
+          <SelectItem value="cello">Cello</SelectItem>
         </SelectGroup>
         <SelectSeparator />
         <SelectGroup>
-          <SelectLabel>木管</SelectLabel>
-          <SelectItem value="flute">长笛</SelectItem>
-          <SelectItem value="oboe">双簧管</SelectItem>
-          <SelectItem value="clarinet">单簧管</SelectItem>
+          <SelectLabel>Woodwinds</SelectLabel>
+          <SelectItem value="flute">Flute</SelectItem>
+          <SelectItem value="oboe">Oboe</SelectItem>
+          <SelectItem value="clarinet">Clarinet</SelectItem>
         </SelectGroup>
       </SelectPopup>
     </Select>

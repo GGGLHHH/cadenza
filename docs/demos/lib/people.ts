@@ -1,6 +1,7 @@
 import type { InfiniteSelectOption } from '@gedatou/cadenza-ui'
 
-// 模拟数据源:10000 位作曲家 + 300–500ms 随机延时的分页接口。
+// Mock data source: 10000 composers plus paginated APIs with a
+// random 300-500ms delay.
 
 export interface Person {
   id: string
@@ -58,7 +59,10 @@ export async function delay(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200))
 }
 
-/** 游标分页(无限滚动用)。`limit` 截断结果总数,用来演示「翻到底」。 */
+/**
+ * Cursor pagination (for infinite scroll). `limit` caps the total result
+ * count, used to demo "reached the end".
+ */
 export async function fetchPeople(options: {
   cursor?: number
   query?: string
@@ -76,7 +80,7 @@ export async function fetchPeople(options: {
   return { items, nextCursor: next < filtered.length ? next : undefined }
 }
 
-/** offset 分页(页码翻页用)。 */
+/** Offset pagination (for page-number paging). */
 export async function fetchPeoplePage(options: {
   page: number
   limit: number

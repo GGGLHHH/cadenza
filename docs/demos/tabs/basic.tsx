@@ -1,26 +1,30 @@
 import type { ReactElement } from 'react'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
 
-// 非受控用法:defaultValue 指定初始选中,TabsTab 与 TabsPanel 靠同名 value 自动配对
-// 方向键切换、aria-controls / aria-labelledby 关联都由 Base UI 处理,无需手写
-// 会滑动的选中底色(TabsIndicator)默认在场:鼠标悬停时它跟过去,移开再滑回选中项。
-// 不用写;indicator={false} 可关,自己写 <TabsIndicator className=…> 则完全归你
+// Uncontrolled usage: defaultValue picks the initial tab; TabsTab and
+// TabsPanel pair up automatically through the shared value.
+// Arrow-key switching and the aria-controls / aria-labelledby wiring are
+// all handled by Base UI -- nothing to write by hand.
+// The sliding selection background (TabsIndicator) is present by default:
+// it follows the pointer on hover and glides back to the selection after.
+// Nothing to write; indicator={false} turns it off, and writing your own
+// <TabsIndicator className=…> hands it over entirely
 export default function BasicDemo(): ReactElement {
   return (
     <Tabs defaultValue="analytics">
-      <TabsList aria-label="项目仪表盘">
-        <TabsTab value="overview">概览</TabsTab>
-        <TabsTab value="analytics">分析</TabsTab>
-        <TabsTab value="reports">报告</TabsTab>
+      <TabsList aria-label="Project dashboard">
+        <TabsTab value="overview">Overview</TabsTab>
+        <TabsTab value="analytics">Analytics</TabsTab>
+        <TabsTab value="reports">Reports</TabsTab>
       </TabsList>
       <TabsPanel value="overview">
-        <p className="text-sm text-muted-foreground">项目整体进度、成员分工与本周待办的汇总视图。</p>
+        <p className="text-sm text-muted-foreground">A summary view of overall progress, member assignments, and this week's to-dos.</p>
       </TabsPanel>
       <TabsPanel value="analytics">
-        <p className="text-sm text-muted-foreground">按周聚合的访问量、留存与转化趋势。</p>
+        <p className="text-sm text-muted-foreground">Weekly aggregated traffic, retention, and conversion trends.</p>
       </TabsPanel>
       <TabsPanel value="reports">
-        <p className="text-sm text-muted-foreground">已归档的月度报告,支持导出为 PDF 或 CSV。</p>
+        <p className="text-sm text-muted-foreground">Archived monthly reports, exportable as PDF or CSV.</p>
       </TabsPanel>
     </Tabs>
   )

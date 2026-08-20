@@ -7,15 +7,16 @@ import {
   Switch,
 } from '@gedatou/cadenza-ui'
 
-// box-only:根元素就是那条轨道,文字走同级的 FieldLabel。
-// id 落在隐藏的 <input> 上,htmlFor 一条线既转发点击又给出无障碍名
+// Box-only: the root element is the track itself; text goes through a
+// sibling FieldLabel. The id lands on the hidden <input>, so one htmlFor
+// both forwards clicks and provides the accessible name
 export default function BasicDemo(): ReactElement {
   return (
     <Field orientation="horizontal" className="max-inline-sm">
       <Switch id="switch-basic-notify" name="notify" defaultChecked />
       <FieldContent>
-        <FieldLabel htmlFor="switch-basic-notify">排练提醒</FieldLabel>
-        <FieldDescription>有新的排练安排时给你发一封邮件。</FieldDescription>
+        <FieldLabel htmlFor="switch-basic-notify">Rehearsal reminders</FieldLabel>
+        <FieldDescription>Get an email when a new rehearsal is scheduled.</FieldDescription>
       </FieldContent>
     </Field>
   )

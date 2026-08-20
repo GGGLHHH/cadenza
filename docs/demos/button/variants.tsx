@@ -1,17 +1,18 @@
 import type { ReactElement } from 'react'
 import { Button } from '@gedatou/cadenza-ui'
 
-// 六个变体:default 是主操作,其余按语义递弱;destructive 只给不可逆操作
+// Six variants: default is the primary action, the rest weaken by semantics;
+// destructive is reserved for irreversible operations
 export default function VariantsDemo(): ReactElement {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Button>默认</Button>
-      <Button variant="secondary">次要</Button>
-      <Button variant="outline">描边</Button>
-      <Button variant="ghost">幽灵</Button>
-      <Button variant="destructive">危险</Button>
-      <Button variant="link">链接样式</Button>
-      <Button disabled>禁用</Button>
+      <Button>Default</Button>
+      <Button variant="secondary">Secondary</Button>
+      <Button variant="outline">Outline</Button>
+      <Button variant="ghost">Ghost</Button>
+      <Button variant="destructive">Destructive</Button>
+      <Button variant="link">Link style</Button>
+      <Button disabled>Disabled</Button>
     </div>
   )
 }

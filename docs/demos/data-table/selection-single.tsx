@@ -11,7 +11,7 @@ export default function SingleSelectionDemo(): ReactElement {
   return (
     <div className="flex flex-col gap-2">
       <DataTable<Person>
-        aria-label="作曲家(单选)"
+        aria-label="Composers (single select)"
         columns={personColumns}
         items={PEOPLE.slice(0, 6)}
         onValueChange={setPicked}
@@ -20,7 +20,7 @@ export default function SingleSelectionDemo(): ReactElement {
         value={picked?.id ?? null}
       />
       <p className="text-sm text-muted-foreground">
-        {picked ? `当前选中:${picked.name}` : '未选择'}
+        {picked ? `Currently selected: ${picked.name}` : 'Nothing selected'}
       </p>
     </div>
   )

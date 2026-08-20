@@ -3,15 +3,16 @@ import type { ReactElement } from 'react'
 import { Field, FieldDescription, FieldLabel, NumberField } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// 受控三件套:value / onValueChange(value, details);清空输入回 null,
-// details.reason 区分 typing/步进钮/方向键等来源
+// The controlled trio: value / onValueChange(value, details); clearing the
+// input yields null, and details.reason distinguishes typing, the stepper
+// buttons, arrow keys, and other sources
 export default function ControlledDemo(): ReactElement {
   const [value, setValue] = useState<number | null>(2)
   const [reason, setReason] = useState('—')
 
   return (
     <Field className="max-inline-sm">
-      <FieldLabel htmlFor="number-field-controlled-seats">占座数</FieldLabel>
+      <FieldLabel htmlFor="number-field-controlled-seats">Reserved seats</FieldLabel>
       <NumberField
         id="number-field-controlled-seats"
         value={value}
@@ -23,9 +24,11 @@ export default function ControlledDemo(): ReactElement {
         }}
       />
       <FieldDescription>
-        当前值：
-        {value === null ? 'null（已清空）' : value}
-        ，最近一次变更来源：
+        Current value:
+        {' '}
+        {value === null ? 'null (cleared)' : value}
+        , last change reason:
+        {' '}
         {reason}
       </FieldDescription>
     </Field>

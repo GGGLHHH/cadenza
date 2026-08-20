@@ -6,8 +6,9 @@ import { useMemo, useState } from 'react'
 import { PEOPLE } from '../lib/people'
 import { personColumns } from './columns'
 
-// 组件只维护排序意图,真正的排序是数据层的事:本地数据自己 sort,
-// 服务端数据把 descriptor 转成请求参数。
+// The component only holds the sort intent; the actual sorting belongs to
+// the data layer: local data sorts itself, server data turns the
+// descriptor into request params.
 export default function SortDemo(): ReactElement {
   const [sort, setSort] = useState<SortDescriptor>({ column: 'name', direction: 'ascending' })
 
@@ -25,7 +26,7 @@ export default function SortDemo(): ReactElement {
 
   return (
     <DataTable<Person>
-      aria-label="作曲家(可排序)"
+      aria-label="Composers (sortable)"
       columns={columns}
       items={items}
       onSortChange={setSort}

@@ -1,16 +1,17 @@
 import type { ReactElement } from 'react'
 import { Select } from '@gedatou/cadenza-ui'
 
-// 一行式:不给 children 就渲染完整默认组合 —— 触发器、回显、清除 ✕、
-// 弹层、选项全部来自 items。清除默认在场(clearable={false} 关掉)。
-// 要定制任何一层时再写 children,组合示例见「分组」。
+// One-liner: omit children and the full default composition renders — trigger,
+// value display, clear ✕, popup, and options all come from items. Clear is on
+// by default (turn it off with clearable={false}).
+// Write children only when customising a layer; see "Groups" for composition.
 const VOICES = {
-  soprano: '女高音',
-  alto: '女中音',
-  tenor: '男高音',
-  bass: '男低音',
+  soprano: 'Soprano',
+  alto: 'Alto',
+  tenor: 'Tenor',
+  bass: 'Bass',
 }
 
 export default function BasicDemo(): ReactElement {
-  return <Select aria-label="声部" items={VOICES} placeholder="选一个声部" />
+  return <Select aria-label="Voice part" items={VOICES} placeholder="Pick a voice part" />
 }

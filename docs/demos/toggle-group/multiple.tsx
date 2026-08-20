@@ -3,23 +3,24 @@ import { ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
 import { IconBold, IconItalic, IconUnderline } from '@tabler/icons-react'
 import { useState } from 'react'
 
-// multiple:同时可以按下多项。value 的形状和单选时完全一样 —— 永远是数组,
-// multiple 只决定里面同时能有几项。这里受控,把数组原样显示出来
+// multiple: several items can be pressed at once. value has exactly the
+// same shape as in single mode -- always an array; multiple only decides
+// how many items it can hold at a time. Controlled here, echoing the array
 export default function MultipleDemo(): ReactElement {
   const [marks, setMarks] = useState<string[]>(['bold'])
 
   return (
     <div className="flex flex-col gap-4">
       <ToggleGroup
-        aria-label="文字样式"
+        aria-label="Text formatting"
         multiple
         onValueChange={setMarks}
         value={marks}
         variant="outline"
       >
-        <ToggleGroupItem aria-label="加粗" value="bold"><IconBold /></ToggleGroupItem>
-        <ToggleGroupItem aria-label="斜体" value="italic"><IconItalic /></ToggleGroupItem>
-        <ToggleGroupItem aria-label="下划线" value="underline"><IconUnderline /></ToggleGroupItem>
+        <ToggleGroupItem aria-label="Bold" value="bold"><IconBold /></ToggleGroupItem>
+        <ToggleGroupItem aria-label="Italic" value="italic"><IconItalic /></ToggleGroupItem>
+        <ToggleGroupItem aria-label="Underline" value="underline"><IconUnderline /></ToggleGroupItem>
       </ToggleGroup>
       <p className="text-sm text-muted-foreground">
         {`value: [${marks.join(', ')}]`}

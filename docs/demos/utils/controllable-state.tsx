@@ -3,7 +3,8 @@ import { useControllableState } from '@gedatou/cadenza-utils'
 import { useState } from 'react'
 import { DemoButton } from '../lib/demo-button'
 
-// 同一个组件:传了 value 就受控,只传 defaultValue 就非受控。
+// One component: pass value and it is controlled; pass only defaultValue
+// and it is uncontrolled.
 interface StepperProps {
   value?: number
   defaultValue?: number
@@ -32,18 +33,18 @@ export default function ControllableDemo(): ReactElement {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-4">
-        <span className="text-sm text-muted-foreground inline-44">非受控(defaultValue=1),状态在组件内部:</span>
+        <span className="text-sm text-muted-foreground inline-44">Uncontrolled (defaultValue=1), state lives inside the component:</span>
         <Stepper defaultValue={1} />
       </div>
       <div className="flex items-center gap-4">
         <span className="text-sm text-muted-foreground inline-44">
-          受控(value=
+          Controlled (value=
           {volume}
-          ),状态在父级:
+          ), state lives in the parent:
         </span>
         <Stepper onChange={setVolume} value={volume} />
         <DemoButton onClick={() => setVolume(0)} size="sm" variant="outline">
-          外部归零
+          Reset to 0 from outside
         </DemoButton>
       </div>
     </div>

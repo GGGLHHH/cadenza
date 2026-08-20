@@ -8,20 +8,22 @@ import {
   DatePickerPopup,
 } from '@gedatou/cadenza-ui'
 
-// 组合 Footer 即进入确认模式:点选、键入都只是暂存(输入框实时预览),
-// DatePickerClose(或 Enter)才提交;DatePickerCancel、Esc、点外部丢弃
-// 暂存。按钮文案与 variant 都由使用方写 —— AlertDialogFooter 同款形态。
+// Composing Footer switches on confirm mode: picking and typing are only
+// staged (the input previews live); DatePickerClose (or Enter) commits,
+// while DatePickerCancel, Esc, and outside clicks discard the staged
+// value. Button copy and variants are the caller's to write -- the same
+// shape as AlertDialogFooter.
 export default function FooterDemo(): ReactElement {
   return (
-    <DatePicker aria-label="日期" placeholder="选择后需确认">
+    <DatePicker aria-label="Date" placeholder="Pick, then confirm">
       {({ defaultChildren }) => (
         <>
           {defaultChildren}
           <DatePickerPopup>
             <DatePickerFooter>
-              <DatePickerFooterClear className="me-auto" variant="ghost">清除</DatePickerFooterClear>
-              <DatePickerCancel variant="outline">取消</DatePickerCancel>
-              <DatePickerClose>确定</DatePickerClose>
+              <DatePickerFooterClear className="me-auto" variant="ghost">Clear</DatePickerFooterClear>
+              <DatePickerCancel variant="outline">Cancel</DatePickerCancel>
+              <DatePickerClose>OK</DatePickerClose>
             </DatePickerFooter>
           </DatePickerPopup>
         </>

@@ -22,24 +22,24 @@ import {
   IconUserPlus,
 } from '@tabler/icons-react'
 
-// 综合:分组 + 图标 + 快捷键 + 子菜单在一个菜单里同场。
+// Everything at once: groups + icons + shortcuts + a submenu in one menu.
 export default function ComplexDemo(): ReactElement {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" />}>
-        打开菜单
+        Open menu
       </DropdownMenuTrigger>
       <DropdownMenuPopup>
         <DropdownMenuGroup>
-          <DropdownMenuGroupLabel>我的账户</DropdownMenuGroupLabel>
+          <DropdownMenuGroupLabel>My account</DropdownMenuGroupLabel>
           <DropdownMenuItem>
             <IconUser />
-            个人资料
+            Profile
             <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem>
             <IconSettings />
-            设置
+            Settings
             <DropdownMenuShortcut>⌘,</DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuGroup>
@@ -48,16 +48,16 @@ export default function ComplexDemo(): ReactElement {
           <DropdownMenuSubmenu>
             <DropdownMenuSubmenuTrigger>
               <IconUserPlus />
-              邀请成员
+              Invite members
             </DropdownMenuSubmenuTrigger>
             <DropdownMenuSubmenuPopup>
               <DropdownMenuItem>
                 <IconMail />
-                邮件邀请
+                Invite by email
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <IconMessage />
-                站内私信
+                Direct message
               </DropdownMenuItem>
             </DropdownMenuSubmenuPopup>
           </DropdownMenuSubmenu>
@@ -65,7 +65,7 @@ export default function ComplexDemo(): ReactElement {
         <DropdownMenuSeparator />
         <DropdownMenuItem>
           <IconLogout />
-          退出登录
+          Sign out
           <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuPopup>

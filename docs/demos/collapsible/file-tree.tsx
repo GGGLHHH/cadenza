@@ -30,8 +30,9 @@ const TREE: Node[] = [
   { name: 'README.md' },
 ]
 
-// 嵌套:每个目录是一个独立的 Collapsible,面板里再放下一层。
-// 每层各自记自己的开合,没有共享状态 —— 这也是它和 Accordion 的区别
+// Nesting: every directory is an independent Collapsible, with the next
+// level inside its panel. Each level tracks its own open state with nothing
+// shared -- which is exactly what separates this from Accordion
 export default function FileTreeDemo(): ReactElement {
   return (
     <div className="rounded-xl border p-2 text-sm inline-72">

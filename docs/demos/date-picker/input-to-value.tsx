@@ -2,9 +2,10 @@ import type { ReactElement } from 'react'
 import { DatePicker } from '@gedatou/cadenza-ui'
 import { isValid, parse } from 'date-fns'
 
-// inputToValue 只换解析:显示仍走 format,键入宽容收多种写法。
-// 试试「2026/8/1」「2026-8-1」「20260801」—— 都能落值,失焦后统一
-// 显示成 yyyy-MM-dd。
+// inputToValue swaps only the parser: display still follows format while
+// typing accepts several spellings. Try "2026/8/1", "2026-8-1" or
+// "20260801" -- each lands as a value, and after blur the display
+// normalizes to yyyy-MM-dd.
 const FORMATS = ['yyyy-MM-dd', 'yyyy/M/d', 'yyyy-M-d', 'yyyyMMdd']
 
 function parseLoose(text: string): Date | null {
@@ -20,9 +21,9 @@ function parseLoose(text: string): Date | null {
 export default function InputToValueDemo(): ReactElement {
   return (
     <DatePicker
-      aria-label="日期"
+      aria-label="Date"
       inputToValue={parseLoose}
-      placeholder="2026/8/1、20260801 都认"
+      placeholder="Accepts 2026/8/1, 20260801"
     />
   )
 }

@@ -2,9 +2,11 @@ import type { ReactElement } from 'react'
 import { ScrollArea } from '@gedatou/cadenza-ui'
 import { PEOPLE } from '../lib/people'
 
-// scroll-fade-y 挂在视口上:未滚到的边缘渐隐,滚到头自动消失。
-// 滚动条是视口的兄弟节点,不会被 mask 一起压暗 —— 这正是 ScrollArea
-// 存在的理由(原生滚动条长在滚动元素里,躲不开 mask)
+// scroll-fade-y hangs on the viewport: the edge not yet scrolled to
+// fades out, vanishing once you reach the end. The scrollbar is the
+// viewport's sibling, so the mask never dims it too -- which is exactly
+// ScrollArea's reason to exist (a native scrollbar lives inside the
+// scrolling element and cannot dodge the mask)
 export default function ScrollFadeDemo(): ReactElement {
   return (
     <ScrollArea

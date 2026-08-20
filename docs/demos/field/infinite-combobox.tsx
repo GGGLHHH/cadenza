@@ -14,9 +14,10 @@ import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 
-// triggerId 是这里唯一的接线:FieldLabel htmlFor 指过去,点文字就聚焦并展开。
-// 注意没有 aria-label —— 和 Select 不同,触发器上没有 aria-labelledby,
-// 原生 <label for> 直接就是它的无障碍名。
+// triggerId is the only wiring here: FieldLabel htmlFor points at it, so
+// pressing the text focuses and opens. Note the absence of aria-label —
+// unlike Select there is no aria-labelledby on the trigger; the native
+// <label for> alone is its accessible name.
 export default function FieldInfiniteComboboxDemo(): ReactElement {
   const state = useInfiniteComboboxState()
   const list = useFakeInfiniteList(state.queryValue)
@@ -24,20 +25,20 @@ export default function FieldInfiniteComboboxDemo(): ReactElement {
 
   return (
     <Field className="max-inline-sm">
-      <FieldLabel htmlFor="field-composer">作曲家</FieldLabel>
+      <FieldLabel htmlFor="field-composer">Composer</FieldLabel>
       <InfiniteCombobox<Person>
         getOption={getOption}
         list={list}
         onValueChange={setPicked}
-        searchPlaceholder="搜索作曲家…"
+        searchPlaceholder="Search composers…"
         state={state}
         triggerId="field-composer"
       >
-        <DemoButton>{picked ? picked.name : '选择作曲家'}</DemoButton>
+        <DemoButton>{picked ? picked.name : 'Pick a composer'}</DemoButton>
         {selectSlots}
-        <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
+        <InfiniteSelectLoadingMore>Loading more…</InfiniteSelectLoadingMore>
       </InfiniteCombobox>
-      <FieldDescription>从一万条里搜，滚动到底自动加载下一页。</FieldDescription>
+      <FieldDescription>Search across ten thousand rows; scrolling to the bottom loads the next page.</FieldDescription>
     </Field>
   )
 }

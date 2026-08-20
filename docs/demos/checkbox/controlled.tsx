@@ -10,12 +10,13 @@ import {
 import { useState } from 'react'
 import { DemoButton } from '../lib/demo-button'
 
-// 受控:checked 是唯一数据源,onCheckedChange 负责写回。
-// 第二参是真的 ChangeEventDetails —— reason 恒为 'none',cancel() 会被尊重。
+// Controlled: checked is the single source of truth, onCheckedChange writes
+// it back. The second argument is a real ChangeEventDetails -- reason is
+// always 'none', and cancel() is honoured.
 export default function ControlledDemo(): ReactElement {
   const [checked, setChecked] = useState(false)
   const [locked, setLocked] = useState(false)
-  const [log, setLog] = useState('还没有变更')
+  const [log, setLog] = useState('No changes yet')
 
   return (
     <FieldGroup className="max-inline-sm">
@@ -25,27 +26,29 @@ export default function ControlledDemo(): ReactElement {
           id="checkbox-controlled-consent"
           onCheckedChange={(next, details) => {
             if (locked) {
-              // 拒绝这次变更:外部 state 不写回,组件内部那份也被 cancel() 挡下
+              // Reject this change: skip the external state write-back, and
+              // cancel() blocks the component's internal copy too
               details.cancel()
-              setLog(`已拦截(reason = ${details.reason})`)
+              setLog(`Blocked (reason = ${details.reason})`)
               return
             }
             setChecked(next)
-            setLog(`${next ? '已勾选' : '已取消'}(reason = ${details.reason})`)
+            setLog(`${next ? 'Checked' : 'Unchecked'} (reason = ${details.reason})`)
           }}
         />
         <FieldContent>
-          <FieldLabel htmlFor="checkbox-controlled-consent">同意演出条款</FieldLabel>
+          <FieldLabel htmlFor="checkbox-controlled-consent">Accept the event terms</FieldLabel>
           <FieldDescription>{log}</FieldDescription>
         </FieldContent>
       </Field>
       <div className="flex flex-wrap items-center gap-2">
         <DemoButton onClick={() => setLocked(current => !current)} size="sm">
-          {locked ? '解除锁定' : '锁定(之后的变更一律 cancel)'}
+          {locked ? 'Unlock' : 'Lock (cancel every change from now on)'}
         </DemoButton>
       </div>
       <Field orientation="horizontal">
-        {/* 非受控:没有任何外部 state,取消勾选那一下光靠 cancel() 就钉住了 */}
+        {/* Uncontrolled: no external state at all; cancel() alone pins down
+            the attempt to uncheck */}
         <Checkbox
           defaultChecked
           id="checkbox-controlled-sticky"
@@ -55,8 +58,8 @@ export default function ControlledDemo(): ReactElement {
           }}
         />
         <FieldContent>
-          <FieldLabel htmlFor="checkbox-controlled-sticky">保留座位(勾上就不能取消)</FieldLabel>
-          <FieldDescription>非受控,cancel() 直接拦住内部状态。</FieldDescription>
+          <FieldLabel htmlFor="checkbox-controlled-sticky">Hold the seat (cannot be unchecked)</FieldLabel>
+          <FieldDescription>Uncontrolled; cancel() blocks the internal state directly.</FieldDescription>
         </FieldContent>
       </Field>
     </FieldGroup>

@@ -1,8 +1,8 @@
 import type { ReactElement } from 'react'
 import { Field, FieldLabel, Switch } from '@gedatou/cadenza-ui'
 
-// size 是 shadcn 加的,不是 Base UI 的:它镜像成根元素上的 data-size,
-// 轨道和滑块都按它取尺寸
+// size is a shadcn addition, not Base UI's: it mirrors to data-size on the
+// root element, and the track and thumb both take their dimensions from it
 export default function SizesDemo(): ReactElement {
   return (
     <div className="grid grid-cols-2 gap-6 max-inline-sm">

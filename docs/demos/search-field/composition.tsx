@@ -8,17 +8,18 @@ import {
 } from '@gedatou/cadenza-ui'
 import { IconSearch } from '@tabler/icons-react'
 
-// 组合式:传了 children 就完全接管内部结构。
-// 这里在尾部加了一个快捷键提示,清除按钮出现时它让位
+// Composition: passing children takes over the internal structure
+// entirely. Here a shortcut hint sits at the tail and yields its spot
+// when the clear button appears
 export default function CompositionDemo(): ReactElement {
   return (
     <div className="inline-full max-inline-sm">
-      <SearchField aria-label="搜索文档">
+      <SearchField aria-label="Search docs">
         <InputGroup>
           <InputGroupAddon>
             <IconSearch aria-hidden />
           </InputGroupAddon>
-          <SearchFieldInput placeholder="搜索文档..." />
+          <SearchFieldInput placeholder="Search docs..." />
           <SearchFieldClear />
           <kbd className="
             order-last me-2 hidden rounded-sm border bg-muted px-1.5 font-mono

@@ -3,18 +3,18 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '
 import { IconArrowRight, IconCopy } from '@tabler/icons-react'
 import { useState } from 'react'
 
-// 尾部按钮:InputGroupButton 底下是 Base UI 的 Button。
-// size 默认 xs,图标按钮用 icon-xs
+// Trailing buttons: InputGroupButton wraps Base UI's Button underneath.
+// size defaults to xs; icon buttons use icon-xs
 export default function ButtonDemo(): ReactElement {
   const [copied, setCopied] = useState(false)
 
   return (
     <div className="flex flex-col gap-3 inline-full max-inline-sm">
       <InputGroup>
-        <InputGroupInput aria-label="邀请链接" defaultValue="https://cadenza.dev/invite/8f2a" readOnly />
+        <InputGroupInput aria-label="Invite link" defaultValue="https://cadenza.dev/invite/8f2a" readOnly />
         <InputGroupAddon align="inline-end">
           <InputGroupButton
-            aria-label="复制链接"
+            aria-label="Copy link"
             size="icon-xs"
             onClick={() => {
               setCopied(true)
@@ -26,16 +26,16 @@ export default function ButtonDemo(): ReactElement {
         </InputGroupAddon>
       </InputGroup>
       <InputGroup>
-        <InputGroupInput aria-label="订阅邮箱" placeholder="订阅更新" type="email" />
+        <InputGroupInput aria-label="Subscription email" placeholder="Subscribe to updates" type="email" />
         <InputGroupAddon align="inline-end">
           <InputGroupButton variant="default">
-            订阅
+            Subscribe
             <IconArrowRight aria-hidden />
           </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
       <p aria-live="polite" className="text-sm text-muted-foreground">
-        {copied ? '已复制到剪贴板' : ' '}
+        {copied ? 'Copied to clipboard' : ' '}
       </p>
     </div>
   )

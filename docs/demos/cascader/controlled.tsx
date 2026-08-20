@@ -3,24 +3,26 @@ import type { ReactElement } from 'react'
 import { Cascader } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// 受控三件套:value / defaultValue / onValueChange。值是从根到叶的一条路径
-// (string[]),受控空值是 null。回调第二参是 eventDetails,cancel() 可拒绝
-// 这次变更(清除也走同一条回调,reason: 'clear-press')。
+// The controlled trio: value / defaultValue / onValueChange. The value is
+// one root-to-leaf path (string[]); the controlled empty value is null.
+// The callback's second argument is eventDetails, whose cancel() rejects
+// the change (clearing goes through the same callback, reason:
+// 'clear-press').
 const INSTRUMENTS: CascaderNode[] = [
   {
     value: 'strings',
-    label: '弦乐',
+    label: 'Strings',
     items: [
-      { value: 'violin', label: '小提琴' },
-      { value: 'cello', label: '大提琴' },
+      { value: 'violin', label: 'Violin' },
+      { value: 'cello', label: 'Cello' },
     ],
   },
   {
     value: 'woodwinds',
-    label: '木管',
+    label: 'Woodwinds',
     items: [
-      { value: 'flute', label: '长笛' },
-      { value: 'oboe', label: '双簧管' },
+      { value: 'flute', label: 'Flute' },
+      { value: 'oboe', label: 'Oboe' },
     ],
   },
 ]
@@ -30,9 +32,9 @@ export default function ControlledDemo(): ReactElement {
   return (
     <div className="flex flex-col items-start gap-2">
       <Cascader
-        aria-label="乐器"
+        aria-label="Instrument"
         items={INSTRUMENTS}
-        placeholder="选择乐器"
+        placeholder="Select an instrument"
         value={value}
         onValueChange={setValue}
       />

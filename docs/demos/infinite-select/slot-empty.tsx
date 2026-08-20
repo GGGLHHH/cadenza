@@ -11,7 +11,8 @@ import {
 import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
 
-// 静态空适配器:列表为空(且不在加载/错误中)时 InfiniteSelectEmpty 自渲染
+// Static empty adapter: InfiniteSelectEmpty renders itself when the list is
+// empty (and neither loading nor in error)
 const emptyList: InfiniteSelectAdapterProps<Person> = {
   items: [],
   isLoading: false,
@@ -29,14 +30,14 @@ export default function EmptySlotDemo(): ReactElement {
     <InfiniteCombobox<Person>
       getOption={getOption}
       list={emptyList}
-      searchPlaceholder="搜索作曲家…"
+      searchPlaceholder="Search composers…"
       state={state}
     >
-      <DemoButton>空数据源</DemoButton>
-      <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
+      <DemoButton>Empty data source</DemoButton>
+      <InfiniteSelectEmpty>No matching results</InfiniteSelectEmpty>
       <InfiniteSelectError>
-        加载失败
-        <InfiniteSelectRetry>重试</InfiniteSelectRetry>
+        Failed to load
+        <InfiniteSelectRetry>Retry</InfiniteSelectRetry>
       </InfiniteSelectError>
     </InfiniteCombobox>
   )

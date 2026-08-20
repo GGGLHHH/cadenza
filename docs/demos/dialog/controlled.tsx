@@ -15,14 +15,16 @@ import {
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// 受控 + 拦截关闭。改过内容后,点遮罩或按 Esc 会被 cancel() 顶回去 ——
-// 内部状态原地不动,不需要 disablePointerDismissal 再自己补一套判断。
-// reason 说明这次关闭从哪来,所以「取消」按钮(close-press)照常放行。
+// Controlled + close interception. Once the content is dirty, backdrop
+// clicks and Esc get bounced by cancel() -- internal state stays put; no
+// disablePointerDismissal plus a hand-rolled check on top. reason says
+// where the close came from, so the discard button (close-press) passes
+// through as usual.
 export default function ControlledDemo(): ReactElement {
   const [open, setOpen] = useState(false)
-  const [name, setName] = useState('莫里斯·拉威尔')
+  const [name, setName] = useState('Maurice Ravel')
   const [blocked, setBlocked] = useState(false)
-  const dirty = name !== '莫里斯·拉威尔'
+  const dirty = name !== 'Maurice Ravel'
 
   return (
     <Dialog
@@ -37,16 +39,16 @@ export default function ControlledDemo(): ReactElement {
         setOpen(next)
       }}
     >
-      <DialogTrigger render={<Button variant="outline" />}>编辑资料</DialogTrigger>
+      <DialogTrigger render={<Button variant="outline" />}>Edit profile</DialogTrigger>
       <DialogPopup>
         <DialogHeader>
-          <DialogTitle>编辑资料</DialogTitle>
+          <DialogTitle>Edit profile</DialogTitle>
           <DialogDescription>
-            {dirty ? '改过了 —— 点遮罩和 Esc 都会被拦住。' : '随便改一个字试试。'}
+            {dirty ? 'Dirty now -- backdrop clicks and Esc are both intercepted.' : 'Try changing a character or two.'}
           </DialogDescription>
         </DialogHeader>
         <Field>
-          <FieldLabel htmlFor="dialog-controlled-name">显示名</FieldLabel>
+          <FieldLabel htmlFor="dialog-controlled-name">Display name</FieldLabel>
           <Input
             id="dialog-controlled-name"
             value={name}
@@ -54,11 +56,11 @@ export default function ControlledDemo(): ReactElement {
           />
         </Field>
         {blocked && (
-          <p className="text-sm text-destructive">有未保存的改动,用下面的按钮离开。</p>
+          <p className="text-sm text-destructive">There are unsaved changes; leave via the buttons below.</p>
         )}
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>放弃修改</DialogClose>
-          <Button onClick={() => setOpen(false)}>保存</Button>
+          <DialogClose render={<Button variant="outline" />}>Discard changes</DialogClose>
+          <Button onClick={() => setOpen(false)}>Save</Button>
         </DialogFooter>
       </DialogPopup>
     </Dialog>

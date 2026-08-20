@@ -3,16 +3,18 @@ import type { ReactElement } from 'react'
 import { Button, Cascader, Field, FieldLabel } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// 表单序列化:给 name,每个路径段渲染一个同名隐藏 input,提交顺序即路径顺序;
-// 空值不渲染任何 input。标签走 FieldLabel htmlFor → 根的 id(落在触发器上,
-// 真 <button>,点标签即开弹层)。
+// Form serialization: given a name, each path segment renders one hidden
+// input under that name, submitted in path order; an empty value renders
+// no input at all. The label goes through FieldLabel htmlFor → the
+// root's id (which lands on the trigger, a real <button>, so pressing
+// the label opens the popup).
 const REGIONS: CascaderNode[] = [
   {
-    value: 'zhejiang',
-    label: '浙江',
-    items: [{ value: 'hangzhou', label: '杭州', items: [{ value: 'xihu', label: '西湖区' }] }],
+    value: 'united-states',
+    label: 'United States',
+    items: [{ value: 'california', label: 'California', items: [{ value: 'san-francisco', label: 'San Francisco' }] }],
   },
-  { value: 'beijing', label: '北京' },
+  { value: 'singapore', label: 'Singapore' },
 ]
 
 export default function FormDemo(): ReactElement {
@@ -26,10 +28,10 @@ export default function FormDemo(): ReactElement {
       }}
     >
       <Field>
-        <FieldLabel htmlFor="region">地区</FieldLabel>
-        <Cascader id="region" items={REGIONS} name="region" placeholder="选择地区" />
+        <FieldLabel htmlFor="region">Region</FieldLabel>
+        <Cascader id="region" items={REGIONS} name="region" placeholder="Select a region" />
       </Field>
-      <Button type="submit" variant="outline">提交</Button>
+      <Button type="submit" variant="outline">Submit</Button>
       {submitted !== null && (
         <p className="text-sm text-muted-foreground">
           FormData region:

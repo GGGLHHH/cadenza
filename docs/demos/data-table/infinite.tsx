@@ -8,20 +8,21 @@ import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 import { personColumns } from './columns'
 import { tableSlots } from './slots'
 
-// 无限滚动的已加载集无界累积,所以同时开虚拟化:DOM 始终只有窗口内的行
+// Infinite scroll accumulates loaded rows without bound, so enable
+// virtualization too: the DOM only ever holds the rows in the window
 export default function InfiniteDemo(): ReactElement {
   const list = useFakeInfiniteList()
 
   return (
     <DataTable<Person>
-      aria-label="作曲家(无限滚动)"
+      aria-label="Composers (infinite scroll)"
       columns={personColumns}
       maxHeight={320}
       virtualized
       {...list}
     >
       {tableSlots}
-      <DataTableLoadingMore>加载更多…</DataTableLoadingMore>
+      <DataTableLoadingMore>Loading more…</DataTableLoadingMore>
     </DataTable>
   )
 }

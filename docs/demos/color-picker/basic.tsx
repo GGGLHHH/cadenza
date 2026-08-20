@@ -1,8 +1,10 @@
 import type { ReactElement } from 'react'
 import { ColorPicker } from '@gedatou/cadenza-ui'
 
-// 零组合的完整体验:swatch 触发器和弹层(饱和度/明度面板、hue 与 alpha 滑杆、
-// hex 输入)全是默认在场的,只需要给一个初始色和可及名
+// The full experience with zero composition: the swatch trigger and the
+// popup (saturation/brightness area, hue and alpha sliders, hex input)
+// are all present by default; it only needs an initial color and an
+// accessible name
 export default function BasicDemo(): ReactElement {
-  return <ColorPicker aria-label="强调色" defaultValue="#6366f1" />
+  return <ColorPicker aria-label="Accent color" defaultValue="#6366f1" />
 }

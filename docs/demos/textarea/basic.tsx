@@ -1,18 +1,19 @@
 import type { ReactElement } from 'react'
 import { Field, FieldDescription, FieldLabel, Textarea } from '@gedatou/cadenza-ui'
 
-// 纯 <textarea>:标签同样走 FieldLabel htmlFor → id。
-// 多敲几行就会看到它跟着内容长高(field-sizing-content),下限是 min-h-16。
+// A plain <textarea>: the label goes through FieldLabel htmlFor -> id as
+// usual. Type a few lines and it grows with the content
+// (field-sizing-content), with min-h-16 as the floor.
 export default function BasicDemo(): ReactElement {
   return (
     <Field className="max-inline-sm">
-      <FieldLabel htmlFor="textarea-basic-notes">曲目说明</FieldLabel>
+      <FieldLabel htmlFor="textarea-basic-notes">Programme notes</FieldLabel>
       <Textarea
         id="textarea-basic-notes"
         name="notes"
-        placeholder="写给听众的一段话,节目单上会印。"
+        placeholder="A note to the audience, printed in the programme."
       />
-      <FieldDescription>随内容长高,不用自己拖。</FieldDescription>
+      <FieldDescription>Grows with the content, no dragging needed.</FieldDescription>
     </Field>
   )
 }

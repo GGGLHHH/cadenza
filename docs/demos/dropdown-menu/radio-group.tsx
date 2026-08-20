@@ -12,22 +12,23 @@ import {
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// 单选组:受控三件套 value / onValueChange,同组互斥,触发器回显当前选择。
+// Radio group: the controlled pair value / onValueChange, mutually exclusive
+// within the group, with the trigger echoing the current choice.
 export default function RadioGroupDemo(): ReactElement {
   const [sort, setSort] = useState('name')
-  const labels: Record<string, string> = { name: '按名称', date: '按日期', size: '按大小' }
+  const labels: Record<string, string> = { name: 'By name', date: 'By date', size: 'By size' }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" />}>
-        {`排序:${labels[sort]}`}
+        {`Sort: ${labels[sort]}`}
       </DropdownMenuTrigger>
       <DropdownMenuPopup>
-        {/* RadioGroup 本身就是组,GroupLabel 写在其内即成为组的标题 */}
+        {/* RadioGroup is itself a group; a GroupLabel inside it becomes the group's title */}
         <DropdownMenuRadioGroup value={sort} onValueChange={setSort}>
-          <DropdownMenuGroupLabel>排序方式</DropdownMenuGroupLabel>
-          <DropdownMenuRadioItem value="name">按名称</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="date">按日期</DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="size">按大小</DropdownMenuRadioItem>
+          <DropdownMenuGroupLabel>Sort by</DropdownMenuGroupLabel>
+          <DropdownMenuRadioItem value="name">By name</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="date">By date</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="size">By size</DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuPopup>
     </DropdownMenu>

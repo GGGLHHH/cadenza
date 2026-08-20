@@ -4,22 +4,23 @@ import { DateRangePicker } from '@gedatou/cadenza-ui'
 import { format } from 'date-fns'
 import { useState } from 'react'
 
-// 受控值是 { from?, to? } | null:两端都是可选的——先点哪个输入框就先填哪一端,
-// 所以只有 to 的半程同样合法。null 是受控空值。半程也会走 onValueChange,
-// 别当成噪音过滤掉。
+// The controlled value is { from?, to? } | null: both ends are optional --
+// whichever input you press first gets filled first, so a half range with
+// only `to` is just as legal. null is the controlled empty value. Half
+// ranges also go through onValueChange; don't filter them out as noise.
 export default function ControlledDemo(): ReactElement {
   const [value, setValue] = useState<DateRange | null>(() => ({
     from: new Date(2026, 7, 10),
     to: new Date(2026, 7, 20),
   }))
   const show = (day: Date | undefined): string =>
-    day === undefined ? '(待定)' : format(day, 'yyyy-MM-dd')
+    day === undefined ? '(pending)' : format(day, 'yyyy-MM-dd')
   return (
     <div className="flex flex-col gap-2">
-      <DateRangePicker aria-label="日期范围" value={value} onValueChange={setValue} />
+      <DateRangePicker aria-label="Date range" value={value} onValueChange={setValue} />
       <p className="text-sm text-muted-foreground">
-        {/* 确定性格式化:toLocaleDateString 会因 SSR 与浏览器 locale 不同炸 hydration */}
-        {value === null ? '未选择' : `${show(value.from)} → ${show(value.to)}`}
+        {/* Deterministic formatting: toLocaleDateString breaks hydration when SSR and browser locales differ */}
+        {value === null ? 'Not selected' : `${show(value.from)} → ${show(value.to)}`}
       </p>
     </div>
   )

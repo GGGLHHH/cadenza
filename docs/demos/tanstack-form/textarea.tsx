@@ -18,12 +18,12 @@ import {
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// Textarea 绑定与 Input 完全同构:换控件不换写法
+// Textarea binding is isomorphic to Input: swap the control, keep the code
 const schema = z.object({
   about: z
     .string()
-    .min(20, '介绍至少 20 个字')
-    .max(200, '介绍最多 200 个字'),
+    .min(20, 'Introduction must be at least 20 characters')
+    .max(200, 'Introduction must be at most 200 characters'),
 })
 
 export default function TextareaDemo(): ReactElement {
@@ -31,7 +31,7 @@ export default function TextareaDemo(): ReactElement {
     defaultValues: { about: '' },
     validators: { onChange: schema },
     onSubmit: ({ formApi, value }) => {
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -57,17 +57,17 @@ export default function TextareaDemo(): ReactElement {
             const { errorId, invalid } = fieldInvalidState(field)
             return (
               <Field data-invalid={invalid || undefined}>
-                <FieldLabel htmlFor={field.name}>自我介绍</FieldLabel>
+                <FieldLabel htmlFor={field.name}>About you</FieldLabel>
                 <Textarea
                   {...fieldControlProps(field)}
                   value={field.state.value}
                   className="min-block-[120px]"
-                  placeholder="我是一名声部长……"
+                  placeholder="I lead the soprano section…"
                   onBlur={field.handleBlur}
                   onChange={event => field.handleChange(event.target.value)}
                 />
                 <FieldDescription>
-                  会用于个性化你的排练安排。
+                  Used to personalize your rehearsal schedule.
                 </FieldDescription>
                 <FieldError id={errorId} errors={fieldErrors(field)} />
               </Field>
@@ -75,7 +75,7 @@ export default function TextareaDemo(): ReactElement {
           }}
         </form.Field>
         <Field orientation="horizontal">
-          <Button type="submit">提交</Button>
+          <Button type="submit">Submit</Button>
         </Field>
       </FieldGroup>
     </form>

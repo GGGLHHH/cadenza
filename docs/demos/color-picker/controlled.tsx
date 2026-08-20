@@ -2,15 +2,17 @@ import type { ReactElement } from 'react'
 import { ColorPicker } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// 受控三件套:value 驱动、onValueChange 回写。回调的第一参是 React Aria 的
-// Color 对象(toString('hex'/'hexa'/'css') 取字符串);第二参是 eventDetails,
-// 内核不区分手势来源,交互变更的 reason 一律是 control-change
+// The controlled trio: value drives, onValueChange writes back. The
+// callback's first argument is React Aria's Color object (get a string
+// via toString('hex'/'hexa'/'css')); the second is eventDetails -- the
+// kernel does not distinguish gesture sources, so every interactive
+// change has reason: control-change
 export default function ControlledDemo(): ReactElement {
   const [color, setColor] = useState('#f59e0b')
   return (
     <div className="flex flex-col items-start gap-3">
       <ColorPicker
-        aria-label="强调色"
+        aria-label="Accent color"
         value={color}
         onValueChange={next => setColor(next.toString('hex'))}
       />

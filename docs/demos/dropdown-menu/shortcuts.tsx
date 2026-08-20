@@ -9,33 +9,34 @@ import {
   DropdownMenuTrigger,
 } from '@gedatou/cadenza-ui'
 
-// Shortcut 是右对齐的按键提示,纯视觉——它不绑定任何键盘事件。
+// Shortcut is a right-aligned key hint, purely visual — it binds no keyboard
+// events.
 export default function ShortcutsDemo(): ReactElement {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" />}>
-        编辑
+        Edit
       </DropdownMenuTrigger>
       <DropdownMenuPopup>
         <DropdownMenuItem>
-          撤销
+          Undo
           <DropdownMenuShortcut>⌘Z</DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuItem>
-          重做
+          Redo
           <DropdownMenuShortcut>⇧⌘Z</DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem>
-          剪切
+          Cut
           <DropdownMenuShortcut>⌘X</DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuItem>
-          复制
+          Copy
           <DropdownMenuShortcut>⌘C</DropdownMenuShortcut>
         </DropdownMenuItem>
         <DropdownMenuItem>
-          粘贴
+          Paste
           <DropdownMenuShortcut>⌘V</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuPopup>

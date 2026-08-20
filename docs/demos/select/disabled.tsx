@@ -8,30 +8,31 @@ import {
   SelectValue,
 } from '@gedatou/cadenza-ui'
 
-// 两种粒度:disabled 落在 Select 上禁整个控件(弹层打不开),
-// 落在 SelectItem 上只禁那一行(键盘导航会跳过它)
+// Two granularities: disabled on Select disables the whole control (the popup
+// won't open); on SelectItem it disables just that row (keyboard navigation
+// skips it)
 export default function DisabledDemo(): ReactElement {
   return (
     <div className="flex flex-col gap-4 inline-full max-inline-sm">
-      <Select defaultValue="viola" disabled items={{ viola: '中提琴' }}>
-        <SelectTrigger aria-label="整体禁用">
+      <Select defaultValue="viola" disabled items={{ viola: 'Viola' }}>
+        <SelectTrigger aria-label="Fully disabled">
           <SelectValue />
         </SelectTrigger>
         <SelectPopup>
           <SelectGroup>
-            <SelectItem value="viola">中提琴</SelectItem>
+            <SelectItem value="viola">Viola</SelectItem>
           </SelectGroup>
         </SelectPopup>
       </Select>
-      <Select items={{ violin: '小提琴', viola: '中提琴', cello: '大提琴' }}>
-        <SelectTrigger aria-label="单项禁用">
-          <SelectValue placeholder="大提琴已被占用" />
+      <Select items={{ violin: 'Violin', viola: 'Viola', cello: 'Cello' }}>
+        <SelectTrigger aria-label="Single item disabled">
+          <SelectValue placeholder="Cello is taken" />
         </SelectTrigger>
         <SelectPopup>
           <SelectGroup>
-            <SelectItem value="violin">小提琴</SelectItem>
-            <SelectItem value="viola">中提琴</SelectItem>
-            <SelectItem disabled value="cello">大提琴</SelectItem>
+            <SelectItem value="violin">Violin</SelectItem>
+            <SelectItem value="viola">Viola</SelectItem>
+            <SelectItem disabled value="cello">Cello</SelectItem>
           </SelectGroup>
         </SelectPopup>
       </Select>

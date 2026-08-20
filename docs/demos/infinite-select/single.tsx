@@ -21,12 +21,12 @@ export default function SingleDemo(): ReactElement {
       getOption={getOption}
       list={list}
       onValueChange={setPicked}
-      searchPlaceholder="搜索作曲家…"
+      searchPlaceholder="Search composers…"
       state={state}
     >
-      <DemoButton>{picked ? picked.name : '选择作曲家'}</DemoButton>
+      <DemoButton>{picked ? picked.name : 'Pick a composer'}</DemoButton>
       {selectSlots}
-      <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
+      <InfiniteSelectLoadingMore>Loading more…</InfiniteSelectLoadingMore>
     </InfiniteCombobox>
   )
 }

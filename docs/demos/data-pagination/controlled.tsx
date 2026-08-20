@@ -3,8 +3,9 @@ import { DataPagination } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 import { PEOPLE } from '../lib/people'
 
-// 受控:page / limit 提到组件外,数据切片跟着状态走 ——
-// 与 DataTable 组合时就是这个形状(见 DataTable 的「分页」一节)
+// Controlled: page / limit are lifted out of the component, and the data
+// slice follows the state -- this is exactly the shape used when composing
+// with DataTable (see the "Pagination" section on the DataTable page)
 export default function ControlledDemo(): ReactElement {
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(5)
@@ -24,8 +25,8 @@ export default function ControlledDemo(): ReactElement {
         limit={limit}
         limitOptions={[5, 10, 20]}
         page={page}
-        rowsPerPageLabel="每页"
-        summary={({ total }) => `共 ${total} 条`}
+        rowsPerPageLabel="Per page"
+        summary={({ total }) => `${total} items`}
         total={PEOPLE.length}
         onLimitChange={(next) => {
           setLimit(next)

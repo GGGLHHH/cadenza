@@ -23,17 +23,18 @@ import {
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// Select 绑定:受控走 value/onValueChange(清除时回 null,统一折回 '');
-// id 落在 SelectTrigger 上,aria 接线用 fieldInvalidState 手工分发
+// Select binding: controlled via value/onValueChange (clearing returns
+// null, folded back to ''); id lands on SelectTrigger, and aria wiring is
+// hand-distributed with fieldInvalidState
 const VOICES = {
-  soprano: '女高音',
-  alto: '女低音',
-  tenor: '男高音',
-  bass: '男低音',
+  soprano: 'Soprano',
+  alto: 'Alto',
+  tenor: 'Tenor',
+  bass: 'Bass',
 } as const
 
 const schema = z.object({
-  voice: z.string().min(1, '请选择你的声部'),
+  voice: z.string().min(1, 'Select your voice part'),
 })
 
 export default function SelectDemo(): ReactElement {
@@ -41,7 +42,7 @@ export default function SelectDemo(): ReactElement {
     defaultValues: { voice: '' },
     validators: { onChange: schema },
     onSubmit: ({ formApi, value }) => {
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -68,8 +69,8 @@ export default function SelectDemo(): ReactElement {
             return (
               <Field orientation="responsive" data-invalid={invalid || undefined}>
                 <FieldContent>
-                  <FieldLabel htmlFor={field.name}>声部</FieldLabel>
-                  <FieldDescription>排练分组按声部安排。</FieldDescription>
+                  <FieldLabel htmlFor={field.name}>Voice part</FieldLabel>
+                  <FieldDescription>Rehearsal groups are arranged by voice part.</FieldDescription>
                   <FieldError id={errorId} errors={fieldErrors(field)} />
                 </FieldContent>
                 <Select
@@ -85,7 +86,7 @@ export default function SelectDemo(): ReactElement {
                     aria-required
                     className="min-inline-[120px]"
                   >
-                    <SelectValue placeholder="选一个声部" />
+                    <SelectValue placeholder="Pick a voice part" />
                   </SelectTrigger>
                   <SelectPopup>
                     <SelectGroup>
@@ -102,7 +103,7 @@ export default function SelectDemo(): ReactElement {
           }}
         </form.Field>
         <Field orientation="horizontal">
-          <Button type="submit">提交</Button>
+          <Button type="submit">Submit</Button>
         </Field>
       </FieldGroup>
     </form>

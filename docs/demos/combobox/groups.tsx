@@ -11,27 +11,30 @@ import {
   ComboboxPopup,
 } from '@gedatou/cadenza-ui'
 
-// 分组数据唯一必需的键是 items —— Base UI 只按它认出「这是分组」;组名叫什么随你,
-// 惯例用 value。过滤按组进行:命中的项留在原组里,一项都没命中的组整组消失。
+// The only key grouped data must have is items — that is how Base UI decides
+// "this is a group"; call the group name whatever you like, value by
+// convention. Filtering runs per group: matching items stay in their group,
+// and a group with no matches disappears entirely.
 interface Section {
   value: string
   items: string[]
 }
 
 const SECTIONS: Section[] = [
-  { value: '弦乐', items: ['小提琴', '中提琴', '大提琴', '低音提琴'] },
-  { value: '木管', items: ['长笛', '双簧管', '单簧管', '巴松'] },
-  { value: '铜管', items: ['圆号', '小号', '长号', '大号'] },
+  { value: 'Strings', items: ['Violin', 'Viola', 'Cello', 'Double bass'] },
+  { value: 'Woodwinds', items: ['Flute', 'Oboe', 'Clarinet', 'Bassoon'] },
+  { value: 'Brass', items: ['French horn', 'Trumpet', 'Trombone', 'Tuba'] },
 ]
 
-// 两层 render 函数:ComboboxList 拿到的是「组」,ComboboxGroup items 把这一组交给
-// 里面的 ComboboxCollection,它再拿到组内的每一项。
+// Two levels of render functions: ComboboxList receives a group, ComboboxGroup
+// items hands that group to the ComboboxCollection inside, which then receives
+// each item within the group.
 export default function GroupsDemo(): ReactElement {
   return (
     <Combobox<string> items={SECTIONS}>
-      <ComboboxInput aria-label="乐器" className="max-inline-sm" placeholder="搜索乐器" />
+      <ComboboxInput aria-label="Instrument" className="max-inline-sm" placeholder="Search instruments" />
       <ComboboxPopup>
-        <ComboboxEmpty>没有匹配的乐器</ComboboxEmpty>
+        <ComboboxEmpty>No matching instruments</ComboboxEmpty>
         <ComboboxList>
           {(section: Section) => (
             <ComboboxGroup items={section.items} key={section.value}>

@@ -21,14 +21,15 @@ import {
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// DatePicker 绑定:值原生是 Date | null,受控走 value/onValueChange。
-// 键入非法文本不落值 —— 表单永远只见合法 Date 或 null,schema 用
-// .nullable().refine 表达必填即可,不需要字符串解析。
+// DatePicker binding: the value is natively Date | null, controlled via
+// value/onValueChange. Typing invalid text never lands a value — the form
+// only ever sees a valid Date or null, so the schema expresses "required"
+// with .nullable().refine and needs no string parsing.
 const schema = z.object({
   eventDate: z
-    .date({ error: '请选择日期' })
+    .date({ error: 'Select a date' })
     .nullable()
-    .refine(value => value !== null, '请选择日期'),
+    .refine(value => value !== null, 'Select a date'),
 })
 
 export default function DatePickerDemo(): ReactElement {
@@ -36,7 +37,7 @@ export default function DatePickerDemo(): ReactElement {
     defaultValues: { eventDate: null as Date | null },
     validators: { onChange: schema },
     onSubmit: ({ formApi, value }) => {
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -62,7 +63,7 @@ export default function DatePickerDemo(): ReactElement {
             const { errorId, invalid } = fieldInvalidState(field)
             return (
               <Field data-invalid={invalid || undefined}>
-                <FieldLabel htmlFor={field.name}>演出日期</FieldLabel>
+                <FieldLabel htmlFor={field.name}>Concert date</FieldLabel>
                 <DatePicker
                   id={field.name}
                   name={field.name}
@@ -81,14 +82,14 @@ export default function DatePickerDemo(): ReactElement {
                     <DatePickerTrigger />
                   </InputGroup>
                 </DatePicker>
-                <FieldDescription>可以直接键入，也可以点日历选。</FieldDescription>
+                <FieldDescription>Type it in directly, or pick from the calendar.</FieldDescription>
                 <FieldError id={errorId} errors={fieldErrors(field)} />
               </Field>
             )
           }}
         </form.Field>
         <Field orientation="horizontal">
-          <Button type="submit">提交</Button>
+          <Button type="submit">Submit</Button>
         </Field>
       </FieldGroup>
     </form>

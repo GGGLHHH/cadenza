@@ -7,7 +7,8 @@ import { getOption, TOTAL } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 import { selectSlots } from './slots'
 
-// 一次拉满 10000 条:虚拟化让 DOM 始终只有可视窗口加 overscan 的几十个节点
+// All 10000 rows pulled at once: virtualization keeps the DOM at just the
+// visible window plus overscan — a few dozen nodes
 export default function VirtualizedDemo(): ReactElement {
   const state = useInfiniteComboboxState()
   const list = useFakeInfiniteList(state.queryValue, { pageSize: TOTAL })
@@ -18,11 +19,11 @@ export default function VirtualizedDemo(): ReactElement {
       getOption={getOption}
       list={list}
       onValueChange={setPicked}
-      searchPlaceholder="在 10000 条里搜索…"
+      searchPlaceholder="Search across 10000 rows…"
       state={state}
       virtualized
     >
-      <DemoButton>{picked ? picked.name : '虚拟化:一次载入 10000 条'}</DemoButton>
+      <DemoButton>{picked ? picked.name : 'Virtualized: 10000 rows at once'}</DemoButton>
       {selectSlots}
     </InfiniteCombobox>
   )

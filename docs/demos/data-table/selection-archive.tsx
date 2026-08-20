@@ -6,7 +6,9 @@ import { usePersonPage } from '../lib/use-person-page'
 import { personColumns } from './columns'
 import { tableSlots } from './slots'
 
-// 跨页存档:选择集在翻页状态之外。ids 是权威全集;items 里跨页的对象来自组件缓存。
+// Cross-page archive: the selection set lives outside paging state. The
+// ids are the authoritative full set; cross-page objects in items come
+// from the component's cache.
 export default function ArchiveDemo(): ReactElement {
   const [page, setPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -16,7 +18,7 @@ export default function ArchiveDemo(): ReactElement {
   return (
     <div className="flex flex-col gap-3">
       <DataTable<Person>
-        aria-label="作曲家(跨页存档)"
+        aria-label="Composers (cross-page archive)"
         columns={personColumns}
         items={items}
         selectionColumn
@@ -34,17 +36,15 @@ export default function ArchiveDemo(): ReactElement {
         limit={5}
         page={page}
         limitOptions={[]}
-        summary={({ total: totalCount }) => `共 ${totalCount} 条`}
+        summary={({ total: totalCount }) => `${totalCount} rows in total`}
         total={total}
         onPageChange={setPage}
       />
       <p className="text-sm text-muted-foreground">
-        已选
-        {' '}
         {selectedIds.length}
         {' '}
-        条
-        {selectedItems.length > 0 && `:${selectedItems.map(person => person.name).join('、')}`}
+        selected
+        {selectedItems.length > 0 && `: ${selectedItems.map(person => person.name).join(', ')}`}
       </p>
     </div>
   )

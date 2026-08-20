@@ -10,22 +10,23 @@ import {
 import { useState } from 'react'
 
 const INSTRUMENTS = {
-  violin: '小提琴',
-  viola: '中提琴',
-  cello: '大提琴',
-  bass: '低音提琴',
+  violin: 'Violin',
+  viola: 'Viola',
+  cello: 'Cello',
+  bass: 'Double bass',
 }
 
-// multiple 之后 value / onValueChange 整体换型:string[] 而不是 string | null。
-// 触发器上多选的显示由 SelectValue 拼:默认逗号分隔,想换写法就传函数 children
+// With multiple, value / onValueChange change shape wholesale: string[]
+// instead of string | null. SelectValue assembles the multi-select display on
+// the trigger: comma-separated by default; pass a function children to change
 export default function MultipleDemo(): ReactElement {
   const [value, setValue] = useState<string[]>(['violin'])
 
   return (
     <div className="flex flex-col gap-4 inline-full max-inline-sm">
       <Select items={INSTRUMENTS} multiple value={value} onValueChange={setValue}>
-        <SelectTrigger aria-label="乐器">
-          <SelectValue placeholder="可多选" />
+        <SelectTrigger aria-label="Instrument">
+          <SelectValue placeholder="Pick several" />
         </SelectTrigger>
         <SelectPopup>
           <SelectGroup>

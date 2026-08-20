@@ -10,13 +10,15 @@ import {
 } from '@gedatou/cadenza-ui'
 
 const steps = [
-  { step: 1, title: '账户', description: '填写基本信息' },
-  { step: 2, title: '配置', description: '选择套餐与区域' },
-  { step: 3, title: '确认', description: '核对并提交' },
+  { step: 1, title: 'Account', description: 'Fill in basic details' },
+  { step: 2, title: 'Configuration', description: 'Pick a plan and region' },
+  { step: 3, title: 'Confirm', description: 'Review and submit' },
 ]
 
-// 手写组合:标题与描述放进 trigger,整块文字都可点击跳步;连线只写在非末项。
-// Indicator 的数字/✓/Spinner 是部件自带的默认视觉,不用自己写
+// Hand-written composition: title and description go inside the trigger so
+// the whole text block is clickable for jumping; the connector is only
+// written on non-last items. The Indicator's number / ✓ / Spinner are the
+// part's built-in default visuals -- nothing to write yourself
 export default function CompositionDemo(): ReactElement {
   return (
     <Stepper defaultValue={2}>

@@ -3,8 +3,9 @@ import type { Person } from './people'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { delay, fetchPeople } from './people'
 
-// 数据适配器:把游标分页接口接成 InfiniteSelectAdapterProps 的形状。
-// 真实项目里通常由 react-query 的 useInfiniteQuery 担任这个角色。
+// Data adapter: wires the cursor-paginated API into the shape of
+// InfiniteSelectAdapterProps. In a real project this role is usually
+// played by react-query's useInfiniteQuery.
 export function useFakeInfiniteList(
   query?: string,
   { failFirst = false, pageSize, limit }: { failFirst?: boolean, pageSize?: number, limit?: number } = {},
@@ -14,7 +15,7 @@ export function useFakeInfiniteList(
   const [isLoading, setIsLoading] = useState(true)
   const [isFetchingNextPage, setIsFetchingNextPage] = useState(false)
   const [isError, setIsError] = useState(false)
-  // 竞态防护:query 变化后,旧请求的响应直接丢弃。
+  // Race guard: once the query changes, stale responses are dropped.
   const requestIdRef = useRef(0)
   const attemptRef = useRef(0)
 

@@ -2,14 +2,15 @@ import type { ReactElement } from 'react'
 import { Select } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// pending = 改选后的保存 round-trip:触发器保持可聚焦但弹层不再打开
-// (底下走 readOnly),Spinner 站进 chevron 的位置,清除 ✕ 让位;
-// 服务端确认(模拟 900ms)后才落新值。
+// pending = the save round-trip after picking: the trigger stays focusable but
+// the popup no longer opens (readOnly underneath), a Spinner takes the
+// chevron's place, and the clear ✕ steps aside; the new value lands only after
+// the server confirms (simulated 900ms).
 const VOICES = {
-  soprano: '女高音',
-  alto: '女中音',
-  tenor: '男高音',
-  bass: '男低音',
+  soprano: 'Soprano',
+  alto: 'Alto',
+  tenor: 'Tenor',
+  bass: 'Bass',
 }
 
 export default function PendingDemo(): ReactElement {
@@ -17,8 +18,8 @@ export default function PendingDemo(): ReactElement {
   const [pending, setPending] = useState(false)
   return (
     <Select
-      aria-label="声部"
-      placeholder="进行中"
+      aria-label="Voice part"
+      placeholder="In progress"
       items={VOICES}
       pending={pending}
       value={value}

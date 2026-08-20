@@ -21,15 +21,16 @@ import {
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// RadioGroup 绑定:受控在组上(value/onValueChange),aria-invalid 在各项上;
-// 组本身接不到 htmlFor,FieldLegend 的 id 经 aria-labelledby 手工接给组
+// RadioGroup binding: controlled at the group (value/onValueChange),
+// aria-invalid on each item; the group itself cannot receive htmlFor, so
+// FieldLegend's id is wired to the group by hand via aria-labelledby
 const PLANS = [
-  { id: 'monthly', title: '按月', description: '随时取消，适合先试试。' },
-  { id: 'yearly', title: '按年', description: '一次付清，省下两个月。' },
+  { id: 'monthly', title: 'Monthly', description: 'Cancel anytime; good for trying it out.' },
+  { id: 'yearly', title: 'Yearly', description: 'Pay once, save two months.' },
 ] as const
 
 const schema = z.object({
-  plan: z.string().min(1, '请选择一个方案'),
+  plan: z.string().min(1, 'Select a plan'),
 })
 
 export default function RadioGroupDemo(): ReactElement {
@@ -37,7 +38,7 @@ export default function RadioGroupDemo(): ReactElement {
     defaultValues: { plan: '' },
     validators: { onChange: schema },
     onSubmit: ({ formApi, value }) => {
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -63,8 +64,8 @@ export default function RadioGroupDemo(): ReactElement {
             const { errorId, invalid } = fieldInvalidState(field)
             return (
               <FieldSet data-invalid={invalid || undefined}>
-                <FieldLegend id="plan-legend">订阅方案</FieldLegend>
-                <FieldDescription>之后随时可以升降级。</FieldDescription>
+                <FieldLegend id="plan-legend">Subscription plan</FieldLegend>
+                <FieldDescription>Upgrade or downgrade anytime later.</FieldDescription>
                 <RadioGroup
                   aria-labelledby="plan-legend"
                   aria-required
@@ -95,7 +96,7 @@ export default function RadioGroupDemo(): ReactElement {
           }}
         </form.Field>
         <Field orientation="horizontal">
-          <Button type="submit">提交</Button>
+          <Button type="submit">Submit</Button>
         </Field>
       </FieldGroup>
     </form>

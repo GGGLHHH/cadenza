@@ -5,11 +5,14 @@ import { DataTable } from '@gedatou/cadenza-ui'
 import { PEOPLE } from '../lib/people'
 
 const BLURBS = [
-  '以对位法著称。',
-  '晚期作品以宏大的结构与浓烈的情感著称,对后世交响乐影响深远,至今仍是音乐会保留曲目。',
-  '专注于室内乐与艺术歌曲,笔触细腻。',
-  '歌剧与宗教音乐并重,旋律感极强,生前即享有盛名,作品在欧洲各大剧院常演不衰;晚年转向教学,门生众多。',
-  '民族乐派代表人物,善用民间旋律。',
+  'Renowned for counterpoint.',
+  'Late works famed for grand structures and intense emotion; deeply '
+  + 'influential on later symphonists and still core concert repertoire.',
+  'Focused on chamber music and art songs, with a delicate touch.',
+  'Equally devoted to opera and sacred music, with a strong gift for '
+  + 'melody; celebrated in his lifetime, with works long staged across '
+  + 'Europe. Turned to teaching in later years, with many students.',
+  'A leading nationalist composer, skilled with folk melodies.',
 ]
 
 interface PersonWithBio extends Person {
@@ -22,16 +25,17 @@ const people: PersonWithBio[] = PEOPLE.map((person, index) => ({
 }))
 
 const columns: DataTableColumn<PersonWithBio>[] = [
-  { id: 'name', header: '姓名', cell: person => person.name, rowHeader: true, width: 140 },
-  // 单元格默认 nowrap,需要换行的列自己开
-  { id: 'bio', header: '简介', cell: person => person.bio, className: 'whitespace-normal' },
+  { id: 'name', header: 'Name', cell: person => person.name, rowHeader: true, width: 140 },
+  // Cells are nowrap by default; columns that need wrapping opt in
+  { id: 'bio', header: 'Bio', cell: person => person.bio, className: 'whitespace-normal' },
 ]
 
-// 行高由内容决定:rowHeight 降级为估算,渲染后实测校正
+// Row height follows content: rowHeight becomes an estimate, corrected
+// by measurement after render
 export default function DynamicRowHeightDemo(): ReactElement {
   return (
     <DataTable<PersonWithBio>
-      aria-label="作曲家(动态行高)"
+      aria-label="Composers (dynamic row height)"
       columns={columns}
       dynamicRowHeight
       items={people}

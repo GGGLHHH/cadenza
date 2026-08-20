@@ -12,26 +12,29 @@ import {
 } from '@gedatou/cadenza-ui'
 import { PEOPLE } from '../lib/people'
 
-// 外滚:内容比屏幕高时,整个对话框(连页眉页脚)在遮罩上一起滚。
-// 不用写任何 overflow —— DialogPopup 自带的 Dialog.Viewport 就是那个滚动容器。
+// Outer scroll: when the content is taller than the screen, the whole
+// dialog (header and footer included) scrolls over the backdrop. No
+// overflow to write -- the Dialog.Viewport built into DialogPopup is
+// that scroll container.
 //
-// 项数取 80 而不是"看起来够多"的二三十:demo 不该赌读者的屏幕高度,再高的屏也得装不下,
-// 否则这一页演示的就是个普通对话框。序号是给 macOS 用的 —— 那里的覆盖式滚动条平时
-// 隐藏、滚动时才浮现,没有序号就很难确认自己到底滚没滚。
+// The count is 80 rather than a "looks like plenty" twenty or thirty: a
+// demo should not bet on the reader's screen height; even the tallest
+// screen must fail to fit it, or this page demos an ordinary dialog.
+// The indices are for macOS -- its overlay scrollbars hide until you
+// scroll, and without numbers it is hard to confirm you scrolled at all.
 const ROSTER = PEOPLE.slice(0, 80)
 
 export default function ScrollDemo(): ReactElement {
   return (
     <Dialog>
-      <DialogTrigger render={<Button variant="outline" />}>查看名单</DialogTrigger>
+      <DialogTrigger render={<Button variant="outline" />}>View roster</DialogTrigger>
       <DialogPopup>
         <DialogHeader>
-          <DialogTitle>参演名单</DialogTitle>
+          <DialogTitle>Full roster</DialogTitle>
           <DialogDescription>
-            共
             {ROSTER.length}
             {' '}
-            人,页眉页脚跟着一起滚 —— 滚到底才看得到「关闭」。
+            people; header and footer scroll along -- "Close" only appears at the very bottom.
           </DialogDescription>
         </DialogHeader>
         <ol className="flex flex-col gap-2">
@@ -49,7 +52,7 @@ export default function ScrollDemo(): ReactElement {
           ))}
         </ol>
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>关闭</DialogClose>
+          <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
         </DialogFooter>
       </DialogPopup>
     </Dialog>

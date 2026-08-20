@@ -10,23 +10,24 @@ import {
   DropdownMenuTrigger,
 } from '@gedatou/cadenza-ui'
 
-// 基础组合:分组 + 组标题 + 分隔线。GroupLabel 是组的标题,不是控件的标签。
+// Basic composition: groups + group labels + separators. GroupLabel titles a
+// group, not the control.
 export default function BasicDemo(): ReactElement {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" />}>
-        我的账户
+        My account
       </DropdownMenuTrigger>
       <DropdownMenuPopup>
         <DropdownMenuGroup>
-          <DropdownMenuGroupLabel>账户</DropdownMenuGroupLabel>
-          <DropdownMenuItem>个人资料</DropdownMenuItem>
-          <DropdownMenuItem>账单</DropdownMenuItem>
+          <DropdownMenuGroupLabel>Account</DropdownMenuGroupLabel>
+          <DropdownMenuItem>Profile</DropdownMenuItem>
+          <DropdownMenuItem>Billing</DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>团队</DropdownMenuItem>
-          <DropdownMenuItem>订阅</DropdownMenuItem>
+          <DropdownMenuItem>Team</DropdownMenuItem>
+          <DropdownMenuItem>Subscription</DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuPopup>
     </DropdownMenu>

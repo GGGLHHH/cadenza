@@ -5,7 +5,8 @@ import { PEOPLE } from '../lib/people'
 
 const MODES: ScrollAreaScrollbars[] = ['always', 'hover', 'hidden']
 
-// 滚动条显隐三档:always 常显 / hover 悬停与滚动中显示(默认) / hidden 不渲染
+// Three scrollbar modes: always shown / hover shows on hover and while
+// scrolling (the default) / hidden renders none
 export default function ScrollbarsDemo(): ReactElement {
   return (
     <div className="flex flex-wrap gap-4">

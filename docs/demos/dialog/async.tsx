@@ -15,15 +15,19 @@ import {
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-const INITIAL_NAME = '莫里斯·拉威尔'
+const INITIAL_NAME = 'Maurice Ravel'
 
-// 异步保存:执行按钮**不是** DialogClose —— Close 会在请求刚发出时就关掉框。
-// 用普通 Button + 受控 open,请求成功后自己 setOpen(false)。
+// Async save: the action button is **not** a DialogClose -- Close would
+// shut the dialog the moment the request starts. Use a plain Button +
+// controlled open, and call setOpen(false) yourself once the request
+// succeeds.
 //
-// 保存进行中,cancel() 掉一切关闭意图。Dialog 比 AlertDialog 多两条路要拦:
-// 右上角 ✕ 和点遮罩。cancel() 不分 reason,一次全挡住,所以这里不需要
-// disablePointerDismissal 或 showCloseButton={false} —— 那些是永久的,
-// 而"锁住"只该持续到请求回来。
+// While saving, cancel() every close intent. Dialog has two more routes
+// to block than AlertDialog: the top-right ✕ and backdrop clicks.
+// cancel() ignores reason and blocks them all at once, so there is no
+// need for disablePointerDismissal or showCloseButton={false} here --
+// those are permanent, while the "lock" should only last until the
+// request returns.
 export default function AsyncDemo(): ReactElement {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(INITIAL_NAME)
@@ -43,7 +47,8 @@ export default function AsyncDemo(): ReactElement {
   return (
     <div className="flex flex-col items-center gap-3">
       <p className="text-sm text-muted-foreground">
-        当前显示名:
+        Current display name:
+        {' '}
         <span className="font-medium text-foreground">{name}</span>
       </p>
 
@@ -60,16 +65,16 @@ export default function AsyncDemo(): ReactElement {
           setOpen(next)
         }}
       >
-        <DialogTrigger render={<Button variant="outline" />}>编辑资料</DialogTrigger>
+        <DialogTrigger render={<Button variant="outline" />}>Edit profile</DialogTrigger>
         <DialogPopup>
           <DialogHeader>
-            <DialogTitle>编辑资料</DialogTitle>
+            <DialogTitle>Edit profile</DialogTitle>
             <DialogDescription>
-              {pending ? '正在保存 —— ✕、遮罩、Esc 现在都关不掉。' : '保存要 1.2 秒,期间对话框会锁住。'}
+              {pending ? 'Saving -- ✕, the backdrop, and Esc are all locked out right now.' : 'Saving takes 1.2s; the dialog locks up meanwhile.'}
             </DialogDescription>
           </DialogHeader>
           <Field>
-            <FieldLabel htmlFor="dialog-async-name">显示名</FieldLabel>
+            <FieldLabel htmlFor="dialog-async-name">Display name</FieldLabel>
             <Input
               disabled={pending}
               id="dialog-async-name"
@@ -79,7 +84,7 @@ export default function AsyncDemo(): ReactElement {
           </Field>
           <DialogFooter>
             <DialogClose disabled={pending} render={<Button variant="outline" />}>
-              取消
+              Cancel
             </DialogClose>
             <Button
               onClick={() => {
@@ -87,7 +92,7 @@ export default function AsyncDemo(): ReactElement {
               }}
               pending={pending}
             >
-              保存
+              Save
             </Button>
           </DialogFooter>
         </DialogPopup>

@@ -23,13 +23,14 @@ import { IconX } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// 数组字段:mode="array" + pushValue/removeValue 是 tanstack 原生能力,
-// 经门面原样可用;子字段照常走 fieldControlProps/fieldErrors
+// Array fields: mode="array" + pushValue/removeValue are native tanstack
+// capabilities, usable as-is through the facade; subfields go through
+// fieldControlProps/fieldErrors as usual
 const schema = z.object({
   emails: z
-    .array(z.object({ address: z.email('请输入有效的邮箱地址') }))
-    .min(1, '至少填一个邮箱')
-    .max(5, '最多 5 个邮箱'),
+    .array(z.object({ address: z.email('Enter a valid email address') }))
+    .min(1, 'Enter at least one email')
+    .max(5, 'At most 5 emails'),
 })
 
 export default function ArrayDemo(): ReactElement {
@@ -37,7 +38,7 @@ export default function ArrayDemo(): ReactElement {
     defaultValues: { emails: [{ address: '' }] },
     validators: { onChange: schema },
     onSubmit: ({ formApi, value }) => {
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -63,11 +64,12 @@ export default function ArrayDemo(): ReactElement {
             const { errorId, invalid } = fieldInvalidState(field)
             return (
               <FieldSet data-invalid={invalid || undefined}>
-                <FieldLegend variant="label">联系邮箱</FieldLegend>
-                <FieldDescription>最多 5 个，用于接收排练通知。</FieldDescription>
+                <FieldLegend variant="label">Contact emails</FieldLegend>
+                <FieldDescription>Up to 5, used to receive rehearsal notices.</FieldDescription>
                 <FieldGroup>
                   {field.state.value.map((_, index) => (
-                    // 数组字段按位置寻址,index 就是身份 —— 这里用它当 key 是对的
+                    // Array fields are addressed by position; the index IS
+                    // the identity — using it as the key here is correct
                     // eslint-disable-next-line react/no-array-index-key
                     <form.Field key={index} name={`emails[${index}].address`}>
                       {(subField) => {
@@ -78,7 +80,7 @@ export default function ArrayDemo(): ReactElement {
                               <InputGroupInput
                                 {...fieldControlProps(subField)}
                                 value={subField.state.value}
-                                aria-label={`邮箱 ${index + 1}`}
+                                aria-label={`Email ${index + 1}`}
                                 placeholder="name@example.com"
                                 type="email"
                                 onBlur={subField.handleBlur}
@@ -90,7 +92,7 @@ export default function ArrayDemo(): ReactElement {
                                     type="button"
                                     variant="ghost"
                                     size="icon-xs"
-                                    aria-label={`删除第 ${index + 1} 个邮箱`}
+                                    aria-label={`Remove email ${index + 1}`}
                                     onClick={() => void field.removeValue(index)}
                                   >
                                     <IconX aria-hidden />
@@ -114,7 +116,7 @@ export default function ArrayDemo(): ReactElement {
                     disabled={field.state.value.length >= 5}
                     onClick={() => void field.pushValue({ address: '' })}
                   >
-                    添加邮箱
+                    Add email
                   </Button>
                 </Field>
               </FieldSet>
@@ -122,7 +124,7 @@ export default function ArrayDemo(): ReactElement {
           }}
         </form.Field>
         <Field orientation="horizontal">
-          <Button type="submit">提交</Button>
+          <Button type="submit">Submit</Button>
         </Field>
       </FieldGroup>
     </form>

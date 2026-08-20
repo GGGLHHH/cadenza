@@ -5,13 +5,14 @@ import {
   InfiniteSelectRetry,
 } from '@gedatou/cadenza-ui'
 
-// 状态插槽:文案(含 i18n)在业务层注入,基座零文案。
+// State slots: copy (i18n included) is injected by the app layer; the base
+// ships zero copy.
 export const selectSlots: ReactNode = (
   <>
-    <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
+    <InfiniteSelectEmpty>No matching results</InfiniteSelectEmpty>
     <InfiniteSelectError>
-      加载失败
-      <InfiniteSelectRetry>重试</InfiniteSelectRetry>
+      Failed to load
+      <InfiniteSelectRetry>Retry</InfiniteSelectRetry>
     </InfiniteSelectError>
   </>
 )

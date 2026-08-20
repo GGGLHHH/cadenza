@@ -11,7 +11,8 @@ import { getOption } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 import { selectSlots } from './slots'
 
-// renderItem 替换整行内容:默认的对勾也没了,选中态用 selected 自绘
+// renderItem replaces the whole row content: the default check mark goes
+// too, so draw the selected state yourself from selected
 export default function RenderItemDemo(): ReactElement {
   const state = useInfiniteComboboxState()
   const list = useFakeInfiniteList(state.queryValue)
@@ -22,7 +23,7 @@ export default function RenderItemDemo(): ReactElement {
       getOption={getOption}
       list={list}
       onValueChange={setPicked}
-      searchPlaceholder="搜索作曲家…"
+      searchPlaceholder="Search composers…"
       state={state}
       renderItem={({ item, index, selected }) => (
         <>
@@ -39,9 +40,9 @@ export default function RenderItemDemo(): ReactElement {
         </>
       )}
     >
-      <DemoButton>{picked ? picked.name : '自定义行内容'}</DemoButton>
+      <DemoButton>{picked ? picked.name : 'Custom row content'}</DemoButton>
       {selectSlots}
-      <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
+      <InfiniteSelectLoadingMore>Loading more…</InfiniteSelectLoadingMore>
     </InfiniteCombobox>
   )
 }

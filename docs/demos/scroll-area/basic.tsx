@@ -2,7 +2,8 @@ import type { ReactElement } from 'react'
 import { ScrollArea } from '@gedatou/cadenza-ui'
 import { PEOPLE } from '../lib/people'
 
-// 默认纵向;滚动条 hover / 滚动进行中才出现(scrollbars="hover" 是默认值)
+// Vertical by default; scrollbars appear only on hover / while
+// scrolling (scrollbars="hover" is the default)
 export default function BasicDemo(): ReactElement {
   return (
     <ScrollArea className="rounded-xl border block-64 inline-72">

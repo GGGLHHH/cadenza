@@ -20,23 +20,25 @@ import {
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// Cascader 绑定:与 Select 同型——表单里存整条路径(string[],空为 null),
-// 受控走 value/onValueChange,name 归根(隐藏 input 序列化)、id 落在
-// CascaderTrigger 上,aria 接线用 fieldInvalidState 手工分发。
+// Cascader binding: same shape as Select — the form stores the full path
+// (string[], null when empty), controlled via value/onValueChange, name
+// goes to the root (hidden input serialization), id lands on
+// CascaderTrigger, and aria wiring is hand-distributed with
+// fieldInvalidState.
 const REGIONS: CascaderNode[] = [
   {
     value: 'zhejiang',
-    label: '浙江',
+    label: 'Zhejiang',
     items: [
-      { value: 'hangzhou', label: '杭州', items: [{ value: 'xihu', label: '西湖区' }, { value: 'binjiang', label: '滨江区' }] },
-      { value: 'ningbo', label: '宁波', items: [{ value: 'haishu', label: '海曙区' }] },
+      { value: 'hangzhou', label: 'Hangzhou', items: [{ value: 'xihu', label: 'Xihu District' }, { value: 'binjiang', label: 'Binjiang District' }] },
+      { value: 'ningbo', label: 'Ningbo', items: [{ value: 'haishu', label: 'Haishu District' }] },
     ],
   },
-  { value: 'beijing', label: '北京' },
+  { value: 'beijing', label: 'Beijing' },
 ]
 
 const schema = z.object({
-  region: z.array(z.string()).nullable().refine(path => path !== null, '请选择所在地区'),
+  region: z.array(z.string()).nullable().refine(path => path !== null, 'Select a region'),
 })
 
 export default function CascaderDemo(): ReactElement {
@@ -44,7 +46,7 @@ export default function CascaderDemo(): ReactElement {
     defaultValues: { region: null as string[] | null },
     validators: { onChange: schema },
     onSubmit: ({ formApi, value }) => {
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -71,14 +73,14 @@ export default function CascaderDemo(): ReactElement {
             return (
               <Field orientation="responsive" data-invalid={invalid || undefined}>
                 <FieldContent>
-                  <FieldLabel htmlFor={field.name}>地区</FieldLabel>
-                  <FieldDescription>配送范围按地区结算。</FieldDescription>
+                  <FieldLabel htmlFor={field.name}>Region</FieldLabel>
+                  <FieldDescription>Delivery coverage is settled by region.</FieldDescription>
                   <FieldError id={errorId} errors={fieldErrors(field)} />
                 </FieldContent>
                 <Cascader
                   items={REGIONS}
                   name={field.name}
-                  placeholder="选择地区"
+                  placeholder="Select a region"
                   value={field.state.value}
                   onValueChange={path => field.handleChange(path)}
                 >
@@ -94,7 +96,7 @@ export default function CascaderDemo(): ReactElement {
           }}
         </form.Field>
         <Field orientation="horizontal">
-          <Button type="submit">提交</Button>
+          <Button type="submit">Submit</Button>
         </Field>
       </FieldGroup>
     </form>

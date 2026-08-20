@@ -12,13 +12,16 @@ import {
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// 异步确认的三件事,缺一不可:
+// Async confirmation needs three things, none optional:
 //
-// 1. 执行按钮**不是** AlertDialogClose —— Close 会在请求刚发出时就把框关掉。
-//    用普通 Button,请求成功后自己 setOpen(false)。
-// 2. open 受控,否则第 1 条没法关。
-// 3. 请求进行中 cancel() 掉所有关闭意图 —— 取消按钮、Esc 都算。不然用户能在
-//    请求飞在路上时关掉框,回来看到的是一个说不清做没做成的界面。
+// 1. The action button is **not** an AlertDialogClose -- Close would shut
+//    the dialog the moment the request starts. Use a plain Button and
+//    call setOpen(false) yourself once the request succeeds.
+// 2. open is controlled, otherwise step 1 has no way to close.
+// 3. While the request is in flight, cancel() every close intent -- the
+//    cancel button and Esc alike. Otherwise the user can close the
+//    dialog mid-flight and come back to a UI that cannot say whether the
+//    action went through.
 export default function AsyncDemo(): ReactElement {
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
@@ -37,11 +40,11 @@ export default function AsyncDemo(): ReactElement {
   return (
     <div className="flex flex-col items-center gap-3">
       <p className="text-sm text-muted-foreground">
-        已删除
+        Deleted
         {' '}
         {removed}
         {' '}
-        次
+        times
       </p>
 
       <AlertDialog
@@ -54,17 +57,17 @@ export default function AsyncDemo(): ReactElement {
           setOpen(next)
         }}
       >
-        <AlertDialogTrigger render={<Button variant="outline" />}>删除账号</AlertDialogTrigger>
+        <AlertDialogTrigger render={<Button variant="outline" />}>Delete account</AlertDialogTrigger>
         <AlertDialogPopup>
           <AlertDialogHeader>
-            <AlertDialogTitle>删除这个账号?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this account?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pending ? '正在删除,请稍候 —— 这期间关不掉。' : '删除要 1.2 秒,期间对话框会锁住。'}
+              {pending ? 'Deleting, hang on -- closing is locked out meanwhile.' : 'Deleting takes 1.2s; the dialog locks up during it.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogClose disabled={pending} render={<Button variant="outline" />}>
-              取消
+              Cancel
             </AlertDialogClose>
             <Button
               onClick={() => {
@@ -73,7 +76,7 @@ export default function AsyncDemo(): ReactElement {
               pending={pending}
               variant="destructive"
             >
-              删除
+              Delete
             </Button>
           </AlertDialogFooter>
         </AlertDialogPopup>

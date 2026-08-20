@@ -1,13 +1,14 @@
 import type { ReactElement } from 'react'
 import { ColorPicker, Field, FieldLabel } from '@gedatou/cadenza-ui'
 
-// box-only 控件:可见标签不走 children,走 Field + FieldLabel htmlFor——id 落在
-// 触发器按钮上。传了 id,内置的英文 aria fallback 会自动让位,读屏听到的
-// 就是这个标签
+// A box-only control: the visible label goes not through children but
+// through Field + FieldLabel htmlFor -- the id lands on the trigger
+// button. Once an id is given, the built-in English aria fallback steps
+// aside, and this label is what the screen reader hears
 export default function LabelDemo(): ReactElement {
   return (
     <Field className="max-inline-sm" orientation="horizontal">
-      <FieldLabel htmlFor="brand-color">品牌色</FieldLabel>
+      <FieldLabel htmlFor="brand-color">Brand color</FieldLabel>
       <ColorPicker id="brand-color" defaultValue="#16a34a" />
     </Field>
   )

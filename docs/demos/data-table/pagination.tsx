@@ -14,7 +14,7 @@ export default function PaginationDemo(): ReactElement {
   return (
     <div className="flex flex-col gap-3">
       <DataTable<Person>
-        aria-label="作曲家(分页)"
+        aria-label="Composers (pagination)"
         columns={personColumns}
         items={items}
         {...listState}
@@ -25,8 +25,8 @@ export default function PaginationDemo(): ReactElement {
         limit={limit}
         limitOptions={[10, 20, 50]}
         page={page}
-        rowsPerPageLabel="每页"
-        summary={({ total: totalCount }) => `共 ${totalCount} 条`}
+        rowsPerPageLabel="Per page"
+        summary={({ total: totalCount }) => `${totalCount} rows in total`}
         total={total}
         onLimitChange={(next) => {
           setLimit(next)

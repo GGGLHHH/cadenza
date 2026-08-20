@@ -18,8 +18,10 @@ import { useState } from 'react'
 import { PEOPLE } from '../lib/people'
 import { personColumns } from './columns'
 
-// 组合形态:触发器、弹层是 Select 家族的现有词汇,新部件只有 List / Item / Grip。
-// 触发器显示「N / M 列」,弹层尾部多一个「恢复默认顺序」—— 这正是闭合形态给不了的。
+// Composed form: the trigger and popup are existing vocabulary from the
+// Select family; the only new parts are List / Item / Grip. The trigger
+// shows "N / M columns" and the popup tail adds a "Reset column order"
+// button — exactly what the closed form cannot offer.
 const allColumns: DataTableColumn<Person>[] = [
   { ...personColumns[0], hideable: false },
   ...personColumns.slice(1),
@@ -40,12 +42,12 @@ export default function ColumnsSelectComposedDemo(): ReactElement {
         onOrderCommitted={setOrder}
         onValueChange={setVisible}
       >
-        <SelectTrigger aria-label="显示列" className="inline-40">
+        <SelectTrigger aria-label="Show columns" className="inline-40">
           <IconColumns
             aria-hidden
             className="text-muted-foreground block-4 inline-4"
           />
-          <SelectValue>{() => `${visible.length} / ${ordered.length} 列`}</SelectValue>
+          <SelectValue>{() => `${visible.length} / ${ordered.length} columns`}</SelectValue>
         </SelectTrigger>
         <SelectPopup>
           <DataTableColumnsSelectList>
@@ -63,12 +65,12 @@ export default function ColumnsSelectComposedDemo(): ReactElement {
             variant="ghost"
             onClick={() => setOrder(defaultOrder)}
           >
-            恢复默认顺序
+            Reset column order
           </Button>
         </SelectPopup>
       </DataTableColumnsSelect>
       <DataTable<Person>
-        aria-label="作曲家(组合列选择器)"
+        aria-label="Composers (composed columns select)"
         columns={ordered.filter(column => visible.includes(column.id))}
         items={items}
       />

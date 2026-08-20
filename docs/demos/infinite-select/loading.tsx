@@ -11,8 +11,9 @@ import {
 import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
 
-// 静态加载中适配器:首屏加载期间列表区渲染最低高度的磨砂壳 —— 统一的加载视觉,
-// 文案插槽只剩空态和错误态
+// Static loading adapter: during first load the list area renders a
+// min-height frosted shell — one unified loading visual, so the copy slots
+// are down to just the empty and error states
 const loadingList: InfiniteSelectAdapterProps<Person> = {
   items: [],
   isLoading: true,
@@ -30,14 +31,14 @@ export default function LoadingDemo(): ReactElement {
     <InfiniteCombobox<Person>
       getOption={getOption}
       list={loadingList}
-      searchPlaceholder="搜索作曲家…"
+      searchPlaceholder="Search composers…"
       state={state}
     >
-      <DemoButton>永远在加载</DemoButton>
-      <InfiniteSelectEmpty>没有匹配的结果</InfiniteSelectEmpty>
+      <DemoButton>Loading forever</DemoButton>
+      <InfiniteSelectEmpty>No matching results</InfiniteSelectEmpty>
       <InfiniteSelectError>
-        加载失败
-        <InfiniteSelectRetry>重试</InfiniteSelectRetry>
+        Failed to load
+        <InfiniteSelectRetry>Retry</InfiniteSelectRetry>
       </InfiniteSelectError>
     </InfiniteCombobox>
   )

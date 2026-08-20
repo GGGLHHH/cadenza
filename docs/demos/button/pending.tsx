@@ -2,10 +2,13 @@ import type { ReactElement } from 'react'
 import { Button } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// 全变体公用一个 loading 状态:点任意一颗,整排进入 pending —— 标签原地被磨砂
-// 融开(覆盖不替换)、Spinner 浮在暗纱上、宽度不变。动作面只有 pending 这一个词,
-// 内容面的 loading(LoadingOverlay)是它的对应词、不是别名;
-// 快操作防闪属于调用方:确有需要就延迟置起 pending
+// All variants share one loading state: press any button and the whole row
+// enters pending -- the label frosts over in place (overlaid, not replaced),
+// the Spinner floats on the veil, and the width stays put. The action side
+// has just this one word, pending; the content side's loading
+// (LoadingOverlay) is its counterpart, not an alias.
+// Anti-flicker for fast actions belongs to the caller: delay setting
+// pending if you really need it
 export default function PendingDemo(): ReactElement {
   const [isPending, setIsPending] = useState(false)
   const start = (): void => {
@@ -14,12 +17,12 @@ export default function PendingDemo(): ReactElement {
   }
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Button pending={isPending} onClick={start}>默认</Button>
-      <Button pending={isPending} variant="secondary" onClick={start}>次要</Button>
-      <Button pending={isPending} variant="outline" onClick={start}>描边</Button>
-      <Button pending={isPending} variant="ghost" onClick={start}>幽灵</Button>
-      <Button pending={isPending} variant="destructive" onClick={start}>危险</Button>
-      <Button pending={isPending} variant="link" onClick={start}>链接样式</Button>
+      <Button pending={isPending} onClick={start}>Default</Button>
+      <Button pending={isPending} variant="secondary" onClick={start}>Secondary</Button>
+      <Button pending={isPending} variant="outline" onClick={start}>Outline</Button>
+      <Button pending={isPending} variant="ghost" onClick={start}>Ghost</Button>
+      <Button pending={isPending} variant="destructive" onClick={start}>Destructive</Button>
+      <Button pending={isPending} variant="link" onClick={start}>Link style</Button>
     </div>
   )
 }

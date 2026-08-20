@@ -2,9 +2,11 @@ import type { ReactElement } from 'react'
 import { Button, Spinner } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// 想自己画进行中的样子:别传 pending,传 disabled —— 暗纱和 Spinner 一概不注入,
-// children 完全归你。这里是经典的「spinner 排旁边 + 换文案」形态;代价是内容
-// 变化会改变宽度(默认组合的宽度恒定,靠的正是覆盖而不替换)
+// To draw the in-progress look yourself: pass disabled instead of pending --
+// no veil or Spinner gets injected, children are entirely yours. This is the
+// classic "spinner beside the text + swapped label" shape; the trade-off is
+// that changing content changes the width (the default composition keeps a
+// constant width precisely because it overlays instead of replacing)
 export default function PendingCustomDemo(): ReactElement {
   const [isPending, setIsPending] = useState(false)
   return (
@@ -16,7 +18,7 @@ export default function PendingCustomDemo(): ReactElement {
       }}
     >
       {isPending && <Spinner aria-hidden className="block-[1em] inline-[1em]" />}
-      {isPending ? '保存中…' : '保存'}
+      {isPending ? 'Saving…' : 'Save'}
     </Button>
   )
 }

@@ -4,150 +4,154 @@ import { Cascader } from '@gedatou/cadenza-ui'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
-// 可视化子菜单的悬停意图判定(亚马逊导航出名的「安全三角形」):光标与已打开
-// 子面板近边两角围成的三角形内,斜向掠过兄弟项不会切走子菜单。真实实现是
-// Base UI 内置的 Floating UI safePolygon(动态多边形),这里画的是教学近似。
+// Visualizes the submenu hover-intent judgement (the "safe triangle"
+// made famous by Amazon's navigation): inside the triangle formed by the
+// cursor and the two near-edge corners of the opened subpanel, sweeping
+// diagonally across sibling items does not switch the submenu away. The
+// real implementation is Base UI's built-in Floating UI safePolygon (a
+// dynamic polygon); what is drawn here is a teaching approximation.
 const REGIONS: CascaderNode[] = [
   {
-    value: 'zhejiang',
-    label: '浙江',
+    value: 'united-states',
+    label: 'United States',
     items: [
       {
-        value: 'hangzhou',
-        label: '杭州',
+        value: 'california',
+        label: 'California',
         items: [
-          { value: 'xihu', label: '西湖区' },
-          { value: 'binjiang', label: '滨江区' },
-          { value: 'yuhang', label: '余杭区' },
+          { value: 'san-francisco', label: 'San Francisco' },
+          { value: 'los-angeles', label: 'Los Angeles' },
+          { value: 'san-diego', label: 'San Diego' },
         ],
       },
       {
-        value: 'ningbo',
-        label: '宁波',
+        value: 'texas',
+        label: 'Texas',
         items: [
-          { value: 'haishu', label: '海曙区' },
-          { value: 'yinzhou', label: '鄞州区' },
+          { value: 'houston', label: 'Houston' },
+          { value: 'austin', label: 'Austin' },
         ],
       },
       {
-        value: 'wenzhou',
-        label: '温州',
+        value: 'new-york',
+        label: 'New York',
         items: [
-          { value: 'lucheng', label: '鹿城区' },
-          { value: 'ouhai', label: '瓯海区' },
+          { value: 'new-york-city', label: 'New York City' },
+          { value: 'buffalo', label: 'Buffalo' },
         ],
       },
       {
-        value: 'shaoxing',
-        label: '绍兴',
+        value: 'washington',
+        label: 'Washington',
         items: [
-          { value: 'yuecheng', label: '越城区' },
-          { value: 'keqiao', label: '柯桥区' },
+          { value: 'seattle', label: 'Seattle' },
+          { value: 'tacoma', label: 'Tacoma' },
         ],
       },
       {
-        value: 'jinhua',
-        label: '金华',
+        value: 'florida',
+        label: 'Florida',
         items: [
-          { value: 'wucheng', label: '婺城区' },
-          { value: 'yiwu', label: '义乌市' },
+          { value: 'miami', label: 'Miami' },
+          { value: 'orlando', label: 'Orlando' },
         ],
       },
     ],
   },
   {
-    value: 'jiangsu',
-    label: '江苏',
+    value: 'canada',
+    label: 'Canada',
     items: [
       {
-        value: 'nanjing',
-        label: '南京',
+        value: 'ontario',
+        label: 'Ontario',
         items: [
-          { value: 'xuanwu', label: '玄武区' },
-          { value: 'gulou', label: '鼓楼区' },
+          { value: 'toronto', label: 'Toronto' },
+          { value: 'ottawa', label: 'Ottawa' },
         ],
       },
       {
-        value: 'suzhou',
-        label: '苏州',
+        value: 'quebec',
+        label: 'Quebec',
         items: [
-          { value: 'gusu', label: '姑苏区' },
-          { value: 'wuzhong', label: '吴中区' },
+          { value: 'montreal', label: 'Montreal' },
+          { value: 'quebec-city', label: 'Quebec City' },
         ],
       },
       {
-        value: 'wuxi',
-        label: '无锡',
+        value: 'british-columbia',
+        label: 'British Columbia',
         items: [
-          { value: 'liangxi', label: '梁溪区' },
-          { value: 'binhu', label: '滨湖区' },
+          { value: 'vancouver', label: 'Vancouver' },
+          { value: 'victoria', label: 'Victoria' },
         ],
       },
       {
-        value: 'nantong',
-        label: '南通',
+        value: 'alberta',
+        label: 'Alberta',
         items: [
-          { value: 'chongchuan', label: '崇川区' },
-          { value: 'tongzhou', label: '通州区' },
+          { value: 'calgary', label: 'Calgary' },
+          { value: 'edmonton', label: 'Edmonton' },
         ],
       },
     ],
   },
   {
-    value: 'guangdong',
-    label: '广东',
+    value: 'australia',
+    label: 'Australia',
     items: [
       {
-        value: 'guangzhou',
-        label: '广州',
+        value: 'new-south-wales',
+        label: 'New South Wales',
         items: [
-          { value: 'tianhe', label: '天河区' },
-          { value: 'yuexiu', label: '越秀区' },
+          { value: 'sydney', label: 'Sydney' },
+          { value: 'newcastle', label: 'Newcastle' },
         ],
       },
       {
-        value: 'shenzhen',
-        label: '深圳',
+        value: 'victoria-au',
+        label: 'Victoria',
         items: [
-          { value: 'nanshan', label: '南山区' },
-          { value: 'futian', label: '福田区' },
+          { value: 'melbourne', label: 'Melbourne' },
+          { value: 'geelong', label: 'Geelong' },
         ],
       },
       {
-        value: 'foshan',
-        label: '佛山',
+        value: 'queensland',
+        label: 'Queensland',
         items: [
-          { value: 'chancheng', label: '禅城区' },
-          { value: 'shunde', label: '顺德区' },
+          { value: 'brisbane', label: 'Brisbane' },
+          { value: 'cairns', label: 'Cairns' },
         ],
       },
     ],
   },
   {
-    value: 'fujian',
-    label: '福建',
+    value: 'germany',
+    label: 'Germany',
     items: [
       {
-        value: 'fuzhou',
-        label: '福州',
+        value: 'bavaria',
+        label: 'Bavaria',
         items: [
-          { value: 'gulou-fz', label: '鼓楼区' },
-          { value: 'taijiang', label: '台江区' },
+          { value: 'munich', label: 'Munich' },
+          { value: 'nuremberg', label: 'Nuremberg' },
         ],
       },
       {
-        value: 'xiamen',
-        label: '厦门',
+        value: 'hesse',
+        label: 'Hesse',
         items: [
-          { value: 'siming', label: '思明区' },
-          { value: 'huli', label: '湖里区' },
+          { value: 'frankfurt', label: 'Frankfurt' },
+          { value: 'wiesbaden', label: 'Wiesbaden' },
         ],
       },
     ],
   },
 ]
 
-// 光标到子面板矩形最近一条边的两个端点(级联面板向侧面展开,常态命中左右边)。
+// The two endpoints of the subpanel edge nearest the cursor (cascading
+// panels open sideways, so the left/right edges are the usual hit).
 function nearEdge(x: number, y: number, rect: DOMRect): [string, string] {
   if (x <= rect.left)
     return [`${rect.left},${rect.top}`, `${rect.left},${rect.bottom}`]
@@ -158,7 +162,9 @@ function nearEdge(x: number, y: number, rect: DOMRect): [string, string] {
   return [`${rect.left},${rect.bottom}`, `${rect.right},${rect.bottom}`]
 }
 
-// 面板包含判定的余量(px):兄弟面板之间可能有几像素缝隙,斜线跨缝时不断线。
+// Slack (px) for the panel containment check: sibling panels may sit a
+// few pixels apart, and the diagonal must not break while crossing the
+// gap.
 const containsPad = 8
 
 export default function SafeTriangleDemo(): ReactElement {
@@ -179,13 +185,17 @@ export default function SafeTriangleDemo(): ReactElement {
     function update(): void {
       if (!seen)
         return
-      // DOM 顺序就是打开链:根 → 子 → 孙。斜线只存在于「光标在第 i 层
-      // 面板内、奔向第 i+1 层」这一种姿态——光标不在链上任何面板内
-      // (整个离开了菜单)或已在最深一层,都没有要保护的目标。只收
-      // data-open 的弹层:退场动画期间旧弹层仍在 DOM 里,不能再当目标。
-      // 弹层 portal 到 body,同页别的 Cascader demo 的弹层也会被全局查询
-      // 抓到——靠 aria-labelledby 认亲:根弹层指回本实例的 trigger,
-      // 子弹层指向父面板里的分支项,不在链上的一律跳过。
+      // DOM order is the open chain: root → child → grandchild. The
+      // diagonal only exists in one posture -- "cursor inside panel i,
+      // heading for panel i+1"; a cursor inside none of the chain's
+      // panels (it left the menu entirely) or already in the deepest one
+      // has no target to protect. Only popups with data-open count:
+      // during the exit animation the old popup is still in the DOM and
+      // must no longer be a target. Popups portal to body, so a global
+      // query also catches popups of other Cascader demos on the page --
+      // kinship goes through aria-labelledby: the root popup points back
+      // at this instance's trigger, a child popup points at the branch
+      // item in its parent panel, and anything off the chain is skipped.
       const trigger = anchorRef.current?.querySelector('[data-slot="cascader-trigger"]')
       const chain: Element[] = []
       for (const popup of document.querySelectorAll(
@@ -199,31 +209,45 @@ export default function SafeTriangleDemo(): ReactElement {
           chain.push(popup)
       }
       const rects = chain.map(popup => popup.getBoundingClientRect())
-      // 光标真正落在的最深一层:钻取是向前的,面板边界重叠时深层赢——
-      // 取最浅会把刚跨进子面板的光标判回父层,目标变成脚下这块面板。
+      // The deepest panel the cursor actually sits in: drilling moves
+      // forward, so where panel bounds overlap the deeper one wins --
+      // taking the shallowest would judge a cursor that just crossed
+      // into the subpanel as still in the parent, making the panel
+      // underfoot the target.
       let index = rects.findLastIndex(rect => contains(rect, 0))
-      // 不真在任何面板内 = 可能正跨面板间几像素的缝:宽容判定取最浅命中,
-      // 视作仍在出发面板,目标不变,斜线跨缝不闪断。
+      // Not truly inside any panel = possibly crossing the few-pixel gap
+      // between panels: the lenient check takes the shallowest hit and
+      // treats the cursor as still in the departure panel, so the target
+      // stays put and the diagonal does not flicker off mid-gap.
       if (index === -1)
         index = rects.findIndex(rect => contains(rect, containsPad))
       const target = index === -1 ? undefined : rects[index + 1]
-      // 光标已在目标内部 = 已经到了,没有斜线可保护;此守卫同时封死
-      // nearEdge 对内部点的退化兜底(罩住整块面板的底边三角形)。
+      // Cursor already inside the target = it has arrived; there is no
+      // diagonal left to protect. This guard also seals nearEdge's
+      // degenerate fallback for interior points (a bottom-edge triangle
+      // draped over the whole panel).
       if (target !== undefined && !contains(target, 0)) {
         const [a, b] = nearEdge(lastX, lastY, target)
         setPoints(`${lastX},${lastY} ${a} ${b}`)
-        // 显示期间每帧跟随:弹层挂载后 Floating UI 还可能再调整定位/尺寸,
-        // 那只是 style 变更,指针和 childList 都不报信。points 没变时
-        // setState 同值 bail out,不产生重渲染;无目标时循环自然停。
+        // Follow every frame while visible: after the popup mounts,
+        // Floating UI may still adjust position/size -- that is only a
+        // style change, so neither the pointer nor childList reports it.
+        // With points unchanged, setState bails out on the same value
+        // and no re-render happens; with no target the loop stops on its
+        // own.
         frame = requestAnimationFrame(update)
         return
       }
       setPoints(null)
     }
 
-    // 测量统一推迟到下一帧:弹层刚挂载时 Floating UI 的定位还没落地,
-    // 那一刻量到的矩形停在视口 (0,0),同步重算会画出指向左上角的三角形。
-    // rAF 在定位就绪之后、绘制之前跑,顺带把连续 pointermove 合并成每帧一次。
+    // Defer all measurement to the next frame: right at popup mount,
+    // Floating UI's positioning has not landed yet, and a rect measured
+    // at that instant sits at the viewport's (0,0) -- recomputing
+    // synchronously would draw a triangle pointing at the top-left
+    // corner. rAF runs after positioning settles and before paint, and
+    // along the way coalesces consecutive pointermove events into one
+    // pass per frame.
     function schedule(): void {
       cancelAnimationFrame(frame)
       frame = requestAnimationFrame(update)
@@ -236,8 +260,10 @@ export default function SafeTriangleDemo(): ReactElement {
       schedule()
     }
 
-    // 子面板超时自关或选中关闭时没有指针事件,残留要靠 DOM 信号清:
-    // 弹层关闭即从 body 卸载,childList 变更就是重算时机。
+    // A subpanel closing itself on timeout or on selection sends no
+    // pointer event, so leftovers are cleared by a DOM signal: a closing
+    // popup unmounts from body, and that childList change is the cue to
+    // recompute.
     const observer = new MutationObserver(schedule)
     observer.observe(document.body, { childList: true, subtree: true })
     window.addEventListener('pointermove', handleMove, { passive: true })
@@ -250,9 +276,9 @@ export default function SafeTriangleDemo(): ReactElement {
 
   return (
     <>
-      {/* display:contents 的锚点只为拿到本实例 trigger,不参与布局 */}
+      {/* The display:contents anchor exists only to find this instance's trigger; it takes no part in layout */}
       <span className="contents" ref={anchorRef}>
-        <Cascader aria-label="地区" defaultOpen items={REGIONS} placeholder="悬停分支,斜向移入子面板" />
+        <Cascader aria-label="Region" defaultOpen items={REGIONS} placeholder="Hover a branch, move diagonally into the subpanel" />
       </span>
       {points !== null && createPortal(
         <svg

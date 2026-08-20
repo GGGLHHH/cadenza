@@ -2,25 +2,30 @@ import type { ReactElement } from 'react'
 import { Calendar, DatePicker, DatePickerPopup } from '@gedatou/cadenza-ui'
 import { zhCN } from 'date-fns/locale'
 
-// 面板顶上的年、月本身就是下拉,不用一格格翻箭头 —— 默认在场,basic
-// demo 打开就有。这里演示三件跟它有关的事:
+// The year and month in the panel caption are dropdowns themselves -- no
+// stepping through arrows page by page. They are on by default: the basic
+// demo has them as soon as it opens. This demo shows three related things:
 //
-// 1. locale:管所有「格式化出来的」文案 —— 星期行、月份名、输入框里的值。
-//    它在根上,因为解析键入的文本也要用它。
-// 2. labels:管「朗读出来的」文案。rdp 有一批写死的英文字面量(Choose the
-//    Year / Go to the Previous Month…),locale 碰不到,只能从这里翻。
-// 3. startMonth / endMonth:年份范围默认今年 ±100,生日场景往回要得多、
-//    往前一年都不需要。
+// 1. locale: controls every "formatted" string -- the weekday row, month
+//    names, the value in the input. It lives on the root because parsing
+//    typed text needs it too.
+// 2. labels: controls the "spoken" strings. rdp ships a set of hardcoded
+//    English literals (Choose the Year / Go to the Previous Month...)
+//    that locale cannot reach; they can only be translated from here.
+// 3. startMonth / endMonth: the year range defaults to this year ±100.
+//    A birthday field needs to go much further back, and not even one
+//    year forward.
 //
-// 后两个只影响面板、不影响输入框,所以和别的日历配置走同一条路:弹层的
-// 函数 children,不往根上开口子。
+// The last two only affect the panel, not the input, so they take the
+// same route as every other calendar config: the popup's function
+// children, with no extra props on the root.
 export default function CaptionNavDemo(): ReactElement {
   return (
     <DatePicker
-      aria-label="出生日期"
+      aria-label="Date of birth"
       format="yyyy年MM月dd日"
       locale={zhCN}
-      placeholder="选择出生日期"
+      placeholder="Pick a date of birth"
     >
       {({ defaultChildren }) => (
         <>

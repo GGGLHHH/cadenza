@@ -2,7 +2,8 @@ import type { ReactElement } from 'react'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@gedatou/cadenza-ui'
 import { IconCheck, IconMail, IconSearch } from '@tabler/icons-react'
 
-// 图标前后缀:align 决定放行首还是行尾,默认 inline-start
+// Icon prefixes and suffixes: align picks the start or end of the line,
+// defaulting to inline-start
 export default function IconDemo(): ReactElement {
   return (
     <div className="flex flex-col gap-3 inline-full max-inline-sm">
@@ -10,13 +11,13 @@ export default function IconDemo(): ReactElement {
         <InputGroupAddon>
           <IconSearch aria-hidden />
         </InputGroupAddon>
-        <InputGroupInput aria-label="搜索" placeholder="搜索..." />
+        <InputGroupInput aria-label="Search" placeholder="Search..." />
       </InputGroup>
       <InputGroup>
         <InputGroupAddon>
           <IconMail aria-hidden />
         </InputGroupAddon>
-        <InputGroupInput aria-label="邮箱" placeholder="you@example.com" type="email" />
+        <InputGroupInput aria-label="Email" placeholder="you@example.com" type="email" />
         <InputGroupAddon align="inline-end">
           <IconCheck aria-hidden className="text-emerald-600" />
         </InputGroupAddon>

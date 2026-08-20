@@ -12,21 +12,20 @@ import {
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// 两个出口都是 AlertDialogClose,干活的那个把工作放在 onClick 里 ——
-// 关闭是它本来就会做的事。没有右上角 ✕:alert dialog 的存在意义就是逼出一个答复,
-// 一个不表态的出口与此矛盾。
+// Both exits are AlertDialogClose; the working one carries its job in
+// onClick -- closing is what it would do anyway. No top-right ✕: an
+// alert dialog exists to force an answer, and a non-committal exit
+// contradicts that.
 export default function BasicDemo(): ReactElement {
-  const [drafts, setDrafts] = useState(['夜之加斯帕', '水之嬉戏', '悼念公主的帕凡舞曲'])
+  const [drafts, setDrafts] = useState(['Gaspard de la nuit', 'Miroirs', 'Pavane pour une infante défunte'])
 
   return (
     <div className="flex flex-col items-center gap-3">
       <p className="text-sm text-muted-foreground">
-        草稿
-        {' '}
         {drafts.length}
         {' '}
-        份
-        {drafts.length > 0 && `:${drafts.join('、')}`}
+        drafts
+        {drafts.length > 0 && `: ${drafts.join(', ')}`}
       </p>
 
       <AlertDialog>
@@ -34,26 +33,27 @@ export default function BasicDemo(): ReactElement {
           disabled={drafts.length === 0}
           render={<Button variant="outline" />}
         >
-          删除最后一份
+          Delete the last one
         </AlertDialogTrigger>
         <AlertDialogPopup>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              删除《
+              Delete “
               {drafts.at(-1)}
-              》?
+              ”?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              草稿删除后无法恢复,请确认这不是你还需要的那一份。
+              A deleted draft cannot be recovered; make sure this is not
+              the one you still need.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" />}>取消</AlertDialogClose>
+            <AlertDialogClose render={<Button variant="outline" />}>Cancel</AlertDialogClose>
             <AlertDialogClose
               onClick={() => setDrafts(rest => rest.slice(0, -1))}
               render={<Button variant="destructive" />}
             >
-              删除
+              Delete
             </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogPopup>

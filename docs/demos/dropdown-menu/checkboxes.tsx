@@ -9,20 +9,21 @@ import {
   DropdownMenuTrigger,
 } from '@gedatou/cadenza-ui'
 
-// 勾选项:点击就地翻转,菜单保持打开——设置菜单经得起自己的开关。
+// Checkbox items: a click toggles in place and the menu stays open — a
+// settings menu survives its own switches.
 export default function CheckboxesDemo(): ReactElement {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" />}>
-        视图
+        View
       </DropdownMenuTrigger>
       <DropdownMenuPopup>
-        {/* GroupLabel 必须在 Group(或 RadioGroup)内——Base UI 靠组的 context 接 aria-labelledby */}
+        {/* GroupLabel must sit inside a Group (or RadioGroup) — Base UI wires aria-labelledby through the group's context */}
         <DropdownMenuGroup>
-          <DropdownMenuGroupLabel>外观</DropdownMenuGroupLabel>
-          <DropdownMenuCheckboxItem defaultChecked>显示行号</DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem defaultChecked>自动换行</DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem>显示缩进参考线</DropdownMenuCheckboxItem>
+          <DropdownMenuGroupLabel>Appearance</DropdownMenuGroupLabel>
+          <DropdownMenuCheckboxItem defaultChecked>Show line numbers</DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem defaultChecked>Word wrap</DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem>Show indent guides</DropdownMenuCheckboxItem>
         </DropdownMenuGroup>
       </DropdownMenuPopup>
     </DropdownMenu>

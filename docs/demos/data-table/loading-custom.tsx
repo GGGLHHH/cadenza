@@ -4,12 +4,13 @@ import { DataTable, DataTableLoadingOverlay, Spinner } from '@gedatou/cadenza-ui
 import { PEOPLE } from '../lib/people'
 import { personColumns } from './columns'
 
-// Slotted 定制:标记部件写在插槽通道里、原地不渲染,由卡片提升到覆盖层位置。
-// children 替换居中的 Spinner,className 调磨砂浓度
+// Slotted customization: the marker part lives in the slot channel and
+// does not render in place — the card lifts it into the overlay position.
+// children replaces the centered Spinner, className tunes the frost
 export default function LoadingCustomDemo(): ReactElement {
   return (
     <DataTable<Person>
-      aria-label="作曲家(定制加载)"
+      aria-label="Composers (custom loading)"
       columns={personColumns}
       isLoading
       items={PEOPLE.slice(0, 4)}
@@ -17,7 +18,7 @@ export default function LoadingCustomDemo(): ReactElement {
       <DataTableLoadingOverlay className="backdrop-blur-xs">
         <span className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner aria-hidden />
-          正在同步演出数据…
+          Syncing concert data…
         </span>
       </DataTableLoadingOverlay>
     </DataTable>

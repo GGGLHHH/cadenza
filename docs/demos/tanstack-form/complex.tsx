@@ -58,55 +58,56 @@ import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 
-// 综合示例:控件全家 × zod 常见形态 —— 必填/邮箱/数字 coerce/跨字段 superRefine/
-// 可选限长/数组 min/布尔 refine/滑杆范围,同一套门面接线贯穿
+// Kitchen-sink example: the whole control family x common zod shapes —
+// required/email/number coerce/cross-field superRefine/optional length
+// cap/array min/boolean refine/slider range, all through one facade wiring
 const VOICE_PARTS = {
-  soprano: '女高音',
-  alto: '女低音',
-  tenor: '男高音',
-  bass: '男低音',
+  soprano: 'Soprano',
+  alto: 'Alto',
+  tenor: 'Tenor',
+  bass: 'Bass',
 } as const
 
 const EXPERIENCE_LEVELS = [
-  { id: 'beginner', title: '初学', description: '没有合唱经验,愿意从头学。' },
-  { id: 'experienced', title: '有经验', description: '参加过合唱团或声乐训练。' },
+  { id: 'beginner', title: 'Beginner', description: 'No choir experience, willing to learn from scratch.' },
+  { id: 'experienced', title: 'Experienced', description: 'Has sung in a choir or had vocal training.' },
 ] as const
 
 const WEEKDAYS = [
-  { id: 'wed', label: '周三晚' },
-  { id: 'sat', label: '周六下午' },
-  { id: 'sun', label: '周日下午' },
+  { id: 'wed', label: 'Wednesday evening' },
+  { id: 'sat', label: 'Saturday afternoon' },
+  { id: 'sun', label: 'Sunday afternoon' },
 ] as const
 
 const schema = z
   .object({
-    email: z.email('请输入有效的邮箱地址'),
-    smsCode: z.string().regex(/^\d{6}$/, '请输入 6 位数字验证码'),
-    password: z.string().min(8, '密码至少 8 位'),
+    email: z.email('Enter a valid email address'),
+    smsCode: z.string().regex(/^\d{6}$/, 'Enter the 6-digit verification code'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
-    fullName: z.string().min(2, '姓名至少 2 个字'),
+    fullName: z.string().min(2, 'Name must be at least 2 characters'),
     age: z
-      .number({ error: '请输入数字' })
-      .int('年龄须为整数')
-      .min(12, '至少 12 岁')
-      .max(90, '最大 90 岁')
+      .number({ error: 'Enter a number' })
+      .int('Age must be an integer')
+      .min(12, 'Must be at least 12')
+      .max(90, 'Must be at most 90')
       .nullable()
-      .refine(value => value !== null, '请填写年龄'),
-    bio: z.string().max(100, '简介最多 100 字'),
-    voicePart: z.string().min(1, '请选择声部'),
-    composerId: z.string().nullable().refine(value => value !== null, '请选择作曲家'),
-    experience: z.string().min(1, '请选择经验水平'),
-    weekdays: z.array(z.string()).min(1, '至少选一个排练时段'),
-    weeklyHours: z.number().min(2, '每周至少投入 2 小时'),
+      .refine(value => value !== null, 'Enter your age'),
+    bio: z.string().max(100, 'Bio must be at most 100 characters'),
+    voicePart: z.string().min(1, 'Select a voice part'),
+    composerId: z.string().nullable().refine(value => value !== null, 'Select a composer'),
+    experience: z.string().min(1, 'Select an experience level'),
+    weekdays: z.array(z.string()).min(1, 'Pick at least one rehearsal slot'),
+    weeklyHours: z.number().min(2, 'Commit at least 2 hours per week'),
     notifications: z.boolean(),
-    agreeTerms: z.boolean().refine(value => value, '入团前请先同意排练守则'),
+    agreeTerms: z.boolean().refine(value => value, 'Agree to the rehearsal rules before joining'),
   })
   .superRefine((data, ctx) => {
     if (data.confirmPassword !== data.password) {
       ctx.addIssue({
         code: 'custom',
         path: ['confirmPassword'],
-        message: '两次输入的密码不一致',
+        message: 'Passwords do not match',
       })
     }
   })
@@ -137,9 +138,10 @@ export default function ComplexDemo(): ReactElement {
     validators: { onChange: schema },
     onSubmit: async ({ formApi, value }) => {
       await new Promise(resolve => setTimeout(resolve, 800))
-      // validators 只校验不转换:transform 的产物(age 为数字)要在提交时 parse 拿到
+      // validators only validate, never transform: transform output (age
+      // as a number) must be obtained by parsing at submit time
       const data = schema.parse(value)
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -163,14 +165,14 @@ export default function ComplexDemo(): ReactElement {
     >
       <FieldGroup>
         <FieldSet>
-          <FieldLegend>账号</FieldLegend>
+          <FieldLegend>Account</FieldLegend>
           <FieldGroup>
             <form.Field name="email">
               {(field) => {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>邮箱</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>Email</FieldLabel>
                     <InputGroup>
                       <InputGroupAddon>
                         <IconMail aria-hidden />
@@ -195,7 +197,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>短信验证码</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>SMS verification code</FieldLabel>
                     <InputOTP
                       {...fieldControlProps(field)}
                       maxLength={6}
@@ -225,7 +227,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>密码</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>Password</FieldLabel>
                     <Input
                       {...fieldControlProps(field)}
                       value={field.state.value}
@@ -234,7 +236,7 @@ export default function ComplexDemo(): ReactElement {
                       onBlur={field.handleBlur}
                       onChange={event => field.handleChange(event.target.value)}
                     />
-                    <FieldDescription>至少 8 位。</FieldDescription>
+                    <FieldDescription>At least 8 characters.</FieldDescription>
                     <FieldError id={errorId} errors={fieldErrors(field)} />
                   </Field>
                 )
@@ -245,7 +247,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>确认密码</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>Confirm password</FieldLabel>
                     <Input
                       {...fieldControlProps(field)}
                       aria-required
@@ -264,19 +266,19 @@ export default function ComplexDemo(): ReactElement {
         </FieldSet>
         <FieldSeparator />
         <FieldSet>
-          <FieldLegend>基本资料</FieldLegend>
+          <FieldLegend>Profile</FieldLegend>
           <FieldGroup>
             <form.Field name="fullName">
               {(field) => {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>姓名</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>Name</FieldLabel>
                     <Input
                       {...fieldControlProps(field)}
                       value={field.state.value}
                       autoComplete="name"
-                      placeholder="葛大头"
+                      placeholder="Alex Carter"
                       onBlur={field.handleBlur}
                       onChange={event => field.handleChange(event.target.value)}
                     />
@@ -290,7 +292,7 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>年龄</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>Age</FieldLabel>
                     <NumberField
                       id={field.name}
                       name={field.name}
@@ -300,7 +302,7 @@ export default function ComplexDemo(): ReactElement {
                       onValueChange={value => field.handleChange(value)}
                     >
                       <NumberFieldGroup>
-                        <NumberFieldDecrement aria-label="减少" />
+                        <NumberFieldDecrement aria-label="Decrease" />
                         <NumberFieldInput
                           aria-describedby={errorId}
                           aria-invalid={invalid}
@@ -308,11 +310,12 @@ export default function ComplexDemo(): ReactElement {
                           placeholder="18"
                           onBlur={field.handleBlur}
                         />
-                        <NumberFieldIncrement aria-label="增加" />
+                        <NumberFieldIncrement aria-label="Increase" />
                       </NumberFieldGroup>
                     </NumberField>
                     <FieldDescription>
-                      NumberField 的值原生是 number | null,无需字符串转换。
+                      NumberField values are natively number | null — no
+                      string conversion needed.
                     </FieldDescription>
                     <FieldError id={errorId} errors={fieldErrors(field)} />
                   </Field>
@@ -324,15 +327,15 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={field.name}>简介（可选）</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>Bio (optional)</FieldLabel>
                     <Textarea
                       {...fieldControlProps(field)}
                       value={field.state.value}
-                      placeholder="唱过什么、想唱什么……"
+                      placeholder="What you have sung, what you want to sing…"
                       onBlur={field.handleBlur}
                       onChange={event => field.handleChange(event.target.value)}
                     />
-                    <FieldDescription>可以留空,最多 100 字。</FieldDescription>
+                    <FieldDescription>May be left empty; at most 100 characters.</FieldDescription>
                     <FieldError id={errorId} errors={fieldErrors(field)} />
                   </Field>
                 )
@@ -342,7 +345,7 @@ export default function ComplexDemo(): ReactElement {
         </FieldSet>
         <FieldSeparator />
         <FieldSet>
-          <FieldLegend>排练偏好</FieldLegend>
+          <FieldLegend>Rehearsal preferences</FieldLegend>
           <FieldGroup>
             <form.Field name="voicePart">
               {(field) => {
@@ -350,7 +353,7 @@ export default function ComplexDemo(): ReactElement {
                 return (
                   <Field orientation="responsive" data-invalid={invalid || undefined}>
                     <FieldContent>
-                      <FieldLabel htmlFor={field.name}>声部</FieldLabel>
+                      <FieldLabel htmlFor={field.name}>Voice part</FieldLabel>
                       <FieldError id={errorId} errors={fieldErrors(field)} />
                     </FieldContent>
                     <Select
@@ -366,7 +369,7 @@ export default function ComplexDemo(): ReactElement {
                         aria-required
                         className="min-inline-[120px]"
                       >
-                        <SelectValue placeholder="选一个声部" />
+                        <SelectValue placeholder="Pick a voice part" />
                       </SelectTrigger>
                       <SelectPopup>
                         <SelectGroup>
@@ -388,13 +391,13 @@ export default function ComplexDemo(): ReactElement {
                 return (
                   <Field data-invalid={invalid || undefined}>
                     <FieldLabel htmlFor="signup-composer-trigger" required>
-                      最喜欢的作曲家
+                      Favorite composer
                     </FieldLabel>
                     <InfiniteCombobox<Person>
                       getOption={getOption}
                       list={composerList}
                       name={field.name}
-                      searchPlaceholder="搜索作曲家…"
+                      searchPlaceholder="Search composers…"
                       state={comboboxState}
                       triggerId="signup-composer-trigger"
                       value={field.state.value}
@@ -408,12 +411,12 @@ export default function ComplexDemo(): ReactElement {
                         aria-invalid={invalid}
                         className="justify-start inline-full"
                       >
-                        {pickedComposer ? pickedComposer.name : '选择作曲家'}
+                        {pickedComposer ? pickedComposer.name : 'Select a composer'}
                       </DemoButton>
                       {selectSlots}
-                      <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
+                      <InfiniteSelectLoadingMore>Loading more…</InfiniteSelectLoadingMore>
                     </InfiniteCombobox>
-                    <FieldDescription>表单持久化的是 id,不是对象。</FieldDescription>
+                    <FieldDescription>The form persists the id, not the object.</FieldDescription>
                     <FieldError id={errorId} errors={fieldErrors(field)} />
                   </Field>
                 )
@@ -425,7 +428,7 @@ export default function ComplexDemo(): ReactElement {
                 return (
                   <FieldSet data-invalid={invalid || undefined}>
                     <FieldLegend id="experience-legend" variant="label">
-                      经验水平
+                      Experience level
                     </FieldLegend>
                     <RadioGroup
                       aria-labelledby="experience-legend"
@@ -461,8 +464,8 @@ export default function ComplexDemo(): ReactElement {
                 const { errorId, invalid } = fieldInvalidState(field)
                 return (
                   <FieldSet data-invalid={invalid || undefined}>
-                    <FieldLegend variant="label" required>排练时段</FieldLegend>
-                    <FieldDescription>可多选。</FieldDescription>
+                    <FieldLegend variant="label" required>Rehearsal slots</FieldLegend>
+                    <FieldDescription>Multiple choices allowed.</FieldDescription>
                     <FieldGroup>
                       {WEEKDAYS.map(day => (
                         <Field key={day.id} orientation="horizontal">
@@ -499,10 +502,10 @@ export default function ComplexDemo(): ReactElement {
                 return (
                   <Field data-invalid={invalid || undefined}>
                     <FieldTitle id="weekly-hours-label">
-                      每周可投入（
+                      Weekly commitment (
                       {field.state.value}
                       {' '}
-                      小时）
+                      hours)
                     </FieldTitle>
                     <Slider
                       aria-labelledby="weekly-hours-label"
@@ -523,9 +526,10 @@ export default function ComplexDemo(): ReactElement {
               {field => (
                 <Field orientation="horizontal">
                   <FieldContent>
-                    <FieldLabel htmlFor={field.name}>排练提醒</FieldLabel>
+                    <FieldLabel htmlFor={field.name}>Rehearsal reminders</FieldLabel>
                     <FieldDescription>
-                      无校验的字段:排期变化时发邮件提醒。
+                      A field with no validation: email me when the
+                      schedule changes.
                     </FieldDescription>
                   </FieldContent>
                   <Switch
@@ -555,8 +559,8 @@ export default function ComplexDemo(): ReactElement {
                   onCheckedChange={checked => field.handleChange(checked)}
                 />
                 <FieldContent>
-                  <FieldLabel htmlFor={field.name}>同意排练守则</FieldLabel>
-                  <FieldDescription>准时出勤，请假提前一天说。</FieldDescription>
+                  <FieldLabel htmlFor={field.name}>Agree to the rehearsal rules</FieldLabel>
+                  <FieldDescription>Show up on time; ask for leave a day ahead.</FieldDescription>
                   <FieldError id={errorId} errors={fieldErrors(field)} />
                 </FieldContent>
               </Field>
@@ -564,9 +568,9 @@ export default function ComplexDemo(): ReactElement {
           }}
         </form.Field>
         <Field orientation="horizontal">
-          <Button type="submit" pending={submitting}>报名</Button>
+          <Button type="submit" pending={submitting}>Sign up</Button>
           <Button type="button" variant="outline" onClick={() => form.reset()}>
-            重置
+            Reset
           </Button>
         </Field>
       </FieldGroup>

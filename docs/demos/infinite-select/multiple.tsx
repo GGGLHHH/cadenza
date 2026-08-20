@@ -15,7 +15,8 @@ import { getOption } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 import { selectSlots } from './slots'
 
-// commitOnClose:弹层内的勾选只是草稿,关闭弹层才提交一次 onValueChange
+// commitOnClose: ticks inside the popup are only a draft; closing the popup
+// commits onValueChange exactly once
 export default function MultiDemo(): ReactElement {
   const state = useInfiniteComboboxState()
   const list = useFakeInfiniteList(state.queryValue)
@@ -28,20 +29,20 @@ export default function MultiDemo(): ReactElement {
       list={list}
       selectionMode="multiple"
       onValueChange={(_items, nextIds) => setIds(nextIds)}
-      searchPlaceholder="搜索作曲家…"
+      searchPlaceholder="Search composers…"
       state={state}
       value={ids}
     >
       <DemoButton>
-        {ids.length > 0 ? `已选 ${ids.length} 位` : '选择多位作曲家'}
+        {ids.length > 0 ? `${ids.length} selected` : 'Pick several composers'}
       </DemoButton>
       {selectSlots}
       <InfiniteSelectFooter>
-        <InfiniteSelectClear>清空</InfiniteSelectClear>
+        <InfiniteSelectClear>Clear</InfiniteSelectClear>
         <InfiniteSelectFooterSeparator />
-        <InfiniteSelectClose>确定</InfiniteSelectClose>
+        <InfiniteSelectClose>Done</InfiniteSelectClose>
       </InfiniteSelectFooter>
-      <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
+      <InfiniteSelectLoadingMore>Loading more…</InfiniteSelectLoadingMore>
     </InfiniteCombobox>
   )
 }

@@ -18,13 +18,14 @@ import {
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// Input 绑定:value/onChange/onBlur 三线手写,id/name/aria 四线由 fieldControlProps 一次展开
+// Input binding: the value/onChange/onBlur trio is hand-written; the
+// id/name/aria quartet is spread in one go by fieldControlProps
 const schema = z.object({
   username: z
     .string()
-    .min(3, '用户名至少 3 个字符')
-    .max(10, '用户名最多 10 个字符')
-    .regex(/^\w+$/, '只能包含字母、数字与下划线'),
+    .min(3, 'Username must be at least 3 characters')
+    .max(10, 'Username must be at most 10 characters')
+    .regex(/^\w+$/, 'Only letters, digits, and underscores allowed'),
 })
 
 export default function InputDemo(): ReactElement {
@@ -32,7 +33,7 @@ export default function InputDemo(): ReactElement {
     defaultValues: { username: '' },
     validators: { onChange: schema },
     onSubmit: ({ formApi, value }) => {
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -58,7 +59,7 @@ export default function InputDemo(): ReactElement {
             const { errorId, invalid } = fieldInvalidState(field)
             return (
               <Field data-invalid={invalid || undefined}>
-                <FieldLabel htmlFor={field.name}>用户名</FieldLabel>
+                <FieldLabel htmlFor={field.name}>Username</FieldLabel>
                 <Input
                   {...fieldControlProps(field)}
                   value={field.state.value}
@@ -68,7 +69,8 @@ export default function InputDemo(): ReactElement {
                   onChange={event => field.handleChange(event.target.value)}
                 />
                 <FieldDescription>
-                  公开显示，3–10 个字符，只能包含字母、数字与下划线。
+                  Shown publicly; 3-10 characters, letters, digits, and
+                  underscores only.
                 </FieldDescription>
                 <FieldError id={errorId} errors={fieldErrors(field)} />
               </Field>
@@ -76,7 +78,7 @@ export default function InputDemo(): ReactElement {
           }}
         </form.Field>
         <Field orientation="horizontal">
-          <Button type="submit">提交</Button>
+          <Button type="submit">Submit</Button>
         </Field>
       </FieldGroup>
     </form>

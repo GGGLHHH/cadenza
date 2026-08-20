@@ -1,8 +1,9 @@
 import type { ReactElement } from 'react'
 import { Toggle } from '@gedatou/cadenza-ui'
 
-// variant / size 是 shadcn 的 cva 旋钮,Base UI 的 Toggle 上没有这两个 prop。
-// 每行第二颗默认按下,好看清 aria-pressed 画出来的底色
+// variant / size are shadcn's cva knobs; Base UI's Toggle has neither prop.
+// The second button in each row starts pressed, making the aria-pressed
+// background easy to see
 export default function VariantsDemo(): ReactElement {
   return (
     <div className="flex flex-col gap-4">

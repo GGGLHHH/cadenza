@@ -13,25 +13,28 @@ import {
 } from '@gedatou/cadenza-ui'
 import { PEOPLE } from '../lib/people'
 
-// 内滚:页眉页脚钉住,只有中间滚。写一个 DialogBody 就够 —— 弹层看见它就自己
-// 封顶到屏幕高度并改用 flex 布局(:has 规则),不需要任何 prop 或类名。
-// 此时 popup 不再超出视口,外滚没东西可滚,自动让路。
+// Inner scroll: header and footer stay pinned, only the middle scrolls.
+// Writing one DialogBody is enough -- the popup sees it, caps itself to
+// the screen height, and switches to flex layout (a :has rule); no prop
+// or class name required. The popup no longer exceeds the viewport, the
+// outer scroll has nothing left to scroll, and it steps aside on its own.
 //
-// 项数同 scroll demo 取 80:少了在高屏上填不满封顶高度,就滚不起来,演示等于没演示。
+// The item count matches the scroll demo at 80: fewer would not fill the
+// capped height on a tall screen, nothing would scroll, and the demo
+// would demonstrate nothing.
 const ROSTER = PEOPLE.slice(0, 80)
 
 export default function ScrollInsideDemo(): ReactElement {
   return (
     <Dialog>
-      <DialogTrigger render={<Button variant="outline" />}>查看名单</DialogTrigger>
+      <DialogTrigger render={<Button variant="outline" />}>View roster</DialogTrigger>
       <DialogPopup>
         <DialogHeader>
-          <DialogTitle>参演名单</DialogTitle>
+          <DialogTitle>Full roster</DialogTitle>
           <DialogDescription>
-            共
             {ROSTER.length}
             {' '}
-            人,页眉页脚不动 ——「关闭」始终在视线里。
+            people; header and footer stay put -- "Close" never leaves your sight.
           </DialogDescription>
         </DialogHeader>
         <DialogBody>
@@ -51,7 +54,7 @@ export default function ScrollInsideDemo(): ReactElement {
           </ol>
         </DialogBody>
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>关闭</DialogClose>
+          <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
         </DialogFooter>
       </DialogPopup>
     </Dialog>

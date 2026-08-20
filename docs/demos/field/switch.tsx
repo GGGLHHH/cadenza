@@ -1,12 +1,13 @@
 import type { ReactElement } from 'react'
 import { Field, FieldLabel, Switch } from '@gedatou/cadenza-ui'
 
-// 和 Checkbox 同一类:id 落在隐藏 <input> 上,一条 htmlFor 给出名字和「点文字切换」
+// Same family as Checkbox: the id lands on the hidden <input>, and one htmlFor
+// provides both the name and "press the text to toggle"
 export default function SwitchDemo(): ReactElement {
   return (
     <Field className="max-inline-sm" orientation="horizontal">
       <Switch id="field-switch-notify" name="notify" />
-      <FieldLabel htmlFor="field-switch-notify">排练提醒</FieldLabel>
+      <FieldLabel htmlFor="field-switch-notify">Rehearsal reminders</FieldLabel>
     </Field>
   )
 }

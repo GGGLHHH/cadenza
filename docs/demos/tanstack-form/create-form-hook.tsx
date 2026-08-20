@@ -19,8 +19,9 @@ import {
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// createFormHook:把「Field + aria + 错误」的字段外壳沉淀成一个 TextField,
-// 注册一次,处处 <field.TextField> —— 页面层不再出现任何接线
+// createFormHook: distill the "Field + aria + error" field shell into one
+// TextField, register it once, use <field.TextField> everywhere — no
+// wiring ever appears at the page level again
 interface TextFieldProps {
   label: string
   description?: string
@@ -52,8 +53,8 @@ function TextField({ label, description, placeholder }: TextFieldProps): ReactEl
 const { useAppForm } = createFormHook({ fieldComponents: { TextField } })
 
 const schema = z.object({
-  displayName: z.string().min(2, '显示名至少 2 个字'),
-  motto: z.string().min(4, '座右铭至少 4 个字'),
+  displayName: z.string().min(2, 'Display name must be at least 2 characters'),
+  motto: z.string().min(4, 'Motto must be at least 4 characters'),
 })
 
 export default function CreateFormHookDemo(): ReactElement {
@@ -61,7 +62,7 @@ export default function CreateFormHookDemo(): ReactElement {
     defaultValues: { displayName: '', motto: '' },
     validators: { onChange: schema },
     onSubmit: ({ formApi, value }) => {
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -85,17 +86,17 @@ export default function CreateFormHookDemo(): ReactElement {
         <form.AppField name="displayName">
           {field => (
             <field.TextField
-              label="显示名"
-              description="团里怎么称呼你。"
-              placeholder="大头"
+              label="Display name"
+              description="What the choir should call you."
+              placeholder="Alex"
             />
           )}
         </form.AppField>
         <form.AppField name="motto">
-          {field => <field.TextField label="座右铭" placeholder="唱准比唱响重要" />}
+          {field => <field.TextField label="Motto" placeholder="Sing in tune before singing loud" />}
         </form.AppField>
         <Field orientation="horizontal">
-          <Button type="submit">保存</Button>
+          <Button type="submit">Save</Button>
         </Field>
       </FieldGroup>
     </form>

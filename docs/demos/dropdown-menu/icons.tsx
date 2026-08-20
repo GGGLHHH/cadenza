@@ -9,30 +9,31 @@ import {
 } from '@gedatou/cadenza-ui'
 import { IconCopy, IconPencil, IconShare, IconStar } from '@tabler/icons-react'
 
-// 图标直接写进 item——item 的样式已为前置 svg 排好尺寸与间距。
+// Icons go straight into the item — item styles already size and space a
+// leading svg.
 export default function IconsDemo(): ReactElement {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" />}>
-        操作
+        Actions
       </DropdownMenuTrigger>
       <DropdownMenuPopup>
         <DropdownMenuItem>
           <IconPencil />
-          编辑
+          Edit
         </DropdownMenuItem>
         <DropdownMenuItem>
           <IconCopy />
-          复制副本
+          Duplicate
         </DropdownMenuItem>
         <DropdownMenuItem>
           <IconStar />
-          收藏
+          Favourite
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem>
           <IconShare />
-          分享
+          Share
         </DropdownMenuItem>
       </DropdownMenuPopup>
     </DropdownMenu>

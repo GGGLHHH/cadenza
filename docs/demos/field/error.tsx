@@ -8,17 +8,18 @@ import {
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 
-// FieldError 展示外部校验错误(errors 数组就是表单库吐的形状),
-// Field 上同步 data-invalid 让标签一起变色;aria-describedby 手动接 ——
-// 这条通道没有 context 替你接线
+// FieldError renders external validation errors (the errors array is the same
+// shape form libraries emit); mirror data-invalid on Field so the label
+// changes colour too. Wire aria-describedby by hand — no context does this
+// wiring for you
 export default function ErrorDemo(): ReactElement {
   const [value, setValue] = useState('')
-  const errors = value.length >= 8 ? [] : [{ message: '至少 8 个字符' }]
+  const errors = value.length >= 8 ? [] : [{ message: 'At least 8 characters' }]
   const isInvalid = errors.length > 0
 
   return (
     <Field data-invalid={isInvalid || undefined} className="max-inline-sm">
-      <FieldLabel htmlFor="field-error-pass">口令</FieldLabel>
+      <FieldLabel htmlFor="field-error-pass">Passphrase</FieldLabel>
       <InputGroup>
         <InputGroupInput
           id="field-error-pass"

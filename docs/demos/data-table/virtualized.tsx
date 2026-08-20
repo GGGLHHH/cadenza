@@ -6,13 +6,14 @@ import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 import { personColumns } from './columns'
 import { tableSlots } from './slots'
 
-// 一次拉满 10000 条,没有翻页,纯粹考验渲染:虚拟化让 DOM 始终只有几十个节点
+// Pulls all 10000 rows at once, no paging — a pure rendering stress test:
+// virtualization keeps the DOM at a few dozen nodes
 export default function VirtualizedDemo(): ReactElement {
   const list = useFakeInfiniteList(undefined, { pageSize: TOTAL })
 
   return (
     <DataTable<Person>
-      aria-label="作曲家(虚拟化)"
+      aria-label="Composers (virtualized)"
       columns={personColumns}
       maxHeight={400}
       virtualized

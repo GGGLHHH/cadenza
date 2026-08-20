@@ -5,13 +5,14 @@ import {
   DataTableRetry,
 } from '@gedatou/cadenza-ui'
 
-// 状态插槽:文案(含 i18n)在业务层注入,基座零文案。
+// Status slots: copy (including i18n) is injected by the app layer;
+// the base ships zero copy.
 export const tableSlots: ReactNode = (
   <>
-    <DataTableEmpty>暂无数据</DataTableEmpty>
+    <DataTableEmpty>No data</DataTableEmpty>
     <DataTableError>
-      加载失败
-      <DataTableRetry>重试</DataTableRetry>
+      Failed to load
+      <DataTableRetry>Retry</DataTableRetry>
     </DataTableError>
   </>
 )

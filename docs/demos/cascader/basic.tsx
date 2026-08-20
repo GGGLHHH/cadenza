@@ -2,33 +2,35 @@ import type { CascaderNode } from '@gedatou/cadenza-ui'
 import type { ReactElement } from 'react'
 import { Cascader } from '@gedatou/cadenza-ui'
 
-// 一行式:不给 children 就渲染完整默认组合 —— Select 同款触发器、路径回显、
-// 清除 ✕、弹层与逐级子菜单全部来自 items。悬停或方向键展开下一级,
-// 只有叶子可选,选中即提交整条路径并关闭。「甘肃」演示节点级禁用。
+// One-liner: with no children it renders the full default composition --
+// the Select-style trigger, path echo, clear ✕, popup, and per-level
+// submenus all come from items. Hover or arrow keys expand the next
+// level; only leaves are selectable, and picking one commits the whole
+// path and closes. "Australia" shows node-level disabling.
 const REGIONS: CascaderNode[] = [
   {
-    value: 'zhejiang',
-    label: '浙江',
+    value: 'united-states',
+    label: 'United States',
     items: [
       {
-        value: 'hangzhou',
-        label: '杭州',
+        value: 'california',
+        label: 'California',
         items: [
-          { value: 'xihu', label: '西湖区' },
-          { value: 'binjiang', label: '滨江区' },
+          { value: 'san-francisco', label: 'San Francisco' },
+          { value: 'los-angeles', label: 'Los Angeles' },
         ],
       },
-      { value: 'ningbo', label: '宁波', items: [{ value: 'haishu', label: '海曙区' }] },
+      { value: 'washington', label: 'Washington', items: [{ value: 'seattle', label: 'Seattle' }] },
     ],
   },
   {
-    value: 'jiangsu',
-    label: '江苏',
-    items: [{ value: 'nanjing', label: '南京', items: [{ value: 'xuanwu', label: '玄武区' }] }],
+    value: 'canada',
+    label: 'Canada',
+    items: [{ value: 'ontario', label: 'Ontario', items: [{ value: 'toronto', label: 'Toronto' }] }],
   },
-  { value: 'gansu', label: '甘肃', disabled: true },
+  { value: 'australia', label: 'Australia', disabled: true },
 ]
 
 export default function BasicDemo(): ReactElement {
-  return <Cascader aria-label="地区" items={REGIONS} placeholder="选择地区" />
+  return <Cascader aria-label="Region" items={REGIONS} placeholder="Select a region" />
 }

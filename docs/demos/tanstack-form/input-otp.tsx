@@ -21,10 +21,11 @@ import {
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// InputOTP 绑定:协议是 React DOM 的 —— onChange 直接收字符串,没有第二参;
-// id 落在横跨所有格子的隐形真 input 上,fieldControlProps 原样可用
+// InputOTP binding: the protocol is React DOM's — onChange receives the
+// string directly, with no second argument; id lands on the invisible
+// real input spanning all cells, so fieldControlProps works as-is
 const schema = z.object({
-  code: z.string().regex(/^\d{6}$/, '请输入 6 位数字验证码'),
+  code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit verification code'),
 })
 
 export default function InputOTPDemo(): ReactElement {
@@ -32,7 +33,7 @@ export default function InputOTPDemo(): ReactElement {
     defaultValues: { code: '' },
     validators: { onChange: schema },
     onSubmit: ({ formApi, value }) => {
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -58,7 +59,7 @@ export default function InputOTPDemo(): ReactElement {
             const { errorId, invalid } = fieldInvalidState(field)
             return (
               <Field data-invalid={invalid || undefined}>
-                <FieldLabel htmlFor={field.name}>短信验证码</FieldLabel>
+                <FieldLabel htmlFor={field.name}>SMS verification code</FieldLabel>
                 <InputOTP
                   {...fieldControlProps(field)}
                   maxLength={6}
@@ -78,14 +79,14 @@ export default function InputOTPDemo(): ReactElement {
                     <InputOTPSlot index={5} />
                   </InputOTPGroup>
                 </InputOTP>
-                <FieldDescription>整串粘贴、短信自动填充都能用。</FieldDescription>
+                <FieldDescription>Pasting the whole code and SMS autofill both work.</FieldDescription>
                 <FieldError id={errorId} errors={fieldErrors(field)} />
               </Field>
             )
           }}
         </form.Field>
         <Field orientation="horizontal">
-          <Button type="submit">提交</Button>
+          <Button type="submit">Submit</Button>
         </Field>
       </FieldGroup>
     </form>

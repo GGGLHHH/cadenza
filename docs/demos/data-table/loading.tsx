@@ -3,10 +3,11 @@ import type { Person } from '../lib/people'
 import { DataTable } from '@gedatou/cadenza-ui'
 import { personColumns } from './columns'
 
-// 首屏加载:isLoading 且还没有行 —— 卡片给最低高度防坍缩,
-// 磨砂覆盖层就是加载视觉,没有文案插槽
+// Initial load: isLoading with no rows yet — the card keeps a minimum
+// height to avoid collapsing; the frosted overlay is the loading visual
+// and there is no copy slot
 export default function LoadingDemo(): ReactElement {
   return (
-    <DataTable<Person> aria-label="作曲家(加载中)" columns={personColumns} isLoading items={[]} />
+    <DataTable<Person> aria-label="Composers (loading)" columns={personColumns} isLoading items={[]} />
   )
 }

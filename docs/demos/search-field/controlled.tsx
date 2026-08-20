@@ -3,22 +3,22 @@ import { SearchField } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 import { DemoButton } from '../lib/demo-button'
 
-// 受控:文本放在外部 state,组件只负责渲染 ——
-// 外面的按钮直接改 state 就能填进输入框
+// Controlled: the text lives in external state and the component only
+// renders it -- a button outside writing that state fills the input
 export default function ControlledDemo(): ReactElement {
   const [value, setValue] = useState('')
 
   return (
     <div className="flex flex-col gap-4 inline-full max-inline-sm">
       <SearchField
-        aria-label="搜索作曲家"
-        placeholder="搜索作曲家..."
+        aria-label="Search composers"
+        placeholder="Search composers..."
         value={value}
         onValueChange={setValue}
       />
       <div className="flex flex-wrap items-center gap-2">
-        <DemoButton onClick={() => setValue('Debussy')}>填入 Debussy</DemoButton>
-        <DemoButton onClick={() => setValue('')}>清空</DemoButton>
+        <DemoButton onClick={() => setValue('Debussy')}>Fill in Debussy</DemoButton>
+        <DemoButton onClick={() => setValue('')}>Clear</DemoButton>
         <span className="text-sm text-muted-foreground">
           value:
           {value === '' ? ' —' : ` ${value}`}

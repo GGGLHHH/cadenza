@@ -10,8 +10,10 @@ import { useState } from 'react'
 import { PEOPLE } from '../lib/people'
 import { personColumns } from './columns'
 
-// 一列都不锁,用户就能把列全部藏掉 —— 那时行没有任何单元格可渲染,表格退回
-// 状态区,文案与恢复动作从 DataTableColumnsEmpty 插槽进来(基座零文案,家法不变)。
+// With no column locked, the user can hide every column — rows then have
+// no cells to render and the table falls back to its status area. The
+// message and the recovery action come in through the DataTableColumnsEmpty
+// slot (the base stays copy-free, per house rules).
 const allIds = personColumns.map(column => column.id)
 const items = PEOPLE.slice(0, 4)
 
@@ -21,22 +23,22 @@ export default function ColumnsEmptyDemo(): ReactElement {
   return (
     <div className="flex flex-col gap-3 inline-full">
       <DataTableColumnsSelect
-        aria-label="显示列"
+        aria-label="Show columns"
         className="inline-56"
         columns={personColumns}
-        placeholder="没有可见的列"
+        placeholder="No visible columns"
         value={visible}
         onValueChange={setVisible}
       />
       <DataTable<Person>
-        aria-label="作曲家(可清空列)"
+        aria-label="Composers (clearable columns)"
         columns={personColumns.filter(column => visible.includes(column.id))}
         items={items}
       >
         <DataTableColumnsEmpty className="flex flex-col items-center gap-2">
-          所有列都被隐藏了
+          All columns are hidden
           <Button size="sm" variant="outline" onClick={() => setVisible(allIds)}>
-            显示全部列
+            Show all columns
           </Button>
         </DataTableColumnsEmpty>
       </DataTable>

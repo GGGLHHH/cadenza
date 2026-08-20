@@ -2,13 +2,14 @@ import type { ReactElement } from 'react'
 import { DatePicker } from '@gedatou/cadenza-ui'
 import { zhCN } from 'date-fns/locale'
 
-// format 是 date-fns token,同时管显示与解析:键入「2026年08月20日」
-// 才算合法。locale 一并喂给日历(星期、月份文案)与格式化。
-// 表单序列化不受影响,hidden input 始终是 yyyy-MM-dd。
+// format is a date-fns token string driving both display and parsing:
+// only typed input like "2026年08月20日" counts as valid. locale feeds
+// the calendar (weekday and month names) and the formatter alike.
+// Form serialization is unaffected; the hidden input stays yyyy-MM-dd.
 export default function FormatDemo(): ReactElement {
   return (
     <DatePicker
-      aria-label="日期"
+      aria-label="Date"
       defaultValue={new Date(2026, 7, 16)}
       format="yyyy年MM月dd日"
       locale={zhCN}

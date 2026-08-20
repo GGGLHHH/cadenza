@@ -1,7 +1,8 @@
 import type { ReactElement } from 'react'
 import { Spinner } from '@gedatou/cadenza-ui'
 
-// 尺寸和颜色都从 className 来;默认 size-4、继承文字色
+// Size and colour both come from className; defaults to size-4 and
+// inherits the text colour
 export default function BasicDemo(): ReactElement {
   return (
     <div className="flex items-center gap-4">

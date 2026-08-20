@@ -60,59 +60,64 @@ import { DemoButton } from '../lib/demo-button'
 import { getOption } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 
-// 复杂表单的分步版:一个 useForm 贯穿五步,值住在 form store,切步不丢。
-// 「下一步」= 本步的提交尝试(补跑校验 → 只查本步字段 → 有错开门禁并聚焦),
-// 过了本地校验再走一段 200–500ms 的异步确认 —— advancing 一个状态三处生效:
-// 按钮 pending(吞掉快速双击的第二击)、Stepper loading(当前步转 Spinner)、
-// trigger/上一步一并锁定。防双击不是装饰:「下一步」与「提交」渲染在同一位置,
-// 推进完成的瞬间第二击会落在「提交」上,没有 pending 拦着表单就被误交了
+// The stepped version of the complex form: one useForm spans all five
+// steps, values live in the form store and survive step changes.
+// "Next" = a submit attempt for the current step (run validation → check
+// only this step's fields → on error open the gate and focus). After
+// local validation passes, a 200-500ms async confirmation follows —
+// one advancing state takes effect in three places: button pending
+// (swallows the second hit of a fast double-click), Stepper loading (the
+// current step turns into a Spinner), and trigger/back locked together.
+// The double-click guard is not decoration: "Next" and "Submit" render in
+// the same spot, so the instant advancing completes, a second click would
+// land on "Submit" — without pending, the form gets submitted by mistake
 const VOICE_PARTS = {
-  soprano: '女高音',
-  alto: '女低音',
-  tenor: '男高音',
-  bass: '男低音',
+  soprano: 'Soprano',
+  alto: 'Alto',
+  tenor: 'Tenor',
+  bass: 'Bass',
 } as const
 
 const EXPERIENCE_LEVELS = [
-  { id: 'beginner', title: '初学', description: '没有合唱经验,愿意从头学。' },
-  { id: 'experienced', title: '有经验', description: '参加过合唱团或声乐训练。' },
+  { id: 'beginner', title: 'Beginner', description: 'No choir experience, willing to learn from scratch.' },
+  { id: 'experienced', title: 'Experienced', description: 'Has sung in a choir or had vocal training.' },
 ] as const
 
 const WEEKDAYS = [
-  { id: 'wed', label: '周三晚' },
-  { id: 'sat', label: '周六下午' },
-  { id: 'sun', label: '周日下午' },
+  { id: 'wed', label: 'Wednesday evening' },
+  { id: 'sat', label: 'Saturday afternoon' },
+  { id: 'sun', label: 'Sunday afternoon' },
 ] as const
 
 const schema = z
   .object({
-    email: z.email('请输入有效的邮箱地址'),
-    smsCode: z.string().regex(/^\d{6}$/, '请输入 6 位数字验证码'),
-    password: z.string().min(8, '密码至少 8 位'),
+    email: z.email('Enter a valid email address'),
+    smsCode: z.string().regex(/^\d{6}$/, 'Enter the 6-digit verification code'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
-    fullName: z.string().min(2, '姓名至少 2 个字'),
+    fullName: z.string().min(2, 'Name must be at least 2 characters'),
     age: z
-      .number({ error: '请输入数字' })
-      .int('年龄须为整数')
-      .min(12, '至少 12 岁')
-      .max(90, '最大 90 岁')
+      .number({ error: 'Enter a number' })
+      .int('Age must be an integer')
+      .min(12, 'Must be at least 12')
+      .max(90, 'Must be at most 90')
       .nullable()
-      .refine(value => value !== null, '请填写年龄'),
-    bio: z.string().max(100, '简介最多 100 字'),
-    voicePart: z.string().min(1, '请选择声部'),
-    composerId: z.string().nullable().refine(value => value !== null, '请选择作曲家'),
-    experience: z.string().min(1, '请选择经验水平'),
-    weekdays: z.array(z.string()).min(1, '至少选一个排练时段'),
-    weeklyHours: z.number().min(2, '每周至少投入 2 小时'),
+      .refine(value => value !== null, 'Enter your age'),
+    bio: z.string().max(100, 'Bio must be at most 100 characters'),
+    voicePart: z.string().min(1, 'Select a voice part'),
+    composerId: z.string().nullable().refine(value => value !== null, 'Select a composer'),
+    experience: z.string().min(1, 'Select an experience level'),
+    weekdays: z.array(z.string()).min(1, 'Pick at least one rehearsal slot'),
+    weeklyHours: z.number().min(2, 'Commit at least 2 hours per week'),
     notifications: z.boolean(),
-    agreeTerms: z.boolean().refine(value => value, '入团前请先同意排练守则'),
+    agreeTerms: z.boolean().refine(value => value, 'Agree to the rehearsal rules before joining'),
   })
   .superRefine((data, ctx) => {
     if (data.confirmPassword !== data.password) {
       ctx.addIssue({
         code: 'custom',
         path: ['confirmPassword'],
-        message: '两次输入的密码不一致',
+        message: 'Passwords do not match',
       })
     }
   })
@@ -134,7 +139,8 @@ const DEFAULT_VALUES = {
   agreeTerms: false,
 }
 
-// 每步要过的校验;agreeTerms 在最后一步,由真提交的管线把关
+// Fields each step must pass; agreeTerms sits on the last step, gated by
+// the real submit pipeline
 const STEP_FIELDS = [
   ['email', 'smsCode', 'password', 'confirmPassword'],
   ['fullName', 'age', 'bio'],
@@ -142,10 +148,13 @@ const STEP_FIELDS = [
   ['weekdays', 'weeklyHours'],
 ] as const
 
-// 同一页还渲染着复杂表单 demo,字段名完全相同,而 fieldControlProps 用 field.name
-// 当 DOM id —— 裸用会撞出重复 id,htmlFor / aria-describedby 都解析到文档里第一个
-// 匹配(复杂表单的控件),label 一点就跳错表单。本 demo 落 DOM 的 id 一律加 ms-
-// 前缀;name(表单序列化用)不动
+// The same page also renders the complex-form demo with identical field
+// names, and fieldControlProps uses field.name as the DOM id — used bare
+// it would collide into duplicate ids, and htmlFor / aria-describedby
+// would both resolve to the document's first match (the complex form's
+// control), so clicking a label jumps to the wrong form. Every id this
+// demo puts in the DOM gets an ms- prefix; name (form serialization)
+// stays untouched
 function msId(name: string): string {
   return `ms-${name}`
 }
@@ -172,9 +181,10 @@ export default function MultiStepDemo(): ReactElement {
     validators: { onChange: schema },
     onSubmit: async ({ formApi, value }) => {
       await new Promise(resolve => setTimeout(resolve, 800))
-      // validators 只校验不转换:transform 的产物要在提交时 parse 拿到
+      // validators only validate, never transform: transform output must
+      // be obtained by parsing at submit time
       const data = schema.parse(value)
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -193,23 +203,28 @@ export default function MultiStepDemo(): ReactElement {
   const submitting = useFormSubmitting(form)
 
   const handleNext = async (): Promise<void> => {
-    // pending 的按钮已经吞掉重复点击,这里是键盘等其他入口的兜底
+    // The pending button already swallows repeat clicks; this is the
+    // fallback for keyboard and other entry points
     if (advancing || submitting)
       return
-    // 没动过的字段此前没有任何校验记录,先强制跑一遍 change 校验
+    // Untouched fields have no validation record yet, so force one
+    // change-validation pass first
     await form.validate('change')
     const invalid = (STEP_FIELDS[step - 1] ?? []).filter(
       name => (form.getFieldMeta(name)?.errors.length ?? 0) > 0,
     )
     if (invalid.length > 0) {
-      // 「试图前进」就是本步的提交尝试:标记 dirty+blurred,门禁只对这些字段打开
+      // "Trying to advance" is this step's submit attempt: mark
+      // dirty+blurred so the gate opens only for these fields
       for (const name of invalid)
         form.setFieldMeta(name, meta => ({ ...meta, isBlurred: true, isDirty: true }))
       if (formRef.current)
         focusFirstInvalidControl(formRef.current)
       return
     }
-    // 本地校验过了才发异步确认(模拟服务端逐步落库),期间整个导航面锁定
+    // Only after local validation passes does the async confirmation go
+    // out (simulating per-step server persistence); the whole navigation
+    // surface locks meanwhile
     setAdvancing(true)
     try {
       await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300))
@@ -233,7 +248,8 @@ export default function MultiStepDemo(): ReactElement {
         steps={5}
         value={step}
         onValueChange={(next, details) => {
-          // 回头随便点;前进一律走「下一步」;异步确认期间整面锁定
+          // Going back is free; advancing always goes through "Next";
+          // everything locks during the async confirmation
           if (advancing || submitting || next > step) {
             details.cancel()
             return
@@ -243,14 +259,14 @@ export default function MultiStepDemo(): ReactElement {
       />
       {step === 1 && (
         <FieldSet>
-          <FieldLegend>账号</FieldLegend>
+          <FieldLegend>Account</FieldLegend>
           <FieldGroup>
             <form.Field name="email">
               {(field) => {
                 const { invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={msId(field.name)}>邮箱</FieldLabel>
+                    <FieldLabel htmlFor={msId(field.name)}>Email</FieldLabel>
                     <InputGroup>
                       <InputGroupAddon>
                         <IconMail aria-hidden />
@@ -275,7 +291,7 @@ export default function MultiStepDemo(): ReactElement {
                 const { invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={msId(field.name)}>短信验证码</FieldLabel>
+                    <FieldLabel htmlFor={msId(field.name)}>SMS verification code</FieldLabel>
                     <InputOTP
                       {...msControlProps(field)}
                       maxLength={6}
@@ -305,7 +321,7 @@ export default function MultiStepDemo(): ReactElement {
                 const { invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={msId(field.name)}>密码</FieldLabel>
+                    <FieldLabel htmlFor={msId(field.name)}>Password</FieldLabel>
                     <Input
                       {...msControlProps(field)}
                       value={field.state.value}
@@ -314,7 +330,7 @@ export default function MultiStepDemo(): ReactElement {
                       onBlur={field.handleBlur}
                       onChange={event => field.handleChange(event.target.value)}
                     />
-                    <FieldDescription>至少 8 位。</FieldDescription>
+                    <FieldDescription>At least 8 characters.</FieldDescription>
                     <FieldError id={msErrorId(field.name)} errors={fieldErrors(field)} />
                   </Field>
                 )
@@ -325,7 +341,7 @@ export default function MultiStepDemo(): ReactElement {
                 const { invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={msId(field.name)}>确认密码</FieldLabel>
+                    <FieldLabel htmlFor={msId(field.name)}>Confirm password</FieldLabel>
                     <Input
                       {...msControlProps(field)}
                       aria-required
@@ -345,19 +361,19 @@ export default function MultiStepDemo(): ReactElement {
       )}
       {step === 2 && (
         <FieldSet>
-          <FieldLegend>基本资料</FieldLegend>
+          <FieldLegend>Profile</FieldLegend>
           <FieldGroup>
             <form.Field name="fullName">
               {(field) => {
                 const { invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={msId(field.name)}>姓名</FieldLabel>
+                    <FieldLabel htmlFor={msId(field.name)}>Name</FieldLabel>
                     <Input
                       {...msControlProps(field)}
                       value={field.state.value}
                       autoComplete="name"
-                      placeholder="葛大头"
+                      placeholder="Alex Carter"
                       onBlur={field.handleBlur}
                       onChange={event => field.handleChange(event.target.value)}
                     />
@@ -371,7 +387,7 @@ export default function MultiStepDemo(): ReactElement {
                 const { invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={msId(field.name)}>年龄</FieldLabel>
+                    <FieldLabel htmlFor={msId(field.name)}>Age</FieldLabel>
                     <NumberField
                       id={msId(field.name)}
                       name={field.name}
@@ -381,7 +397,7 @@ export default function MultiStepDemo(): ReactElement {
                       onValueChange={value => field.handleChange(value)}
                     >
                       <NumberFieldGroup>
-                        <NumberFieldDecrement aria-label="减少" />
+                        <NumberFieldDecrement aria-label="Decrease" />
                         <NumberFieldInput
                           aria-describedby={msErrorId(field.name)}
                           aria-invalid={invalid}
@@ -389,7 +405,7 @@ export default function MultiStepDemo(): ReactElement {
                           placeholder="18"
                           onBlur={field.handleBlur}
                         />
-                        <NumberFieldIncrement aria-label="增加" />
+                        <NumberFieldIncrement aria-label="Increase" />
                       </NumberFieldGroup>
                     </NumberField>
                     <FieldError id={msErrorId(field.name)} errors={fieldErrors(field)} />
@@ -402,15 +418,15 @@ export default function MultiStepDemo(): ReactElement {
                 const { invalid } = fieldInvalidState(field)
                 return (
                   <Field data-invalid={invalid || undefined}>
-                    <FieldLabel htmlFor={msId(field.name)}>简介（可选）</FieldLabel>
+                    <FieldLabel htmlFor={msId(field.name)}>Bio (optional)</FieldLabel>
                     <Textarea
                       {...msControlProps(field)}
                       value={field.state.value}
-                      placeholder="唱过什么、想唱什么……"
+                      placeholder="What you have sung, what you want to sing…"
                       onBlur={field.handleBlur}
                       onChange={event => field.handleChange(event.target.value)}
                     />
-                    <FieldDescription>可以留空,最多 100 字。</FieldDescription>
+                    <FieldDescription>May be left empty; at most 100 characters.</FieldDescription>
                     <FieldError id={msErrorId(field.name)} errors={fieldErrors(field)} />
                   </Field>
                 )
@@ -421,7 +437,7 @@ export default function MultiStepDemo(): ReactElement {
       )}
       {step === 3 && (
         <FieldSet>
-          <FieldLegend>排练偏好</FieldLegend>
+          <FieldLegend>Rehearsal preferences</FieldLegend>
           <FieldGroup>
             <form.Field name="voicePart">
               {(field) => {
@@ -429,7 +445,7 @@ export default function MultiStepDemo(): ReactElement {
                 return (
                   <Field orientation="responsive" data-invalid={invalid || undefined}>
                     <FieldContent>
-                      <FieldLabel htmlFor={msId(field.name)}>声部</FieldLabel>
+                      <FieldLabel htmlFor={msId(field.name)}>Voice part</FieldLabel>
                       <FieldError id={msErrorId(field.name)} errors={fieldErrors(field)} />
                     </FieldContent>
                     <Select
@@ -445,7 +461,7 @@ export default function MultiStepDemo(): ReactElement {
                         aria-required
                         className="min-inline-[120px]"
                       >
-                        <SelectValue placeholder="选一个声部" />
+                        <SelectValue placeholder="Pick a voice part" />
                       </SelectTrigger>
                       <SelectPopup>
                         <SelectGroup>
@@ -467,13 +483,13 @@ export default function MultiStepDemo(): ReactElement {
                 return (
                   <Field data-invalid={invalid || undefined}>
                     <FieldLabel htmlFor="ms-composer-trigger" required>
-                      最喜欢的作曲家
+                      Favorite composer
                     </FieldLabel>
                     <InfiniteCombobox<Person>
                       getOption={getOption}
                       list={composerList}
                       name={field.name}
-                      searchPlaceholder="搜索作曲家…"
+                      searchPlaceholder="Search composers…"
                       state={comboboxState}
                       triggerId="ms-composer-trigger"
                       value={field.state.value}
@@ -487,10 +503,10 @@ export default function MultiStepDemo(): ReactElement {
                         aria-invalid={invalid}
                         className="justify-start inline-full"
                       >
-                        {pickedComposer ? pickedComposer.name : '选择作曲家'}
+                        {pickedComposer ? pickedComposer.name : 'Select a composer'}
                       </DemoButton>
                       {selectSlots}
-                      <InfiniteSelectLoadingMore>加载更多…</InfiniteSelectLoadingMore>
+                      <InfiniteSelectLoadingMore>Loading more…</InfiniteSelectLoadingMore>
                     </InfiniteCombobox>
                     <FieldError id={msErrorId(field.name)} errors={fieldErrors(field)} />
                   </Field>
@@ -503,7 +519,7 @@ export default function MultiStepDemo(): ReactElement {
                 return (
                   <FieldSet data-invalid={invalid || undefined}>
                     <FieldLegend id="ms-experience-legend" variant="label">
-                      经验水平
+                      Experience level
                     </FieldLegend>
                     <RadioGroup
                       aria-labelledby="ms-experience-legend"
@@ -539,15 +555,15 @@ export default function MultiStepDemo(): ReactElement {
       )}
       {step === 4 && (
         <FieldSet>
-          <FieldLegend>时间安排</FieldLegend>
+          <FieldLegend>Schedule</FieldLegend>
           <FieldGroup>
             <form.Field name="weekdays" mode="array">
               {(field) => {
                 const { invalid } = fieldInvalidState(field)
                 return (
                   <FieldSet data-invalid={invalid || undefined}>
-                    <FieldLegend variant="label" required>排练时段</FieldLegend>
-                    <FieldDescription>可多选。</FieldDescription>
+                    <FieldLegend variant="label" required>Rehearsal slots</FieldLegend>
+                    <FieldDescription>Multiple choices allowed.</FieldDescription>
                     <FieldGroup>
                       {WEEKDAYS.map(day => (
                         <Field key={day.id} orientation="horizontal">
@@ -584,10 +600,10 @@ export default function MultiStepDemo(): ReactElement {
                 return (
                   <Field data-invalid={invalid || undefined}>
                     <FieldTitle id="ms-weekly-hours-label">
-                      每周可投入（
+                      Weekly commitment (
                       {field.state.value}
                       {' '}
-                      小时）
+                      hours)
                     </FieldTitle>
                     <Slider
                       aria-labelledby="ms-weekly-hours-label"
@@ -608,8 +624,8 @@ export default function MultiStepDemo(): ReactElement {
               {field => (
                 <Field orientation="horizontal">
                   <FieldContent>
-                    <FieldLabel htmlFor={msId(field.name)}>排练提醒</FieldLabel>
-                    <FieldDescription>排期变化时发邮件提醒。</FieldDescription>
+                    <FieldLabel htmlFor={msId(field.name)}>Rehearsal reminders</FieldLabel>
+                    <FieldDescription>Email me when the schedule changes.</FieldDescription>
                   </FieldContent>
                   <Switch
                     id={msId(field.name)}
@@ -625,33 +641,35 @@ export default function MultiStepDemo(): ReactElement {
       )}
       {step === 5 && (
         <FieldSet>
-          <FieldLegend>确认提交</FieldLegend>
+          <FieldLegend>Review and submit</FieldLegend>
           <FieldGroup>
-            {/* 本步只有 agreeTerms 可编辑,摘要值不会在展示期间变化,直接读 form.state.values */}
+            {/* Only agreeTerms is editable on this step; the summary values
+                cannot change while shown, so read form.state.values directly */}
             <dl className="
               grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm
             "
             >
-              <dt className="text-muted-foreground">姓名</dt>
+              <dt className="text-muted-foreground">Name</dt>
               <dd>{values.fullName}</dd>
-              <dt className="text-muted-foreground">邮箱</dt>
+              <dt className="text-muted-foreground">Email</dt>
               <dd>{values.email}</dd>
-              <dt className="text-muted-foreground">年龄</dt>
+              <dt className="text-muted-foreground">Age</dt>
               <dd>{values.age}</dd>
-              <dt className="text-muted-foreground">声部</dt>
+              <dt className="text-muted-foreground">Voice part</dt>
               <dd>{VOICE_PARTS[values.voicePart as keyof typeof VOICE_PARTS] ?? '—'}</dd>
-              <dt className="text-muted-foreground">作曲家</dt>
+              <dt className="text-muted-foreground">Composer</dt>
               <dd>{pickedComposer?.name ?? '—'}</dd>
-              <dt className="text-muted-foreground">经验</dt>
+              <dt className="text-muted-foreground">Experience</dt>
               <dd>{EXPERIENCE_LEVELS.find(level => level.id === values.experience)?.title ?? '—'}</dd>
-              <dt className="text-muted-foreground">排练时段</dt>
-              <dd>{WEEKDAYS.filter(day => values.weekdays.includes(day.id)).map(day => day.label).join('、')}</dd>
-              <dt className="text-muted-foreground">每周投入</dt>
+              <dt className="text-muted-foreground">Rehearsal slots</dt>
+              <dd>{WEEKDAYS.filter(day => values.weekdays.includes(day.id)).map(day => day.label).join(', ')}</dd>
+              <dt className="text-muted-foreground">Weekly commitment</dt>
               <dd>
                 {values.weeklyHours}
                 {' '}
-                小时,提醒
-                {values.notifications ? '开' : '关'}
+                hours, reminders
+                {' '}
+                {values.notifications ? 'on' : 'off'}
               </dd>
             </dl>
             <form.Field name="agreeTerms">
@@ -669,8 +687,8 @@ export default function MultiStepDemo(): ReactElement {
                       onCheckedChange={checked => field.handleChange(checked)}
                     />
                     <FieldContent>
-                      <FieldLabel htmlFor={msId(field.name)}>同意排练守则</FieldLabel>
-                      <FieldDescription>准时出勤，请假提前一天说。</FieldDescription>
+                      <FieldLabel htmlFor={msId(field.name)}>Agree to the rehearsal rules</FieldLabel>
+                      <FieldDescription>Show up on time; ask for leave a day ahead.</FieldDescription>
                       <FieldError id={msErrorId(field.name)} errors={fieldErrors(field)} />
                     </FieldContent>
                   </Field>
@@ -687,17 +705,17 @@ export default function MultiStepDemo(): ReactElement {
           variant="outline"
           onClick={() => setStep(current => current - 1)}
         >
-          上一步
+          Back
         </Button>
         {step < 5
           ? (
               <Button pending={advancing} type="button" onClick={() => void handleNext()}>
-                下一步
+                Next
               </Button>
             )
           : (
               <Button pending={submitting} type="submit">
-                报名
+                Sign up
               </Button>
             )}
         <Button
@@ -710,7 +728,7 @@ export default function MultiStepDemo(): ReactElement {
             setStep(1)
           }}
         >
-          重置
+          Reset
         </Button>
       </Field>
     </form>

@@ -1,51 +1,53 @@
 import type { ReactElement } from 'react'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
 
-// 两档对比,聚焦后按方向键试试:
-//   默认(手动)—— 方向键只移动焦点,Enter/Space 才切换面板。面板加载昂贵时
-//                (请求、大图表)不会被键盘路过时误触发。指示器跟着焦点走,
-//                正是它「即将选中的那个」语义最有用的场景
-//   activateOnFocus —— 焦点走到哪就切到哪
+// Two modes to compare; focus a tab and try the arrow keys:
+//   Default (manual) -- arrows only move focus; Enter/Space switches the
+//     panel. When panels are expensive to load (requests, big charts) a
+//     keyboard pass-through never triggers them by accident. The indicator
+//     follows focus -- exactly the scenario where its "the one about to be
+//     selected" semantics earn their keep
+//   activateOnFocus -- the panel switches wherever focus lands
 export default function KeyboardActivationDemo(): ReactElement {
   return (
     <div className="flex flex-col gap-8">
       <Tabs defaultValue="overview">
-        <TabsList aria-label="手动激活(默认)">
-          <TabsTab value="overview">概览</TabsTab>
-          <TabsTab value="analytics">分析</TabsTab>
-          <TabsTab value="reports">报告</TabsTab>
+        <TabsList aria-label="Manual activation (default)">
+          <TabsTab value="overview">Overview</TabsTab>
+          <TabsTab value="analytics">Analytics</TabsTab>
+          <TabsTab value="reports">Reports</TabsTab>
         </TabsList>
         <TabsPanel value="overview">
           <p className="text-sm text-muted-foreground">
-            方向键会把焦点移到相邻标签,但面板不跟着切换。
+            Arrow keys move focus to the neighbouring tab, but the panel stays put.
           </p>
         </TabsPanel>
         <TabsPanel value="analytics">
           <p className="text-sm text-muted-foreground">
-            分析面板要拉一次埋点数据,按 Enter / Space 确认后才加载。
+            The analytics panel fetches tracking data once; it loads only after Enter / Space confirms.
           </p>
         </TabsPanel>
         <TabsPanel value="reports">
           <p className="text-sm text-muted-foreground">
-            报告面板同理,避免键盘路过时白白发一次请求。
+            Same for the reports panel: no wasted request when the keyboard merely passes by.
           </p>
         </TabsPanel>
       </Tabs>
 
       <Tabs defaultValue="overview">
-        <TabsList activateOnFocus aria-label="随焦点激活">
-          <TabsTab value="overview">概览</TabsTab>
-          <TabsTab value="analytics">分析</TabsTab>
-          <TabsTab value="reports">报告</TabsTab>
+        <TabsList activateOnFocus aria-label="Activate on focus">
+          <TabsTab value="overview">Overview</TabsTab>
+          <TabsTab value="analytics">Analytics</TabsTab>
+          <TabsTab value="reports">Reports</TabsTab>
         </TabsList>
         <TabsPanel value="overview">
-          <p className="text-sm text-muted-foreground">这一组焦点走到哪,面板就切到哪。</p>
+          <p className="text-sm text-muted-foreground">In this group the panel switches wherever focus goes.</p>
         </TabsPanel>
         <TabsPanel value="analytics">
-          <p className="text-sm text-muted-foreground">面板内容便宜时这样更顺手。</p>
+          <p className="text-sm text-muted-foreground">Smoother when panel content is cheap.</p>
         </TabsPanel>
         <TabsPanel value="reports">
-          <p className="text-sm text-muted-foreground">少按一次 Enter。</p>
+          <p className="text-sm text-muted-foreground">One less Enter to press.</p>
         </TabsPanel>
       </Tabs>
     </div>

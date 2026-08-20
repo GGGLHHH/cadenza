@@ -11,21 +11,23 @@ import {
 interface Piece { id: string, title: string, opus: string }
 
 const PIECES: Piece[] = [
-  { id: 'gaspard', title: '夜之加斯帕', opus: 'M. 55' },
-  { id: 'jeux', title: '水之嬉戏', opus: 'M. 30' },
-  { id: 'pavane', title: '悼念公主的帕凡舞曲', opus: 'M. 19' },
-  { id: 'sonatine', title: '小奏鸣曲', opus: 'M. 40' },
+  { id: 'gaspard', title: 'Gaspard de la nuit', opus: 'M. 55' },
+  { id: 'jeux', title: 'Jeux d\'eau', opus: 'M. 30' },
+  { id: 'pavane', title: 'Pavane pour une infante défunte', opus: 'M. 19' },
+  { id: 'sonatine', title: 'Sonatine', opus: 'M. 40' },
 ]
 
-// 数据驱动的选项就是一次 map,没有集合 API。
-// 两处要分开看:
-//   items —— 只喂 SelectValue,决定触发器上印什么(这里印标题,不印作品号)
-//   label —— 喂键盘打字定位;children 不是纯字符串时必须自己给
+// Data-driven options are just a map call — there is no collection API.
+// Two places to keep apart:
+//   items — feeds SelectValue only, deciding what the trigger prints
+//     (here the title, not the opus number)
+//   label — feeds typeahead; you must supply it yourself whenever
+//     children is not a plain string
 export default function DynamicDemo(): ReactElement {
   return (
     <Select items={PIECES.map(piece => ({ value: piece.id, label: piece.title }))}>
-      <SelectTrigger aria-label="曲目" className="inline-72">
-        <SelectValue placeholder="选一首" />
+      <SelectTrigger aria-label="Piece" className="inline-72">
+        <SelectValue placeholder="Pick a piece" />
       </SelectTrigger>
       <SelectPopup>
         <SelectGroup>

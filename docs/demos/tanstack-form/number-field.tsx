@@ -21,16 +21,17 @@ import {
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-// NumberField 绑定:值原生是 number | null,受控走 value/onValueChange,
-// 清空回 null —— schema 用 .nullable().refine 表达必填,无需字符串转换
+// NumberField binding: the value is natively number | null, controlled
+// via value/onValueChange, clearing returns null — the schema expresses
+// "required" with .nullable().refine, no string conversion needed
 const schema = z.object({
   copies: z
-    .number({ error: '请输入数字' })
-    .int('须为整数')
-    .min(1, '至少 1 册')
-    .max(99, '最多 99 册')
+    .number({ error: 'Enter a number' })
+    .int('Must be an integer')
+    .min(1, 'At least 1 copy')
+    .max(99, 'At most 99 copies')
     .nullable()
-    .refine(value => value !== null, '请填写册数'),
+    .refine(value => value !== null, 'Enter the number of copies'),
 })
 
 export default function NumberFieldDemo(): ReactElement {
@@ -38,7 +39,7 @@ export default function NumberFieldDemo(): ReactElement {
     defaultValues: { copies: null as number | null },
     validators: { onChange: schema },
     onSubmit: ({ formApi, value }) => {
-      toast('已提交以下内容：', {
+      toast('Submitted the following:', {
         description: (
           <pre className="
             mbs-2 overflow-x-auto rounded-md bg-code p-4 text-code-foreground
@@ -64,7 +65,7 @@ export default function NumberFieldDemo(): ReactElement {
             const { errorId, invalid } = fieldInvalidState(field)
             return (
               <Field data-invalid={invalid || undefined}>
-                <FieldLabel htmlFor={field.name}>册数</FieldLabel>
+                <FieldLabel htmlFor={field.name}>Copies</FieldLabel>
                 <NumberField
                   id={field.name}
                   name={field.name}
@@ -74,7 +75,7 @@ export default function NumberFieldDemo(): ReactElement {
                   onValueChange={value => field.handleChange(value)}
                 >
                   <NumberFieldGroup>
-                    <NumberFieldDecrement aria-label="减少" />
+                    <NumberFieldDecrement aria-label="Decrease" />
                     <NumberFieldInput
                       aria-describedby={errorId}
                       aria-invalid={invalid}
@@ -82,17 +83,17 @@ export default function NumberFieldDemo(): ReactElement {
                       placeholder="1–99"
                       onBlur={field.handleBlur}
                     />
-                    <NumberFieldIncrement aria-label="增加" />
+                    <NumberFieldIncrement aria-label="Increase" />
                   </NumberFieldGroup>
                 </NumberField>
-                <FieldDescription>乐谱打印册数。</FieldDescription>
+                <FieldDescription>Number of sheet music copies to print.</FieldDescription>
                 <FieldError id={errorId} errors={fieldErrors(field)} />
               </Field>
             )
           }}
         </form.Field>
         <Field orientation="horizontal">
-          <Button type="submit">提交</Button>
+          <Button type="submit">Submit</Button>
         </Field>
       </FieldGroup>
     </form>

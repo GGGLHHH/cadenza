@@ -8,20 +8,21 @@ import {
   RadioGroupItem,
 } from '@gedatou/cadenza-ui'
 
-// 每一项各自是一个 horizontal 的 Field,htmlFor → 隐藏 input 照常;
-// 组本身的名字接不上 htmlFor —— FieldLegend 的 id + RadioGroup 的 aria-labelledby 手接
+// Each item is its own horizontal Field, htmlFor → hidden input as usual;
+// the group's own name cannot ride htmlFor — wire FieldLegend's id to
+// RadioGroup's aria-labelledby by hand
 export default function RadioDemo(): ReactElement {
   return (
     <FieldSet className="max-inline-sm">
-      <FieldLegend id="field-radio-seat" variant="label">座位偏好</FieldLegend>
+      <FieldLegend id="field-radio-seat" variant="label">Seating preference</FieldLegend>
       <RadioGroup aria-labelledby="field-radio-seat" defaultValue="stalls" name="seat">
         <Field orientation="horizontal">
           <RadioGroupItem id="field-radio-stalls" value="stalls" />
-          <FieldLabel htmlFor="field-radio-stalls">池座</FieldLabel>
+          <FieldLabel htmlFor="field-radio-stalls">Stalls</FieldLabel>
         </Field>
         <Field orientation="horizontal">
           <RadioGroupItem id="field-radio-balcony" value="balcony" />
-          <FieldLabel htmlFor="field-radio-balcony">楼座</FieldLabel>
+          <FieldLabel htmlFor="field-radio-balcony">Balcony</FieldLabel>
         </Field>
       </RadioGroup>
     </FieldSet>

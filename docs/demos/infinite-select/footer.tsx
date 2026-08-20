@@ -16,12 +16,13 @@ import { getOption } from '../lib/people'
 import { useFakeInfiniteList } from '../lib/use-fake-infinite-list'
 import { selectSlots } from './slots'
 
-// 自定义 footer 部件:经 useInfiniteSelectActions 拿到当前选择,不需要外部穿线
+// Custom footer part: useInfiniteSelectActions hands over the current
+// selection, no external wiring needed
 function FooterSelectedCount(): ReactElement {
   const { selectedIds } = useInfiniteSelectActions()
   return (
     <span className="px-3 text-xs whitespace-nowrap text-muted-foreground">
-      已选
+      Selected
       {' '}
       {selectedIds.length}
     </span>
@@ -40,23 +41,24 @@ export default function FooterDemo(): ReactElement {
       list={list}
       selectionMode="multiple"
       onValueChange={(_items, nextIds) => setIds(nextIds)}
-      searchPlaceholder="搜索作曲家…"
+      searchPlaceholder="Search composers…"
       state={state}
       value={ids}
     >
       <DemoButton>
-        {ids.length > 0 ? `已选 ${ids.length} 位` : 'footer 一族 + 自定义部件'}
+        {ids.length > 0 ? `${ids.length} selected` : 'Footer family + custom part'}
       </DemoButton>
       {selectSlots}
-      {/* 三个动作放一起是为了对照(真实场景挑一个):清空提交空集,
-          取消丢弃草稿还原成打开前,确定提交草稿。勾几个再点取消,
-          重新打开会看到勾选原样退回去 */}
+      {/* All three actions shown together for comparison (pick one in real
+          scenarios): Clear commits an empty set, Cancel drops the draft and
+          restores the pre-open state, Done commits the draft. Tick a few then
+          press Cancel — reopening shows the ticks rolled back intact */}
       <InfiniteSelectFooter>
         <FooterSelectedCount />
         <InfiniteSelectFooterSeparator />
-        <InfiniteSelectClear>清空</InfiniteSelectClear>
-        <InfiniteSelectCancel>取消</InfiniteSelectCancel>
-        <InfiniteSelectClose>确定</InfiniteSelectClose>
+        <InfiniteSelectClear>Clear</InfiniteSelectClear>
+        <InfiniteSelectCancel>Cancel</InfiniteSelectCancel>
+        <InfiniteSelectClose>Done</InfiniteSelectClose>
       </InfiniteSelectFooter>
     </InfiniteCombobox>
   )

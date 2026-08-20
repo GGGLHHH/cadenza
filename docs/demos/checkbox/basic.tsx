@@ -8,22 +8,24 @@ import {
   FieldLabel,
 } from '@gedatou/cadenza-ui'
 
-// box-only:根元素就是那个 16px 方块,文字走同级的 FieldLabel htmlFor → Checkbox id。
-// id 落在隐藏的 <input> 上,一条 htmlFor 同时买下「点文字切换」和无障碍名。
-// 横排 + 描述时用 FieldContent 装「标签 + 描述」的文本块。
+// Box-only: the root element is the 16px box itself; text goes through a
+// sibling FieldLabel htmlFor -> Checkbox id. The id lands on the hidden
+// <input>, so one htmlFor buys both "click the text to toggle" and the
+// accessible name. With a horizontal row plus a description, wrap the
+// "label + description" text block in FieldContent.
 export default function BasicDemo(): ReactElement {
   return (
     <FieldGroup className="max-inline-sm">
       <Field orientation="horizontal">
         <Checkbox defaultChecked id="checkbox-basic-newsletter" name="newsletter" />
         <FieldContent>
-          <FieldLabel htmlFor="checkbox-basic-newsletter">乐季简报</FieldLabel>
-          <FieldDescription>新的场次开票时给你发一封邮件。</FieldDescription>
+          <FieldLabel htmlFor="checkbox-basic-newsletter">Season newsletter</FieldLabel>
+          <FieldDescription>Get an email when new dates go on sale.</FieldDescription>
         </FieldContent>
       </Field>
       <Field data-disabled orientation="horizontal">
         <Checkbox disabled id="checkbox-basic-sms" name="sms" />
-        <FieldLabel htmlFor="checkbox-basic-sms">短信提醒</FieldLabel>
+        <FieldLabel htmlFor="checkbox-basic-sms">SMS reminders</FieldLabel>
       </Field>
     </FieldGroup>
   )

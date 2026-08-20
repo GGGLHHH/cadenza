@@ -9,13 +9,15 @@ import {
   InputOTPSlot,
 } from '@gedatou/cadenza-ui'
 
-// maxLength 必填,而且要和格子数对上:6 个字符 = 6 个 InputOTPSlot。
-// index 从 0 起连续编号,跨 group 也接着数(这一组 0-2,下一组 3-5)。
-// id 落在那个横跨所有格子的隐形真 input 上,所以 FieldLabel htmlFor 照常成立。
+// maxLength is required and must match the slot count: 6 characters =
+// 6 InputOTPSlots. index numbers run from 0 and stay consecutive across
+// groups (this group is 0-2, the next is 3-5).
+// The id lands on the invisible real input spanning every slot, so
+// FieldLabel htmlFor works as usual.
 export default function BasicDemo(): ReactElement {
   return (
     <Field className="max-inline-sm">
-      <FieldLabel htmlFor="input-otp-basic">短信验证码</FieldLabel>
+      <FieldLabel htmlFor="input-otp-basic">SMS verification code</FieldLabel>
       <InputOTP id="input-otp-basic" maxLength={6} name="code">
         <InputOTPGroup>
           <InputOTPSlot index={0} />
@@ -29,7 +31,7 @@ export default function BasicDemo(): ReactElement {
           <InputOTPSlot index={5} />
         </InputOTPGroup>
       </InputOTP>
-      <FieldDescription>整串粘贴、iOS/Android 的短信自动填充都能用。</FieldDescription>
+      <FieldDescription>Pasting the whole code and iOS/Android SMS autofill both work.</FieldDescription>
     </Field>
   )
 }

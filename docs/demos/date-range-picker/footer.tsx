@@ -8,23 +8,24 @@ import {
   DateRangePickerPopup,
 } from '@gedatou/cadenza-ui'
 
-// 区间的确认模式:两次点选都只是暂存,选完面板留着给你检查,
-// DateRangePickerClose 才提交并关闭 —— 选区间比选单日更值得一道确认。
+// Confirm mode for ranges: both picks are only staged, and the panel
+// stays open for review once you're done; DateRangePickerClose commits
+// and closes -- a range earns a confirmation step more than a single day.
 export default function FooterDemo(): ReactElement {
   return (
     <DateRangePicker
-      aria-label="日期范围"
-      endPlaceholder="结束日期"
-      startPlaceholder="开始日期"
+      aria-label="Date range"
+      endPlaceholder="End date"
+      startPlaceholder="Start date"
     >
       {({ defaultChildren }) => (
         <>
           {defaultChildren}
           <DateRangePickerPopup>
             <DateRangePickerFooter>
-              <DateRangePickerFooterClear className="me-auto" variant="ghost">清除</DateRangePickerFooterClear>
-              <DateRangePickerCancel variant="outline">取消</DateRangePickerCancel>
-              <DateRangePickerClose>确定</DateRangePickerClose>
+              <DateRangePickerFooterClear className="me-auto" variant="ghost">Clear</DateRangePickerFooterClear>
+              <DateRangePickerCancel variant="outline">Cancel</DateRangePickerCancel>
+              <DateRangePickerClose>OK</DateRangePickerClose>
             </DateRangePickerFooter>
           </DateRangePickerPopup>
         </>
