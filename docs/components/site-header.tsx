@@ -1,9 +1,13 @@
 import type { ReactElement } from 'react'
 import Link from 'next/link'
 import { CommandMenu } from '@/components/command-menu'
+import { LocaleSwitcher } from '@/components/locale-switcher'
 import { ModeSwitcher } from '@/components/mode-switcher'
+import { getDictionary } from '@/lib/dictionary'
+import { localizedHref } from '@/lib/i18n'
 
-export function SiteHeader(): ReactElement {
+export function SiteHeader({ lang }: { lang: string }): ReactElement {
+  const dict = getDictionary(lang)
   return (
     <header className="
       sticky inset-bs-0 z-50 border-be bg-background inline-full
@@ -16,7 +20,7 @@ export function SiteHeader(): ReactElement {
       "
       >
         <Link
-          href="/docs"
+          href={localizedHref(lang, '/docs')}
           className="flex items-center gap-2 text-base font-semibold"
         >
           Cadenza
@@ -26,26 +30,27 @@ export function SiteHeader(): ReactElement {
         "
         >
           <Link
-            href="/docs"
+            href={localizedHref(lang, '/docs')}
             className="
               transition-colors
               hover:text-foreground
             "
           >
-            文档
+            {dict.header.docs}
           </Link>
           <Link
-            href="/docs/components/data-table"
+            href={localizedHref(lang, '/docs/components/data-table')}
             className="
               transition-colors
               hover:text-foreground
             "
           >
-            组件
+            {dict.header.components}
           </Link>
         </nav>
         <div className="ms-auto flex items-center gap-2">
           <CommandMenu />
+          <LocaleSwitcher />
           <ModeSwitcher />
         </div>
       </div>

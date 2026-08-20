@@ -1,13 +1,13 @@
 'use client'
 
+import type * as PageTree from 'fumadocs-core/page-tree'
 import type { ReactElement, ReactNode } from 'react'
-import type { source } from '@/lib/source'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
-type PageTree = typeof source.pageTree
-type PageTreeNode = PageTree['children'][number]
+// i18n 模式下 source.pageTree 变成按语言的 Record,树类型直接取 fumadocs 的
+type PageTreeNode = PageTree.Root['children'][number]
 
 function SidebarLink({
   href,
@@ -83,7 +83,7 @@ export function DocsSidebar({
   tree,
   className,
 }: {
-  tree: PageTree
+  tree: PageTree.Root
   className?: string
 }): ReactElement {
   return (

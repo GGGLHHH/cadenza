@@ -38,10 +38,10 @@ const PREVIEWS: { title: string, name: string, wide?: boolean }[] = [
   { title: 'ScrollArea', name: 'scroll-area/basic' },
   { title: 'Stepper', name: 'stepper/basic', wide: true },
   { title: 'Field', name: 'field/basic', wide: true },
-  { title: 'Field 无效态', name: 'field/error', wide: true },
+  { title: 'Field invalid state', name: 'field/error', wide: true },
   { title: 'DataTable', name: 'data-table/basic', wide: true },
   { title: 'DataPagination', name: 'data-pagination/basic', wide: true },
-  { title: '表单(cadenza-form)', name: 'tanstack-form/basic', wide: true },
+  { title: 'Form (cadenza-form)', name: 'tanstack-form/basic', wide: true },
 ]
 
 export function ThemePreviewGrid(): ReactElement {

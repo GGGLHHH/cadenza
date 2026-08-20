@@ -4,6 +4,7 @@ import { ThemeProvider } from 'next-themes'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { SiteHeader } from '@/components/site-header'
 import { Toaster } from '@/components/sonner'
+import { htmlLang, i18n } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import '@/app/globals.css'
 
@@ -26,10 +27,18 @@ export const metadata: Metadata = {
   icons: { icon: '/favicon.svg' },
 }
 
-export default function RootLayout({ children }: { children: ReactNode }): ReactElement {
+export function generateStaticParams(): { lang: string }[] {
+  return i18n.languages.map(lang => ({ lang }))
+}
+
+export default async function RootLayout({ params, children }: {
+  params: Promise<{ lang: string }>
+  children: ReactNode
+}): Promise<ReactElement> {
+  const { lang } = await params
   return (
     <html
-      lang="zh-CN"
+      lang={htmlLang(lang)}
       suppressHydrationWarning
       className={cn(
         geistSans.variable,
@@ -45,7 +54,7 @@ export default function RootLayout({ children }: { children: ReactNode }): React
           disableTransitionOnChange
         >
           <div className="relative flex flex-col min-block-svh">
-            <SiteHeader />
+            <SiteHeader lang={lang} />
             <main className="flex flex-1 flex-col">{children}</main>
           </div>
           <Toaster />

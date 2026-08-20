@@ -2,6 +2,7 @@
 
 import type { ReactElement } from 'react'
 import { ThemeEditor } from '@gedatou/cadenza-ui'
+import { useParams } from 'next/navigation'
 
 // 这层 wrapper 不是装饰:dev 下 next.config 把库 alias 到源码(换 Fast
 // Refresh),而源码不是每个文件都带 'use client'(统一 banner 在 dist 上)——
@@ -20,6 +21,12 @@ const GROUPS = [
 ]
 
 export function DocsThemeEditor(): ReactElement {
+  const { lang } = useParams<{ lang: string }>()
+
+  // 英文站什么都不传:ThemeEditor 的默认文案和默认分组本来就是英文
+  if (lang === 'en')
+    return <ThemeEditor exportFileName="cadenza-theme.css" />
+
   return (
     <ThemeEditor
       aria-label="主题编辑器"

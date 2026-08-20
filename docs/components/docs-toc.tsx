@@ -1,7 +1,9 @@
 'use client'
 
 import type { ReactElement, ReactNode } from 'react'
+import { useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { getDictionary } from '@/lib/dictionary'
 import { cn } from '@/lib/utils'
 
 function useActiveItem(itemIds: string[]): string | null {
@@ -41,6 +43,7 @@ export function DocsTableOfContents({
   }[]
   className?: string
 }): ReactElement | null {
+  const { lang } = useParams<{ lang: string }>()
   const itemIds = useMemo(() => toc.map(item => item.url.replace('#', '')), [toc])
   const activeHeading = useActiveItem(itemIds)
 
@@ -49,7 +52,7 @@ export function DocsTableOfContents({
 
   return (
     <div className={cn('flex flex-col gap-2 p-4 pbs-0 text-sm', className)}>
-      <p className="text-xs font-medium text-muted-foreground block-6">本页目录</p>
+      <p className="text-xs font-medium text-muted-foreground block-6">{getDictionary(lang).toc}</p>
       {toc.map(item => (
         <a
           key={item.url}

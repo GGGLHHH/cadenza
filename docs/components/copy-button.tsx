@@ -2,7 +2,9 @@
 
 import type { ReactElement } from 'react'
 import { IconCheck, IconCopy } from '@tabler/icons-react'
+import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { getDictionary } from '@/lib/dictionary'
 import { cn } from '@/lib/utils'
 
 export function CopyButton({
@@ -12,6 +14,7 @@ export function CopyButton({
   value: string
   className?: string
 }): ReactElement {
+  const { lang } = useParams<{ lang: string }>()
   const [hasCopied, setHasCopied] = useState(false)
 
   useEffect(() => {
@@ -39,7 +42,7 @@ export function CopyButton({
         void navigator.clipboard.writeText(value).then(() => setHasCopied(true))
       }}
     >
-      <span className="sr-only">复制</span>
+      <span className="sr-only">{getDictionary(lang).copy}</span>
       {hasCopied ? <IconCheck /> : <IconCopy />}
     </button>
   )

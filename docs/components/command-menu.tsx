@@ -4,8 +4,9 @@ import type { ReactElement } from 'react'
 import { IconAlignLeft, IconFile, IconHash, IconSearch } from '@tabler/icons-react'
 import { useDocsSearch } from 'fumadocs-core/search/client'
 import { fetchClient } from 'fumadocs-core/search/client/fetch'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { getDictionary } from '@/lib/dictionary'
 import { cn } from '@/lib/utils'
 
 const TYPE_ICON = {
@@ -24,8 +25,11 @@ export function CommandMenu(): ReactElement {
   const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const { lang } = useParams<{ lang: string }>()
+  const dict = getDictionary(lang)
 
-  const client = useMemo(() => fetchClient({ api: '/api/search' }), [])
+  // 索引按语言隔离(loader 的 i18n 决定),不带 locale 会搜到另一语言的页面
+  const client = useMemo(() => fetchClient({ api: '/api/search', locale: lang }), [lang])
   const { search, setSearch, query } = useDocsSearch({ client })
 
   const results = Array.isArray(query.data) ? query.data : []
@@ -80,7 +84,7 @@ export function CommandMenu(): ReactElement {
       >
         <span className="flex items-center gap-2">
           <IconSearch />
-          搜索文档...
+          {dict.search.placeholder}
         </span>
         <kbd className="
           rounded-sm border bg-muted px-1.5 font-mono text-[10px]
@@ -101,20 +105,20 @@ export function CommandMenu(): ReactElement {
         "
         onClick={() => setOpen(true)}
       >
-        <span className="sr-only">搜索</span>
+        <span className="sr-only">{dict.search.open}</span>
         <IconSearch />
       </button>
       {open && (
         <div className="fixed inset-0 z-50">
           <button
             type="button"
-            aria-label="关闭搜索"
+            aria-label={dict.search.close}
             className="absolute inset-0 bg-black/40"
             onClick={close}
           />
           <div
             role="dialog"
-            aria-label="搜索文档"
+            aria-label={dict.search.dialog}
             className="
               absolute inset-s-1/2 inset-bs-[20svh] flex -translate-x-1/2
               flex-col overflow-hidden rounded-xl border bg-popover
@@ -129,7 +133,7 @@ export function CommandMenu(): ReactElement {
               <input
                 ref={inputRef}
                 value={search}
-                placeholder="搜索文档..."
+                placeholder={dict.search.placeholder}
                 className="
                   flex-1 bg-transparent py-3 text-sm outline-none
                   placeholder:text-muted-foreground
@@ -172,10 +176,10 @@ export function CommandMenu(): ReactElement {
                 "
                 >
                   {search === ''
-                    ? '输入关键词搜索文档'
+                    ? dict.search.hint
                     : query.error
-                      ? '搜索服务出错,请重试'
-                      : '没有找到相关内容'}
+                      ? dict.search.error
+                      : dict.search.empty}
                 </p>
               )}
               {results.map((result, index) => {

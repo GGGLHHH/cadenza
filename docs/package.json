@@ -14,7 +14,6 @@
     "@gedatou/cadenza-form": "workspace:*",
     "@gedatou/cadenza-ui": "workspace:*",
     "@gedatou/cadenza-utils": "workspace:*",
-    "@orama/tokenizers": "catalog:docs",
     "@tabler/icons-react": "catalog:ui",
     "clsx": "catalog:ui",
     "date-fns": "catalog:ui",

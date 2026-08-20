@@ -5,6 +5,7 @@ import { findNeighbour } from 'fumadocs-core/page-tree'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { DocsTableOfContents } from '@/components/docs-toc'
+import { getDictionary } from '@/lib/dictionary'
 import { source } from '@/lib/source'
 import { mdxComponents } from '@/mdx-components'
 
@@ -12,15 +13,15 @@ export const revalidate = false
 export const dynamic = 'force-static'
 export const dynamicParams = false
 
-export function generateStaticParams(): { slug?: string[] }[] {
+export function generateStaticParams(): { lang: string, slug?: string[] }[] {
   return source.generateParams()
 }
 
 export async function generateMetadata(props: {
-  params: Promise<{ slug?: string[] }>
+  params: Promise<{ lang: string, slug?: string[] }>
 }): Promise<Metadata> {
   const params = await props.params
-  const page = source.getPage(params.slug)
+  const page = source.getPage(params.slug, params.lang)
 
   if (!page)
     notFound()
@@ -41,17 +42,18 @@ const NEIGHBOUR_LINK_CLASSNAME = `
 `
 
 export default async function Page(props: {
-  params: Promise<{ slug?: string[] }>
+  params: Promise<{ lang: string, slug?: string[] }>
 }): Promise<ReactElement> {
   const params = await props.params
-  const page = source.getPage(params.slug)
+  const page = source.getPage(params.slug, params.lang)
 
   if (!page)
     notFound()
 
+  const dict = getDictionary(params.lang)
   const doc = page.data
   const MDX = doc.body
-  const neighbours = findNeighbour(source.pageTree, page.url)
+  const neighbours = findNeighbour(source.getPageTree(params.lang), page.url)
 
   return (
     <div
@@ -85,7 +87,7 @@ export default async function Page(props: {
                     `}
                   >
                     <IconArrowLeft />
-                    <span className="sr-only">上一页</span>
+                    <span className="sr-only">{dict.pager.previous}</span>
                   </Link>
                 )}
                 {neighbours.next && (
@@ -97,7 +99,7 @@ export default async function Page(props: {
                       md:block-7 md:inline-7
                     `}
                   >
-                    <span className="sr-only">下一页</span>
+                    <span className="sr-only">{dict.pager.next}</span>
                     <IconArrowRight />
                   </Link>
                 )}
