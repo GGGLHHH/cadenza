@@ -14,5 +14,8 @@
     "skipDefaultLibCheck": true,
     "skipLibCheck": true
   },
-  "include": ["*.config.ts"]
+  // eslint-fixtures is here only so typescript-eslint's projectService can
+  // resolve it — the fixture is linted explicitly with --no-ignore and is in
+  // eslint.config.js `ignores`, so it never reaches `pnpm run lint`.
+  "include": ["*.config.ts", "eslint-fixtures/*.tsx"]
 }
