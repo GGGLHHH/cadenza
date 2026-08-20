@@ -1,0 +1,21 @@
+---
+title: 主题
+description: 实时编辑 design tokens,预览全部组件跟随主题变化的效果
+---
+
+所有组件的颜色与圆角都来自 `@gedatou/cadenza-ui/styles.css` 里的一层 CSS 变量
+(shadcn 约定,oklch 色值)。**右下角的调色盘按钮**在每个文档页都有:点开编辑器,
+改动实时作用于整个站点(portal 弹层也在内),面板不锁定滚动,开着照样翻页,
+在文档站里随便逛,改动也一直跟着你。用右上角的明暗开关切换后,可以分别编辑
+亮色、暗色两套值。「导出 CSS」把两套完整的 token 块下载成 CSS 文件,引到你项目里
+`@import '@gedatou/cadenza-ui/styles.css'` 之后即可成为项目主题;「导入」支持
+粘贴同格式(或 shadcn 主题)的 CSS,解析后合并进当前改动。改动会存进浏览器的
+localStorage——刷新、重开都还在,「重置」才清除。
+
+编辑范围是组件实际消费的语义 token:`--chart-*`、`--sidebar-*` 当前没有组件消费,
+字体则是库刻意不定义的(由使用方注入),都不在其中。色板选色会以 hex 存储,
+文本框里可以手写任意合法 CSS 颜色(oklch、hsl、color-mix 都行)。
+
+下面是全部组件的预览,一页看完主题效果:
+
+<ThemePreviewGrid />

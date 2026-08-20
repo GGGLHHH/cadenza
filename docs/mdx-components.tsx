@@ -4,6 +4,7 @@ import { isValidElement } from 'react'
 import { ComponentPreview } from '@/components/component-preview'
 import { ComponentSource } from '@/components/component-source'
 import { CopyButton } from '@/components/copy-button'
+import { ThemePreviewGrid } from '@/components/theme-preview-grid'
 import { cn } from '@/lib/utils'
 
 function getNodeText(node: ReactNode): string {
@@ -128,4 +129,5 @@ export const mdxComponents: MDXComponents = {
   },
   ComponentPreview,
   ComponentSource,
+  ThemePreviewGrid,
 }

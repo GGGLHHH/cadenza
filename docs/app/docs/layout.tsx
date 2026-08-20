@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { DocsSidebar } from '@/components/docs-sidebar'
+import { DocsThemeEditor } from '@/components/docs-theme-editor'
 import { source } from '@/lib/source'
 
 export default function DocsLayout({ children }: { children: ReactNode }): ReactElement {
@@ -11,6 +12,7 @@ export default function DocsLayout({ children }: { children: ReactNode }): React
     >
       <DocsSidebar tree={source.pageTree} />
       <div className="block-full inline-full">{children}</div>
+      <DocsThemeEditor />
     </div>
   )
 }

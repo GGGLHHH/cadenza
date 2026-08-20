@@ -1,6 +1,7 @@
 {
   "pages": [
     "index",
+    "themes",
     "components",
     "forms",
     "utils"

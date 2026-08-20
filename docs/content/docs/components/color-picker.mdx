@@ -1,0 +1,207 @@
+---
+title: ColorPicker
+description: swatch 按钮点开的取色弹层 —— React Aria 的颜色内核,Base UI 的弹层外壳
+---
+
+<ComponentPreview name="color-picker/basic" />
+
+一个取色器。Base UI 没有颜色组件,所以这个家族是两个内核的联姻:颜色状态、
+色彩数学和面板/滑杆的拖拽键盘交互来自 React Aria 的 Color 部件(它们通过
+React Aria 自己的上下文同步),触发器和弹层则是 Base UI 的 Popover——开合、
+定位、焦点和 outside-press 的行为与库里其他弹层完全一致。
+
+弹层里的东西全是默认在场的:饱和度/明度面板、hue 与 alpha 滑杆、hex 输入,
+不写任何组合就是一个完整的取色器;要裁剪就自己组合(见
+[自定义弹层](#自定义弹层))。
+
+## 使用
+
+```tsx
+import { ColorPicker } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<ColorPicker aria-label="强调色" defaultValue="#6366f1" />
+```
+
+## 组成
+
+触发器在页面上,编辑控件都在弹层里;`ColorPickerSwatch` 也可以单独用来展示
+任意颜色。
+
+```text
+ColorPicker
+├─ ColorPickerTrigger        触发器按钮(默认内容是 Swatch)
+│  └─ ColorPickerSwatch      当前颜色色块(棋盘格衬底)
+└─ ColorPickerPopup          Portal + Positioner + Popup 一体
+   ├─ ColorPickerArea        二维面板(默认 HSB:饱和度 × 明度)
+   ├─ ColorPickerSlider      单通道滑杆(channel="hue" / "alpha" / …)
+   └─ ColorPickerInput       文本输入(默认 hex)
+```
+
+## 标签
+
+触发器是 box-only 控件——可见标签不塞进 children,走
+[Field](/docs/components/field) 的 `FieldLabel htmlFor`,`id` 落在触发器按钮上。
+
+<ComponentPreview name="color-picker/label" />
+
+没有可见标签时直接写 `aria-label`。两条通道有让位关系:不传 `id` 时触发器带一个
+英文 aria fallback(`Open color picker`);一旦传了 `id`,fallback 自动消失——
+aria-label 在可及名计算里排在 label 元素之前,不让位的话 `FieldLabel`
+写了也白写。
+
+## 受控
+
+`value` / `defaultValue` / `onValueChange` 受控三件套。字符串宽进(hex、rgb、
+hsl 都由 `parseColor` 解析),回调严出 React Aria 的 `Color` 对象——
+`toString('hex' | 'hexa' | 'css' | …)` 取字符串,`eventDetails.cancel()`
+整个拒掉这次变更。
+
+<ComponentPreview name="color-picker/controlled" />
+
+React Aria 的选择器上下文不透出手势来自哪个控件(面板、滑杆还是输入框),
+所以交互变更的 `reason` 只有一个词 `control-change`;程序性变更是 `none`。
+
+## 自定义弹层
+
+组合即配置:弹层内容自己写,省掉的部件就是省掉的能力——不放
+`channel="alpha"` 的滑杆,它就是一个只出不透明色的选择器。
+
+<ComponentPreview name="color-picker/opaque" />
+
+## 表单
+
+有 `name` 才渲染隐藏 input(挂在弹层外,弹层关闭不影响序列化)。不透明的值
+序列化成 `#rrggbb`,带透明度的序列化成 8 位 hex。
+
+<ComponentPreview name="color-picker/form" />
+
+## 状态与 className
+
+两个内核各写各的状态属性,都是无值存在型:
+
+| 属性 | 写在哪 | 出现时机 |
+| --- | --- | --- |
+| `data-popup-open` | 触发器 | 弹层开着(Base UI) |
+| `data-disabled` | 触发器、弹层内控件 | 禁用 |
+| `data-dragging` | 面板/滑杆的拇指 | 拖拽中(React Aria) |
+| `data-focus-visible` | 面板/滑杆的拇指、hex 输入 | 键盘焦点(React Aria) |
+
+| data-slot | 是什么 |
+| --- | --- |
+| `color-picker-trigger` | 触发器按钮 |
+| `color-picker-swatch` | 色块 |
+| `color-picker-popup` | 弹层 |
+| `color-picker-area` | 二维面板 |
+| `color-picker-slider` | 单通道滑杆 |
+| `color-picker-input` | 文本输入的包裹元素(className 落在内层 `<input>`) |
+
+`ColorPickerTrigger` 与 `ColorPickerPopup` 是 Base UI 部件,函数 `className`
+的 `(state) => string` 契约照常成立;React Aria 底座的部件(Area / Slider /
+Input / Swatch)支持的是它自己的 render-prop 形状,与本库契约不同,所以这几个
+部件的 `className` 诚实地只收 `string`。
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| <kbd>Enter</kbd> / <kbd>Space</kbd> | 触发器上:开弹层 |
+| <kbd>Tab</kbd> | 在弹层内的控件间移动 |
+| 方向键 | 面板:二维移动;滑杆:步进 |
+| <kbd>PageUp</kbd> / <kbd>PageDown</kbd> | 面板/滑杆:大步步进 |
+| <kbd>Home</kbd> / <kbd>End</kbd> | 滑杆:跳到两端 |
+| <kbd>Esc</kbd> | 关弹层,焦点回触发器 |
+
+## Props
+
+顺序规则:**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### ColorPicker
+
+状态容器,不渲染 DOM;props 面是封闭的(不向任何元素透传)。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultValue` | `Color \| string` | `'#000000'` | 非受控初始值 |
+| `value` | `Color \| string` | — | 受控值,字符串经 `parseColor` 解析 |
+| `open` | `boolean` | — | 受控弹层开合 |
+| `defaultOpen` | `boolean` | — | 弹层初始开合 |
+| `onValueChange` | `(value: Color, eventDetails) => void` | — | 每次变更;`cancel()` 拒掉 |
+| `onOpenChange` | Base UI Popover 同款 | — | 开合回调,`cancel()` 与 reason 齐全 |
+| `onOpenChangeComplete` | `(open: boolean) => void` | — | 开合动画完成后 |
+| `actionsRef` | Base UI Popover 同款 | — | 命令式弹层句柄 |
+| `modal` | `boolean` | `false` | 钉死 `false`:行内控件不锁页面 |
+| `name` | `string` | — | 有值才渲染隐藏 input |
+| `disabled` | `boolean` | `false` | |
+| `id` | `string` | — | 落到触发器,`FieldLabel htmlFor` 的落点 |
+| `aria-label` | `string` | — | 默认组合触发器的可及名 |
+| `children` | `ReactNode \| ReactNode[]` | 默认组合 | 自己组合各部件 |
+
+### ColorPickerTrigger
+
+Base UI 的 Popover.Trigger,弹层锚定在它上面。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | `<ColorPickerSwatch />` | |
+| 其余 | Base UI Popover.Trigger 的 props(原生 button 属性 + ref) | — | 透传 |
+
+### ColorPickerSwatch
+
+当前颜色的色块,棋盘格衬底让透明度看得见。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `color` | `Color \| string` | 选择器当前值 | 单独展示任意颜色 |
+| `className` | `string` | — | React Aria 底座,诚实窄化 |
+| 其余 | React Aria ColorSwatch 的 props | — | 透传 |
+
+### ColorPickerPopup
+
+Portal + Positioner + Popup 一体,锚定触发器。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `align` / `alignOffset` / `side` / `sideOffset` | Base UI Positioner 同款 | `'start'` / `0` / `'bottom'` / `4` | 定位 |
+| `children` | `ReactNode \| ReactNode[]` | 面板 + hue/alpha 滑杆 + hex 输入 | 组合即配置 |
+| 其余 | Base UI Popover.Popup 的 props | — | 透传 |
+
+### ColorPickerArea
+
+二维通道面板,拇指内置。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `colorSpace` | `ColorSpace` | `'hsb'` | |
+| `xChannel` / `yChannel` | `ColorChannel` | `'saturation'` / `'brightness'` | |
+| `className` | `string` | — | React Aria 底座,诚实窄化 |
+| 其余 | React Aria ColorArea 的 props | — | 透传 |
+
+### ColorPickerSlider
+
+单通道滑杆,拇指内置。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `channel` | `ColorChannel` | — | 必填:`'hue'`、`'alpha'` 或任意通道 |
+| `colorSpace` | `ColorSpace` | `'hsb'` | |
+| `className` | `string` | — | React Aria 底座,诚实窄化 |
+| 其余 | React Aria ColorSlider 的 props | — | 透传 |
+
+### ColorPickerInput
+
+文本输入,默认整值 hex,传 `channel` 变成单通道数字输入。`className`
+落在内层 `<input>` 上,React Aria 的包裹 div 不接样式。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `channel` | `ColorChannel` | —(整值 hex) | 单通道模式 |
+| `className` | `string` | — | 落在内层 `<input>` |
+| 其余 | React Aria ColorField 的 props | — | 透传 |
+
+9 个类型一并导出:`ColorPickerProps` / `ColorPickerTriggerProps` /
+`ColorPickerSwatchProps` / `ColorPickerPopupProps` / `ColorPickerAreaProps` /
+`ColorPickerSliderProps` / `ColorPickerInputProps` /
+`ColorPickerChangeEventReason` / `ColorPickerChangeEventDetails`;
+另 re-export `parseColor` 函数与 `Color` 类型,受控用法开箱即用。

@@ -1,0 +1,126 @@
+---
+title: ThemeEditor
+description: 悬浮的 design token 编辑器 —— 实时注入、撤回重做、导入导出、localStorage 持久化
+---
+
+<ComponentPreview name="theme-editor/basic" align="stretch" />
+
+一个开发期的主题工具:悬浮按钮点开非模态面板,逐 token 编辑库的语义色
+(每行一个 [ColorPicker](/docs/components/color-picker) 色板加自由文本框)和
+`--radius` 滑杆。改动通过一个文档级 `<style>` 实时注入,portal 弹层一并跟随;
+默认值从**已加载样式表的 CSSOM** 现读(`:root` 与 `.dark, [data-theme='dark']`
+两块),组件里没有任何一份会过期的主题副本。
+
+当前编辑亮色还是暗色,跟随 `<html>` 自己的暗色记号(`.dark` 类或
+`data-theme="dark"`,与 styles.css 认的是同一对)——用 MutationObserver 观察,
+不依赖任何主题库。
+
+本站右下角的编辑器就是它(docs layout 挂的全局实例,传了中文文案)。上面这个
+demo 是内联摆放的第二个实例:改动同样立即作用于整站,`storageKey={null}`
+让它不与全局实例抢存储。
+
+## 使用
+
+```tsx
+import { ThemeEditor } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<ThemeEditor />
+```
+
+默认 `fixed` 悬浮在视口右下;根是普通 `<div>`,用 `className` 覆盖 inset
+工具类换位置,或覆盖 `static` 改为内联摆放。
+
+## 历史
+
+撤回/重做维护一条最多 **20 步**的历史。步的粒度按「连续同源合并」:拖一趟
+滑杆、在同一个 token 里打完一串字符是一步;换 token、换操作类型才切新步;
+重置和导入是独立步——**重置本身可以撤回**。新操作会作废重做栈。
+
+## 导入与导出
+
+「导出 CSS」把亮暗两套完整 token 块(shadcn 约定的 `:root {}` + `.dark {}`)
+下载成一个 CSS 文件(文件名由 `exportFileName` 定,默认 `theme.css`);
+「导入」解析粘贴的同格式 CSS 并**合并**进当前改动(只粘三个 token 不会清掉
+其他手改)。带 CSS 结构字符的值(`red}`)在注入与导出时整条跳过,防止静默
+弄坏整个样式块。
+
+## 持久化
+
+改动以 `storageKey`(默认 `cadenza-theme-editor`)存进 localStorage,挂载时
+恢复;清空全部改动即清除存储。传 `storageKey={null}` 整体关闭持久化——
+页面上有第二个实例时(比如本页的 demo)应当关闭,免得两个实例互写同一个 key。
+
+## 本地化
+
+可见文案全部走平铺的 `*Label` 字符串 props,默认英文;分组标题跟着 `groups`
+数据走。逐条传译文即可整体换语言:
+
+<ComponentPreview name="theme-editor/localized" align="stretch" />
+
+## 受控
+
+面板开合支持受控三件套,回调第二参是带 `reason`(`trigger-press` /
+`close-press` / `escape-key`)的事件详情,`cancel()` 拒掉这次开合:
+
+```tsx
+const [open, setOpen] = useState(false)
+
+<ThemeEditor
+  open={open}
+  onOpenChange={(next, details) => {
+    if (details.reason === 'escape-key')
+      details.cancel() // 只许按钮关,不许 Esc 关
+    else
+      setOpen(next)
+  }}
+/>
+```
+
+## 状态与 className
+
+| 属性 | 写在哪 | 出现时机 |
+| --- | --- | --- |
+| `data-open` | 根 | 面板开着(无值存在型) |
+
+| data-slot | 是什么 |
+| --- | --- |
+| `theme-editor` | 悬浮栈的根 |
+| `theme-editor-trigger` | 悬浮按钮 |
+| `theme-editor-panel` | 面板 |
+
+根是普通 `<div>`,`className` 诚实地只收 `string`,与默认类经 `cn` 合并
+(caller 的赢)。
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| <kbd>Esc</kbd> | 焦点在面板内时关闭面板(reason `escape-key`) |
+
+## Props
+
+顺序规则:**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+一体化工具组件,props 面是封闭的(不向任何元素透传)。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `groups` | `ThemeEditorGroup[]` | 库的九组语义色 | 每组 `{ label, tokens }`,tokens 带 `--` 前缀 |
+| `storageKey` | `string \| null` | `'cadenza-theme-editor'` | localStorage 键;`null` 关闭持久化 |
+| `defaultOpen` | `boolean` | `false` | 面板初始开合 |
+| `open` | `boolean` | — | 受控面板开合 |
+| `onOpenChange` | `(open, eventDetails) => void` | — | `cancel()` 拒掉开合 |
+| `aria-label` | `string` | `'Theme editor'` | 悬浮按钮的可及名 |
+| `titleLabel` | `string` | `'Theme editor'` | 面板标题 |
+| `editingLightLabel` / `editingDarkLabel` | `string` | `'Editing light'` / `'Editing dark'` | 模式徽标 |
+| `undoLabel` / `redoLabel` / `resetLabel` | `string` | `'Undo'` / `'Redo'` / `'Reset'` | 历史操作 |
+| `importLabel` / `applyLabel` / `cancelLabel` | `string` | `'Import'` / `'Apply'` / `'Cancel'` | 导入视图 |
+| `exportLabel` | `string` | `'Export CSS'` | 导出按钮 |
+| `exportFileName` | `string` | `'theme.css'` | 导出下载的文件名 |
+| `closeLabel` | `string` | `'Close'` | 面板关闭按钮的可及名 |
+| `importErrorLabel` | `string` | 英文提示 | 粘贴内容解析不出 token 时显示 |
+| `className` | `string` | — | 根 `<div>`,覆盖定位/布局 |
+
+4 个类型一并导出:`ThemeEditorProps` / `ThemeEditorGroup` /
+`ThemeEditorOpenChangeEventReason` / `ThemeEditorOpenChangeEventDetails`。
