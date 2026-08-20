@@ -18,6 +18,8 @@ packages/ui/               @gedatou/cadenza-ui，tsdown 打包
   src/lib/utils.ts         cn()
   src/index.ts             只导出 ./components/*
   styles.css               base-nova token，@source 指向 dist
+packages/utils/            @gedatou/cadenza-utils，useControllableState / resolveRenderChildren
+packages/form/             @gedatou/cadenza-form，TanStack Form 门面
 docs/                      Next.js + fumadocs（headless，自绘外壳），MDX 里直接跑 React demo
 ```
 
@@ -33,7 +35,7 @@ tree-shaking 直接扔掉。
 | `dependencies` | 14 个 | 4 个 |
 | 消费者 CSS（只用 Button） | 199.8 kB | 23.7 kB |
 
-如今 9 个组件模块对应 76 kB / 9 个依赖 —— 体积随真正提升的组件走，边界的含义没变。
+如今 36 个组件模块对应 320.7 kB / 13 个依赖 —— 体积随真正提升的组件走，边界的含义没变。
 
 `recharts`、`embla-carousel-react` 这些是 chart / carousel 拖进来的，它们不发布就不必声明为
 依赖——但仍是 `devDependencies`，因为 `tsc` 要 typecheck 全部 primitives。
@@ -53,10 +55,10 @@ tree-shaking 直接扔掉。
 | 命令               | 作用                                    |
 | ------------------ | --------------------------------------- |
 | `pnpm dev`         | 并行跑 tsdown --watch 和 docs 站        |
-| `pnpm build`       | 构建所有包（拓扑序：ui → docs）         |
+| `pnpm build`       | 构建所有包（拓扑序：utils → ui / form → docs） |
 | `pnpm test`        | vitest（jsdom + Testing Library），含 primitives 哈希校验 |
 | `pnpm test -u`     | 接受新哈希，`shadcn add -o` 之后跑      |
-| `pnpm typecheck`   | 各包 tsc（ui + docs）                   |
+| `pnpm typecheck`   | 各包 tsc（ui / utils / form + docs） |
 | `pnpm lint`        | eslint                                  |
 | `pnpm release`     | bumpp 打版本，GitHub Actions 负责发布   |
 
@@ -104,7 +106,7 @@ pnpm release        # bumpp：改版本 → commit → tag vX → push
 推 tag 触发 `.github/workflows/release.yml`：校验 tag 与 `packages/ui` 版本一致 →
 构建 → 用 OIDC 可信发布推到 npm（无 NPM_TOKEN，npm 自带 provenance 溯源）。
 
-版本由 `bump.config.ts` 管，根 `package.json` 和 `packages/ui/package.json` 锁步。
+版本由 `bump.config.ts` 管，根 `package.json` 与三个 `packages/*/package.json` 锁步。
 `docs/` 是私有包，不参与版本、不发布。
 
 **首次发布需要两步前置**，OIDC 引导不了一个不存在的包：
