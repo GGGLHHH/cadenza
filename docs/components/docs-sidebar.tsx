@@ -24,8 +24,8 @@ function SidebarLink({
       data-active={active}
       className="
         relative flex items-center rounded-md border border-transparent px-2
-        text-[0.8rem] font-medium text-foreground/80 transition-colors
-        block-[30px] inline-fit
+        text-[0.8rem] font-medium text-foreground/80 transition-colors block-7.5
+        inline-fit
         hover:text-foreground
         data-[active=true]:border-accent data-[active=true]:bg-accent
         data-[active=true]:text-foreground

@@ -76,6 +76,14 @@ export default antfu(
       // The published styles.css deliberately omits `@import "tailwindcss"`, so it is
       // not a resolvable entry on its own — point at the docs stylesheet instead.
       entryPoint: 'docs/app/globals.css',
+      // Feeds tailwind's canonicalizeCandidates() as its `rem` option — without it
+      // the plugin does no px-to-scale collapsing at all (`mt-[16px]` stays put).
+      // This is what makes enforce-canonical-classes report `max-inline-[1400px]`
+      // as `max-inline-350`, matching the Tailwind IntelliSense warning in VS Code.
+      // Note the collapse is not purely syntactic: `max-inline-350` compiles to
+      // calc(var(--spacing) * 350) = 87.5rem and scales with the user's font size,
+      // where [1400px] does not.
+      rootFontSize: 16,
     },
   },
   rules: {

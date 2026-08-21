@@ -10,7 +10,7 @@ export default async function DocsLayout({ params, children }: {
   const { lang } = await params
   return (
     <div className="
-      mx-auto flex flex-1 items-start px-4 inline-full max-inline-[1400px]
+      mx-auto flex flex-1 items-start px-4 inline-full max-inline-350
       lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-6 lg:px-8
     "
     >

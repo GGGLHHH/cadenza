@@ -38,7 +38,7 @@ export default async function Home(props: {
   return (
     <div className="
       relative mx-auto flex flex-col gap-16 overflow-x-clip px-4 pbs-16 pbe-24
-      inline-full max-inline-[1100px]
+      inline-full max-inline-275
       lg:px-8
     "
     >

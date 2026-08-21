@@ -459,7 +459,7 @@ export default function MultiStepDemo(): ReactElement {
                         aria-describedby={msErrorId(field.name)}
                         aria-invalid={invalid}
                         aria-required
-                        className="min-inline-[120px]"
+                        className="min-inline-30"
                       >
                         <SelectValue placeholder="Pick a voice part" />
                       </SelectTrigger>

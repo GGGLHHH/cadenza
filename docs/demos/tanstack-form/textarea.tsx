@@ -61,7 +61,7 @@ export default function TextareaDemo(): ReactElement {
                 <Textarea
                   {...fieldControlProps(field)}
                   value={field.state.value}
-                  className="min-block-[120px]"
+                  className="min-block-30"
                   placeholder="I lead the soprano section…"
                   onBlur={field.handleBlur}
                   onChange={event => field.handleChange(event.target.value)}

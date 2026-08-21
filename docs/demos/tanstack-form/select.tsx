@@ -84,7 +84,7 @@ export default function SelectDemo(): ReactElement {
                     aria-describedby={errorId}
                     aria-invalid={invalid}
                     aria-required
-                    className="min-inline-[120px]"
+                    className="min-inline-30"
                   >
                     <SelectValue placeholder="Pick a voice part" />
                   </SelectTrigger>

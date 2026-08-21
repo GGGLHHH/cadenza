@@ -35,7 +35,7 @@ export function HomeBackdrop(): ReactElement | null {
       className="
         pointer-events-none absolute inset-s-1/2 inset-bs-0 -z-10
         -translate-x-1/2 mask-[linear-gradient(to_bottom,black_45%,transparent)]
-        opacity-40 block-[620px] inline-screen
+        opacity-40 block-155 inline-screen
       "
     >
       <LightRays

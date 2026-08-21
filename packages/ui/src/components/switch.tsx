@@ -11,9 +11,9 @@ import { Spinner } from './spinner'
  * Why a fork: `pending`'s spinner lives *inside the thumb* (the antd
  * treatment), and the vendored file renders its Thumb as a closed explicit
  * child — no children channel, nothing a thin wrapper could reach. Class
- * names are copied from the vendored primitive verbatim; the only additions
- * are the thumb's centring layout and the pending spinner. The cost, owned
- * here: this file no longer follows upstream drift of primitives/switch.tsx.
+ * names are copied from the vendored primitive; the only additions are the
+ * thumb's centring layout and the pending spinner. The cost, owned here: this
+ * file no longer follows upstream drift of primitives/switch.tsx.
  *
  * Same shape as `Checkbox` and the same *box-only* rule: the root is the track
  * (a `<span role="switch">` with a hidden `<input type="checkbox">` beside it),
@@ -77,7 +77,10 @@ export function Switch({
       // toggle is suppressed upstream.
       readOnly={readOnly === true || pending === true}
       className={cn(
-        // Copied verbatim from the vendored primitive (see fork note above).
+        // Copied from the vendored primitive (see fork note above), except that
+        // enforce-canonical-classes collapsed its arbitrary px sizes onto the
+        // spacing scale — inline-8 is calc(var(--spacing) * 8) = the same 32px.
+        // block-[18.4px] stays arbitrary: 4.6 is not a scale step.
         `
           peer group/switch relative inline-flex shrink-0 items-center
           rounded-full border border-transparent transition-all outline-none
@@ -86,8 +89,8 @@ export function Switch({
           focus-visible:ring-ring/50
           aria-invalid:border-destructive aria-invalid:ring-3
           aria-invalid:ring-destructive/20
-          data-[size=default]:block-[18.4px] data-[size=default]:inline-[32px]
-          data-[size=sm]:block-[14px] data-[size=sm]:inline-[24px]
+          data-[size=default]:block-[18.4px] data-[size=default]:inline-8
+          data-[size=sm]:block-3.5 data-[size=sm]:inline-6
           dark:aria-invalid:border-destructive/50
           dark:aria-invalid:ring-destructive/40
           data-checked:bg-primary

@@ -15,7 +15,7 @@ export function SiteHeader({ lang }: { lang: string }): ReactElement {
     >
       <div className="
         mx-auto flex items-center gap-4 px-4 block-(--header-height) inline-full
-        max-inline-[1400px]
+        max-inline-350
         lg:px-8
       "
       >
