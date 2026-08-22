@@ -1,0 +1,663 @@
+---
+title: MessageScroller
+description: 聊天记录滚动容器 —— 锚定轮次、跟随流式输出、向上加载历史不跳动、跳转到任意消息
+---
+
+<ComponentPreview name="message-scroller/basic" align="stretch" />
+
+这一家的行为不出自 Base UI，而是 shadcn 的 headless 包
+`@shadcn/react/message-scroller`，外面是 shadcn base-nova 的皮。封装层不改行为，
+只做三件事：给 upstream 内联声明的 props 起名字（业务层想再包一层时才有类型可引），
+摘掉根节点的 `ref`（[为什么](#props)），以及把滚动视口换成本库的
+[ScrollArea](/docs/components/scroll-area) —— 上下两条 scroll-fade 渐隐要成立，
+就得让滚动条待在被 mask 的元素之外。
+
+## 流式聊天体验的标准
+
+聊天界面曾经很简单：一个倒序列表加一个输入框，发一条追加一条，回复来了列表长高、
+滚到底，就完了。
+
+流式输出打破了这个模型。消息是一块一块到达的，而这期间读者可能正在读、正在滚动，
+或者根本在看别处。挑战从"追加"变成了"在对话不断变化时保住读者的位置"。做错了，
+界面就会一跳一跳：人被拽到底部，丢掉上下文，还得自己找回来。
+
+落到实处，全是滚动的取舍：什么时候跟、什么时候停、什么时候把决定权交还给读者。
+一个称职的流式聊天应当：
+
+1. **只在读者要求时移动。**有人正在读，就别把他拽走。自动滚动不该是默认。
+2. **只在读者还在跟时跟随。**他在实时边缘，就把新内容留在视野里；他滚开了，
+   就把他留在原地。
+3. **每一次交互都是信号。**不只是滚动 —— 选中文字、按键、打开链接、页内搜索，
+   都该让界面停下来。
+4. **新一轮从视口顶部附近开始。**这样这一轮才有从头读起的空间。
+5. **然后再把答案流进来。**答案应当长进屏幕，而不是立刻把别的推走。
+6. **保留一部分上文。**提问和回答要在视觉上连着，上一轮也要留一截可见，
+   读者才知道自己在哪。
+7. **允许新内容在视野外到达。**对话可以继续流，而读者看的东西不变。
+8. **让视野外发生的事可见。**回复还在流、有新消息到了，都该有交代。
+9. **回到最新回复要容易。**一个"跳到最新"应当把读者带回去，并恢复跟随。
+10. **允许跳到对话的任何地方。**长会话需要消息链接、搜索、未读标记和直接导航。
+11. **在读者离开的地方重新打开。**保存过的会话应当停在最后一个有意义的轮次上，
+    通常是最后一条用户消息，而不是绝对底部。
+12. **布局变化时保住位置。**图片加载、Markdown 展开、代码块渲染、更早的消息插到
+    上面 —— 都不该让读者丢失位置。
+13. **中断不抢位置。**停止、重试、重新生成、分支、报错，都不该意外挪动对话。
+14. **长会话仍然跟手。**流式文本、Markdown、代码、图片、长历史，都要保持响应。
+15. **无障碍但不吵。**记录可导航，键盘焦点不丢，重要事件按舒服的节奏播报。
+
+**永远不要违背读者的意图移动他。**
+
+## MessageScroller
+
+MessageScroller 就是为这些行为造的聊天记录滚动容器。
+`MessageScrollerProvider` 持有滚动状态和记录行的行为：打开位置、流式输出、
+新轮次锚定、历史前插、可见性、滚动指令。`MessageScroller` 是渲染在它里面的
+样式外壳。
+
+它的边界就在滚动视口上。它不管消息本身、不管 AI 状态、不管传输、持久化、分支或
+模型状态 —— 那些留给业务代码去组合消息、标记、工具调用、附件和输入框。
+
+## 使用
+
+```tsx
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<MessageScrollerProvider>
+  <MessageScroller>
+    <MessageScrollerViewport>
+      <MessageScrollerContent>
+        {messages.map(message => (
+          <MessageScrollerItem
+            key={message.id}
+            messageId={message.id}
+            scrollAnchor={message.role === 'user'}
+          >
+            {/* 一条消息 */}
+          </MessageScrollerItem>
+        ))}
+      </MessageScrollerContent>
+    </MessageScrollerViewport>
+    <MessageScrollerButton />
+  </MessageScroller>
+</MessageScrollerProvider>
+```
+
+`MessageScroller` 会填满父元素，所以要把它放进一个高度确定的容器里。
+
+```tsx
+<div className="flex flex-col block-screen">
+  <MessageScrollerProvider>
+    <MessageScroller className="flex-1">{/* 记录 */}</MessageScroller>
+  </MessageScrollerProvider>
+</div>
+```
+
+## 组成
+
+```text
+<MessageScrollerProvider>          滚动状态与行为 props，自身不渲染 DOM
+  <MessageScroller>                样式外壳
+    <MessageScrollerViewport>      真正滚动的元素
+      <MessageScrollerContent>     记录容器，live region
+        <MessageScrollerItem />    一行：消息 / 标记 / 分隔符
+      </MessageScrollerContent>
+    </MessageScrollerViewport>
+    <MessageScrollerButton />      跳到起点或终点
+  </MessageScroller>
+</MessageScrollerProvider>
+```
+
+- **`MessageScrollerProvider`** —— headless 根。持有滚动状态，以及打开位置、
+  自动滚动、锚定、滚动指令、可见性追踪这些行为 props。
+- **`MessageScroller`** —— 样式外壳。在 Provider 内部排布视口、内容和控件。
+- **`MessageScrollerViewport`** —— 可滚动元素，同时也是一个 `ScrollArea`：
+  overlay 滚动条渲染在它外面，上下缘各有一条随滚动收放的 scroll-fade。它接原生
+  滚动事件，并在更早的消息前插时保住可见行。
+- **`MessageScrollerContent`** —— 记录容器。装下所有行，并提供新消息播报所需的
+  live region 缺省值。
+- **`MessageScrollerItem`** —— 记录行的边界。Content 的每个直接子元素都该包一层，
+  滚动器才能测量、锚定、保位、追踪可见性、跳转到它。一行装什么由你决定：一条消息
+  （[Message](/docs/components/message) + [Bubble](/docs/components/bubble)）、
+  一条标记（[Marker](/docs/components/marker)，加入事件、日期分隔、"正在思考"）、
+  正在输入指示，都行。（顶部那个"加载更早"控件是例外 —— 它不能进这个列表，见
+  「加载更早的消息」一节。）
+- **`MessageScrollerButton`** —— 滚动控件。滚到记录的起点或终点，方向上没有内容
+  时它是 inert 的。
+
+## 核心概念
+
+### 锚定轮次
+
+一轮（turn）是对话里开启一次新交换的部分。在简单的 AI 对话里，通常就是用户那条
+消息，加上跟在后面的回复。
+
+锚点（anchor）是视口该当作这一轮起点的那一行。用 `scrollAnchor` 标出它。新锚点
+被追加时，视口把它移到顶部附近，并在它上方留一截上一行，让新一轮不至于与上文
+脱节。
+
+<ComponentPreview name="message-scroller/anchoring" align="stretch" />
+
+demo 里的两个模式就是这个选择的两端，左侧竖线标出当前哪些行是锚点（读的是滚动器
+自己写的 `data-scroll-anchor`），切换模式时它整排跳过去：
+
+- **锚提问**：提问停在顶部，答案在它下面长出来，读者能对照着读 —— ChatGPT 这类
+  对话界面的行为。
+- **锚回复**：视口提上去的是答案，提问被推出视野；而且回复通常是最后一行，它下面
+  没有内容可以填满视口，只好由滚动器补一段空白。
+
+注意触发条件是**新锚点被追加**，不是「哪一行被标成了锚点」：改 `scrollAnchor` 的
+归属本身不会滚动任何东西，所以上面切换模式时只有竖线在动，视口纹丝不动 —— 要看
+差异得按「Send a message」。
+
+锚点与消息角色无关。任何一行都可以变成锚点：用户消息、系统标记、转交事件，
+或者任何开启一个有意义轮次的东西。MessageScroller 只需要知道哪一行该锚住视口。
+
+```tsx
+// 告诉滚动器：下一轮以用户这条消息为锚
+<MessageScrollerItem
+  messageId={message.id}
+  scrollAnchor={message.role === 'user'}
+/>
+```
+
+### 群聊
+
+群聊里轮次的边界比"用户消息"更具体：常常是那条请求模型回应的消息，或者一个像
+"Marcus 加入了对话"这样的标记。正在输入指示和历史控件通常不该锚定。
+
+正因为锚定与角色无关，锚一个标记和锚一条消息一样容易。
+
+```tsx
+<MessageScrollerItem messageId="marcus-joined" scrollAnchor>
+  <p className="text-center text-xs text-muted-foreground">
+    Marcus 加入了对话
+  </p>
+</MessageScrollerItem>
+```
+
+把人放进房间，看视口提上去的是那条「加入」标记，而不是任何一条消息：
+
+<ComponentPreview name="message-scroller/group-chat" align="stretch" />
+
+### 保持上下文可见
+
+新一轮开始时，它仍该让人感觉是同一条线索的一部分。`scrollPreviousItemPeek`
+在锚点上方留下一截上一行，读者因此保有上下文，而不是感觉对话在一张白纸上
+重开了。
+
+```tsx
+// 在新锚定的行上方保留 64px 的上一轮
+<MessageScrollerProvider scrollPreviousItemPeek={64}>
+  <MessageScroller>{/* 锚定的轮次 */}</MessageScroller>
+</MessageScrollerProvider>
+```
+
+拖动滑块改 peek，再发一条，看上一轮露出多少：
+
+<ComponentPreview name="message-scroller/previous-context" align="stretch" />
+
+### 跟随实时边缘
+
+读者在实时边缘时 —— 不管是一直待着还是刚回来 —— `autoScroll` 会让流式回复
+随着增长留在视野里。从实时边缘滚开就释放跟随，滚轮、触摸、键盘滚动键、拖动
+滚动条都算；显式跳转到某条消息也算。之后新的分块就能在不移动读者的前提下到达。
+
+`autoScroll` 与轮次锚定是配合的：新一轮锚到顶部附近后，视图停住不动，回复流进
+它下面的空间；等回复填满视口，读者就重新回到了实时边缘，跟随输出从锚定接手。
+
+```tsx
+<MessageScrollerProvider autoScroll>
+  <MessageScroller>{/* 流式的轮次 */}</MessageScroller>
+</MessageScrollerProvider>
+```
+
+让回复流起来，然后在它还在写的时候往上滚 —— 文字继续到达，但不再把你拽回底部：
+
+<ComponentPreview name="message-scroller/streaming" align="stretch" />
+
+调用 `scrollToEnd`、或按下 `MessageScrollerButton`，在 `autoScroll` 打开时会
+重新接上跟随输出，所以滚开的读者能回到实时边缘继续跟。这段程序性滚动进行期间，
+根节点和视口上会挂 `data-autoscrolling`，可以据此在过渡期间加样式。
+
+### 打开已保存的会话
+
+把保存的会话重新打开在记录的绝对末尾，听上去合理，但那常常是把读者丢进对话里
+而没有足够上下文。更好的缺省是 `"last-anchor"`：显示最后一个有意义的轮次 ——
+比如用户最新那条消息 —— 回复在它下面。
+
+```tsx
+<MessageScrollerProvider defaultScrollPosition="last-anchor">
+  <MessageScroller>{/* 记录 */}</MessageScroller>
+</MessageScrollerProvider>
+```
+
+三个值各按一次，看同一份记录停在哪里：
+
+<ComponentPreview name="message-scroller/opening-position" align="stretch" />
+
+`"last-anchor"` 认的是 `scrollAnchor`，不是消息角色。没有锚点、或者最后那个
+锚定轮次本来就装得下时，它退回 `"end"`。要从对话开头继续用 `"start"`，绝对
+最新那条才是正确落点时用 `"end"`。这个位置只在首次非空渲染时应用一次。
+
+### 加载更早的消息
+
+加载更早的消息，不该挪动读者正在看的那段对话。更早的行前插到当前记录上方时，
+`MessageScrollerViewport` 会保住可见行，读者在历史加载期间停在原地。
+
+<ComponentPreview name="message-scroller/load-history" align="stretch" />
+
+这由 `preserveScrollOnPrepend` 提供，默认开启。消息行请使用稳定的 `messageId`：
+那给了滚动器一个具体的行去保位，而不是靠"视口边缘恰好是哪个像素"去猜。
+
+有一个类型表达不出来的约束：滚动器是靠"原来排第一的那行有没有往下挪"来认出前插的。
+所以**"加载更早"按钮不能放进 `MessageScrollerContent` 里当第一个
+`MessageScrollerItem`** —— 它永远排第一，前插就永远被它挡住，视口会把新到的历史
+当成追加，从读者眼前滚走 —— 实测漂移 1332px，超过一整屏。把这类控件放在视口里、
+内容外：
+
+```tsx
+<MessageScrollerViewport>
+  <LoadEarlierRow />
+  <MessageScrollerContent>{/* 只有消息行 */}</MessageScrollerContent>
+</MessageScrollerViewport>
+```
+
+### 为新消息添加动画
+
+`MessageScrollerItem` 可以直接做动画。造一个 motion 版本的 item，把 `messageId`
+和 `scrollAnchor` 留在它身上，入场用 transform 和 opacity。
+
+```tsx
+const MotionMessageScrollerItem = motion.create(MessageScrollerItem)
+```
+
+发一条消息，看新行从实时边缘升上来；原有的记录不参与动画：
+
+<ComponentPreview name="message-scroller/animation" align="stretch" />
+
+行的入场不要动 height、margin、padding —— 这些变化会和滚动器的定位工作打架。
+读者偏好减少动态效果时，跳过入场动画，滚动行为保持不变。
+
+### 跳转到消息
+
+搜索结果、永久链接、大纲条目、工具栏按钮，常常需要从消息列表外面驱动记录。
+这些控件用 `useMessageScroller`。因为几个 hook 读的是 `MessageScrollerProvider`，
+它们在 Provider 内部的任何组件里都能用，包括渲染在 `MessageScroller` 外壳
+之外的控件。
+
+<ComponentPreview name="message-scroller/commands" align="stretch" />
+
+```tsx
+const { scrollToMessage, scrollToEnd, scrollToStart } = useMessageScroller()
+```
+
+`scrollToMessage` 认的是 `MessageScrollerItem` 上的 `messageId`，所以需要被寻址
+的行要有稳定 id。它可以在 items 还不存在时先把目标排队，这覆盖了记录挂载期间
+解析出的永久链接；等行挂载之后，找不到的 id 会返回 `false`，而不是开始一轮
+瞎猜的重试。返回 `true` 表示滚动执行了或已排队，不代表那一行已经在视野里。
+
+### 追踪阅读位置
+
+用 `useMessageScrollerVisibility` 追踪读者在对话里的位置：阅读进度、当前轮次指示、
+只对可见消息发已读回执，都是这一类。
+
+```tsx
+const { currentAnchorId, visibleMessageIds } = useMessageScrollerVisibility()
+```
+
+滚动记录，看上面那行读数跟着变：
+
+<ComponentPreview name="message-scroller/visibility" align="stretch" />
+
+`currentAnchorId` 回答"我在哪"—— 当前锚定的轮次，并且在那个锚点滚出视口上方
+之后依然保持。`visibleMessageIds` 回答"屏幕上有什么"，按文档顺序排列。
+
+可见性是用多少付多少：只有当有东西订阅 `useMessageScrollerVisibility` 时追踪
+才运行，而且行需要有 `messageId` 才能参与。
+
+### 读取滚动状态
+
+需要在 JavaScript 里拿滚动状态时用 `useMessageScrollerScrollable` —— 比如一个
+状态指示器，或者自定义的"跳到最新"。它报告视口还能往哪些边缘滚；"在起点/终点"
+是它的否定（`!start` / `!end`），"还能滚"是 `start || end`。给滚动器本身加样式，
+优先用 `data-scrollable` 属性。
+
+<ComponentPreview name="message-scroller/scrollable" align="stretch" />
+
+```tsx
+const { start, end } = useMessageScrollerScrollable()
+```
+
+## 性能
+
+目标是把滚动热路径挡在 React 状态之外：记录行不因滚动重渲染，不在每次滚动时
+强制布局，视野外的绘制工作尽量交给浏览器省掉。
+
+滚动位置、锚定和跟随输出都是命令式追踪的，再通过 `data-*` 属性镜像到根节点和
+视口上，所以滚动和流式输出不会重渲染记录行。
+
+样式化的 `MessageScrollerItem` 还带着 `content-visibility: auto` 和
+`contain-intrinsic-size: auto 10rem`。行留在 DOM 里（选中、复制、页内查找、
+SSR、辅助技术都还在），但浏览器可以跳过远离视口那些行的渲染工作。
+
+这足以覆盖聊天记录的预期规模：几百到一两千轮，包含带 Markdown 和组合组件的消息。
+
+## 虚拟化
+
+虚拟化被刻意留在了组件之外。MessageScroller 渲染真实 DOM 行，到几千轮仍然够快，
+所以多数记录用不上它。
+
+当记录大到确实需要虚拟化时，把 `MessageScrollerViewport` 当作滚动元素，让
+virtualizer 去管行。
+
+```tsx
+import { useVirtualizer } from '@tanstack/react-virtual'
+
+const viewportRef = useRef<HTMLDivElement>(null)
+
+const virtualizer = useVirtualizer({
+  count: messages.length,
+  getScrollElement: () => viewportRef.current,
+  estimateSize: () => 86,
+  getItemKey: index => messages[index]?.id ?? index,
+  overscan: 8,
+})
+
+return (
+  <MessageScrollerProvider>
+    <MessageScroller>
+      <MessageScrollerViewport ref={viewportRef}>
+        <MessageScrollerContent className="block min-block-full">
+          <div className="relative inline-full" style={{ height: virtualizer.getTotalSize() }}>
+            {virtualizer.getVirtualItems().map(virtualItem => (
+              <div
+                key={virtualItem.key}
+                ref={virtualizer.measureElement}
+                data-index={virtualItem.index}
+                className="absolute start-0 top-0 inline-full"
+                style={{ transform: `translateY(${virtualItem.start}px)` }}
+              >
+                {/* 一条消息 */}
+              </div>
+            ))}
+          </div>
+        </MessageScrollerContent>
+      </MessageScrollerViewport>
+      <MessageScrollerButton />
+    </MessageScroller>
+  </MessageScrollerProvider>
+)
+```
+
+注意 `ref` 挂在 `MessageScrollerViewport` 上 —— 视口的 ref 是与内部合并的，
+根节点的不是（[为什么](#props)）。
+
+## 无障碍
+
+滚动容器保持键盘可达，记录可被播报，同时不强加任何一种消息 UI。
+
+`MessageScrollerViewport` 默认就是一个有名字、可聚焦的滚动区域：`role="region"`、
+`aria-label="Messages"`、`tabIndex={0}`，键盘用户可以聚焦记录并直接滚动它。
+
+`MessageScrollerContent` 用 `role="log"` 和 `aria-relevant="additions"` 把记录
+标成 live region。新行可以被播报，而流式文本的变更不必逐 token 播报。
+
+```tsx
+<MessageScrollerContent aria-busy={status === 'streaming'}>
+  {/* 消息 */}
+</MessageScrollerContent>
+```
+
+一轮正在流式输出时传 `aria-busy`，播报就会等到整条消息完成。
+
+`MessageScrollerButton` 渲染真 `<button>`。方向上没有内容可滚时，它挂上 `inert`、
+`tabIndex={-1}` 和 `data-active="false"`，失效的滚动控件因此不会多占一个焦点位。
+
+## 什么时候用 MessageScroller
+
+只想要一个漂亮的滚动条 —— 列表、面板、任意溢出的盒子 —— 用
+[ScrollArea](/docs/components/scroll-area)：它的滚动条渲染在视口之外，与
+scroll-fade 渐隐天然兼容，除此之外不介入滚动位置。
+
+内容会在读者阅读期间自己长出来，就换 MessageScroller。锚定、跟随实时边缘、
+前插保位这三件事都要求组件持有滚动位置，这是 ScrollArea 刻意不做的。
+
+两者不叠用，因为 MessageScrollerViewport **就是**一个 ScrollArea —— 再套一层只会
+多一个滚动容器，把锚定和保位算错。
+
+母版还有一节 Unstyled，讲怎么直接用 headless 的 `@shadcn/react/message-scroller`
+配自己的标记与样式。本库不发布 unstyled 版本 —— 那正是这一层封装存在的意义 ——
+所以那节这里没有；需要裸原语的话，直接装 `@shadcn/react` 即可。
+
+## 状态与 className
+
+除视口外，每个部件都落在纯 DOM 上（按钮落在 `<button>`），所以它们的 `className`
+诚实地是 `string` —— 没有 Base UI 的状态函数可传。视口是唯一的例外：它落在
+Base UI 的 `ScrollArea` 视口上，所以也收函数形态。按状态改样式走下面这些属性。
+
+| 属性 | 出现在 | 值 | 出现时机 |
+| --- | --- | --- | --- |
+| `data-scrollable` | 根、视口 | `"start"` \| `"end"` \| `"start end"` | 视口还能滚向的边缘；都装得下时属性缺席。查单个边用 `[data-scrollable~="end"]` |
+| `data-autoscrolling` | 根、视口 | 空串 | 程序性滚向最新消息的过程中在场 |
+| `data-message-id` | Item | `string` | 传了 `messageId` 时镜像它 |
+| `data-scroll-anchor` | Item | `"true"` \| `"false"` | 镜像 `scrollAnchor` |
+| `data-direction` | Button | `"start"` \| `"end"` | 镜像 `direction` |
+| `data-active` | Button | `"true"` \| `"false"` | 这个按钮当前是否有得可滚 |
+| `data-variant` `data-size` | Button | Button 的词表 | vendored 把外观也镜像成属性 |
+| `data-has-overflow-x` `data-has-overflow-y` | scroll-area 外壳 | 空串 | Base UI `ScrollArea` 写的溢出状态 |
+| `data-overflow-y-start` `data-overflow-y-end` | scroll-area 外壳 | 空串 | 同上，标出哪一端还有内容 |
+
+根节点带着 `group/message-scroller`，所以视口和内容可以用 `group-data-*` 读到
+前两个。注意 `data-active` 和 `data-scroll-anchor` 是值型布尔（upstream 写的是
+字面量 `"true"` / `"false"`，不是 Base UI 的空串形），所以要写
+`data-[active=false]:` 而不是 `data-active:`。
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `message-scroller` | 根，样式外壳 |
+| `message-scroller-scroll-area` | 视口外面那层 `ScrollArea` 根，overlay 滚动条挂在它上面 |
+| `message-scroller-viewport` | 滚动元素 |
+| `message-scroller-content` | 记录容器 |
+| `message-scroller-item` | 一行 |
+| `message-scroller-button` | 滚动控件 |
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| `Tab` | 视口是 `tabIndex={0}`，所以记录本身可以聚焦并滚动 |
+| `↑` `↓` `PageUp` `PageDown` `Home` `End` `Space` | 滚动视口，并释放跟随实时边缘 —— 键盘滚动和滚轮一样算读者意图 |
+| `Enter` / `Space`（焦点在按钮上） | 滚到那个方向的边缘；`autoScroll` 打开时重新接上跟随 |
+
+## 导出的类型
+
+```tsx
+import type {
+  MessageScrollerButtonDirection,
+  MessageScrollerButtonProps,
+  MessageScrollerButtonState,
+  MessageScrollerContentProps,
+  MessageScrollerDefaultScrollPosition,
+  MessageScrollerItemProps,
+  MessageScrollerProps,
+  MessageScrollerProviderProps,
+  MessageScrollerScrollable,
+  MessageScrollerScrollAlign,
+  MessageScrollerScrollOptions,
+  MessageScrollerViewportProps,
+  MessageScrollerVisibilityState,
+} from '@gedatou/cadenza-ui'
+```
+
+- `MessageScrollerButtonState` 是 `MessageScrollerButton` 的 `render` 函数收到的
+  状态：`{ active, direction }`。
+- `MessageScrollerScrollable` 和 `MessageScrollerVisibilityState` 分别是
+  `useMessageScrollerScrollable` 和 `useMessageScrollerVisibility` 的返回类型。
+- `MessageScrollerScrollOptions` 是三个滚动指令的第二参。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### MessageScrollerProvider
+
+headless 根。持有滚动状态与行为 props，交给各部件和几个 hook。自身不渲染 DOM。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultScrollPosition` | `'start' \| 'end' \| 'last-anchor'` | `'end'` | 首次非空渲染时的打开位置，只应用一次。`'last-anchor'` 停在最后一个 `scrollAnchor` 行；那一轮装得下、或没有锚点时退回 `'end'` |
+| `autoScroll` | `boolean` | `false` | 只在读者已经在实时边缘时跟随新内容。滚轮、触摸、键盘滚动、显式跳转都会释放它 |
+| `scrollEdgeThreshold` | `number` | `8` | 距边缘多少像素之内仍算作"在起点/终点"。影响状态属性和滚动按钮的显隐 |
+| `scrollMargin` | `number` | `0` | `scrollToMessage`、可见性判定和程序性目标在对齐边上留的边距 |
+| `scrollPreviousItemPeek` | `number` | `64` | 新追加的 `scrollAnchor` 行定位时，在 `scrollMargin` 之上额外加的边距，用来露出一截上一行 |
+| `children` | `ReactNode` | — | 外壳与任何需要读 hook 的控件 |
+
+### MessageScroller
+
+样式外壳与布局容器。它填满父元素，所以要放在高度确定的布局里，且必须在
+`MessageScrollerProvider` 内。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 落在纯 `<div>` 上，是字符串 |
+| 其余 | `ComponentProps<'div'>` 去掉 `ref` | — | 透传 |
+
+`ref` 是本页唯一一处封装层收窄了 upstream 的地方。headless 根渲染的是
+`<div ref={setRootElement} {...props}>` —— 自己的 ref 写在展开**之前**，
+所以调用方传的 ref 是替换而不是合并。元素因此永远到不了滚动器，
+`data-scrollable` / `data-autoscrolling` 不再写到根上（视口两个都还在），
+挂在 `group/message-scroller` 上的 `group-data-*` 样式会无声失效。类型上开着、
+运行时坏掉是这个库拒绝的半开门，所以诚实的做法是不提供它。
+
+要滚动元素？那是 `MessageScrollerViewport`，它的 ref **是**合并的。要给外壳套
+一个盒子？自己包一层 `<div>`。
+
+### MessageScrollerViewport
+
+真正滚动的元素，也是全家唯一一个封装层自建、而非从 vendored 转出的部件。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `preserveScrollOnPrepend` | `boolean` | `true` | 更早的行前插时，保住第一个可见的消息行 |
+| `role` | `string` | `'region'` | 带名字的滚动记录区域的地标角色 |
+| `aria-label` | `string` | `'Messages'` | 记录滚动区的可访问名 |
+| `tabIndex` | `number` | Base UI 定 | 有溢出时 `0`，两个轴都装得下时 `-1` —— 滚不动的区域不占焦点位 |
+| `scrollbars` | `'hover' \| 'always' \| 'hidden'` | `'hover'` | 渲染哪些滚动条，与 [ScrollArea](/docs/components/scroll-area) 同一套词 |
+| `className` | `string \| (state) => string` | — | 落在 Base UI 的视口槽位，所以这一个**也收函数形态**，参数是 `ScrollAreaViewportState`（`scrolling`、`hasOverflowX/Y` 与四个溢出边缘标志） |
+| 其余 | `ComponentProps<'div'>`（含 `ref`，与内部合并） | — | 透传 |
+
+shadcn 给这个视口配的是一条细原生滚动条加 `scroll-fade-b`，两样在这里都不对，而且
+从外面都改不掉：原生滚动条长在被 mask 的元素**内部**，会跟着内容一起被渐隐吃掉
+（本库 ScrollArea 存在的理由就是把滚动条挪到滚动元素外面当兄弟）；而
+`scroll-fade-b` 写的 `--scroll-fade-mask` 在 styles.css 里比 `scroll-fade-y` 的更靠后，
+使用方再追加一个 `scroll-fade-y` 也压不过它。所以封装层没有去"覆盖"，而是拿同一个
+headless `MessageScroller.Viewport` 重建了这个部件。
+
+Base UI 的视口和记录视口通过 `render` 融合成**同一个元素** —— 必须如此：滚动器的
+测量、锚定、保位都是对着"它滚的那个元素"做的，而驱动渐隐的 `scroll(self y)` 也只认
+滚动容器自己。两边是合并不是替换：Base UI 的 ref 经 `useRenderElement` 汇入滚动器的，
+事件 handler 也是双方都跑。
+
+元素用 `absolute inset-0` 而不是 `size-full`：作为 flex 子项，滚动区的高度是算出来的
+used value，`height` 属性仍是 `auto`，百分比高度永远解析不了，什么都不会裁剪 ——
+这正是 `DialogBody` 注释里记下的那个坑。绝对定位的盒子取的是包含块的 used height，
+永远能解析。
+
+### MessageScrollerContent
+
+记录内容元素。它的每个直接子元素都该是 `MessageScrollerItem`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `role` | `string` | `'log'` | live region 角色，用于播报新行 |
+| `aria-relevant` | `string` | `'additions'` | 要播报的 live region 变更，默认只播报新增的行 |
+| `aria-busy` | `boolean` | — | 一轮正在流式输出时标记 live region 繁忙 |
+| `spacerClassName` | `string` | — | 内部占位元素的类名。那是一个 `aria-hidden` 的空 div，撑出锚定行需要的空间；调整它的样式而不是它的高度 |
+| `className` | `string` | — | 落在纯 `<div>` 上，是字符串 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`，与内部合并） | — | 透传 |
+
+### MessageScrollerItem
+
+一条记录行：消息、标记、正在输入指示、分隔符。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `messageId` | `string` | — | 稳定的行 id，供 `scrollToMessage`、可见性和前插保位使用 |
+| `scrollAnchor` | `boolean` | `false` | 把这一行标成能锚住新追加轮次的轮次边界 |
+| `className` | `string` | — | 落在纯 `<div>` 上，是字符串 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`，与内部合并） | — | 透传 |
+
+`messageId` 按 upstream 的类型是可选的，但不给的行只有半条命：它仍然作为一轮
+参与锚定、仍然被测量，可是 `scrollToMessage` 寻址不到它，它也永远不会出现在
+`visibleMessageIds` 里。只在那些本来就不是消息的行上省掉它 —— 日期分隔符、
+未读标记。永远排在第一位的控件（"加载更早"按钮、会话起点标记）不该做成 Item —
+它会挡住前插检测，见「加载更早的消息」一节。
+
+### MessageScrollerButton
+
+滚到记录起点或终点的按钮。那个方向没有内容可滚时，它是 inert 的，并被移出
+Tab 顺序。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `direction` | `'start' \| 'end'` | `'end'` | 按钮滚向记录的哪个边缘 |
+| `behavior` | `ScrollBehavior` | `'smooth'` | 滚向目标边缘时用的原生滚动行为 |
+| `variant` | `ButtonProps['variant']` | `'secondary'` | 外观，透传给内部的 `Button` |
+| `size` | `ButtonProps['size']` | `'icon-sm'` | 尺寸，透传给内部的 `Button` |
+| `children` | `ReactNode` | 箭头图标 + 无障碍名 | 自定义按钮内容 |
+| `render` | `ReactElement \| (props, state) => ReactElement` | `<Button>` | 换掉渲染的元素；函数形态收到 `MessageScrollerButtonState` |
+| `className` | `string` | — | 内部走 `cva`，是字符串 |
+| 其余 | `ComponentProps<'button'>`（含 `ref`） | — | 透传 |
+
+### useMessageScroller
+
+记录的命令式控制。
+
+| 方法 | 类型 | 说明 |
+| --- | --- | --- |
+| `scrollToMessage` | `(messageId: string, options?) => boolean` | 滚到已挂载的某条消息 |
+| `scrollToEnd` | `(options?) => boolean` | 滚到最新一条 |
+| `scrollToStart` | `(options?) => boolean` | 滚到顶部 |
+
+指令无法执行时返回 `false`。`scrollToStart` / `scrollToEnd` 只有在视口还没挂载时
+才返回 `false`；`scrollToMessage` 在目标未挂载且无法排队时返回 `false`。
+
+`options` 就是 `MessageScrollerScrollOptions`：
+
+| Option | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `align` | `'start' \| 'center' \| 'end' \| 'nearest'` | `'start'` | 目标消息在视口里的对齐方式 |
+| `behavior` | `ScrollBehavior` | `'auto'` | 这条指令的原生滚动行为 |
+| `scrollMargin` | `number` | Provider 的 `scrollMargin` | 这条指令在对齐边上留的边距 |
+
+### useMessageScrollerScrollable
+
+视口还能滚向哪些边缘，给需要在 JavaScript 里拿到这些值的兄弟 UI 用。给滚动器
+本身加样式请优先用 `data-scrollable`。
+
+| 值 | 类型 | 说明 |
+| --- | --- | --- |
+| `start` | `boolean` | 能否滚向起点。上方还有内容藏着（`!start` 表示在顶部） |
+| `end` | `boolean` | 能否滚向终点。下方还有内容藏着（`!end` 表示在实时边缘）。跟随输出把读者留在实时边缘期间它保持 `false` |
+
+### useMessageScrollerVisibility
+
+给大纲、搜索、当前轮次这类 UI 用的可见性状态。它与
+`useMessageScrollerScrollable` 分开订阅，所以可见性的开销只在有人需要时才付。
+
+| 值 | 类型 | 说明 |
+| --- | --- | --- |
+| `currentAnchorId` | `string \| null` | 当前锚定的轮次，取阅读线上方最后一个 `scrollAnchor` 行 |
+| `visibleMessageIds` | `string[]` | 与视口相交的消息 id，按文档顺序 |
+
+需要更窄的大纲时，自己筛 `visibleMessageIds` —— 只要用户消息、只要锚定轮次、
+只要搜索命中。

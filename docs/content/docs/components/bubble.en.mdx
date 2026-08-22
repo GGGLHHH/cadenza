@@ -1,0 +1,240 @@
+---
+title: Bubble
+description: The visible surface of a message — seven variants, alignment, grouping, and reactions that hug the edge
+---
+
+<ComponentPreview align="stretch" name="bubble/basic" />
+
+A message splits in two: [Message](/en/docs/components/message) owns the row —
+avatar, side, header, footer — and Bubble owns the surface the reader actually
+sees. The split earns its keep because an assistant turn usually wants **no
+surface at all**: `variant="ghost"` drops the background and the padding so the
+text runs the full row like prose, while the user's turn keeps a rounded box
+hugging its own content.
+
+The seam is a plain re-export: this family has no state and no hooks, only
+layout and `data-*`.
+
+## Usage
+
+```tsx
+import { Bubble, BubbleContent, BubbleGroup, BubbleReactions } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Bubble variant="muted">
+  <BubbleContent>Prepending older rows keeps the visible row still.</BubbleContent>
+</Bubble>
+```
+
+## Anatomy
+
+```text
+Bubble                  the shell: variant, alignment, anchor for reactions
+├── BubbleContent       the visible surface: radius, padding, background
+└── BubbleReactions     a row floating against the bubble's edge
+```
+
+Use `BubbleGroup` for consecutive turns from the same sender:
+
+```text
+BubbleGroup
+├── Bubble
+│   └── BubbleContent
+└── Bubble
+    └── BubbleContent
+```
+
+**The variant styles the content, not the root.** `Bubble` itself only carries
+`group/bubble` and a rule targeting `*:data-[slot=bubble-content]`, so the
+colour lands on `BubbleContent`. A bubble with no content part therefore renders
+nothing visible — and that same indirection is what lets `BubbleReactions` float
+over the surface without inheriting it.
+
+## Features
+
+- Seven visual variants, from a strong primary bubble to unframed ghost content
+- Start and end alignment, inherited automatically inside a `Message`
+- Reactions that anchor to the bubble edge, positioned by `side` and `align`
+- Bubbles size to their content, up to 80% of the container (`ghost` lifts that cap)
+- Polymorphic content via `render`, for link and button bubbles
+- Customizable styling through the `className` prop on every part
+
+## Variants
+
+<ComponentPreview align="stretch" name="bubble/variants" />
+
+| Variant | Where it goes |
+| --- | --- |
+| `default` | A strong primary bubble, usually the current user |
+| `secondary` | The neutral bubble, the default choice for conversation content |
+| `muted` | Lower emphasis, quiet supporting content |
+| `tinted` | A subtle primary-tinted bubble |
+| `outline` | A bordered bubble for secondary or rich content |
+| `ghost` | **Unframed** — assistant text and rich content |
+| `destructive` | An error or a failed action |
+
+A bubble sizes to its content, up to 80% of the container. `ghost` additionally
+**removes that cap**, so assistant prose and rich content can span the full row
+— which is why it reads as text rather than as a giant tinted block in a
+transcript.
+
+## Alignment
+
+<ComponentPreview align="stretch" name="bubble/alignment" />
+
+`align` pushes the bubble to one side of its container. But **when building a
+chat interface, set alignment on [Message](/en/docs/components/message)
+instead**: the bubble reads the enclosing message through
+`group-data-[align=end]/message`, so it follows without being told twice.
+`Bubble`'s own `align` is for bubbles used outside a `Message`.
+
+## Group
+
+<ComponentPreview align="stretch" name="bubble/group" />
+
+`BubbleGroup` does one thing: it tightens the spacing between consecutive
+bubbles. `align` still belongs on each `Bubble`, not on the group.
+
+## Links and buttons
+
+Pass `render` to `BubbleContent` and the bubble becomes a real `<button>` or
+`<a>`.
+
+<ComponentPreview align="stretch" name="bubble/interactive" />
+
+```tsx
+<Bubble variant="muted">
+  <BubbleContent render={<button type="button" />}>Open the running order</BubbleContent>
+</Bubble>
+```
+
+The variants already style `:hover` and the focus ring for both elements, so a
+pressable bubble needs no extra styling — only the right element.
+
+## Reactions
+
+<ComponentPreview align="stretch" name="bubble/reactions" />
+
+`BubbleReactions` is an absolutely positioned row that **deliberately overlaps
+the bubble's edge**, so consecutive rows need vertical room between them (the
+example above uses a larger `gap` for exactly that). `side` picks the edge,
+`align` picks the corner.
+
+It takes quick-action buttons just as happily as emoji.
+
+## Show more
+
+<ComponentPreview align="stretch" name="bubble/collapsible" />
+
+Bubble ships **no** "show more" of its own. Compose long content with
+[Collapsible](/en/docs/components/collapsible) instead — the disclosure state
+and its keyboard contract stay in one place rather than being duplicated here.
+
+The master also demonstrates composing a bubble with Tooltip and Popover. Neither
+is promoted in this library yet — those two sections are missing for that reason
+and will follow once they are.
+
+## Accessibility
+
+- **Name your reactions.** `👍 2` is a string of code points to a screen reader.
+  Give it `role="img"` plus an `aria-label` ("two people reacted with a thumbs
+  up"), or add `sr-only` text.
+- **A pressable bubble must be a real element.** Use
+  `render={<button type="button" />}` rather than an `onClick` on a `<div>`: the
+  former brings focus, Enter/Space and the focus ring with it.
+- **Colour cannot be the only signal.** `destructive` marks a failure, but red
+  alone does not say "failed" — put it in the copy.
+
+## When to use Bubble
+
+In a transcript row you want both: `Message` is the row, `Bubble` is the
+surface. A bubble without a `Message` around it is for the isolated case — a
+quoted snippet, a hint card.
+
+To show a file or an image inside a bubble, use
+[Attachment](/en/docs/components/attachment). For a row that reports something
+about the conversation rather than in it ("X joined", "Thinking…"), that is
+[Marker](/en/docs/components/marker).
+
+## State and className
+
+Every part lands on plain DOM, so `className` is honestly a `string`. Style off
+the attributes below.
+
+| Attribute | On | Value |
+| --- | --- | --- |
+| `data-variant` | Bubble | the seven variant names |
+| `data-align` | Bubble, BubbleReactions | `"start"` \| `"end"` |
+| `data-side` | BubbleReactions | `"top"` \| `"bottom"` |
+
+| `data-slot` | What it is |
+| --- | --- |
+| `bubble` | The shell |
+| `bubble-content` | The visible surface |
+| `bubble-group` | Container for consecutive bubbles |
+| `bubble-reactions` | The row hugging the edge |
+
+`Bubble` carries `group/bubble`, so content and reactions can read the variant
+and alignment through `group-data-*`.
+
+## Exported types
+
+```tsx
+import type {
+  BubbleAlign,
+  BubbleContentProps,
+  BubbleGroupProps,
+  BubbleProps,
+  BubbleReactionsProps,
+  BubbleReactionsSide,
+  BubbleVariant,
+} from '@gedatou/cadenza-ui'
+```
+
+## Props
+
+Order: **required → uncontrolled defaults → controlled values → callbacks →
+behaviour flags → appearance → `className`**.
+
+### Bubble
+
+The shell. It paints nothing visible; it decides the variant and the alignment,
+and anchors the reactions.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `variant` | `BubbleVariant` | `'default'` | Surface treatment, applied to `BubbleContent` |
+| `align` | `'start' \| 'end'` | `'start'` | Which side to hug. Inside a `Message`, set the message's `align` instead |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### BubbleContent
+
+The visible surface — radius, padding, background and wrapping all live here.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | Replaces the rendered element; pass `<button>` or `<a>` for a pressable bubble |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### BubbleReactions
+
+A row floating against the bubble's edge, for reactions or quick actions.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `side` | `'top' \| 'bottom'` | `'bottom'` | Which edge to hug |
+| `align` | `'start' \| 'end'` | `'end'` | Which corner |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### BubbleGroup
+
+Container for consecutive bubbles from one sender; tightens the spacing only.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
