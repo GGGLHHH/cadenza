@@ -3,7 +3,8 @@
 无障碍 React 组件库：行为交给 [Base UI](https://base-ui.com)，外观用 shadcn 的 `base-nova` 预设（Tailwind v4 + cva）。
 
 **文档与交互 demo：<https://cadenza-ui-docs.vercel.app>** —— Button、Tabs、SearchField、
-InputGroup、ScrollArea、DataTable、DataPagination、InfiniteSelect / InfiniteCombobox，
+InputGroup、ScrollArea、MessageScroller 与 Message / Bubble / Marker / Attachment、
+DataTable、DataPagination、InfiniteSelect / InfiniteCombobox，
 每页附 Props 与状态（`data-*` / render props）对照表。
 
 ## 安装
