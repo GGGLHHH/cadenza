@@ -1,0 +1,291 @@
+---
+title: Attachment
+description: 文件与图片卡 —— 五种传输状态、三种尺寸、整卡可点，全部只是样式
+---
+
+<ComponentPreview align="stretch" name="attachment/basic" />
+
+消息里的文件、输入框下方的待发列表、上传队列，都是它。
+
+**它不上传任何东西。** 五个状态只是把 `data-state` 写到 DOM 上，让各个部件跟着变
+样子 —— 真正传字节、重试、读文件的活儿归你，Attachment 只负责把结果画出来。
+
+封装层是纯转出：无状态、无 hook。
+
+## 使用
+
+```tsx
+import {
+  Attachment,
+  AttachmentAction,
+  AttachmentActions,
+  AttachmentContent,
+  AttachmentDescription,
+  AttachmentGroup,
+  AttachmentMedia,
+  AttachmentTitle,
+  AttachmentTrigger,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Attachment state="uploading">
+  <AttachmentMedia><IconFileText /></AttachmentMedia>
+  <AttachmentContent>
+    <AttachmentTitle>programme-draft.pdf</AttachmentTitle>
+    <AttachmentDescription>2.1 MB / 4.8 MB</AttachmentDescription>
+  </AttachmentContent>
+</Attachment>
+```
+
+## 组成
+
+```text
+Attachment
+├── AttachmentMedia       图标或图片
+├── AttachmentContent
+│   ├── AttachmentTitle
+│   └── AttachmentDescription
+├── AttachmentActions     右上/右侧的按钮组
+│   └── AttachmentAction
+└── AttachmentTrigger     覆盖整卡的点击区
+```
+
+多个附件排成一行：
+
+```text
+AttachmentGroup
+├── Attachment
+└── Attachment
+```
+
+## 特性
+
+- 图标与图片两种媒体，走 `AttachmentMedia`
+- 五种传输状态（`idle` / `uploading` / `processing` / `error` / `done`），自带样式，
+  传输中标题带 shimmer
+- 三种尺寸，横向或纵向两种形态
+- 覆盖整卡的 `AttachmentTrigger`，而操作按钮仍能独立点击
+- `AttachmentGroup` 横向滚动、吸附对齐、两端渐隐
+- 每个部件都能用 `className` 定制
+
+## 图片
+
+<ComponentPreview align="stretch" name="attachment/image" />
+
+`AttachmentMedia` 加 `variant="image"`，里面放 `<img>`，图片就铺满媒体框
+（`object-cover`）。配合 `orientation="vertical"` 得到一张固定宽度的图块 ——
+图在上、文字在下，这是图片墙该用的形态。
+
+## 状态
+
+<ComponentPreview align="stretch" name="attachment/states" />
+
+| `state` | 样子 |
+| --- | --- |
+| `idle` | 虚线边框 —— 还没有东西，等着接收 |
+| `uploading` | 标题加 `shimmer`；`variant="image"` 的媒体框变暗（`icon` 不变） |
+| `processing` | 同上，用于「传完了但还在处理」 |
+| `error` | 边框与文字转为 destructive |
+| `done` | 常态 |
+
+再说一次：这些只是 `data-state` 加一套 CSS。`uploading` 不会让任何字节动起来。
+
+## 尺寸
+
+<ComponentPreview align="stretch" name="attachment/sizes" />
+
+`size` 同时缩小媒体框、内边距和字号。`xs` 是给输入框下方那条待发列表用的 ——
+那里它是一枚 chip，而不是一张卡。
+
+## 分组
+
+<ComponentPreview align="stretch" name="attachment/group" />
+
+`AttachmentGroup` 把附件排成一行：横向滚动、吸附对齐、两端渐隐、不显示滚动条。
+可以横向滚动试试。
+
+## Trigger
+
+<ComponentPreview align="stretch" name="attachment/trigger" />
+
+`AttachmentTrigger` 绝对定位覆盖整张卡，在 `z-10`；`AttachmentActions` 在 `z-20`
+压在它上面。这样「打开这个文件」和「删掉这个文件」可以共存，而不需要把一个按钮
+套进另一个按钮里 —— 后者是不合法的 HTML，键盘也走不通。
+
+它自己没有文案，所以**必须给 `aria-label`**。它接 `render`，所以做成
+`<a download>` 或 Dialog 的触发器都一样容易：
+
+```tsx
+<Dialog>
+  <Attachment>
+    {/* media、content、actions */}
+    <DialogTrigger render={<AttachmentTrigger aria-label="预览 programme-draft.pdf" />} />
+  </Attachment>
+  <DialogPopup>{/* … */}</DialogPopup>
+</Dialog>
+```
+
+## 无障碍
+
+- **只有图标的操作要有名字**：每个 `AttachmentAction` 都加 `aria-label`，并把文件名
+  写进去（「删除 programme-draft.pdf」比「删除」有用得多 —— 列表里有五张卡时，
+  五个「删除」是没法分辨的）。
+- **触发区要有名字**：`AttachmentTrigger` 没有文本内容。
+- **图片要有 `alt`**：`variant="image"` 里的 `<img>` 由你提供，`alt` 也由你负责。
+- **颜色不是唯一信号**：`error` 是红的，但红色本身不说明「上传失败」——
+  把原因写进 `AttachmentDescription`。
+- **横向滚动要能用键盘**：`AttachmentGroup` 是原生滚动容器，卡片本身可聚焦时
+  （有 trigger 或 action）Tab 就能把它滚起来。
+
+## 什么时候用 Attachment
+
+消息里的文件用它，放在 `MessageContent` 里当 [Message](/docs/components/message)
+的又一个子元素即可，它会跟着这一行的对齐走。
+
+要展示的是一条普通列表项（不是文件），用 Item（本库尚未提升）。
+要展示的是一张纯图片、不需要文件名和状态，直接用 `<img>` 就好。
+
+## 状态与 className
+
+| 属性 | 出现在 | 值 |
+| --- | --- | --- |
+| `data-state` | Attachment | `idle` \| `uploading` \| `processing` \| `error` \| `done` |
+| `data-size` | Attachment | `default` \| `sm` \| `xs` |
+| `data-orientation` | Attachment | `horizontal` \| `vertical` |
+| `data-variant` | AttachmentMedia | `icon` \| `image` |
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `attachment` | 卡 |
+| `attachment-group` | 横向滚动的一排 |
+| `attachment-media` | 图标或图片框 |
+| `attachment-content` | 标题 + 描述 |
+| `attachment-title` | 文件名（传输中带 `shimmer`） |
+| `attachment-description` | 大小、进度、错误原因 |
+| `attachment-actions` | 按钮组 |
+| `attachment-action` | 单个按钮（就是本库的 `Button`） |
+| `attachment-trigger` | 覆盖整卡的点击区 |
+
+`Attachment` 带 `group/attachment`，上面三个 `data-*` 就是所有子部件跟随的依据。
+
+`className` 在每个部件上都是 `string`，但只有一个是被**改**成这样的：
+`AttachmentAction` 底下是 vendored 的 Base UI 按钮，它把 `className` 送进
+`buttonVariants` → `cva` → `clsx`，而 `clsx` 遇到函数返回空串。封装层因此窄化了
+它的类型，免得类型承诺一个元素兑现不了的契约。其余部件本来就落在纯 DOM 上。
+
+## 导出的类型
+
+```tsx
+import type {
+  AttachmentActionProps,
+  AttachmentActionsProps,
+  AttachmentContentProps,
+  AttachmentDescriptionProps,
+  AttachmentGroupProps,
+  AttachmentMediaProps,
+  AttachmentMediaVariant,
+  AttachmentOrientation,
+  AttachmentProps,
+  AttachmentSize,
+  AttachmentState,
+  AttachmentTitleProps,
+  AttachmentTriggerProps,
+} from '@gedatou/cadenza-ui'
+```
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### Attachment
+
+卡本身。它不知道什么是文件，只把三个维度写成 `data-*` 让子部件跟随。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `state` | `AttachmentState` | `'done'` | 传输到哪一步。**只是样式**，不驱动任何上传 |
+| `size` | `'default' \| 'sm' \| 'xs'` | `'default'` | 媒体框、内边距、字号一起缩放 |
+| `orientation` | `'horizontal' \| 'vertical'` | `'horizontal'` | 文字行还是固定宽度的图块 |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
+
+### AttachmentMedia
+
+图标或图片框。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `variant` | `'icon' \| 'image'` | `'icon'` | `image` 让内部 `<img>` 铺满并 `object-cover` |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
+
+### AttachmentContent
+
+文字区的容器，`div`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
+
+### AttachmentTitle
+
+文件名，`span`，截断成一行。**这个部件有自己的契约**：卡片处于 `uploading` 或
+`processing` 时，它自动带上 `shimmer` —— 传输中的动效在标题上，不用你写。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 落在纯 `<span>` 上 |
+| 其余 | `ComponentProps<'span'>`（含 `ref`） | — | 透传 |
+
+### AttachmentDescription
+
+大小、进度、错误原因，`span`，截断成一行。`error` 时转为 destructive 色。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 落在纯 `<span>` 上 |
+| 其余 | `ComponentProps<'span'>`（含 `ref`） | — | 透传 |
+
+### AttachmentActions
+
+按钮组的容器，`div`。**它自己没有 `variant` / `size`** —— 那些属于里面的
+`AttachmentAction`。`orientation="vertical"` 时它浮到卡片右上角。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
+
+### AttachmentAction
+
+单个操作按钮。底下是 **vendored 的 Base UI 按钮**，与本库
+[Button](/docs/components/button) 共用 variant / size 词表，但**不是** seam 版的
+Button —— 没有 `pending`，也没有 seam 为 pending 做的那套组装。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `variant` | `'default' \| 'outline' \| 'secondary' \| 'ghost' \| 'destructive' \| 'link'` | `'ghost'` | 外观 |
+| `size` | `'default' \| 'xs' \| 'sm' \| 'lg' \| 'icon' \| 'icon-xs' \| 'icon-sm' \| 'icon-lg'` | `'icon-xs'` | 尺寸 |
+| `className` | `string` | — | **封装层窄化过**：路由是 `buttonVariants` → `cva` → `clsx`，`clsx` 遇函数返回空串，所以类型只承诺字符串 |
+| 其余 | Base UI Button 的 props（含 `ref`） | — | 透传 |
+
+### AttachmentTrigger
+
+覆盖整卡的点击区，位于操作按钮之下。**必须给 `aria-label`**，它没有文案。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 换掉渲染的元素，比如 `<a>` 或某个弹层的触发器 |
+| `className` | `string` | — | 落在纯 `<button>` 上 |
+| 其余 | `ComponentProps<'button'>`（含 `ref`） | — | 透传 |
+
+### AttachmentGroup
+
+横向滚动的一排，吸附对齐、两端渐隐、无可见滚动条。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |

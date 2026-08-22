@@ -1,0 +1,223 @@
+---
+title: Bubble
+description: 消息的可见表面 —— 七种变体、对齐、分组、贴边的反应
+---
+
+<ComponentPreview align="stretch" name="bubble/basic" />
+
+一条消息拆成两半：[Message](/docs/components/message) 管这一行怎么放（头像、
+左右、页眉页脚），Bubble 管读者真正看见的那块面。拆开是有理由的 —— AI 的回复
+通常**不该有面**：`variant="ghost"` 去掉背景和内边距，让文字像正文一样铺满整行；
+而用户那条保留一个贴合内容的圆角块。
+
+封装层是纯转出：这一家没有状态、没有 hook，只有布局与 `data-*`。
+
+## 使用
+
+```tsx
+import { Bubble, BubbleContent, BubbleGroup, BubbleReactions } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Bubble variant="muted">
+  <BubbleContent>更早的消息前插时，视口会保住可见行。</BubbleContent>
+</Bubble>
+```
+
+## 组成
+
+```text
+Bubble                  外壳：变体、对齐、反应的定位基准
+├── BubbleContent       可见的那块面：圆角、内边距、背景色都在这里
+└── BubbleReactions     贴着气泡边缘浮动的一行反应
+```
+
+连续同一发送者的多条，用 `BubbleGroup` 收紧间距：
+
+```text
+BubbleGroup
+├── Bubble
+│   └── BubbleContent
+└── Bubble
+    └── BubbleContent
+```
+
+**变体作用在内容上，不在根上。** `Bubble` 自己只带 `group/bubble` 和一条指向
+`*:data-[slot=bubble-content]` 的规则，颜色落在 `BubbleContent` 身上。所以一个
+没有内容部件的气泡什么也看不见 —— 这层间接也正是 `BubbleReactions` 能浮在面上
+而不继承它的原因。
+
+## 特性
+
+- 七种视觉变体，从强调色气泡到无框的 ghost 内容
+- start / end 两向对齐，在 `Message` 里自动继承
+- 贴边浮动的反应行，`side` 与 `align` 可定位
+- 气泡按内容自适应，上限为容器的 80%（`ghost` 解除这个上限）
+- `render` 让内容变成链接或按钮
+- 每个部件都能用 `className` 定制
+
+## 变体
+
+<ComponentPreview align="stretch" name="bubble/variants" />
+
+| 变体 | 用在哪 |
+| --- | --- |
+| `default` | 强调色气泡，通常是当前用户 |
+| `secondary` | 中性气泡，对话内容的常规选择 |
+| `muted` | 更低强调，安静的辅助内容 |
+| `tinted` | 淡淡的主色调气泡 |
+| `outline` | 描边气泡，适合次要或富内容 |
+| `ghost` | **无框**：助手文本、富内容 |
+| `destructive` | 出错或失败的动作 |
+
+气泡按内容自适应宽度，上限是容器的 80%。`ghost` 额外**去掉这个上限**，让助手的
+长文本和富内容能铺满整行——这也是它在聊天记录里读起来像正文而不是一大块色块的
+原因。
+
+## 对齐
+
+<ComponentPreview align="stretch" name="bubble/alignment" />
+
+`align` 把气泡推向容器的一侧。但**做聊天界面时，对齐应该设在
+[Message](/docs/components/message) 上**：气泡会通过
+`group-data-[align=end]/message` 读到外层消息的对齐，不必再说一遍。`Bubble` 自己
+的 `align` 是给「不在 Message 里的气泡」准备的。
+
+## 分组
+
+<ComponentPreview align="stretch" name="bubble/group" />
+
+`BubbleGroup` 只做一件事：把连续气泡的间距收紧。`align` 仍然设在每个 `Bubble` 上，
+不是设在组上。
+
+## 链接与按钮
+
+给 `BubbleContent` 传 `render`，气泡就变成一个真的 `<button>` 或 `<a>`。
+
+<ComponentPreview align="stretch" name="bubble/interactive" />
+
+```tsx
+<Bubble variant="muted">
+  <BubbleContent render={<button type="button" />}>打开运行顺序</BubbleContent>
+</Bubble>
+```
+
+变体里已经写好了这两种元素的 `:hover` 与聚焦环，所以可按的气泡不需要额外样式，
+只需要换对元素。
+
+## 反应
+
+<ComponentPreview align="stretch" name="bubble/reactions" />
+
+`BubbleReactions` 是绝对定位的一行，**故意压在气泡边缘上**，所以相邻两行之间要留
+纵向空间（上面的例子用了更大的 `gap`）。`side` 选上下边，`align` 选左右角。
+
+它也可以装快捷操作按钮，不限于表情。
+
+## 展开更多
+
+<ComponentPreview align="stretch" name="bubble/collapsible" />
+
+Bubble 自己**不带**「展开更多」。长内容与
+[Collapsible](/docs/components/collapsible) 组合即可 —— 开合状态和它的键盘契约
+留在一个地方，不在这里复制一份。
+
+母版还演示了气泡与 Tooltip、Popover 的组合。本库这两个组件目前还在 primitives 里
+没有提升，所以那两节暂缺 —— 提升之后会补上。
+
+## 无障碍
+
+- **反应要有名字。** `👍 2` 对屏幕阅读器是一串码点。给它
+  `role="img"` 加一句 `aria-label`（"两人点了赞"），或者用 `sr-only` 文本。
+- **可按的气泡要是真元素。** 用 `render={<button type="button" />}`，不要在
+  `<div>` 上挂 `onClick` —— 前者自带焦点、Enter/Space 和聚焦环。
+- **颜色不能是唯一的信息。** `destructive` 变体表示失败，但红色本身不传达"失败"；
+  文案里要说清楚。
+
+## 什么时候用 Bubble
+
+一行聊天记录里，两个都要：`Message` 是行，`Bubble` 是面。只有 `Bubble` 而不套
+`Message` 的场合是「不在对话里的孤立气泡」——引用片段、提示卡。
+
+要在气泡里显示文件或图片，用 [Attachment](/docs/components/attachment)。
+要显示的不是消息而是对话本身的事（"某人加入了"、"正在思考"），那是
+[Marker](/docs/components/marker)。
+
+## 状态与 className
+
+每个部件都落在纯 DOM 上，所以 `className` 诚实地是 `string`。按状态改样式走
+下面这些属性。
+
+| 属性 | 出现在 | 值 |
+| --- | --- | --- |
+| `data-variant` | Bubble | 七个变体名 |
+| `data-align` | Bubble、BubbleReactions | `"start"` \| `"end"` |
+| `data-side` | BubbleReactions | `"top"` \| `"bottom"` |
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `bubble` | 外壳 |
+| `bubble-content` | 可见的那块面 |
+| `bubble-group` | 连续气泡的容器 |
+| `bubble-reactions` | 贴边的反应行 |
+
+`Bubble` 带 `group/bubble`，所以内容和反应可以用 `group-data-*` 读到变体与对齐。
+
+## 导出的类型
+
+```tsx
+import type {
+  BubbleAlign,
+  BubbleContentProps,
+  BubbleGroupProps,
+  BubbleProps,
+  BubbleReactionsProps,
+  BubbleReactionsSide,
+  BubbleVariant,
+} from '@gedatou/cadenza-ui'
+```
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### Bubble
+
+气泡外壳。它不画任何可见的东西，只决定变体、对齐，并作为反应的定位基准。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `variant` | `BubbleVariant` | `'default'` | 表面处理，作用在 `BubbleContent` 上 |
+| `align` | `'start' \| 'end'` | `'start'` | 靠哪一侧。在 `Message` 里时改设消息的 `align` |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
+
+### BubbleContent
+
+可见的那块面 —— 圆角、内边距、背景色、换行都在这里。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 换掉渲染的元素；传 `<button>` 或 `<a>` 就得到一个可按的气泡 |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
+
+### BubbleReactions
+
+贴着气泡边缘浮动的一行，装反应或快捷操作。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `side` | `'top' \| 'bottom'` | `'bottom'` | 贴上边还是下边 |
+| `align` | `'start' \| 'end'` | `'end'` | 贴哪个角 |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
+
+### BubbleGroup
+
+连续同一发送者的气泡容器，只收紧间距。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |

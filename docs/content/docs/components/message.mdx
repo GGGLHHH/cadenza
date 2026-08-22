@@ -1,0 +1,227 @@
+---
+title: Message
+description: 一条消息的行布局 —— 对齐、头像、页眉页脚，气泡交给 Bubble
+---
+
+<ComponentPreview align="stretch" name="message/basic" />
+
+Message 管的是这一行怎么放：靠哪边、有没有头像、上下的小字写什么。读者看见的那块
+面是 [Bubble](/docs/components/bubble) 的事，整段记录的滚动是
+[MessageScroller](/docs/components/message-scroller) 的事。
+
+它是纯布局：没有状态、没有 hook，无障碍全部来自你放进去的内容。封装层是纯转出。
+
+## 使用
+
+```tsx
+import {
+  Message,
+  MessageAvatar,
+  MessageContent,
+  MessageFooter,
+  MessageGroup,
+  MessageHeader,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Message align="end">
+  <MessageContent>
+    <Bubble variant="muted">
+      <BubbleContent>间隔放在哪里？</BubbleContent>
+    </Bubble>
+  </MessageContent>
+</Message>
+```
+
+## 组成
+
+```text
+Message                 行本身：对齐、方向
+├── MessageAvatar       贴着行的底部
+└── MessageContent
+    ├── MessageHeader   谁在说
+    ├── Bubble          可见的那块面
+    └── MessageFooter   状态、时间、操作
+```
+
+连续同一发送者的多条：
+
+```text
+MessageGroup
+├── Message
+└── Message
+```
+
+**`align` 是对齐的唯一开关。** 它在根上写 `data-align`，翻转行方向，并通过
+`group-data-[align=end]/message` 把气泡、页眉、页脚一起拉到同一侧。下游不需要
+再被告知一次 —— 包括 `Bubble` 自己的 `align`，在 `Message` 里就不用设。
+
+## 特性
+
+- `align` 决定行的方向，气泡、页眉、页脚一并跟随
+- 头像位贴行底部，并自动避开页脚
+- 页眉与页脚放发送者名、状态、消息级操作
+- 页脚跟随消息方向，`align="end"` 的行上操作保持右对齐
+- `MessageGroup` 收紧连续同一发送者的多条
+- 每个部件都能用 `className` 定制
+
+## 头像
+
+<ComponentPreview align="stretch" name="message/avatar" />
+
+`MessageAvatar` 贴的是行的**底部**，不是顶部：这样长消息的头像停在最后一行旁边，
+而不是飘在第一行。它还会在这条消息有页脚时上移 2rem，避免和时间戳并排。
+
+本库的 `Avatar` 还没提升，所以 demo 里放的是首字母；`MessageAvatar` 是个普通
+容器，放图片、放图标都行。
+
+## 分组
+
+<ComponentPreview align="stretch" name="message/group" />
+
+`MessageGroup` 把连续同一发送者的消息收紧。注意 demo 里的写法：**较早的几条渲染
+一个空的 `MessageAvatar`**，这样它们的文字仍与最后一条的头像对齐，而不是整体左移。
+
+## 页眉与页脚
+
+<ComponentPreview align="stretch" name="message/header-footer" />
+
+页眉放发送者名字，页脚放送达/已读这类元信息。两者都带一个 0.75rem 的内缩，正好
+与有内边距的气泡对齐；遇到 `ghost` 气泡时自动去掉内缩，所以两种情况下文字都是齐的。
+
+## 操作
+
+<ComponentPreview align="stretch" name="message/actions" />
+
+消息级的操作放进 `MessageFooter` —— 复制、重新生成、点赞点踩。页脚会跟着消息的
+方向走，`align="end"` 的行上操作也保持右对齐。
+
+这些按钮通常只有图标，**每一个都要 `aria-label`**：图标是装饰性的，自己不带名字。
+
+## 附件
+
+<ComponentPreview align="stretch" name="message/attachment" />
+
+[Attachment](/docs/components/attachment) 就是 `MessageContent` 的又一个子元素，
+放在气泡上面或下面，并继承这一行的对齐 —— 用户发的文件因此落在用户文字的同一侧。
+
+## 无障碍
+
+`Message` 是纯展示性的布局壳，无障碍来自你放进去的内容。
+
+- **只有图标的操作要有名字**：`MessageFooter` 里的按钮加 `aria-label`。
+- **进行中的状态用 Marker**：正在思考、工具在跑，用
+  [Marker](/docs/components/marker) 加 `role="status"`，辅助技术才会在它出现时
+  播报。
+
+```tsx
+<Message>
+  <Marker role="status">
+    <MarkerIcon><Spinner /></MarkerIcon>
+    <MarkerContent>正在查阅日志…</MarkerContent>
+  </Marker>
+</Message>
+```
+
+## 什么时候用 Message
+
+一行聊天记录里 `Message` 和 `Bubble` 都要：前者是行，后者是面。孤立的气泡
+（引用片段、提示卡）可以只用 Bubble。
+
+如果这一行要说的不是消息，而是对话本身的事 —— 某人加入、日期分隔、"正在思考" ——
+那是 [Marker](/docs/components/marker)，它和 `Message` 同级。
+
+## 状态与 className
+
+每个部件都落在纯 `<div>` 上，`className` 诚实地是 `string`。
+
+| 属性 | 出现在 | 值 |
+| --- | --- | --- |
+| `data-align` | Message | `"start"` \| `"end"` |
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `message` | 行 |
+| `message-group` | 连续消息的容器 |
+| `message-avatar` | 头像位 |
+| `message-content` | 页眉 + 气泡 + 页脚 |
+| `message-header` | 上方小字 |
+| `message-footer` | 下方小字与操作 |
+
+`Message` 带 `group/message`，下游全靠 `group-data-[align=end]/message` 跟着走。
+`MessageAvatar` 还会用 `group-has-data-[slot=message-footer]/message` 探测页脚
+是否存在。
+
+## 导出的类型
+
+```tsx
+import type {
+  MessageAlign,
+  MessageAvatarProps,
+  MessageContentProps,
+  MessageFooterProps,
+  MessageGroupProps,
+  MessageHeaderProps,
+  MessageProps,
+} from '@gedatou/cadenza-ui'
+```
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### Message
+
+一条消息的行。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `align` | `'start' \| 'end'` | `'start'` | 靠哪一侧。写成 `data-align`，下游全部跟随 |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
+
+### MessageGroup
+
+连续同一发送者的消息容器，收紧间距。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
+
+### MessageAvatar
+
+头像位。贴行的底部；这条消息有页脚时自动上移。留空可用于分组里的占位。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
+
+### MessageContent
+
+页眉、气泡、页脚的纵向容器，也是它们跟随对齐的地方。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
+
+### MessageHeader
+
+气泡上方的一行小字，通常是发送者名字。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
+
+### MessageFooter
+
+气泡下方的一行：时间、送达状态，或消息级操作按钮。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 落在纯 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>`（含 `ref`） | — | 透传 |
