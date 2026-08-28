@@ -1,0 +1,200 @@
+---
+title: Progress
+description: 任务完成度的进度条 —— value 进、轨道自带，null 即不确定态，状态镜像到每个部件
+---
+
+<ComponentPreview name="progress/basic" />
+
+Base UI 的进度条，穿 shadcn base-nova 的皮。根是 `role="progressbar"`，`value` 必填：
+数字按 `min` / `max`（默认 0–100）折成 `aria-valuenow` 与指示条宽度，`null` 是不确定态。
+轨道和指示条**不写就有**——根自己补一条 `ProgressTrack > ProgressIndicator`；
+自己写了 `ProgressTrack`（直接子级或 Fragment 内）它就整个让位，不会出现两条轨道。
+状态以 `data-indeterminate` / `data-progressing` / `data-complete` 落在每个部件上，
+`className` 一律支持函数形态，见[状态与 className](#状态与-classname)。
+
+母版的「RTL」一节本页省去：站点未做 RTL 配置；不确定态的滑动用的是逻辑属性，RTL 下自会反向。
+
+## 使用
+
+```tsx
+import { Progress } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Progress value={33} aria-label="Loading" />
+```
+
+不放 `ProgressLabel` 时给根一个 `aria-label`，读屏器才知道这是什么的进度。
+
+## 组成
+
+```text
+Progress
+├── ProgressLabel
+├── ProgressValue
+└── ProgressTrack
+    └── ProgressIndicator
+```
+
+### 带标签和数值
+
+`ProgressLabel` 与 `ProgressValue` 放在 children 里，轨道由根补在最后（`flex-wrap`，
+轨道 `inline-full` 自己换到下一行）：
+
+```tsx
+import { Progress, ProgressLabel, ProgressValue } from '@gedatou/cadenza-ui'
+
+<Progress value={56} className="max-inline-sm">
+  <ProgressLabel>Upload progress</ProgressLabel>
+  <ProgressValue />
+</Progress>
+```
+
+要改轨道的高度或颜色，把轨道也写出来 —— 根检测到就不再补默认的那条：
+
+```tsx
+<Progress value={56}>
+  <ProgressLabel>Upload progress</ProgressLabel>
+  <ProgressTrack className="block-2">
+    <ProgressIndicator className="bg-emerald-500" />
+  </ProgressTrack>
+</Progress>
+```
+
+## 标签
+
+`ProgressLabel` 是这个控件的标签通道：它渲染一个带 `id` 的 `<span>`，根自动写上
+`aria-labelledby`，不走 `FieldLabel htmlFor`。`ProgressValue` 打印格式化后的值。
+
+<ComponentPreview name="progress/label" />
+
+值的格式由根的 `format`（`Intl.NumberFormatOptions`）与 `locale` 决定，默认是百分比；
+`ProgressValue` 的 children 可以是 `(formattedValue, value) => ReactNode` —— 第一参是格式化后的
+字符串（不确定态为 `null`），第二参是原始数字。这是数据 payload，不是 `(state)` 契约。
+读屏器听到的是 `aria-valuetext`，同一份格式化结果；要另说一套用 `getAriaValueText`。
+
+## 不确定态
+
+`value={null}` 表示「在忙但不知道还要多久」：根不写 `aria-valuenow`，指示条变成一段沿轨道
+滑动的三分之一宽色块。
+
+<ComponentPreview name="progress/indeterminate" />
+
+滑动是 seam 加在 `ProgressIndicator` 上的（vendored 的指示条在不确定态没有宽度，直接消失）：
+`data-indeterminate:inline-1/3 data-indeterminate:animate-progress-indeterminate`，
+关键帧动的是 `margin-inline-start`，所以 RTL 下反向、`motion-reduce` 要自己加。
+
+## 受控
+
+进度条没有非受控模式 —— `value` 永远由调用方给，它只汇报数字、不拥有数字。让别的控件驱动它，
+把那个控件的 state 直接传进来即可：
+
+```tsx
+const [value, setValue] = useState(20)
+
+<Slider value={value} onValueChange={setValue} />
+<Progress value={value} aria-label="Slider value" />
+```
+
+## 状态与 className
+
+`className` / `style` / `render` 一律双形态：值，或 `(state) => 值` 的函数。state 只有一个字段
+`status`，五个部件收到的是同一份：
+
+| `data-*` | 出现时机 | 函数 `className` 里的名字 |
+| --- | --- | --- |
+| `data-indeterminate` | `value` 为 `null` | `status === 'indeterminate'` |
+| `data-progressing` | `value` 在 `min` 与 `max` 之间 | `status === 'progressing'` |
+| `data-complete` | `value >= max` | `status === 'complete'` |
+
+需要从外部定位时用 `data-slot`：
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `progress` | 根，`role="progressbar"`，`flex flex-wrap gap-3` |
+| `progress-label` | 标签 `<span>` |
+| `progress-value` | 数值 `<span>`，`ms-auto tabular-nums` |
+| `progress-track` | 轨道，`block-1 rounded-full bg-muted`，`inline-full` |
+| `progress-indicator` | 指示条，`bg-primary transition-all`，宽度由 Base UI 按 `value` 写在 `style` 上 |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### Progress
+
+根，`role="progressbar"`；不写 `ProgressTrack` 就自带一条。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `value` | `number \| null` | — | 当前值；`null` 为不确定态 |
+| `min` | `number` | `0` | — |
+| `max` | `number` | `100` | 到达即 `data-complete` |
+| `format` | `Intl.NumberFormatOptions` | 百分比 | `ProgressValue` 与 `aria-valuetext` 的格式 |
+| `locale` | `Intl.LocalesArgument` | 运行时 locale | — |
+| `getAriaValueText` | `(formattedValue: string, value: number \| null) => string` | — | 覆盖读屏文本 |
+| `aria-valuetext` | `string` | — | 直接给定读屏文本 |
+| `className` | `string \| ((state: ProgressState) => string)` | — | 落在根上 |
+| 其余 | Base UI `Progress.Root` 的 props（`<div>` 原生属性 + `ref`） | — | 透传 |
+
+```tsx
+<Progress value={3} max={8} format={{ style: 'unit', unit: 'gigabyte' }} aria-label="Disk" />
+```
+
+### ProgressLabel
+
+标签 `<span>`，根据它写 `aria-labelledby`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string \| ((state: ProgressState) => string)` | — | — |
+| 其余 | Base UI `Progress.Label` 的 props | — | 透传（含 `ref`） |
+
+```tsx
+<ProgressLabel>Upload progress</ProgressLabel>
+```
+
+### ProgressValue
+
+数值 `<span>`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `children` | `null \| ((formattedValue: string \| null, value: number \| null) => ReactNode)` | 打印 `formattedValue` | 自定义打印 |
+| `className` | `string \| ((state: ProgressState) => string)` | — | — |
+| 其余 | Base UI `Progress.Value` 的 props | — | 透传（含 `ref`） |
+
+```tsx
+<ProgressValue>{(formatted, value) => `${formatted} · ${value}`}</ProgressValue>
+```
+
+### ProgressTrack
+
+轨道 `<div>`。写了它根就不再补默认轨道；指示条要自己放进去。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string \| ((state: ProgressState) => string)` | — | — |
+| 其余 | Base UI `Progress.Track` 的 props | — | 透传（含 `ref`） |
+
+```tsx
+<ProgressTrack className="block-2">
+  <ProgressIndicator />
+</ProgressTrack>
+```
+
+### ProgressIndicator
+
+指示条 `<div>`，宽度由 Base UI 写在 `style` 上；不确定态时是滑动的色块。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string \| ((state: ProgressState) => string)` | — | 颜色在这里改 |
+| 其余 | Base UI `Progress.Indicator` 的 props | — | 透传（含 `ref`） |
+
+```tsx
+<ProgressIndicator className={({ status }) => (status === 'complete' ? 'bg-emerald-500' : 'bg-primary')} />
+```
+
+7 个类型一并导出：`ProgressProps` / `ProgressState` / `ProgressStatus` / `ProgressLabelProps` /
+`ProgressValueProps` / `ProgressTrackProps` / `ProgressIndicatorProps`。

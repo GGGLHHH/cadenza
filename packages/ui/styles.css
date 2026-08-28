@@ -39,6 +39,20 @@
   }
 }
 
+/* progress: the indeterminate segment slides along the track in the reading
+   direction (logical margin, so RTL runs the other way on its own). */
+@theme inline {
+  --animate-progress-indeterminate: progress-indeterminate 1.5s ease-in-out infinite;
+  @keyframes progress-indeterminate {
+    from {
+      margin-inline-start: -33.33%;
+    }
+    to {
+      margin-inline-start: 100%;
+    }
+  }
+}
+
 /* Custom variants */
 @custom-variant data-open {
   &:where([data-state="open"]),

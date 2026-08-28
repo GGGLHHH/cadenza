@@ -1,0 +1,213 @@
+---
+title: Progress
+description: The completion bar for a task — value in, track supplied, null for indeterminate, status mirrored on every part
+---
+
+<ComponentPreview name="progress/basic" />
+
+Base UI's progress bar in shadcn's base-nova skin. The root is `role="progressbar"` and
+`value` is required: a number is folded through `min` / `max` (0–100 by default) into
+`aria-valuenow` and the indicator's width, `null` is the indeterminate state. The track
+and indicator are **there without writing them** — the root appends one
+`ProgressTrack > ProgressIndicator` of its own; write a `ProgressTrack` yourself (a direct
+child or inside a Fragment) and it steps aside completely, so there are never two tracks.
+The status lands on every part as `data-indeterminate` / `data-progressing` /
+`data-complete`, and `className` takes the function form throughout, see
+[State and className](#state-and-classname).
+
+The master page's "RTL" section is omitted here: the site has no RTL configuration; the
+indeterminate slide uses logical properties and reverses on its own under RTL.
+
+## Usage
+
+```tsx
+import { Progress } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Progress value={33} aria-label="Loading" />
+```
+
+Without a `ProgressLabel`, give the root an `aria-label` so a screen reader knows what is
+progressing.
+
+## Composition
+
+```text
+Progress
+├── ProgressLabel
+├── ProgressValue
+└── ProgressTrack
+    └── ProgressIndicator
+```
+
+### With label and value
+
+`ProgressLabel` and `ProgressValue` go in children; the root appends the track last
+(`flex-wrap`, and the `inline-full` track wraps onto its own line):
+
+```tsx
+import { Progress, ProgressLabel, ProgressValue } from '@gedatou/cadenza-ui'
+
+<Progress value={56} className="max-inline-sm">
+  <ProgressLabel>Upload progress</ProgressLabel>
+  <ProgressValue />
+</Progress>
+```
+
+To change the track's height or colour, write the track out too — once the root sees it, it
+stops supplying the default one:
+
+```tsx
+<Progress value={56}>
+  <ProgressLabel>Upload progress</ProgressLabel>
+  <ProgressTrack className="block-2">
+    <ProgressIndicator className="bg-emerald-500" />
+  </ProgressTrack>
+</Progress>
+```
+
+## Label
+
+`ProgressLabel` is this control's label channel: it renders a `<span>` with an `id` and the
+root writes `aria-labelledby` for it — not `FieldLabel htmlFor`. `ProgressValue` prints the
+formatted value.
+
+<ComponentPreview name="progress/label" />
+
+The root's `format` (`Intl.NumberFormatOptions`) and `locale` decide how the value is
+printed, a percentage by default; `ProgressValue`'s children may be
+`(formattedValue, value) => ReactNode` — the formatted string first (`null` when
+indeterminate), the raw number second. That is a data payload, not the `(state)` contract.
+A screen reader hears `aria-valuetext`, the same formatted result; to say something else, use
+`getAriaValueText`.
+
+## Indeterminate
+
+`value={null}` means "busy, duration unknown": the root writes no `aria-valuenow` and the
+indicator becomes a third-width segment sliding along the track.
+
+<ComponentPreview name="progress/indeterminate" />
+
+The slide is what the seam adds to `ProgressIndicator` (the vendored indicator has no width
+in that state and simply vanishes): `data-indeterminate:inline-1/3
+data-indeterminate:animate-progress-indeterminate`. The keyframes animate
+`margin-inline-start`, so RTL reverses on its own; `motion-reduce` is yours to add.
+
+## Controlled
+
+A progress bar has no uncontrolled mode — `value` always comes from the caller; it reports the
+number, it does not own it. To let another control drive it, pass that control's state
+straight in:
+
+```tsx
+const [value, setValue] = useState(20)
+
+<Slider value={value} onValueChange={setValue} />
+<Progress value={value} aria-label="Slider value" />
+```
+
+## State and className
+
+`className` / `style` / `render` come in two forms: a value, or a `(state) => value`
+function. The state has one field, `status`, and all five parts receive the same one:
+
+| `data-*` | When | Name in a function `className` |
+| --- | --- | --- |
+| `data-indeterminate` | `value` is `null` | `status === 'indeterminate'` |
+| `data-progressing` | `value` is between `min` and `max` | `status === 'progressing'` |
+| `data-complete` | `value >= max` | `status === 'complete'` |
+
+Use `data-slot` to reach a part from outside:
+
+| `data-slot` | What it is |
+| --- | --- |
+| `progress` | the root, `role="progressbar"`, `flex flex-wrap gap-3` |
+| `progress-label` | the label `<span>` |
+| `progress-value` | the value `<span>`, `ms-auto tabular-nums` |
+| `progress-track` | the track, `block-1 rounded-full bg-muted`, `inline-full` |
+| `progress-indicator` | the indicator, `bg-primary transition-all`; Base UI writes its width from `value` into `style` |
+
+## Props
+
+Order rule: **required → uncontrolled default → controlled value → callbacks → behaviour switches → appearance → `className`**.
+
+### Progress
+
+The root, `role="progressbar"`; supplies a track unless a `ProgressTrack` is written.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `number \| null` | — | the current value; `null` is indeterminate |
+| `min` | `number` | `0` | — |
+| `max` | `number` | `100` | reaching it sets `data-complete` |
+| `format` | `Intl.NumberFormatOptions` | percent | how `ProgressValue` and `aria-valuetext` are formatted |
+| `locale` | `Intl.LocalesArgument` | the runtime locale | — |
+| `getAriaValueText` | `(formattedValue: string, value: number \| null) => string` | — | overrides the screen-reader text |
+| `aria-valuetext` | `string` | — | sets the screen-reader text directly |
+| `className` | `string \| ((state: ProgressState) => string)` | — | lands on the root |
+| rest | Base UI `Progress.Root` props (native `<div>` attributes + `ref`) | — | passed through |
+
+```tsx
+<Progress value={3} max={8} format={{ style: 'unit', unit: 'gigabyte' }} aria-label="Disk" />
+```
+
+### ProgressLabel
+
+The label `<span>`; the root writes `aria-labelledby` from it.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string \| ((state: ProgressState) => string)` | — | — |
+| rest | Base UI `Progress.Label` props | — | passed through (`ref` included) |
+
+```tsx
+<ProgressLabel>Upload progress</ProgressLabel>
+```
+
+### ProgressValue
+
+The value `<span>`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `null \| ((formattedValue: string \| null, value: number \| null) => ReactNode)` | prints `formattedValue` | custom printing |
+| `className` | `string \| ((state: ProgressState) => string)` | — | — |
+| rest | Base UI `Progress.Value` props | — | passed through (`ref` included) |
+
+```tsx
+<ProgressValue>{(formatted, value) => `${formatted} · ${value}`}</ProgressValue>
+```
+
+### ProgressTrack
+
+The track `<div>`. Writing it stops the root from supplying the default track; put the
+indicator inside yourself.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string \| ((state: ProgressState) => string)` | — | — |
+| rest | Base UI `Progress.Track` props | — | passed through (`ref` included) |
+
+```tsx
+<ProgressTrack className="block-2">
+  <ProgressIndicator />
+</ProgressTrack>
+```
+
+### ProgressIndicator
+
+The indicator `<div>`; Base UI writes its width into `style`; a sliding segment when
+indeterminate.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string \| ((state: ProgressState) => string)` | — | change the colour here |
+| rest | Base UI `Progress.Indicator` props | — | passed through (`ref` included) |
+
+```tsx
+<ProgressIndicator className={({ status }) => (status === 'complete' ? 'bg-emerald-500' : 'bg-primary')} />
+```
+
+7 types are exported alongside: `ProgressProps` / `ProgressState` / `ProgressStatus` /
+`ProgressLabelProps` / `ProgressValueProps` / `ProgressTrackProps` / `ProgressIndicatorProps`.
