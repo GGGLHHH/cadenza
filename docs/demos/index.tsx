@@ -287,6 +287,7 @@ const registry: Record<string, ComponentType> = {
   'ai/queue': lazy(async () => import('./ai/queue')),
   'ai/draft': lazy(async () => import('./ai/draft')),
   'ai/tool-group': lazy(async () => import('./ai/tool-group')),
+  'ai/history': lazy(async () => import('./ai/history')),
 }
 
 export function DemoRenderer({ name }: { name: string }): ReactElement {

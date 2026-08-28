@@ -385,8 +385,11 @@ const { selection, forwardedProps } = useModelSelection({ catalog })
 
 ## MCP
 
-> Phase 3。`createChatHandler` 目前没有 `mcp` 选项；要接 MCP 工具，用 `./server`
-> 转出的 `chat()` 自己写 handler——这条路绕过了选择解析与 BYOK。
+`chat({ mcp })` 是 `@tanstack/ai` 的接口：`clients` 收一组 `MCPToolSource`——
+`{ tools({ lazy? }), close(), readResource?(uri) }` 的结构类型，`@tanstack/ai-mcp` 的
+`MCPClient` / `MCPClients` 按形状满足——`chat()` 自己发现工具、执行调用，run 结束时按
+`connection` 策略处理连接。`createChatHandler` 没有 `mcp` 选项；要接 MCP，用 `./server`
+转出的 `chat()` 自己写 handler——这条路绕过了选择解析与 BYOK。
 
 ```ts
 import { chat, chatParamsFromRequest, toServerSentEventsResponse } from '@gedatou/cadenza-ai/server'
@@ -404,8 +407,17 @@ export async function POST(request: Request): Promise<Response> {
 }
 ```
 
-`ChatMCPOptions` 的其余字段（`lazyTools`、`onDiscoveryError`）以
-[TanStack AI 的 MCP 文档](https://tanstack.com/ai) 为准。
+`ChatMCPOptions` 的四个字段：
+
+| 字段 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `clients` | `MCPToolSource[]` | — | 发现工具的来源 |
+| `connection` | `'close' \| 'keep-alive'` | `'close'` | run 结束（agent 循环跑完、流排空）后关掉每个连接；`'keep-alive'` 由你管生命周期，跨请求复用 |
+| `lazyTools` | `boolean` | `false` | 转发为 `tools({ lazy: true })`，延后拉取 schema |
+| `onDiscoveryError` | `(error, source) => void \| Promise<void>` | 重新抛出 | 单个来源发现失败时：正常返回则跳过它继续，抛出则整次 `chat()` 失败 |
+
+若为 docs 站配了服务端 key（`getByokKey` 的 env 兜底），任何人都能免费调用这条路由，
+需要加一层按 IP 限流的中间件——本站纯 BYOK，不做。
 
 ## 不接入的 harness
 

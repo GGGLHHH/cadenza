@@ -143,6 +143,38 @@ narrow-screen drawer included):
 
 <ComponentSource name="ai/threads" />
 
+## Prepending history
+
+Paging in earlier messages must not move the row the reader is looking at.
+`chat.setMessages([...older, ...chat.messages])` prepends the older rows to the top of the
+transcript, and `preserveScrollOnPrepend` (on by default), which `Transcript` forwards to the
+viewport, holds the visible row — `scrollTop` grows by exactly the height that was prepended.
+
+<ComponentPreview name="ai/history" align="stretch" />
+
+```tsx
+const chat = useChat({ connection, persistence, threadId, initialMessages: latestPage })
+
+// The next page of older rows arrived: prepend, never append
+chat.setMessages([...olderPage, ...chat.messages])
+```
+
+Two constraints come from [MessageScroller](/docs/components/message-scroller#loading-earlier-messages):
+
+- **Message ids must be stable.** The scroller holds position by row identity, not by
+  whichever pixel happens to sit at the viewport edge; `TranscriptMessage` hands `message.id`
+  to `MessageScrollerItem`, so a page of history must not regenerate its ids.
+- **The "load earlier" button must not be the first row of the message list.** The scroller
+  recognises a prepend by checking whether the row that used to be first has moved down; a
+  control that is permanently first hides every prepend, and the viewport treats the incoming
+  history as an append and scrolls away from the reader. The demo keeps the button inside the
+  frame, above `Transcript` — outside the scrolling container; to have it scroll with the
+  transcript, compose `MessageScrollerViewport` directly and place it inside the viewport but
+  outside `MessageScrollerContent`.
+
+`setMessages` goes down the same persistence path a run does, so an adapter wrapped by
+`threadPersistence` updates the index as usual.
+
 ## Import and export
 
 `messagesToMarkdown(messages, options?)` renders a thread as plain Markdown; for JSON,
@@ -183,7 +215,8 @@ import { openai } from '@gedatou/cadenza-ai/providers/openai'
 import { createChatHandler } from '@gedatou/cadenza-ai/server'
 import { memoryPersistence } from '@tanstack/ai-persistence'
 
-// memoryPersistence() is the in-process reference store; back it with your database in production.
+// memoryPersistence() is the in-process reference store — messages, runs, interrupts and
+// metadata together; back it with your database in production.
 const persistence = memoryPersistence()
 
 export const { POST, GET } = createChatHandler({
@@ -200,9 +233,44 @@ const chat = useChat({ connection: fetchServerSentEvents('/api/ai/chat'), persis
 ```
 
 The server-side `MessageStore` likewise has only `loadThread` / `saveThread` — whole-thread
-overwrite, no list; the thread index is still yours, either in the browser (this page's
-`createThreadIndex`) or behind a list endpoint of your own. The docs site does not wire
-server-side persistence; the demo at the top is entirely local.
+overwrite, no list, and deleting a thread is `saveThread(id, [])`; the thread index is still
+yours, either in the browser (this page's `createThreadIndex`) or behind a list endpoint of
+your own. `memoryPersistence()` ships all four stores — `messages` / `runs` / `interrupts` /
+`metadata` — so an approval still waiting survives a reload too; an adapter of your own that
+declares `interrupts` must provide `runs` as well.
+
+### Resuming a dropped stream
+
+`persistence` stores the transcript that has landed; the reply being generated is still in
+the stream. `durability` records that stream as well: `createChatHandler({ durability })`
+sends `POST` through `toServerSentEventsResponse(stream, { durability: { adapter } })` — every
+chunk is appended to the run's log and every SSE event carries an `id:` offset — and routes
+`GET ?runId=` (or a native `Last-Event-ID` reconnect) to `resumeServerSentEventsResponse`,
+which replays from the log without running the model again.
+
+```ts
+import { createChatHandler, memoryStream } from '@gedatou/cadenza-ai/server'
+
+export const { POST, GET } = createChatHandler({
+  providers: [openai],
+  persistence,
+  authorize,
+  // memoryStream keeps the logs in a process-global map: development, tests and single-process deployments.
+  durability: request => memoryStream(request),
+})
+```
+
+Nothing changes on the client: `fetchServerSentEvents` is already a resumable adapter — after a
+reload, `hydrate` brings back `activeRun` and the client replays it from the start through
+`joinRun(runId)` (`GET ?offset=-1&runId=`) and keeps receiving; a connection dropped mid-run
+reconnects with `Last-Event-ID`, throttled and bounded by the `reconnect` option. The two options
+only make sense together: `activeRun` comes from the `persistence` run store, the replay from the
+`durability` log.
+
+`memoryStream` keeps its logs in-process; completed runs are evicted after a grace window, and
+resuming an unknown or evicted run fails loudly instead of hanging. Multi-instance deployments
+switch to `durableStream(request)` (needs an external Durable Streams service). The docs site
+wires neither server-side persistence nor `durability`; the demo at the top is entirely local.
 
 ## State and className
 

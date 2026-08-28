@@ -272,6 +272,19 @@ Escape 走 `onEditCancel` 而不是停止。
 
 多个会话的索引（列表、标题、按天分组）是另一件事，见 [会话列表](/docs/ai/threads)。
 
+## 多标签页
+
+同一个 `threadId` 开在第二个 tab（或另一台设备）里，靠的是服务端持久化，不是广播：
+`useChat({ persistence: true, threadId })` 挂载时经 `hydrate` 取回正文与 `activeRun`，
+有正在生成的 run 就用 `joinRun` 从日志回放并接着收——前提是路由开了 `durability`，
+见[会话列表 › 断线续流](/docs/ai/threads#断线续流)。这一步不需要 `live`。
+
+`useChat({ live: true })` 是另一件事：挂载即 `client.subscribe()`、卸载即 `unsubscribe()`，
+让连接的订阅循环独立于请求存在。对 `fetchServerSentEvents` 这类 `connect` 适配器，
+订阅队列只由本 tab 自己的请求填充，`live` 不会带来别的 tab 的消息；它对应的是
+`webSocket()` 这类 `subscribe` + `send` 适配器——服务端往 socket 推，每个订阅者都收到同一次 run，
+`connectionStatus` / `isSubscribed` 也只在这时有意义。本库不做 WebSocket 路由，这些都只转发。
+
 ## 状态与 className
 
 每个部件的最外层都带 `data-slot`，状态用名称型属性表达：布尔状态在场时属性存在、值为空串，

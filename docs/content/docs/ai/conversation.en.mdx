@@ -298,6 +298,23 @@ its bundled adapter; reload the page and the conversation is still there.
 The index over many conversations (list, titles, grouping by day) is a separate concern —
 see [Threads](/docs/ai/threads).
 
+## Multiple tabs
+
+The same `threadId` open in a second tab (or on another device) works through server-side
+persistence, not a broadcast: on mount, `useChat({ persistence: true, threadId })` fetches the
+transcript and `activeRun` through `hydrate`, and if a run is still generating it replays it
+from the log through `joinRun` and keeps receiving — provided the route has `durability` on,
+see [Threads › Resuming a dropped stream](/docs/ai/threads#resuming-a-dropped-stream). None
+of this needs `live`.
+
+`useChat({ live: true })` is a different thing: `client.subscribe()` on mount and
+`unsubscribe()` on unmount, so the connection's subscription loop exists independently of any
+request. With a `connect` adapter such as `fetchServerSentEvents`, that queue is filled only by
+this tab's own requests — `live` brings nothing from other tabs; it is meant for `subscribe` +
+`send` adapters such as `webSocket()`, where the server pushes into the socket and every
+subscriber receives the same run, and where `connectionStatus` / `isSubscribed` mean
+something. This library ships no WebSocket route; all of these are re-exported only.
+
 ## State and className
 
 Every part carries `data-slot` on its outermost element, and state is expressed as named

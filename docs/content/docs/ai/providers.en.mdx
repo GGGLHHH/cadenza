@@ -411,9 +411,12 @@ exists. The per-vendor mapping functions exported from `./server` (`openaiThinki
 
 ## MCP
 
-> Phase 3. `createChatHandler` has no `mcp` option yet; to wire MCP tools, write the handler
-> yourself around the `chat()` re-exported from `./server` — this path bypasses selection
-> resolution and BYOK.
+`chat({ mcp })` is `@tanstack/ai`'s interface: `clients` takes a list of `MCPToolSource` — the
+structural type `{ tools({ lazy? }), close(), readResource?(uri) }`, which `@tanstack/ai-mcp`'s
+`MCPClient` / `MCPClients` satisfy by shape — and `chat()` discovers the tools, executes the
+calls and handles the connections at the end of the run according to `connection`.
+`createChatHandler` has no `mcp` option; to wire MCP, write the handler yourself around the
+`chat()` re-exported from `./server` — this path bypasses selection resolution and BYOK.
 
 ```ts
 import { chat, chatParamsFromRequest, toServerSentEventsResponse } from '@gedatou/cadenza-ai/server'
@@ -431,8 +434,18 @@ export async function POST(request: Request): Promise<Response> {
 }
 ```
 
-For the remaining `ChatMCPOptions` fields (`lazyTools`, `onDiscoveryError`) the
-[TanStack AI MCP docs](https://tanstack.com/ai) are the reference.
+The four fields of `ChatMCPOptions`:
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `clients` | `MCPToolSource[]` | — | the sources to discover tools from |
+| `connection` | `'close' \| 'keep-alive'` | `'close'` | close every connection when the run ends (agent loop complete, stream drained); `'keep-alive'` leaves the lifecycle to you, for reuse across requests |
+| `lazyTools` | `boolean` | `false` | forwarded as `tools({ lazy: true })`, deferring schema fetches |
+| `onDiscoveryError` | `(error, source) => void \| Promise<void>` | rethrow | when discovery fails for one source: return normally to skip it and continue, throw to fail the whole `chat()` call |
+
+If the docs site were given a server-side key (the env fallback of `getByokKey`), anyone could
+call this route for free, and a per-IP rate-limiting middleware would be needed — this site is
+pure BYOK, so there is none.
 
 ## Harnesses that are not wired
 

@@ -130,6 +130,32 @@ ThreadList                    ScrollArea > div[role=list]；当前线程是受�
 
 <ComponentSource name="ai/threads" />
 
+## 历史前插
+
+翻页加载更早的消息时，读者正在看的那一行不该动。`chat.setMessages([...older, ...chat.messages])`
+把旧行前插到记录顶部，`Transcript` 透传给视口的 `preserveScrollOnPrepend`（默认开启）会保住可见行——
+前插内容有多高，`scrollTop` 就补多少。
+
+<ComponentPreview name="ai/history" align="stretch" />
+
+```tsx
+const chat = useChat({ connection, persistence, threadId, initialMessages: latestPage })
+
+// The next page of older rows arrived: prepend, never append
+chat.setMessages([...olderPage, ...chat.messages])
+```
+
+两个约束来自 [MessageScroller](/docs/components/message-scroller#加载更早的消息)：
+
+- **消息 id 要稳定。** 滚动器按行的身份保位，不是按视口边缘碰巧落在哪个像素；
+  `TranscriptMessage` 把 `message.id` 交给 `MessageScrollerItem`，分页数据里的 id 不能每次重新生成。
+- **「加载更早」按钮不能是消息列表的第一行。** 滚动器靠「原来排第一的那行有没有往下挪」认出前插，
+  一个永远排第一的控件会把每次前插都挡住，视口把新到的历史当成追加、从读者眼前滚走。
+  demo 把按钮放在记录框内、`Transcript` 之上——滚动容器之外；要让它随记录一起滚动，
+  直接组合 `MessageScrollerViewport`，把按钮放在视口内、`MessageScrollerContent` 之外。
+
+`setMessages` 走与运行同一条持久化通路，所以经 `threadPersistence` 包过的适配器照常更新索引。
+
 ## 导入导出
 
 `messagesToMarkdown(messages, options?)` 把一条线程渲染成纯 Markdown；JSON 直接序列化
@@ -170,7 +196,8 @@ import { openai } from '@gedatou/cadenza-ai/providers/openai'
 import { createChatHandler } from '@gedatou/cadenza-ai/server'
 import { memoryPersistence } from '@tanstack/ai-persistence'
 
-// memoryPersistence() is the in-process reference store; back it with your database in production.
+// memoryPersistence() is the in-process reference store — messages, runs, interrupts and
+// metadata together; back it with your database in production.
 const persistence = memoryPersistence()
 
 export const { POST, GET } = createChatHandler({
@@ -186,9 +213,39 @@ export const { POST, GET } = createChatHandler({
 const chat = useChat({ connection: fetchServerSentEvents('/api/ai/chat'), persistence: true, threadId })
 ```
 
-服务端的 `MessageStore` 同样只有 `loadThread` / `saveThread`——整体覆盖、没有列表；
-线程索引仍然是你的事：要么留在浏览器（本页的 `createThreadIndex`），要么自己建一个列表接口。
-docs 站不接服务端持久化，页顶 demo 全部在本地。
+服务端的 `MessageStore` 同样只有 `loadThread` / `saveThread`——整体覆盖、没有列表，
+删除一条线程就是 `saveThread(id, [])`；线程索引仍然是你的事：要么留在浏览器
+（本页的 `createThreadIndex`），要么自己建一个列表接口。`memoryPersistence()` 带全了
+`messages` / `runs` / `interrupts` / `metadata` 四个 store，所以等待批准的中断也能跨刷新恢复；
+自己实现的适配器若声明 `interrupts`，就必须同时提供 `runs`。
+
+### 断线续流
+
+`persistence` 存的是落盘的正文，正在生成的那条回复还在流里。`durability` 把这条流也记下来：
+`createChatHandler({ durability })` 让 `POST` 走 `toServerSentEventsResponse(stream, { durability: { adapter } })`
+——每个块追加进这次 run 的日志，每个 SSE 事件带上 `id:` 偏移；`GET ?runId=`（或原生的
+`Last-Event-ID` 重连）走 `resumeServerSentEventsResponse`，从日志回放，不再跑一次模型。
+
+```ts
+import { createChatHandler, memoryStream } from '@gedatou/cadenza-ai/server'
+
+export const { POST, GET } = createChatHandler({
+  providers: [openai],
+  persistence,
+  authorize,
+  // memoryStream keeps the logs in a process-global map: development, tests and single-process deployments.
+  durability: request => memoryStream(request),
+})
+```
+
+客户端不用改：`fetchServerSentEvents` 本身就是可续流的适配器——刷新后 `hydrate` 带回
+`activeRun`，客户端用 `joinRun(runId)`（`GET ?offset=-1&runId=`）从头回放并接着收；
+中途断线则带 `Last-Event-ID` 重连，`reconnect` 选项给重试节流与上限。两个选项一起开才有意义：
+`activeRun` 来自 `persistence` 的 run store，回放来自 `durability` 的日志。
+
+`memoryStream` 的日志住在进程内，完成的 run 过一段宽限期就被回收，未知或已回收的 run
+续流会直接失败而不是挂起；多实例部署换 `durableStream(request)`（需要外部 Durable Streams 服务）。
+docs 站不接服务端持久化，也不开 `durability`，页顶 demo 全部在本地。
 
 ## 状态与 className
 
