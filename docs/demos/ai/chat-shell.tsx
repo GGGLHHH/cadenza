@@ -38,6 +38,8 @@ export interface ChatShellProps {
   onValueChange?: ComposerProps['onValueChange']
   /** Shown while the transcript is empty (the `TranscriptEmpty` children). */
   empty?: ReactNode
+  /** A row inside the frame above the transcript, outside the scrolling list (paging controls). */
+  before?: ReactNode
   /** Toolbar contents for each assistant row. */
   renderActions?: (message: UIMessage) => ReactNode
   /** Extra controls before the submit button. */
@@ -64,6 +66,7 @@ export function ChatShell({
   value,
   onValueChange,
   empty,
+  before,
   renderActions,
   toolbar,
   attachments,
@@ -82,6 +85,7 @@ export function ChatShell({
         ${className}
       `}
       >
+        {before}
         <Transcript>
           {chat.messages.length === 0 && empty !== undefined && <TranscriptEmpty>{empty}</TranscriptEmpty>}
           {chat.messages.map(message => (
