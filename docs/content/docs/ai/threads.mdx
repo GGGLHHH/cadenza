@@ -134,7 +134,11 @@ ThreadList                    ScrollArea > div[role=list]；当前线程是受�
 
 `messagesToMarkdown(messages, options?)` 把一条线程渲染成纯 Markdown；JSON 直接序列化
 `chat.messages`，导入走 `chat.setMessages`——它经过与运行同一条持久化通路，
-所以 `threadPersistence` 会照常更新索引。demo `ai/export` 在 Phase 2，这里只给代码：
+所以 `threadPersistence` 会照常更新索引。
+
+<ComponentPreview name="ai/export" align="stretch" />
+
+三个按钮各一行：
 
 ```tsx
 import type { UIMessage } from '@gedatou/cadenza-ai'

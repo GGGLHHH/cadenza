@@ -1,6 +1,7 @@
 export * from './approval'
 export * from './byok-key-dialog'
 export * from './composer'
+export * from './context-usage'
 export * from './markdown'
 export * from './media-part'
 export * from './model-picker'

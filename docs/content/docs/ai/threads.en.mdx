@@ -147,8 +147,11 @@ narrow-screen drawer included):
 
 `messagesToMarkdown(messages, options?)` renders a thread as plain Markdown; for JSON,
 serialise `chat.messages` directly and import through `chat.setMessages` — it goes down the
-same persistence path a run does, so `threadPersistence` updates the index as usual. The
-`ai/export` demo is Phase 2; code only for now:
+same persistence path a run does, so `threadPersistence` updates the index as usual.
+
+<ComponentPreview name="ai/export" align="stretch" />
+
+One line per button:
 
 ```tsx
 import type { UIMessage } from '@gedatou/cadenza-ai'

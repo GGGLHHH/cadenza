@@ -1,6 +1,6 @@
 import type { TokenUsage } from '@gedatou/cadenza-ai'
 import type { ReactElement } from 'react'
-import { defaultCatalog, estimateCost, useChat, useUsageTracker } from '@gedatou/cadenza-ai'
+import { ContextUsage, defaultCatalog, estimateCost, useChat, useUsageTracker } from '@gedatou/cadenza-ai'
 import { text, usage } from '@gedatou/cadenza-ai/mock'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
@@ -11,7 +11,8 @@ import { REPLIES } from './scripts'
 // Proves `useUsageTracker`: wired to `onChunk` / `onFinish`, it books each
 // run's tokens against the assistant message that closed it and keeps a
 // running total; `estimateCost` prices both against a catalog model. The
-// prompt grows every turn, so the numbers do too.
+// prompt grows every turn, so the numbers do too — and `ContextUsage` in the
+// toolbar shows how much of the model's context window the prompt fills.
 const model = defaultCatalog.getModel('openai/gpt-5.2')
 
 function describe(u: TokenUsage): string {
@@ -40,6 +41,7 @@ function Body(): ReactElement {
           const u = tracker.byMessage.get(message.id)
           return u && <span className="text-xs text-muted-foreground">{describe(u)}</span>
         }}
+        toolbar={<ContextUsage model={model} usage={tracker.total}>tokens</ContextUsage>}
       />
     </div>
   )
