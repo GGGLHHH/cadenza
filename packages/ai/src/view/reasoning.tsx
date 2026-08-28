@@ -29,7 +29,8 @@ export interface ReasoningState {
 }
 
 function elapsedSeconds(complete: boolean, startedAt: number): number | undefined {
-  return complete ? Math.max(0, Math.round((Date.now() - startedAt) / 1000)) : undefined
+  // Floor at one second: "Thought for 0s" is what a fast run would otherwise say.
+  return complete ? Math.max(1, Math.round((Date.now() - startedAt) / 1000)) : undefined
 }
 
 /**

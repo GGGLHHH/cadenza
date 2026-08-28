@@ -25,7 +25,7 @@ import {
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconArrowUp, IconMicrophone, IconPaperclip, IconPlayerStop, IconX } from '@tabler/icons-react'
 import { useAudioRecorder } from '@tanstack/ai-react'
-import { createContext, use, useMemo, useRef, useState } from 'react'
+import { createContext, use, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 
 export type ComposerSubmitReason = 'keyboard' | 'none'
 export type ComposerChangeEventDetails = ChangeEventDetails<'input-change' | 'none'>
@@ -56,6 +56,8 @@ export interface ComposerProps extends Omit<ComponentProps<'form'>, 'onSubmit' |
   /** Escape while `editing` — takes precedence over `onStop`. */
   onEditCancel?: (details: GenericEventDetails<'escape-key'>) => void
   disabled?: boolean
+  /** Commit an empty draft too — for a composer whose attachments strip carries the content. Default false. */
+  allowEmpty?: boolean
   /** Files dropped on the form or pasted into it. */
   onFiles?: (files: File[], details: GenericEventDetails<'drag' | 'input-paste'>) => void
   children: ReactNode
@@ -67,6 +69,8 @@ interface ComposerContextValue {
   status: ChatClientState
   editing: boolean
   disabled: boolean
+  /** The draft can be committed: non-empty, or `allowEmpty`. */
+  committable: boolean
   submit: (details: GenericEventDetails<ComposerSubmitReason>) => void
   /** Forwards to the root's `onStop`; a no-op unless `submitted` / `streaming`. */
   stop: (details: GenericEventDetails<'escape-key' | 'none'>) => void
@@ -95,6 +99,7 @@ function isBusy(status: ChatClientState): boolean {
  * block-end addon rules key off `>` combinators).
  */
 export function Composer({
+  allowEmpty = false,
   children,
   className,
   defaultValue,
@@ -117,8 +122,9 @@ export function Composer({
   const [dragging, setDragging] = useState(false)
 
   // Read through refs so the memoised context never chases handler identity.
-  const latestRef = useRef({ value, disabled, editing, status, onValueChange, onValueCommitted, onStop, onEditCancel })
-  latestRef.current = { value, disabled, editing, status, onValueChange, onValueCommitted, onStop, onEditCancel }
+  const latestRef = useRef({ value, disabled, editing, status, allowEmpty, onValueChange, onValueCommitted, onStop, onEditCancel })
+  latestRef.current = { value, disabled, editing, status, allowEmpty, onValueChange, onValueCommitted, onStop, onEditCancel }
+  const committable = allowEmpty || value.trim() !== ''
 
   const context = useMemo<ComposerContextValue>(() => {
     const setValue = (next: string, details: ComposerChangeEventDetails = createChangeEventDetails('none')): void => {
@@ -133,9 +139,10 @@ export function Composer({
       status,
       editing,
       disabled,
+      committable,
       submit: (details) => {
         const text = latestRef.current.value
-        if (latestRef.current.disabled || text.trim() === '')
+        if (latestRef.current.disabled || (!latestRef.current.allowEmpty && text.trim() === ''))
           return
         latestRef.current.onValueCommitted(text, details)
         setValue('')
@@ -146,7 +153,7 @@ export function Composer({
       },
       cancelEdit: details => latestRef.current.onEditCancel?.(details),
     }
-  }, [value, status, editing, disabled, setValueState])
+  }, [value, status, editing, disabled, committable, setValueState])
 
   return (
     <ComposerContext value={context}>
@@ -250,7 +257,7 @@ export type ComposerSubmitProps = ButtonProps
 
 /** Send while idle, stop while busy. Disabled on an empty draft. */
 export function ComposerSubmit({ children, ...props }: ComposerSubmitProps): ReactElement {
-  const { value, status, disabled, stop } = useComposer()
+  const { committable, status, disabled, stop } = useComposer()
   const busy = isBusy(status)
   if (busy) {
     return (
@@ -274,7 +281,7 @@ export function ComposerSubmit({ children, ...props }: ComposerSubmitProps): Rea
     <Button
       aria-label="Send"
       data-slot="composer-submit"
-      disabled={disabled || value.trim() === ''}
+      disabled={disabled || !committable}
       size="icon-sm"
       type="submit"
       {...props}
@@ -290,8 +297,10 @@ export interface ComposerAttachmentsProps {
   className?: string
 }
 
-/** The pending-attachments strip; `state` maps straight onto `Attachment`'s. */
-export function ComposerAttachments({ items, onRemove, className }: ComposerAttachmentsProps): ReactElement {
+/** The pending-attachments strip; `state` maps straight onto `Attachment`'s. Renders nothing while empty. */
+export function ComposerAttachments({ items, onRemove, className }: ComposerAttachmentsProps): ReactElement | null {
+  if (items.length === 0)
+    return null
   return (
     <AttachmentGroup className={className} data-slot="composer-attachments">
       {items.map(item => (
@@ -361,17 +370,23 @@ export type ComposerDictateProps = InputGroupButtonProps & {
   onRecording: (part: AudioPart, details: GenericEventDetails<'imperative-action'>) => void
 }
 
+const noSubscribe = (): (() => void) => () => {}
+
 /** Press to record, press again to stop; the finished recording's audio part goes to `onRecording`. */
 export function ComposerDictate({ children, onClick, onRecording, ...props }: ComposerDictateProps): ReactElement {
   const { disabled } = useComposer()
   const recorder = useAudioRecorder()
+  // Recording support is a browser fact the server cannot know: render the
+  // button disabled on the server and during hydration, then let the client's
+  // answer through — the way useSyncExternalStore keeps both trees identical.
+  const supported = useSyncExternalStore(noSubscribe, () => recorder.isSupported, () => false)
   return (
     <InputGroupButton
       aria-label="Dictate"
       aria-pressed={recorder.isRecording}
       data-recording={dataAttr(recorder.isRecording)}
       data-slot="composer-dictate"
-      disabled={disabled || !recorder.isSupported}
+      disabled={disabled || !supported}
       size="icon-xs"
       {...props}
       onClick={(event) => {

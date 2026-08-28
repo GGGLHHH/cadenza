@@ -3,11 +3,12 @@ import type { ChangeEventDetails, CollapsibleChangeEventDetails, CollapsibleTrig
 import type { ToolCallPart, ToolResultPart } from '@tanstack/ai/client'
 import type { ReactElement, ReactNode } from 'react'
 import type { AnyToolApprovalInterrupt } from '../runtime/renderers'
-import { cn, Collapsible, CollapsiblePanel, CollapsibleTrigger, dataAttr, Spinner } from '@gedatou/cadenza-ui'
+import { cn, Collapsible, CollapsiblePanel, CollapsibleTrigger, createChangeEventDetails, dataAttr, Spinner } from '@gedatou/cadenza-ui'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck, IconClock, IconX } from '@tabler/icons-react'
 import { parsePartialJSON } from '@tanstack/ai/client'
-import { Children } from 'react'
+import { Children, useEffect, useEffectEvent, useRef } from 'react'
+import { usePartRenderers } from '../runtime/renderers'
 import { Markdown } from './markdown'
 
 /** `trigger-press` from the user, `none` for programmatic changes. */
@@ -19,8 +20,8 @@ interface OpenProps {
   onOpenChange?: (open: boolean, details: ToolCallChangeEventDetails) => void
 }
 
-function useOpen({ open, defaultOpen, onOpenChange }: OpenProps): [boolean, (next: boolean, details: ToolCallChangeEventDetails) => void] {
-  const [value, setValue] = useControllableState({ value: open, defaultValue: defaultOpen, fallback: false })
+function useOpen({ open, defaultOpen, onOpenChange }: OpenProps, fallback = false): [boolean, (next: boolean, details: ToolCallChangeEventDetails) => void] {
+  const [value, setValue] = useControllableState({ value: open, defaultValue: defaultOpen, fallback })
   return [value, (next, details) => {
     onOpenChange?.(next, details)
     if (!details.isCanceled)
@@ -72,7 +73,7 @@ function jsonBlock(value: unknown): string {
  * `children`.
  */
 export function ToolCallCard({ part, result, interrupt: _interrupt, streaming = false, open: openProp, defaultOpen, onOpenChange, children, className }: ToolCallCardProps): ReactElement {
-  const [open, setOpen] = useOpen({ open: openProp, defaultOpen, onOpenChange })
+  const { labels } = usePartRenderers()
   const state: ToolCallCardState = {
     pending: part.state === 'awaiting-input' || part.state === 'input-streaming' || part.state === 'input-complete',
     approvalRequested: part.state === 'approval-requested',
@@ -80,6 +81,31 @@ export function ToolCallCard({ part, result, interrupt: _interrupt, streaming = 
     complete: part.state === 'complete',
     error: part.state === 'error' || result?.state === 'error',
   }
+  // A call waiting on the user opens itself (its approve / deny row lives in
+  // the body) — once, and not over a reader who already folded it by hand.
+  const [open, setOpen] = useOpen({ open: openProp, defaultOpen, onOpenChange }, state.approvalRequested)
+  const manualRef = useRef(false)
+  const requestedRef = useRef(state.approvalRequested)
+  const openForApproval = useEffectEvent(() => {
+    if (!manualRef.current)
+      setOpen(true, createChangeEventDetails('none'))
+  })
+  useEffect(() => {
+    const was = requestedRef.current
+    requestedRef.current = state.approvalRequested
+    if (state.approvalRequested && !was)
+      openForApproval()
+  }, [state.approvalRequested])
+  // The header shows the state as an icon; the words go to assistive tech through `PartLabels`.
+  const stateLabel = state.error
+    ? labels.toolFailed
+    : state.complete
+      ? labels.toolDone
+      : state.approvalRequested
+        ? labels.toolApprovalRequested
+        : state.approvalResponded
+          ? (part.approval?.approved === false ? labels.toolDenied : labels.toolApproved)
+          : part.state === 'input-complete' ? labels.toolRunning : labels.toolPending
   const input = part.input ?? (part.arguments === '' ? undefined : parseJson(part.arguments))
   const output: unknown = part.output ?? result?.content
   const error = result?.error
@@ -94,7 +120,10 @@ export function ToolCallCard({ part, result, interrupt: _interrupt, streaming = 
       data-error={dataAttr(state.error)}
       data-streaming={dataAttr(streaming)}
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(next, details) => {
+        manualRef.current = true
+        setOpen(next, details)
+      }}
       className={cn('rounded-lg border bg-card text-sm text-card-foreground', className)}
     >
       <CollapsibleTrigger
@@ -110,6 +139,7 @@ export function ToolCallCard({ part, result, interrupt: _interrupt, streaming = 
         >
           {part.name}
         </span>
+        <span className="sr-only" data-slot="tool-call-state">{stateLabel}</span>
         {state.pending && (
           <Spinner
             aria-hidden

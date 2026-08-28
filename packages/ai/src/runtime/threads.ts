@@ -24,12 +24,20 @@ export interface ThreadIndex {
   /** Newest first; archived threads after live ones. Stable reference until the next write. */
   list: () => readonly ThreadMeta[]
   get: (id: string) => ThreadMeta | undefined
+  /** Creates (or re-creates) a thread; clears the id's tombstone. */
   create: (init?: Partial<ThreadMeta>) => ThreadMeta
-  /** Upserts: an unknown id is created with `createdAt = now`. */
+  /**
+   * Upserts: an unknown id is created with `createdAt = now` — unless it was
+   * removed in this session, in which case nothing is written (a chat still
+   * mounted on a deleted thread flushes once more; the deletion wins).
+   */
   touch: (id: string, patch: Partial<Omit<ThreadMeta, 'id'>>) => ThreadMeta
   rename: (id: string, title: string) => void
   archive: (id: string, archived: boolean) => void
+  /** Drops the thread and leaves a tombstone so later writes do not resurrect it. */
   remove: (id: string) => void
+  /** Whether `remove(id)` happened in this session and no `create` followed. */
+  wasRemoved: (id: string) => boolean
   subscribe: (listener: () => void) => () => void
 }
 
@@ -52,6 +60,7 @@ export function createThreadIndex(options: ThreadIndexOptions = {}): ThreadIndex
   const key = options.key ?? 'cadenza-ai:threads'
   const local = (options.storage ?? 'local') === 'local' && typeof window !== 'undefined'
   const listeners = new Set<() => void>()
+  const tombstones = new Set<string>()
   let threads: ThreadMeta[] = load()
   let sorted: readonly ThreadMeta[] = sortThreads(threads)
 
@@ -91,6 +100,8 @@ export function createThreadIndex(options: ThreadIndexOptions = {}): ThreadIndex
     const next: ThreadMeta = existing
       ? { ...existing, ...patch, updatedAt: patch.updatedAt ?? now }
       : { id, title: '', createdAt: now, updatedAt: now, messageCount: 0, preview: '', archived: false, ...patch }
+    if (!existing && tombstones.has(id))
+      return next
     commit(existing ? threads.map(t => (t.id === id ? next : t)) : [...threads, next])
     return next
   }
@@ -98,7 +109,11 @@ export function createThreadIndex(options: ThreadIndexOptions = {}): ThreadIndex
   return {
     list: () => sorted,
     get,
-    create: init => touch(init?.id ?? newThreadId(), init ?? {}),
+    create: (init) => {
+      const id = init?.id ?? newThreadId()
+      tombstones.delete(id)
+      return touch(id, init ?? {})
+    },
     touch,
     rename: (id, title) => {
       touch(id, { title })
@@ -107,8 +122,10 @@ export function createThreadIndex(options: ThreadIndexOptions = {}): ThreadIndex
       touch(id, { archived })
     },
     remove: (id) => {
+      tombstones.add(id)
       commit(threads.filter(t => t.id !== id))
     },
+    wasRemoved: id => tombstones.has(id),
     subscribe: (listener) => {
       listeners.add(listener)
       const onStorage = (event: StorageEvent): void => {
@@ -152,8 +169,11 @@ export function threadTitleFrom(messages: readonly UIMessage[], max = 40): strin
  */
 export function threadPersistence(index: ThreadIndex, base: ChatClientPersistence): ChatClientPersistence {
   return {
-    getItem: id => base.getItem(id),
+    getItem: id => (index.wasRemoved(id) ? null : base.getItem(id)),
     setItem: async (id, state: ChatPersistedState | UIMessage[]) => {
+      // A chat still mounted on a deleted thread flushes once more; the deletion wins.
+      if (index.wasRemoved(id))
+        return
       await base.setItem(id, Array.isArray(state) ? { messages: state } : state)
       const messages = Array.isArray(state) ? state : state.messages
       const last = messages.at(-1)

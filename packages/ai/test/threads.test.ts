@@ -67,6 +67,33 @@ describe('thread index', () => {
     expect(store.has('t1')).toBe(false)
   })
 
+  it('leaves a tombstone: a write after remove does not resurrect the thread, create brings it back', async () => {
+    const index = createThreadIndex({ storage: 'memory' })
+    const store = new Map<string, unknown>()
+    const base: ChatClientPersistence = {
+      getItem: id => (store.get(id) as never) ?? null,
+      setItem: (id, state) => {
+        store.set(id, state)
+      },
+      removeItem: (id) => {
+        store.delete(id)
+      },
+    }
+    const p = threadPersistence(index, base)
+    index.create({ id: 't1', title: 'One' })
+    index.remove('t1')
+    expect(index.wasRemoved('t1')).toBe(true)
+    index.touch('t1', { messageCount: 2 })
+    expect(index.get('t1')).toBeUndefined()
+    await p.setItem('t1', { messages: [] } as never)
+    expect(index.get('t1')).toBeUndefined()
+    expect(store.has('t1')).toBe(false)
+    expect(await p.getItem('t1')).toBeNull()
+    index.create({ id: 't1', title: 'Again' })
+    expect(index.wasRemoved('t1')).toBe(false)
+    expect(index.get('t1')?.title).toBe('Again')
+  })
+
   it('groups by day and derives titles', () => {
     const now = new Date(2026, 7, 28, 12).getTime()
     const day = 24 * 60 * 60 * 1000
