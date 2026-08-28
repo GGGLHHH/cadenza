@@ -7,9 +7,10 @@ description: 模型目录、七级思考强度、BYOK 密钥与 route handler—
 
 接入一家 provider 是两半事：**目录**是纯数据（`Provider` / `Model`），客户端与服务端共用，
 `defaultCatalog` 里有 12 家；**preset** 只在服务端，等于目录数据加上「建 adapter」与
-「把思考强度翻成这家的 `modelOptions`」两个函数。目前发布的 preset 有四个——
-`openai` / `anthropic` / `gemini` / `openrouter`，各在 `@gedatou/cadenza-ai/providers/<id>`；
-其余八家只有目录数据，要接就用 [`definePreset`](#自定义-provider) 自己补两个函数。
+「把思考强度翻成这家的 `modelOptions`」两个函数（可选第三个：在线发现模型）。12 家各有
+preset，在 `@gedatou/cadenza-ai/providers/<id>`；此外还有两个不在目录里的入口——
+[`openaiCompatiblePreset(config)`](#自定义-provider) 接任何 OpenAI 兼容端点，`byteplus`
+是占位（`create()` 抛错，等 `@tanstack/ai-byteplus` 成为 peer）。
 
 密钥走 TanStack AI 的 BYOK 形态：浏览器持有 key，每次请求以 `x-byok-<id>` 头送到你的
 route handler；服务端只用不存，缺 key 回 401，客户端弹对话框。
@@ -70,11 +71,13 @@ function Chat(): ReactElement {
 - **目录是数据，两端共用。** `defaultCatalog` 由 12 个 `Provider` 组成，每个带 `models`、
   `byok`（头名与 env 名）、`keyRequired` 与 `runtime`；不 import 任何 adapter，
   浏览器包里没有服务端代码。
-- **preset 只在服务端。** `ProviderPreset = Provider + create(model, key) + thinking(level, model)`，
-  从 `./providers/<id>` 导入才会带上 adapter。
+- **preset 只在服务端。** `ProviderPreset = Provider + create(model, key) + thinking(level, model) +
+  discoverModels?(key)`，从 `./providers/<id>` 导入才会带上 adapter——每个文件只 import
+  自家的 `@tanstack/ai-<id>`，装几家就打包几家。
 - **选择只走三个键。** 客户端 `forwardedProps` 里的 `provider` / `model` / `thinking`
-  是服务端唯一读取的内容：provider 必须在 `providers` 里，model 必须在 preset 的目录里，
-  thinking 不合法按 `'off'`；其余键一概不看，也不会 spread 进 `chat()`。
+  是服务端唯一读取的内容：provider 必须在 `providers` 里，model 必须在 preset 的目录里
+  （带 `discoverModels` 的 ollama / openai-compatible 放行目录外的 id），thinking 不合法按
+  `'off'`；其余键一概不看，也不会 spread 进 `chat()`。
 - **密钥归浏览器。** `ByokClient` 持有 key，`useChat({ byok, byokProvider })` 每次请求给当前
   provider 盖 `x-byok-<id>` 头；服务端 `getByokKey` 头优先、env 兜底，都没有就回 401
   `byok_missing`，客户端收到后打开 `ByokKeyDialog`。
@@ -85,20 +88,20 @@ function Chat(): ReactElement {
 `getModel('provider/id')` 与 `withProvider(p)` / `withoutProvider(id)`（返回新目录）。
 页顶 demo 用 `defaultCatalog.withProvider(local)` 加了一行自定义 provider。
 
-| id | 标签 | `keyRequired` / `runtime` | preset | 备注 |
-| --- | --- | --- | --- | --- |
-| `openai` | OpenAI | `true` / `node` | 已发布 | — |
-| `anthropic` | Anthropic | `true` / `node` | 已发布 | 思考强度按世代分四段，见下 |
-| `gemini` | Google Gemini | `true` / `node` | 已发布 | — |
-| `openrouter` | OpenRouter | `true` / `node` | 已发布 | 模型 id 自带 `vendor/model`；目录是建议清单，不是白名单 |
-| `grok` | xAI Grok | `true` / `node` | 仅数据 | `grok-build-*` 不发推理参数 |
-| `groq` | Groq | `true` / `node` | 仅数据 | — |
-| `mistral` | Mistral | `true` / `node` | 仅数据 | adapter 没有 thinking 设置项，全部 `reasoning: false` |
-| `vercel-gateway` | Vercel AI Gateway | `true` / `node` | 仅数据 | 无定价与上下文数据 |
-| `llmgateway` | LLM Gateway | `true` / `node` | 仅数据 | — |
-| `bedrock` | Amazon Bedrock | `true` / `node` | 仅数据 | bearer key；Converse 路径无推理参数，无定价 |
-| `vertex` | Vertex AI | `false` / `node` | 仅数据 | 复用 gemini 的模型表；ADC 或 express key 由 adapter 读 env |
-| `ollama` | Ollama | `false` / `local` | 仅数据 | 本地模型无定价；`x-byok-ollama` 头的值是 host URL |
+| id | 标签 | `keyRequired` / `runtime` | 备注 |
+| --- | --- | --- | --- |
+| `openai` | OpenAI | `true` / `node` | — |
+| `anthropic` | Anthropic | `true` / `node` | 思考强度按世代分四段，见下 |
+| `gemini` | Google Gemini | `true` / `node` | — |
+| `openrouter` | OpenRouter | `true` / `node` | 模型 id 自带 `vendor/model`；目录是建议清单，不是白名单 |
+| `grok` | xAI Grok | `true` / `node` | `grok-build-*` 不发推理参数 |
+| `groq` | Groq | `true` / `node` | — |
+| `mistral` | Mistral | `true` / `node` | adapter 没有 thinking 设置项，全部 `reasoning: false` |
+| `vercel-gateway` | Vercel AI Gateway | `true` / `node` | 无定价与上下文数据 |
+| `llmgateway` | LLM Gateway | `true` / `node` | — |
+| `bedrock` | Amazon Bedrock | `true` / `node` | bearer key；Converse 路径无推理参数，无定价 |
+| `vertex` | Vertex AI | `false` / `node` | 复用 gemini 的模型表；ADC 或 express key 由 adapter 读 env |
+| `ollama` | Ollama | `false` / `local` | 本地模型无定价；`x-byok-ollama` 头的值是 host URL；目录外的 tag 也放行 |
 
 `Model` 的字段：`id` / `name` / `provider` / `input`（模态数组）/ `reasoning` /
 `contextWindow?` / `maxOutputTokens?` / `cost?`（美元 / 百万 token，含 `cacheRead` /
@@ -112,6 +115,30 @@ OpenRouter 与 Vercel Gateway 的模型 id 自己就含斜杠。费用估算见
 页顶 demo 的源码：
 
 <ComponentSource name="ai/catalog" />
+
+## 预设
+
+每家一个文件，`import { <id> } from '@gedatou/cadenza-ai/providers/<id>'`（`vercel-gateway`
+导出名是 `vercelGateway`）。`create(model, key)` 收到的 `key` 是 `getByokKey` 解析出的头或
+env；`keyRequired: false` 的两家会收到 `null`。thinking 片段的逐格真源在
+[思考强度](#思考强度)。
+
+| id | `create(model, key)` | env（按顺序） | thinking 片段 | 备注 |
+| --- | --- | --- | --- | --- |
+| `openai` | `createOpenaiChat(model, key)` | `OPENAI_API_KEY` | `{ reasoning: { effort, summary: 'auto' } }` | — |
+| `anthropic` | `createAnthropicChat(model, key)` | `ANTHROPIC_API_KEY` | `{ thinking: {…} }`，按世代四段 | — |
+| `gemini` | `createGeminiChat(model, key)` | `GOOGLE_API_KEY` → `GEMINI_API_KEY` | `{ thinkingConfig: {…} }` | — |
+| `openrouter` | `createOpenRouterText(model, key)` | `OPENROUTER_API_KEY` | `{ reasoning: { effort } }`，七级原样 | 目录外的 `vendor/model` 不放行（无 `discoverModels`） |
+| `grok` | `createGrokText(model, key)` | `XAI_API_KEY` | `{ reasoning: { effort } }`，三档 | `grok-build-*` 永远 `{}` |
+| `groq` | `createGroqText(model, key)` | `GROQ_API_KEY` | `{ reasoning_effort, reasoning_format: 'parsed' }`，三档 | 只对 `reasoning: true` 的模型发；不发 `include_reasoning`（与 `reasoning_format` 互斥） |
+| `mistral` | `createMistralText(model, key)` | `MISTRAL_API_KEY` | `{}` | 没有 thinking 设置项 |
+| `vercel-gateway` | `createVercelGatewayText(model, key, { api: 'chat' })` | `AI_GATEWAY_API_KEY` → `VERCEL_OIDC_TOKEN` | `{ reasoning: { effort }, include_reasoning: true }`，三档 | 钉在 Chat Completions 路径——工厂默认的 Responses 路径没有 `reasoning` 键 |
+| `llmgateway` | `createLLMGatewayText(model, key)` | `LLM_GATEWAY_API_KEY` | `{ reasoning_effort }`，七级原样 | 该包没有 `./byok`，`byok` 由本包定义 |
+| `bedrock` | `createBedrockConverse(model, key)` | `BEDROCK_API_KEY` → `AWS_BEARER_TOKEN_BEDROCK` | `{}` | 只做 bearer；SigV4 是部署级配置，不走 BYOK；官方 `bedrockByok` 无 env，本包补上 |
+| `vertex` | `vertexText(model, key ? { apiKey: key } : undefined)` | `GOOGLE_VERTEX_API_KEY`；否则 project + location（见下） | 同 `gemini`（复用函数） | `keyRequired: false`；env 全缺时 `create` 抛 `VertexAuthError` |
+| `ollama` | `key ? createOllamaChat(model, key) : ollamaText(model)` | `OLLAMA_HOST`（host，不是 key；缺省 `http://localhost:11434`） | `{ think }` | `runtime: 'local'`，Vercel 上剔除；`discoverModels` = `GET {host}/api/tags` |
+| `openai-compatible` | `openaiCompatibleText(model, { baseURL, apiKey: key, name })` | `config.env` | `{ reasoning_effort }`，三档；`config.thinking` 可换 | `openaiCompatiblePreset(config)`；`discoverModels` = `GET {baseURL}/models` |
+| `byteplus` | 抛 `Error` | `ARK_API_KEY` → `BYTEPLUS_API_KEY` | `{}` | 占位；`models: []`，不入 `defaultCatalog` |
 
 ## 思考强度
 
@@ -129,7 +156,8 @@ THINKING_LEVELS // ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
   `resolveThinking` 在「clamp 后为 `off` 且模型不推理」时什么都不发，否则交给
   `preset.thinking(level, model)`。
 
-四个已发布 preset 的映射（`off` 一列是关闭时真正发出的片段）：
+各 preset 的映射（`off` 一列是关闭时真正发出的片段；三档 = `EFFORT_3`，minimal → low，
+xhigh / max → high）：
 
 | preset | 片段 | `off` | 不可关 |
 | --- | --- | --- | --- |
@@ -141,11 +169,19 @@ THINKING_LEVELS // ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 | `gemini` 3.x | `{ thinkingConfig: { includeThoughts: true, thinkingLevel } }`；MINIMAL / LOW / MEDIUM / HIGH，high / xhigh / max → HIGH | `{}`（不发） | — |
 | `gemini` 2.5 | `{ thinkingConfig: { includeThoughts: true, thinkingBudget } }`；1024 / 4096 / 8192 / 16384 / 20480 / 24576 | `{ thinkingConfig: { thinkingBudget: 0 } }` | — |
 | `openrouter` | `{ reasoning: { effort: level } }`，七级原样透传 | `{ reasoning: { enabled: false } }` | — |
+| `grok` | `{ reasoning: { effort } }`，三档；`grok-build-*` 永远 `{}` | `{ reasoning: { effort: 'none' } }` | — |
+| `groq` | `{ reasoning_effort, reasoning_format: 'parsed' }`，三档；非推理模型 `{}` | `{ reasoning_effort: 'none' }` | — |
+| `vercel-gateway` | `{ reasoning: { effort }, include_reasoning: true }`，三档 | `{}` | — |
+| `llmgateway` | `{ reasoning_effort: level }`，七级原样 | `{}` | — |
+| `vertex` | 同 `gemini`（`geminiThinking` 复用） | 同 `gemini` | — |
+| `ollama` | gpt-oss 系 `{ think: 'low' \| 'medium' \| 'high' }`，三档；其它 `{ think: true }` | `{ think: false }` | — |
+| `openai-compatible` | `{ reasoning_effort }`，三档；非推理模型 `{}`；`config.thinking` 可整个换掉 | `{}` | — |
+| `mistral` / `bedrock` | `{}`（`noThinking`）；目录里全部 `reasoning: false`，档位只有 `off` | `{}` | — |
 
 Anthropic 的四段分代按模型 id 精确匹配，不按前缀猜（opus-5 是 budget 代）。
-`./server` 另导出 `EFFORT_3`——三档 effort 的折叠表（minimal → low，xhigh / max → high），
-留给 grok / groq / vercel-gateway / ollama 这类只有 low / medium / high 的 preset 使用。
-客户端的选择器（`ModelPicker` / `ThinkingLevelPicker`）见 [输入区](/docs/ai/composer)。
+`./server` 另导出 `EFFORT_3`——三档 effort 的折叠表，grok / groq / vercel-gateway /
+ollama gpt-oss / openai-compatible 都经它折叠。客户端的选择器（`ModelPicker` /
+`ThinkingLevelPicker`）见 [输入区](/docs/ai/composer)。
 
 ## 密钥
 
@@ -182,14 +218,24 @@ docs 站的 `/api/ai/chat` 原文——Playground 就跑在它上面：
 ```ts
 // docs/app/api/ai/chat/route.ts
 import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
+import { bedrock } from '@gedatou/cadenza-ai/providers/bedrock'
 import { gemini } from '@gedatou/cadenza-ai/providers/gemini'
+import { grok } from '@gedatou/cadenza-ai/providers/grok'
+import { groq } from '@gedatou/cadenza-ai/providers/groq'
+import { llmgateway } from '@gedatou/cadenza-ai/providers/llmgateway'
+import { mistral } from '@gedatou/cadenza-ai/providers/mistral'
+import { ollama } from '@gedatou/cadenza-ai/providers/ollama'
 import { openai } from '@gedatou/cadenza-ai/providers/openai'
 import { openrouter } from '@gedatou/cadenza-ai/providers/openrouter'
+import { vercelGateway } from '@gedatou/cadenza-ai/providers/vercel-gateway'
+import { vertex } from '@gedatou/cadenza-ai/providers/vertex'
 import { createChatHandler, toolDefinition } from '@gedatou/cadenza-ai/server'
 import { z } from 'zod'
 
 // Playground is pure BYOK (spec Q1): keys arrive per request in `x-byok-<provider>`
-// headers; nothing is read from the deployment's env.
+// headers; nothing is read from the deployment's env. `ollama` is dropped by the
+// handler itself on Vercel (`runtime: 'local'`); `byteplus` is a placeholder and
+// `openaiCompatiblePreset` needs a consumer's endpoint, so neither is wired.
 export const maxDuration = 300
 
 const getTime = toolDefinition({
@@ -199,7 +245,7 @@ const getTime = toolDefinition({
 }).server(async ({ tz }) => ({ iso: new Date().toLocaleString('en-US', { timeZone: tz }) }))
 
 export const { POST, GET } = createChatHandler({
-  providers: [openai, anthropic, gemini, openrouter],
+  providers: [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama],
   defaultModel: 'openai/gpt-5.2',
   systemPrompts: ['You are the cadenza docs playground assistant. Keep answers short.'],
   tools: [getTime],
@@ -209,13 +255,20 @@ export const { POST, GET } = createChatHandler({
 ```ts
 // docs/app/api/ai/catalog/route.ts
 import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
-import { gemini } from '@gedatou/cadenza-ai/providers/gemini'
-import { openai } from '@gedatou/cadenza-ai/providers/openai'
-import { openrouter } from '@gedatou/cadenza-ai/providers/openrouter'
+// … the same twelve imports as ./chat
 import { createCatalogHandler } from '@gedatou/cadenza-ai/server'
+import process from 'node:process'
 
-export const { GET } = createCatalogHandler([openai, anthropic, gemini, openrouter])
+// Same list as ./chat; the catalog handler does not drop `ollama` on Vercel by
+// itself, so the Playground builds its catalog from what the server reports.
+const onVercel = process.env.VERCEL === '1'
+const presets = [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama]
+
+export const { GET } = createCatalogHandler(presets.filter(p => !(onVercel && p.runtime === 'local')))
 ```
+
+Playground 的目录就是 `useServerCoverage(byok).providers` 建出来的（`createCatalog(providers)`），
+所以本地 dev 看到 12 家、Vercel 上 11 家，客户端不用再抄一遍清单。
 
 `POST` 的生命周期：`content-length` 超过 `maxBodyBytes` → 413；`chatParamsFromRequest`
 解析（坏请求 → 400）；`pickSelection` 解析三键（→ 400 `unknown_provider` /
@@ -227,7 +280,10 @@ export const { GET } = createCatalogHandler([openai, anthropic, gemini, openrout
 
 `createCatalogHandler(presets)` 的 `GET` 返回 `{ providers, coverage, generatedAt }`：
 `providers` 是 preset 去掉三个函数后的纯数据，`coverage` 是每家「服务端能否自己出 key」
-的布尔表。
+的布尔表。带 `?refresh=1&provider=<id>` 时改调 `preset.discoverModels(key)`（key 与 chat
+一样：头优先、env 兜底）并返回 `{ provider, models }`；preset 不认识 → 400
+`unknown_provider`，没有 `discoverModels` → 400 `discover_unsupported`，上游失败 → 502
+`discover_failed`（上游的错误文本不回显）。
 
 ### ChatHandlerOptions
 
@@ -265,59 +321,67 @@ export const { GET } = createCatalogHandler([openai, anthropic, gemini, openrout
 | `vercel-gateway` | `AI_GATEWAY_API_KEY` → `VERCEL_OIDC_TOKEN` | — |
 | `llmgateway` | `LLM_GATEWAY_API_KEY` | — |
 | `bedrock` | `BEDROCK_API_KEY` → `AWS_BEARER_TOKEN_BEDROCK` | bearer token，不做 SigV4 |
-| `vertex` | `GOOGLE_VERTEX_API_KEY` | `keyRequired: false`；coverage 特判：有这个 key，**或**（`GOOGLE_CLOUD_PROJECT` / `GOOGLE_VERTEX_PROJECT` 任一 **且** `GOOGLE_CLOUD_LOCATION` / `GOOGLE_VERTEX_LOCATION` 任一） |
-| `ollama` | — | `keyRequired: false`，总是覆盖；host 只从 `x-byok-ollama` 头来 |
+| `vertex` | `GOOGLE_VERTEX_API_KEY` | `keyRequired: false`；coverage 特判：有这个 key，**或**（`GOOGLE_CLOUD_PROJECT` / `GOOGLE_VERTEX_PROJECT` 任一 **且** `GOOGLE_CLOUD_LOCATION` / `GOOGLE_VERTEX_LOCATION` 任一）；adapter 自己读这些 |
+| `ollama` | `OLLAMA_HOST`（adapter 读；不是 `byok.env`） | `keyRequired: false`，总是覆盖；`x-byok-ollama` 头是 host URL，覆盖 env；`discoverModels(null)` 也用同一个缺省 host |
+| `openai-compatible` | `config.env` | 由 `openaiCompatiblePreset` 的调用方给 |
+| `byteplus` | `ARK_API_KEY` → `BYTEPLUS_API_KEY` | 占位 |
 
 ## 自定义 provider
 
-目录数据放在两端共用的文件里，preset 在 route 文件里用 `definePreset` 补上 `create` /
-`thinking`；客户端用 `withProvider` 把同一份数据并进目录。以一个 OpenAI 兼容端点为例：
+任何说 OpenAI 协议（Chat Completions / Responses）的端点，一个 `openaiCompatiblePreset(config)`
+就是完整的 preset——`byok` 从 `id` / `env` 生成，`create` 走 `@tanstack/ai-openai/compatible`
+的 `openaiCompatibleText`，`thinking` 缺省是 `openaiCompatibleThinking`（推理模型发
+`reasoning_effort`），`discoverModels` 是 `GET {baseURL}/models`。以 DeepSeek 为例：
 
 ```ts
-// ai/deepseek.ts — catalog data, shared by client and server
-import type { Provider } from '@gedatou/cadenza-ai'
+// app/api/ai/chat/route.ts
+import { openaiCompatiblePreset } from '@gedatou/cadenza-ai/providers/openai-compatible'
+import { createChatHandler } from '@gedatou/cadenza-ai/server'
 
-export const deepseek: Provider = {
+export const deepseek = openaiCompatiblePreset({
   id: 'deepseek', // the `x-byok-deepseek` slug: /^[a-z][a-z0-9-]{0,63}$/
   label: 'DeepSeek',
-  byok: { id: 'deepseek', label: 'DeepSeek', env: ['DEEPSEEK_API_KEY'] },
-  keyRequired: true,
-  runtime: 'node',
+  baseURL: 'https://api.deepseek.com/v1',
+  env: 'DEEPSEEK_API_KEY',
   models: [
     { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'deepseek', input: ['text'], reasoning: false, contextWindow: 128_000 },
     { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', provider: 'deepseek', input: ['text'], reasoning: true, contextWindow: 128_000 },
   ],
-}
+})
+
+export const { POST, GET } = createChatHandler({ providers: [deepseek] })
 ```
 
 ```ts
-// app/api/ai/chat/route.ts — the preset: data + adapter + thinking
-import { createChatHandler, definePreset } from '@gedatou/cadenza-ai/server'
-import { openaiCompatibleText } from '@tanstack/ai-openai/compatible'
-import { deepseek } from '@/ai/deepseek'
+// app/api/ai/catalog/route.ts — the same preset, so the browser learns about it
+import { createCatalogHandler } from '@gedatou/cadenza-ai/server'
+import { deepseek } from '../chat/route'
 
-const deepseekPreset = definePreset({
-  ...deepseek,
-  create: (model, key) => openaiCompatibleText(model, { baseURL: 'https://api.deepseek.com/v1', apiKey: key ?? '' }),
-  // Return the adapter's own modelOptions fragment for a clamped level; `{}` sends nothing.
-  thinking: () => ({}),
-})
-
-export const { POST, GET } = createChatHandler({ providers: [deepseekPreset] })
+export const { GET } = createCatalogHandler([deepseek])
 ```
 
 ```tsx
-// client — the same data, merged into the catalog
-const catalog = useMemo(() => defaultCatalog.withProvider(deepseek), [])
+// client — build the catalog from what the server reports (Playground does the same)
+const byok = useMemo(() => createByok(), [])
+const { coverage, providers } = useServerCoverage(byok)
+const catalog = useMemo(() => (providers ? createCatalog(providers) : defaultCatalog), [providers])
 const { selection, forwardedProps } = useModelSelection({ catalog })
 // … <ByokKeyDialog byok={byok} catalog={catalog} coverage={coverage} />
 ```
 
-`definePreset` 校验 `byok.id === id`（头名由 id 生成），其余是恒等。`create` 收到的 `key`
-在 `keyRequired: false` 时可能是 `null`；`thinking` 收到的是 clamp 后的档位。
-要在线发现模型，再给 `discoverModels(key)`：目录外的 id 只有在它存在时才放行。
-`./server` 导出的 `openaiThinking` / `anthropicThinking` / `geminiThinking` /
-`openrouterThinking` 可以直接复用给同协议的端点。
+不想等服务端回目录，也可以把同一份 `models` 写成 `Provider` 放在两端共用的文件里，客户端
+`defaultCatalog.withProvider(deepseek)`——目录是纯数据，两条路都成立。
+
+`OpenAICompatibleConfig` 的字段：`id` / `label` / `baseURL` / `models` 必填；`env`
+（`string | string[]`，`getByokKey` 的兜底顺序）、`thinking`（整个换掉映射函数）、
+`name`（adapter 在事件里报的名字，缺省 = `id`）可选。
+
+不是 OpenAI 协议的端点走底层的 `definePreset`：目录数据（`Provider`）加上 `create(model, key)`
+与 `thinking(level, model)`，可选 `discoverModels(key)`。`definePreset` 校验
+`byok.id === id`（头名由 id 生成），其余是恒等；`create` 收到的 `key` 在 `keyRequired: false`
+时可能是 `null`，`thinking` 收到的是 clamp 后的档位；给了 `discoverModels` 后目录外的 id
+才放行。`./server` 导出的各家映射函数（`openaiThinking` … `noThinking`）可直接复用给同协议
+的端点。
 
 ## MCP
 
@@ -394,14 +458,31 @@ import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage 
 | `createCatalogHandler(presets)` | `=> { GET }`：`{ providers, coverage, generatedAt }` |
 | `pickSelection(forwardedProps, presets, { defaultModel? })` | `=> Selection \| Response`；`Selection = { preset, model, thinking }` |
 | `resolveThinking(preset, model, level)` | clamp 后交给 `preset.thinking`；非推理模型关着时 `{}` |
-| `openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` | `(level, model) => fragment`，四个 preset 的映射函数 |
+| `openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` / `grokThinking` / `groqThinking` / `vercelGatewayThinking` / `llmgatewayThinking` / `ollamaThinking` / `openaiCompatibleThinking` / `noThinking` | `(level, model) => fragment`，各 preset 的映射函数（vertex 复用 `geminiThinking`，mistral / bedrock / byteplus 用 `noThinking`） |
 | `EFFORT_3` | `{ minimal: 'low', low: 'low', medium: 'medium', high: 'high', xhigh: 'high', max: 'high' }` |
 | 转出自 `@tanstack/ai` | `chat` / `chatParamsFromRequest` / `maxIterations` / `memoryStream` / `mergeAgentTools` / `toolDefinition` / `toServerSentEventsResponse` |
 | 转出自 `@tanstack/ai/byok` | `defineByokProvider` |
 | 转出自 `@tanstack/ai/byok/server` | `byokMissing` / `getByokKey` |
 
-`@gedatou/cadenza-ai/providers/<id>`：每个文件一个 `ProviderPreset`——`openai` /
-`anthropic` / `gemini` / `openrouter`；import 即引入对应的 `@tanstack/ai-<id>` adapter。
+`@gedatou/cadenza-ai/providers/<id>`（每个文件只 import 自家 adapter）：
+
+| 子路径 | 导出 | 引入的 peer |
+| --- | --- | --- |
+| `providers/openai` | `openai` | `@tanstack/ai-openai` |
+| `providers/anthropic` | `anthropic` | `@tanstack/ai-anthropic` |
+| `providers/gemini` | `gemini` | `@tanstack/ai-gemini` |
+| `providers/openrouter` | `openrouter` | `@tanstack/ai-openrouter` |
+| `providers/grok` | `grok` | `@tanstack/ai-grok` |
+| `providers/groq` | `groq` | `@tanstack/ai-groq` |
+| `providers/mistral` | `mistral` | `@tanstack/ai-mistral` |
+| `providers/vercel-gateway` | `vercelGateway` | `@tanstack/ai-vercel-gateway` |
+| `providers/llmgateway` | `llmgateway` | `@tanstack/ai-llmgateway` |
+| `providers/bedrock` | `bedrock` | `@tanstack/ai-bedrock` |
+| `providers/vertex` | `vertex` | `@tanstack/ai-vertex` |
+| `providers/ollama` | `ollama`、`discoverOllamaModels(host)` | `@tanstack/ai-ollama` |
+| `providers/openai-compatible` | `openaiCompatiblePreset(config)`、类型 `OpenAICompatibleConfig` | `@tanstack/ai-openai`（`/compatible` 子路径） |
+| `providers/byteplus` | `byteplus`（占位） | 无 |
+
 脚本化传输里的 `byokMissing(provider)` 见 [脚本化传输](/docs/ai/scripted#api)。
 
 ## Props

@@ -1,15 +1,15 @@
-import type { ByokClient } from '@gedatou/cadenza-ai'
+import type { ByokClient, Catalog } from '@gedatou/cadenza-ai'
 import type { ReactElement } from 'react'
 import {
   ByokKeyDialog,
   createByok,
   createCatalog,
   createThreadIndex,
+  defaultCatalog,
   fetchServerSentEvents,
   indexedDBPersistence,
   ModelPicker,
   modelRef,
-  providers,
   ThinkingLevelPicker,
   threadPersistence,
   useByok,
@@ -29,15 +29,16 @@ import { getViewport } from './tools'
 // tab's memory and travel as `x-byok-<provider>` headers), the model and
 // thinking pickers feeding `forwardedProps`, a client tool the browser runs,
 // and threads persisted locally. Sending without a key opens the dialog.
-// The providers mirror `docs/app/api/ai/chat/route.ts`.
-const catalog = createCatalog([providers.openai, providers.anthropic, providers.gemini, providers.openrouter])
+// `docs/app/api/ai/chat/route.ts` wires every built-in preset (12 on a local
+// dev server, 11 on Vercel where `ollama` is dropped), so the catalog shown is
+// whatever `/api/ai/catalog` reports, with `defaultCatalog` until it answers.
 const connection = fetchServerSentEvents('/api/ai/chat')
 const CURRENT_KEY = 'docs-playground:current'
 const SELECTION_KEY = 'docs-playground:selection'
 const index = createThreadIndex({ key: 'docs-playground', storage: 'local' })
 const persistence = threadPersistence(index, indexedDBPersistence({ databaseName: 'cadenza-ai-docs-playground' }))
 
-function Chat({ byok, threadId }: { byok: ByokClient, threadId: string }): ReactElement {
+function Chat({ byok, catalog, threadId }: { byok: ByokClient, catalog: Catalog, threadId: string }): ReactElement {
   const sel = useModelSelection({ catalog, key: SELECTION_KEY })
   const snapshot = useByok(byok)
   const chat = useChat({
@@ -78,8 +79,9 @@ function Chat({ byok, threadId }: { byok: ByokClient, threadId: string }): React
 }
 
 function Workspace(): ReactElement {
-  const byok = useMemo(() => createByok({ catalog }), [])
-  const { coverage } = useServerCoverage(byok)
+  const byok = useMemo(() => createByok({ catalog: defaultCatalog }), [])
+  const { coverage, providers } = useServerCoverage(byok)
+  const catalog = useMemo(() => (providers ? createCatalog(providers) : defaultCatalog), [providers])
   const [threadId, setThreadId] = useCurrentThread(index, CURRENT_KEY)
   return (
     <div className="
@@ -89,7 +91,7 @@ function Workspace(): ReactElement {
     >
       <ThreadPane index={index} persistence={persistence} value={threadId} onValueChange={setThreadId} />
       <div className="flex flex-1 flex-col min-inline-0">
-        <Chat key={threadId} byok={byok} threadId={threadId} />
+        <Chat key={threadId} byok={byok} catalog={catalog} threadId={threadId} />
       </div>
       <ByokKeyDialog byok={byok} catalog={catalog} coverage={coverage} />
     </div>

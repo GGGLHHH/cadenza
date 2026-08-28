@@ -69,4 +69,51 @@ export function openrouterThinking(level: ThinkingLevel, _model: Model): Fragmen
   return level === 'off' ? { reasoning: { enabled: false } } : { reasoning: { effort: level } }
 }
 
+// xAI: reasoning.effort ∈ none|low|medium|high（ai-grok text-provider-options.ts:11-17）；
+// grok-build-* 的 provider options 是 `reasoning?: never`，什么都不发。
+export function grokThinking(level: ThinkingLevel, model: Model): Fragment {
+  if (model.id.startsWith('grok-build-'))
+    return {}
+  return { reasoning: { effort: level === 'off' ? 'none' : EFFORT_3[level] } }
+}
+
+// Groq: reasoning_effort ∈ none|low|medium|high + reasoning_format:'parsed'（ai-groq text-provider-options.ts:98-104）；
+// include_reasoning 与 reasoning_format 互斥，永远不发；非推理模型不收这些键。
+export function groqThinking(level: ThinkingLevel, model: Model): Fragment {
+  if (!model.reasoning)
+    return {}
+  if (level === 'off')
+    return { reasoning_effort: 'none' }
+  return { reasoning_effort: EFFORT_3[level], reasoning_format: 'parsed' }
+}
+
+// Vercel AI Gateway（Chat Completions 路径）：reasoning 是开放对象，include_reasoning 让推理回流（text-provider-options.ts:38-39）
+export function vercelGatewayThinking(level: ThinkingLevel, _model: Model): Fragment {
+  return level === 'off' ? {} : { reasoning: { effort: EFFORT_3[level] }, include_reasoning: true }
+}
+
+// LLM Gateway 的 reasoning_effort 与七级同名（含 xhigh/max，ai-llmgateway text-provider-options.ts:57-66），原样透传
+export function llmgatewayThinking(level: ThinkingLevel, _model: Model): Fragment {
+  return level === 'off' ? {} : { reasoning_effort: level }
+}
+
+// Ollama: gpt-oss 系是 OllamaChatRequestThinking_OpenAI（think: 'low'|'medium'|'high'），其它模型 think 是布尔
+export function ollamaThinking(level: ThinkingLevel, model: Model): Fragment {
+  if (level === 'off')
+    return { think: false }
+  return { think: model.id.startsWith('gpt-oss') ? EFFORT_3[level] : true }
+}
+
+// OpenAI 兼容端点的公约数：Chat Completions 的 reasoning_effort（DeepSeek / Qwen 等都认），只对推理模型发
+export function openaiCompatibleThinking(level: ThinkingLevel, model: Model): Fragment {
+  if (!model.reasoning || level === 'off')
+    return {}
+  return { reasoning_effort: EFFORT_3[level] }
+}
+
+// mistral（无设置项）/ bedrock（Converse 没有推理参数）：目录里 thinkingLevels 隐含 ['off']，这里兜底也不发
+export function noThinking(_level: ThinkingLevel, _model: Model): Fragment {
+  return {}
+}
+
 export { EFFORT_3 }
