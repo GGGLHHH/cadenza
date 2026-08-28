@@ -34,7 +34,17 @@ const COMPONENTS: StreamdownProps['components'] = { a: Anchor }
 /** Product-grade Markdown: streamdown with code / math / CJK plugins and safe links. */
 export function Markdown({ content, streaming = false, translations, className }: MarkdownProps): ReactElement {
   return (
-    <div data-slot="markdown" data-streaming={dataAttr(streaming)}>
+    // streamdown spaces blocks with `space-y-4` on its root, but in streaming mode
+    // every block sits in a `display: contents` wrapper that margins cannot reach —
+    // the gaps only appear when the mode flips to static, and the reply jumps by
+    // one margin per block the moment it completes. A flex column with `gap`
+    // spaces the blocks whether or not they are wrapped, so both modes lay out
+    // identically and completion moves nothing.
+    <div
+      data-slot="markdown"
+      data-streaming={dataAttr(streaming)}
+      className="[&>div]:flex [&>div]:flex-col [&>div]:gap-4 [&>div]:space-y-0"
+    >
       <Streamdown
         mode={streaming ? 'streaming' : 'static'}
         isAnimating={streaming}
