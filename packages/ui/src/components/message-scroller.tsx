@@ -12,7 +12,7 @@ import {
   MessageScrollerProvider,
   MessageScroller as MessageScrollerStyled,
 } from '#primitives/message-scroller'
-import { ScrollAreaScrollbar } from './scroll-area'
+import { ScrollArea } from './scroll-area'
 
 /**
  * The published MessageScroller family.
@@ -160,73 +160,53 @@ const MessageScroller = MessageScrollerStyled as (props: MessageScrollerProps) =
  * never on the table; the seam builds the part instead, on the same headless
  * `MessageScroller.Viewport` the vendored file wraps.
  *
- * The fusion is `render`: Base UI's viewport and the headless transcript
- * viewport become **one** element, which they must — the scroller measures,
- * anchors and preserves position against the element it scrolls, and
- * `scroll(self y)` (what drives the fade) only reads the scroll container
- * itself. Both sides merge rather than replace: Base UI's ref joins the
- * scroller's through `useRenderElement`, and each side's handlers both run —
- * the scroller's own first, then the caller's (`Y(v){ L(); onScroll?.(v) }`
- * upstream).
+ * It is a `ScrollArea` with the headless transcript viewport fused onto its
+ * viewport through `viewportRender` — one element, which it must be: the
+ * scroller measures, anchors and preserves position against the element it
+ * scrolls, and `scroll(self y)` (what drives the fade) only reads the scroll
+ * container itself. Both sides merge rather than replace: Base UI's ref joins
+ * the scroller's through `useRenderElement`, and each side's handlers both run
+ * — the scroller's own first, then the caller's (`Y(v){ L(); onScroll?.(v) }`
+ * upstream). Going through `ScrollArea` rather than hand-assembling the Base UI
+ * parts is what keeps the focus ring, the `scrollbars` vocabulary and the
+ * hover recipe from drifting away from every other scroll surface here.
  *
- * `absolute inset-0`, not `size-full`: as a flex item the scroll area's height
- * is a used value with `height` still `auto`, so a percentage on the viewport
- * never resolves and nothing clips — the trap `DialogBody` documents. An
- * absolutely positioned box takes its size from the containing block's *used*
- * height, which always resolves.
+ * The children are wrapped in Base UI's `ScrollArea.Content` because that part
+ * carries the only content-size observer Base UI has: the viewport recomputes
+ * its overflow state on scroll, on its *own* box resizing, and nothing else. A
+ * transcript that fits at mount and then grows — the first thing every chat
+ * does — would otherwise leave Base UI believing nothing overflows: no
+ * scrollbar mounted, `tabIndex` stuck at `-1`, even as the headless side is
+ * already writing `data-scrollable="end"`.
  */
 export function MessageScrollerViewport({
+  children,
   className,
   scrollbars = 'hover',
   ...props
 }: MessageScrollerViewportProps): ReactElement {
   return (
-    <ScrollAreaPrimitive.Root
-      className="relative flex-1 min-block-0"
-      // The shell this part grew when it moved onto ScrollArea: it exists to
-      // hold the overlay scrollbar as a sibling of the scrolling element. Named
-      // apart from the viewport so both stay addressable — the element that
-      // scrolls is still `message-scroller-viewport`.
-      data-slot="message-scroller-scroll-area"
-    >
-      <ScrollAreaPrimitive.Viewport
-        className={cn(
-          `absolute inset-0 scroll-fade-y overscroll-contain contain-content`,
-          className,
-        )}
-        // `role` restated because Base UI stamps `role="presentation"` on its
-        // viewport, and render-element props win the merge — without this the
-        // transcript would stop being a landmark. Before `{...props}`, so a
-        // caller can still say otherwise. `aria-label` needs no such rescue:
-        // Base UI writes none, so the scroller's own "Messages" survives.
-        render={(
-          <MessageScrollerHeadless.Viewport
-            data-slot="message-scroller-viewport"
-            role="region"
-            {...props}
-          />
-        )}
-      />
-      {scrollbars !== 'hidden' && (
-        <ScrollAreaScrollbar
-          // The bar would otherwise jitter along with every programmatic scroll
-          // to the live edge. `group/message-scroller` is on the root, which is
-          // where `data-autoscrolling` lands.
-          className={cn(
-            `
-              transition-opacity
-              group-data-autoscrolling/message-scroller:opacity-0
-            `,
-            scrollbars === 'hover' && `
-              opacity-0 duration-150
-              data-hovering:opacity-100
-              data-scrolling:opacity-100
-            `,
-          )}
-          orientation="vertical"
+    <ScrollArea
+      // `flex-1 min-block-0` is what lets it take the frame's remaining height;
+      // its own viewport is `block-full`, which resolves against that.
+      className="flex-1 min-block-0"
+      scrollbars={scrollbars}
+      viewportClassName={cn('scroll-fade-y overscroll-contain contain-content', className)}
+      // `role` restated because Base UI stamps `role="presentation"` on its
+      // viewport, and render-element props win the merge — without this the
+      // transcript would stop being a landmark. Before `{...props}`, so a
+      // caller can still say otherwise. `aria-label` needs no such rescue:
+      // Base UI writes none, so the scroller's own "Messages" survives.
+      viewportRender={(
+        <MessageScrollerHeadless.Viewport
+          data-slot="message-scroller-viewport"
+          role="region"
+          {...props}
         />
       )}
-    </ScrollAreaPrimitive.Root>
+    >
+      <ScrollAreaPrimitive.Content>{children}</ScrollAreaPrimitive.Content>
+    </ScrollArea>
   )
 }
 
