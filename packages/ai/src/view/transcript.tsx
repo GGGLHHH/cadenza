@@ -155,8 +155,15 @@ function TranscriptMessageImpl({ message, align, streaming = false, children, cl
     >
       <Message align={align ?? (user ? 'end' : 'start')}>
         <MessageContent>
-          <Bubble variant={user ? 'muted' : 'ghost'}>
-            <BubbleContent>{parts.length > 0 ? parts : <TranscriptParts message={message} />}</BubbleContent>
+          {/* Bubble shrink-wraps its content; an assistant reply is prose plus cards, and a card must
+              not widen as the text behind it streams in — so those rows take the full width up front. */}
+          <Bubble
+            variant={user ? 'muted' : 'ghost'}
+            className={user
+              ? undefined
+              : `min-inline-full`}
+          >
+            <BubbleContent className={user ? undefined : 'min-inline-full'}>{parts.length > 0 ? parts : <TranscriptParts message={message} />}</BubbleContent>
           </Bubble>
           {actions}
         </MessageContent>
