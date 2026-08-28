@@ -1,4 +1,6 @@
 // Server entry: no 'use client' banner. Route handlers import from here.
+export * from './preset'
+export * from './thinking'
 export {
   chat,
   chatParamsFromRequest,
