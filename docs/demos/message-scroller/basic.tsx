@@ -10,8 +10,8 @@ import {
   MessageScrollerViewport,
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
+import { ResettableDemo } from '../lib/resettable'
 import { MessageRow } from './message-row'
-import { ResettableDemo } from './resettable'
 import { useFakeChat } from './transcript'
 
 // The whole family in one place: send a message and it anchors near the top

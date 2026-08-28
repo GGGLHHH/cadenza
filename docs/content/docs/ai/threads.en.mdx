@@ -1,0 +1,338 @@
+---
+title: Threads
+description: Index many conversations with createThreadIndex + threadPersistence; the ThreadList family handles the list, renaming, archiving and deleting
+---
+
+<ComponentPreview name="ai/threads" align="stretch" />
+
+TanStack AI's `persistence` stores one thread's transcript; "which threads exist" is a
+separate thing. The facade makes it a separate index: `createThreadIndex()` keeps a
+`ThreadMeta[]` in `localStorage`, and `threadPersistence()` attaches it to any
+`ChatClientPersistence` so every transcript write also updates the count, preview,
+timestamp and automatic title. The `ThreadList` family draws the index as a list —
+select, create, inline rename, archive, delete; search and grouping are things you do to
+the array outside.
+
+The demo at the top needs no key: the conversation on the right runs on the
+[scripted transport](/docs/ai/scripted), and both the list and the transcripts really are
+written to the browser (they survive a reload; Reset clears this demo's own key and database).
+
+## Usage
+
+```tsx
+import {
+  createThreadIndex,
+  fetchServerSentEvents,
+  groupThreadsByDay,
+  indexedDBPersistence,
+  threadPersistence,
+  ThreadList,
+  ThreadListArchive,
+  ThreadListDelete,
+  ThreadListGroup,
+  ThreadListGroupLabel,
+  ThreadListItem,
+  ThreadListNew,
+  ThreadListRename,
+  useChat,
+  useStoredState,
+  useThreadIndex,
+} from '@gedatou/cadenza-ai'
+```
+
+```tsx
+const index = createThreadIndex({ key: 'app:threads' })
+const persistence = threadPersistence(index, indexedDBPersistence({ databaseName: 'app-chat' }))
+const DAY_LABELS = { today: 'Today', yesterday: 'Yesterday', earlier: 'Earlier' }
+
+function Threads(): ReactElement {
+  const threads = useThreadIndex(index)
+  const [threadId, setThreadId] = useStoredState('app:threads:current', '')
+
+  return (
+    <div className="flex">
+      <ThreadList index={index} threads={threads} value={threadId} onValueChange={id => setThreadId(id)} className="block-96 inline-64">
+        <ThreadListNew>New thread</ThreadListNew>
+        {groupThreadsByDay(threads).map(group => (
+          <ThreadListGroup key={group.label}>
+            <ThreadListGroupLabel>{DAY_LABELS[group.label]}</ThreadListGroupLabel>
+            {group.threads.map(thread => (
+              <ThreadListItem key={thread.id} thread={thread}>
+                <ThreadListRename aria-label="Rename" />
+                <ThreadListArchive aria-label="Archive" />
+                <ThreadListDelete aria-label="Delete" />
+              </ThreadListItem>
+            ))}
+          </ThreadListGroup>
+        ))}
+      </ThreadList>
+      {threadId !== '' && <Chat key={threadId} threadId={threadId} />}
+    </div>
+  )
+}
+
+function Chat({ threadId }: { threadId: string }): ReactElement {
+  const chat = useChat({ connection: fetchServerSentEvents('/api/ai/chat'), persistence, threadId })
+  // TranscriptProvider / Transcript / Composer — see /docs/ai/conversation
+}
+```
+
+## Approach
+
+A thread has two halves, each with one home:
+
+- **The transcript belongs to `persistence`.** `useChat({ persistence, threadId })` is
+  TanStack AI's interface and `indexedDBPersistence()` its bundled adapter: one
+  `{ messages, resume? }` record per `threadId`. `ChatClientPersistence` has only
+  `getItem` / `setItem` / `removeItem` — **no enumeration** — so "which threads exist"
+  cannot be read off it.
+- **The index belongs to `createThreadIndex`.** One `localStorage` key (default
+  `cadenza-ai:threads`) holds the whole `ThreadMeta[]`; `subscribe` wires both a local
+  emitter and the `storage` event, so multiple tabs stay in sync for free.
+  `storage: 'memory'` is for SSR and tests.
+- **`threadPersistence(index, base)` joins the halves.** It wraps the adapter: after
+  `setItem` writes the transcript it calls `index.touch(id, { messageCount, preview, title })` —
+  the title is the first 40 characters of the first user message, and a hand-edited title is
+  never overwritten; `removeItem` also calls `index.remove(id)`.
+- **The current thread belongs to you.** `useChat`'s identity is its `threadId`, so switching
+  threads is a remount with `key={threadId}`; keep the current id in `useStoredState` and it
+  survives a reload.
+
+The index has no IndexedDB variant: `localStorage`'s 5 MB ceiling is ample for a few
+thousand `ThreadMeta` records.
+
+## Thread list
+
+`ThreadList` is a scrolling list; how the `children` are arranged and which actions each row
+carries is your composition. Omit `children` and every thread renders as a bare
+`ThreadListItem` with no actions.
+
+```text
+ThreadList                    ScrollArea > div[role=list]; the current thread is the controlled value
+├─ ThreadListNew              index.create() an empty thread and select it
+└─ ThreadListGroup            role="group", one bucket
+   ├─ ThreadListGroupLabel    the bucket's heading
+   └─ ThreadListItem          one row: Item + title / preview; data-active / data-archived / data-renaming
+      ├─ ThreadListRename     switch the row to its inline rename input
+      ├─ ThreadListArchive    toggle archived
+      └─ ThreadListDelete     index.remove(id); confirmation is yours — wrap it in an AlertDialog
+```
+
+- **Select**: pressing the row content calls `onValueChange(id, details)` with
+  `details.reason` `'item-press'`; `details.cancel()` blocks the switch.
+- **New**: `ThreadListNew` calls `index.create()` first, then selects the thread — again with
+  `reason` `'item-press'`; the empty thread gets its title and preview from
+  `threadPersistence` when the first message is written.
+- **Rename**: `ThreadListRename` swaps the row for an auto-focused `Input`; `Enter` or blur
+  commits, `Escape` cancels; an empty or unchanged title writes nothing. A hand-edited title
+  wins over the automatic one.
+- **Archive**: `ThreadListArchive` toggles `thread.archived`; archived threads sort last in
+  `index.list()`. To hide them, filter before passing `threads`.
+- **Delete**: `ThreadListDelete` calls `index.remove(id)` straight away, with no confirmation —
+  put it inside an [AlertDialog](/docs/components/alert-dialog) trigger. It removes only the
+  index entry; the transcript is still in the adapter. To clear both, call
+  `persistence.removeItem(thread.id)` in `onClick` — an adapter wrapped by `threadPersistence`
+  drops the index entry as well.
+- **Search**: `threads` is "the array you already filtered" — take the full list from
+  `useThreadIndex(index)`, `filter` on title / preview, then pass it in.
+- **Grouping**: `groupThreadsByDay(threads)` buckets by the local calendar day of `updatedAt`
+  into `today` / `yesterday` / `earlier`, omitting empty buckets; the label copy is yours.
+
+The full source of the demo at the top (search field, `AlertDialog` confirmation and the
+narrow-screen drawer included):
+
+<ComponentSource name="ai/threads" />
+
+## Import and export
+
+`messagesToMarkdown(messages, options?)` renders a thread as plain Markdown; for JSON,
+serialise `chat.messages` directly and import through `chat.setMessages` — it goes down the
+same persistence path a run does, so `threadPersistence` updates the index as usual. The
+`ai/export` demo is Phase 2; code only for now:
+
+```tsx
+import type { UIMessage } from '@gedatou/cadenza-ai'
+import { messagesToMarkdown } from '@gedatou/cadenza-ai'
+
+// Markdown: `**User**` / `**Assistant**` blocks; thinking parts as block quotes when asked for
+const markdown = messagesToMarkdown(chat.messages, { title: index.get(threadId)?.title, includeThinking: false })
+await navigator.clipboard.writeText(markdown)
+
+// JSON out / in
+const json = JSON.stringify(chat.messages, null, 2)
+chat.setMessages(JSON.parse(json) as UIMessage[])
+```
+
+`messagesToMarkdown` writes text parts only: tool calls, attachments and structured output
+are skipped; with `includeThinking: true` thinking parts follow their message as block quotes.
+
+## Server-side persistence
+
+The transcript can live on the server instead: `createChatHandler({ persistence })` adds the
+`withPersistence` middleware from `@tanstack/ai-persistence` (an optional peer, imported
+lazily per request) to `POST`, and routes `GET ?threadId=` to `reconstructChat` — on mount,
+`useChat({ persistence: true, threadId })` fetches `{ messages, activeRun, interrupts }`
+through the `hydrate` built into `fetchServerSentEvents`.
+
+```ts
+// app/api/ai/chat/route.ts
+import { openai } from '@gedatou/cadenza-ai/providers/openai'
+import { createChatHandler } from '@gedatou/cadenza-ai/server'
+import { memoryPersistence } from '@tanstack/ai-persistence'
+
+// memoryPersistence() is the in-process reference store; back it with your database in production.
+const persistence = memoryPersistence()
+
+export const { POST, GET } = createChatHandler({
+  providers: [openai],
+  persistence,
+  // Without `authorize`, anyone who guesses a threadId reads the whole transcript.
+  authorize: async (threadId, request) => userOwnsThread(await sessionUser(request), threadId),
+})
+```
+
+```tsx
+// client: no adapter — the server is the store
+const chat = useChat({ connection: fetchServerSentEvents('/api/ai/chat'), persistence: true, threadId })
+```
+
+The server-side `MessageStore` likewise has only `loadThread` / `saveThread` — whole-thread
+overwrite, no list; the thread index is still yours, either in the browser (this page's
+`createThreadIndex`) or behind a list endpoint of your own. The docs site does not wire
+server-side persistence; the demo at the top is entirely local.
+
+## State and className
+
+Every part carries `data-slot` on its outermost element; row state is boolean attributes,
+present with an empty value while they hold, so a variant like `data-active:` matches.
+
+| Attribute | On | Value | When |
+| --- | --- | --- | --- |
+| `data-active` | `thread-list-item` | empty | `value === thread.id`; also `aria-current="page"` |
+| `data-archived` | `thread-list-item` | empty | `thread.archived` |
+| `data-renaming` | `thread-list-item` | empty | the inline rename input is showing |
+
+| `data-slot` | What it is |
+| --- | --- |
+| `thread-list` | the `div[role=list]`, inside the `ScrollArea` root |
+| `thread-list-group` / `thread-list-group-label` | `div[role=group]` / the heading `div` |
+| `thread-list-item` | one row ([Item](/docs/components/item), `role="listitem"`) |
+| `thread-list-rename` / `thread-list-archive` / `thread-list-delete` / `thread-list-new` | the four [Button](/docs/components/button)s |
+
+`className` is a `string` on all of these. `ThreadList`'s lands on the `ScrollArea` root —
+give it the height there; `ThreadListItem`'s lands on the `Item` (which ships
+`data-active:bg-muted`), and the four buttons' on the `Button`.
+
+## Exported types
+
+```tsx
+// index
+import type { ThreadDayGroup, ThreadDayLabel, ThreadIndex, ThreadIndexOptions, ThreadMeta } from '@gedatou/cadenza-ai'
+import { createThreadIndex, groupThreadsByDay, newThreadId, threadPersistence, threadTitleFrom, useStoredState, useThreadIndex } from '@gedatou/cadenza-ai'
+
+// export
+import type { MessagesToMarkdownOptions } from '@gedatou/cadenza-ai'
+import { messagesToMarkdown } from '@gedatou/cadenza-ai'
+
+// views
+import type { ThreadListArchiveProps, ThreadListChangeEventDetails, ThreadListChangeEventReason, ThreadListDeleteProps, ThreadListGroupLabelProps, ThreadListGroupProps, ThreadListItemProps, ThreadListItemState, ThreadListNewProps, ThreadListProps, ThreadListRenameProps } from '@gedatou/cadenza-ai'
+import { useThreadListItem } from '@gedatou/cadenza-ai'
+```
+
+### ThreadMeta
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | `thread-<base36 time>-<random>` from `newThreadId()` |
+| `title` | `string` | automatic or hand-edited; empty means none yet |
+| `createdAt` / `updatedAt` | `number` | millisecond timestamps; `touch` sets `updatedAt` to now unless given |
+| `messageCount` | `number` | message count at the last write |
+| `preview` | `string` | text of the last message, at most 200 characters |
+| `archived` | `boolean` | — |
+| `provider` / `model` | `string` (optional) | yours to record the model a thread uses; the index never writes them |
+
+### Runtime API
+
+| Export | Signature | Description |
+| --- | --- | --- |
+| `createThreadIndex(options?)` | `({ key?, storage? }) => ThreadIndex` | `key` defaults to `cadenza-ai:threads`; `storage` defaults to `'local'`, `'memory'` never touches `localStorage` |
+| `ThreadIndex.list()` | `() => readonly ThreadMeta[]` | newest first, archived last; a stable reference until the next write |
+| `ThreadIndex.get(id)` | `(id) => ThreadMeta \| undefined` | — |
+| `ThreadIndex.create(init?)` | `(init?: Partial<ThreadMeta>) => ThreadMeta` | generates an id and writes |
+| `ThreadIndex.touch(id, patch)` | `(id, patch) => ThreadMeta` | upsert: an unknown id is created with `createdAt = now`; an id `remove`d in this session is not written back (a chat still mounted on a deleted thread flushes once more — the deletion wins) |
+| `ThreadIndex.rename` / `archive` / `remove` | `(id, title)` / `(id, archived)` / `(id)` | the first two are shorthands over `touch`; `remove` filters and leaves a tombstone |
+| `ThreadIndex.wasRemoved(id)` | `(id) => boolean` | `remove`d in this session with no `create` since; `threadPersistence` skips reads and writes for such ids |
+| `ThreadIndex.subscribe(listener)` | `(listener) => unsubscribe` | local writes + the cross-tab `storage` event |
+| `useThreadIndex(index)` | `(ThreadIndex) => readonly ThreadMeta[]` | `useSyncExternalStore`; the server snapshot is an empty array |
+| `threadPersistence(index, base)` | `(ThreadIndex, ChatClientPersistence) => ChatClientPersistence` | see [Approach](#approach) |
+| `threadTitleFrom(messages, max?)` | `(readonly UIMessage[], max = 40) => string` | text of the first user message, whitespace collapsed, an ellipsis past `max` |
+| `groupThreadsByDay(threads, now?)` | `(readonly ThreadMeta[], now = Date.now()) => readonly ThreadDayGroup[]` | buckets by the local calendar day of `updatedAt` |
+| `useStoredState(key, initial)` | `<T>(string, T) => [T, (next: T) => void]` | `useState` over `localStorage` JSON, in sync across hooks and tabs; falls back to `initial` on the server and without storage |
+| `messagesToMarkdown(messages, options?)` | `(readonly UIMessage[], { title?, includeThinking? }) => string` | see [Import and export](#import-and-export) |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks → behaviour → appearance → `className`**.
+
+### ThreadList
+
+The scrolling list: `ScrollArea` root > `div[role=list]`. Without it the other parts throw
+`cadenza-ai: ThreadListContext is missing…`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `index` | `ThreadIndex` | — | the action buttons write through it |
+| `threads` | `readonly ThreadMeta[]` | — | the already-filtered array; used to render only when `children` is omitted |
+| `defaultValue` | `string` | — | the uncontrolled current thread |
+| `value` | `string` | — | the controlled current thread |
+| `onValueChange` | `(id: string, details: ThreadListChangeEventDetails) => void` | — | on select or create; `details.cancel()` blocks it |
+| `children` | `ReactNode` | one bare `ThreadListItem` per thread | — |
+| `className` | `string` | — | lands on the `ScrollArea` root; give it the height |
+
+`ThreadListChangeEventDetails` is `ChangeEventDetails<'item-press' | 'none'>`.
+
+### ThreadListGroup
+
+A `div[role=group]`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | — | a `ThreadListGroupLabel` first, then the group's rows |
+| `className` | `string` | — | lands on the `div` |
+
+### ThreadListGroupLabel
+
+The heading `div`; accepts `ComponentProps<'div'>`.
+
+### ThreadListItem
+
+One row. The content area is a select button, or — while renaming — an inline `Input`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `thread` | `ThreadMeta` | — | — |
+| `children` | `ReactNode` | — | the actions area (`ItemActions`): the three action buttons, or a menu holding them |
+| `className` | `string` | — | lands on the `Item` |
+
+`ThreadListItemState`: `{ active, archived, renaming }`. A custom action reads
+`{ thread, active }` from `useThreadListItem()`.
+
+### ThreadListRename
+
+`Button variant="ghost" size="icon-xs"` with a pencil icon by default; accepts all
+[Button](/docs/components/button#props) props. `onClick` runs before the built-in action;
+`event.preventDefault()` skips it.
+
+### ThreadListArchive
+
+As above, with an archive icon by default; a press calls `index.archive(id, !thread.archived)`.
+
+### ThreadListDelete
+
+As above, with a trash icon by default; a press calls `index.remove(id)` with no confirmation.
+
+### ThreadListNew
+
+`Button variant="outline"` with no default content — the label is yours; accepts all
+[Button](/docs/components/button#props) props. A press calls `index.create()` and selects the
+new thread.

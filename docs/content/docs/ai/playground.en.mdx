@@ -1,0 +1,119 @@
+---
+title: Playground
+description: Talk to a real model with your own API key — the same Transcript / Composer, with the transport swapped for /api/ai/chat
+---
+
+<ComponentPreview name="ai/playground" align="stretch" previewClassName="min-block-160" />
+
+Every other demo in this section replays a [script](/docs/ai/scripted); this page talks to a
+real model. The site holds no provider key of its own: the key you paste stays in this
+browser's memory and travels with every request in an `x-byok-<provider>` header, which
+`/api/ai/chat` uses to build the adapter for that one request. Reload the page and the key is gone.
+
+## Usage
+
+Three steps: paste a key → pick a model → send. Sending without a key also works — the route
+answers 401, the dialog opens by itself to ask for one, and you send again after saving.
+
+To reproduce this page on your own site, the client swaps only two things — the transport and
+the keys:
+
+```tsx
+import { ByokKeyDialog, createByok, defaultCatalog, fetchServerSentEvents, useChat, useModelSelection, useServerCoverage } from '@gedatou/cadenza-ai'
+```
+
+```tsx
+const [byok] = useState(() => createByok({ catalog: defaultCatalog }))
+const { coverage } = useServerCoverage(byok)
+const sel = useModelSelection()
+const chat = useChat({
+  connection: fetchServerSentEvents('/api/ai/chat'),
+  forwardedProps: sel.forwardedProps,
+  byok,
+  byokProvider: () => sel.selection.provider,
+})
+
+<ByokKeyDialog byok={byok} catalog={defaultCatalog} coverage={coverage} />
+```
+
+The server side is the `docs/app/api/ai/chat/route.ts` shown under
+[Route handler](/docs/ai/providers#route-handler). `createByok()` defaults to `memoryStorage()` —
+keys live in memory only; `persistent: true` switches to `passkeyStorage()`, unlocked with
+WebAuthn and kept across reloads. Before sending, the client calls `byok.prepare(provider)` and
+writes that provider's key into the request header; `byokProvider` decides which provider that
+is, falling back to the `provider` field of the body.
+
+## Approach
+
+- **Pure BYOK is a choice.** `getByokKey` prefers the header and falls back to env, so whether
+  the server holds a key is only a matter of setting an environment variable at deploy time.
+  This site sets none: a request without a key gets a 401
+  `{ error: { type: 'byok_missing', provider } }`, the client calls
+  `byok.request(provider, 'missing')`, and `ByokKeyDialog` opens with that provider's input
+  focused. Cost, rate limits and model access all follow your key; the site adds no proxy quota.
+- **`useServerCoverage` tells the client what the server has.** It `GET`s `/api/ai/catalog`
+  once, receives `providers` (the catalog's plain data) and `coverage` (whether each provider has
+  a server key: always `true` for `keyRequired: false`, otherwise whatever env says), then calls
+  `byok.setServerCoverage(coverage)` so `prepare()` stops asking for keys the server holds; the
+  same `coverage` goes to the dialog, which marks those rows with "Server key". In a pure-BYOK
+  deployment all four are `false`.
+- **`maxDuration` bounds how long one reply can stream.** The route exports
+  `maxDuration = 300`: a streamed reply is capped by the serverless function's duration limit;
+  tune it to your Vercel plan.
+
+## Limits
+
+- **Four providers.** The route wires `openai` / `anthropic` / `gemini` / `openrouter` (the only
+  presets under `@gedatou/cadenza-ai/providers/*` today); the remaining catalog providers are
+  visible in the [model catalog](/docs/ai/providers) but cannot be selected here.
+- **3 MiB per attachment.** `DEFAULT_MAX_ATTACHMENT_BYTES` is the safe line for base64 inside a
+  JSON body; the route's `maxBodyBytes` defaults to 4 MiB and answers 413 beyond it.
+- **Duration follows the plan.** Vercel Hobby 60 s, Pro 300 s; a long reasoning reply may be
+  cut at the limit — `TranscriptError` reports it, and a retry is all it takes.
+- **Zero cost to the site.** With no server key, no request can be billed to the site; what is
+  billed to your key shows up as an estimate in the
+  [Usage and cost](/docs/ai/conversation#usage-and-cost) parts.
+- **Tools.** The route registers one server tool, `get_time`; tools declared on the client are
+  merged in through `mergeAgentTools`, the same mechanism as the
+  [client tools](/docs/ai/parts) demo.
+
+## API
+
+The two routes and three client exports this page uses.
+
+### Routes
+
+| Route | Method | Description |
+| --- | --- | --- |
+| `/api/ai/chat` | `POST` | `createChatHandler({ providers, defaultModel, systemPrompts, tools })`: size guard → parse → `pickSelection` (trusts only `provider` / `model` / `thinking` on `forwardedProps`) → `onSelect` → BYOK key → adapter → thinking → `chat()` → SSE |
+| `/api/ai/chat` | `GET` | serves only with `persistence` (`?threadId=`) or `durability` (`?runId=` / `last-event-id`) configured; otherwise 404 |
+| `/api/ai/catalog` | `GET` | `createCatalogHandler(presets)`: `{ providers, coverage, generatedAt }` |
+
+The full option table of the route lives in [Providers](/docs/ai/providers#route-handler).
+
+### createByok
+
+`createByok(options?): ByokClient` — `defineByok()` with the house defaults, ready for `useChat({ byok })`.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `persistent` | `boolean` | `false` | `true` uses `passkeyStorage()` (passkey unlock, kept across reloads); otherwise `memoryStorage()` |
+| `catalog` | `Catalog` | — | when given, providers with `keyRequired: false` are marked server-covered up front |
+
+### useServerCoverage
+
+`useServerCoverage(byok, url?): ServerCoverage` — `url` defaults to `'/api/ai/catalog'`; fetched
+once on mount, and on success `byok.setServerCoverage()` is called.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `coverage` | `Record<string, boolean> \| undefined` | whether each provider has a server key; `undefined` until the request completes |
+| `providers` | `readonly Provider[] \| undefined` | which providers the server wires (plain data) |
+| `error` | `Error \| undefined` | a non-2xx answer or a network error; `cadenza-ai: <url> answered <status>` |
+
+### fetchServerSentEvents
+
+`fetchServerSentEvents(url, options?)` is TanStack AI's connection adapter, re-exported as-is
+from the root entry: it returns a `ResumableConnectConnectionAdapter` for `useChat({ connection })`.
+`url` may be a function, and `options` a function or an async function (per-request headers);
+the BYOK header is merged in by `ChatClient` on every `send`, so you never write it yourself.

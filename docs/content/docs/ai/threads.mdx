@@ -1,0 +1,322 @@
+---
+title: 会话列表
+description: 用 createThreadIndex + threadPersistence 给多个会话建索引，ThreadList 家族负责列表、重命名、归档与删除
+---
+
+<ComponentPreview name="ai/threads" align="stretch" />
+
+TanStack AI 的 `persistence` 只存一个线程的正文；「有哪些线程」是另一件事。
+门面把它做成一个独立的索引：`createThreadIndex()` 在 `localStorage` 里存一份
+`ThreadMeta[]`，`threadPersistence()` 把它接到任意 `ChatClientPersistence` 上，
+每次写入正文同时更新计数、预览、时间与自动标题。`ThreadList` 家族负责把索引画成列表——
+选中、新建、行内重命名、归档、删除；搜索与分组是你在外面对数组做的事。
+
+页顶 demo 不需要密钥：右侧会话走 [脚本化传输](/docs/ai/scripted)，左侧列表与正文都真的写进了
+浏览器（刷新还在；Reset 清掉这个 demo 自己的 key 与数据库）。
+
+## 使用
+
+```tsx
+import {
+  createThreadIndex,
+  fetchServerSentEvents,
+  groupThreadsByDay,
+  indexedDBPersistence,
+  threadPersistence,
+  ThreadList,
+  ThreadListArchive,
+  ThreadListDelete,
+  ThreadListGroup,
+  ThreadListGroupLabel,
+  ThreadListItem,
+  ThreadListNew,
+  ThreadListRename,
+  useChat,
+  useStoredState,
+  useThreadIndex,
+} from '@gedatou/cadenza-ai'
+```
+
+```tsx
+const index = createThreadIndex({ key: 'app:threads' })
+const persistence = threadPersistence(index, indexedDBPersistence({ databaseName: 'app-chat' }))
+const DAY_LABELS = { today: 'Today', yesterday: 'Yesterday', earlier: 'Earlier' }
+
+function Threads(): ReactElement {
+  const threads = useThreadIndex(index)
+  const [threadId, setThreadId] = useStoredState('app:threads:current', '')
+
+  return (
+    <div className="flex">
+      <ThreadList index={index} threads={threads} value={threadId} onValueChange={id => setThreadId(id)} className="block-96 inline-64">
+        <ThreadListNew>New thread</ThreadListNew>
+        {groupThreadsByDay(threads).map(group => (
+          <ThreadListGroup key={group.label}>
+            <ThreadListGroupLabel>{DAY_LABELS[group.label]}</ThreadListGroupLabel>
+            {group.threads.map(thread => (
+              <ThreadListItem key={thread.id} thread={thread}>
+                <ThreadListRename aria-label="Rename" />
+                <ThreadListArchive aria-label="Archive" />
+                <ThreadListDelete aria-label="Delete" />
+              </ThreadListItem>
+            ))}
+          </ThreadListGroup>
+        ))}
+      </ThreadList>
+      {threadId !== '' && <Chat key={threadId} threadId={threadId} />}
+    </div>
+  )
+}
+
+function Chat({ threadId }: { threadId: string }): ReactElement {
+  const chat = useChat({ connection: fetchServerSentEvents('/api/ai/chat'), persistence, threadId })
+  // TranscriptProvider / Transcript / Composer — see /docs/ai/conversation
+}
+```
+
+## 思路
+
+一个线程有两半，各归各处：
+
+- **正文归 `persistence`**。`useChat({ persistence, threadId })` 是 TanStack AI 的接口，
+  `indexedDBPersistence()` 是它自带的适配器：每个 `threadId` 一条 `{ messages, resume? }`。
+  `ChatClientPersistence` 只有 `getItem` / `setItem` / `removeItem`——**没有枚举**，
+  从它身上列不出「有哪些线程」。
+- **索引归 `createThreadIndex`**。一个 `localStorage` 键（默认 `cadenza-ai:threads`）存整份
+  `ThreadMeta[]`；`subscribe` 同时挂本地 emitter 与 `storage` 事件，多个 tab 免费同步。
+  `storage: 'memory'` 给 SSR 与测试。
+- **两半由 `threadPersistence(index, base)` 接起来**。它包住适配器：`setItem` 写完正文就
+  `index.touch(id, { messageCount, preview, title })`——标题取首条 user 消息的前 40 字，
+  手动改过的标题不再被覆盖；`removeItem` 同时 `index.remove(id)`。
+- **当前线程归你**。`useChat` 的身份就是 `threadId`，换线程 = `key={threadId}` 重挂；
+  当前 id 用 `useStoredState` 存一份即可刷新不丢。
+
+索引不做 IndexedDB 版本：`localStorage` 的 5 MB 天花板对几千条 `ThreadMeta` 绰绰有余。
+
+## 会话列表
+
+`ThreadList` 是一个滚动列表，`children` 里怎么排、每行放什么动作，由你组合；
+省略 `children` 时每个线程渲染成一个没有动作的 `ThreadListItem`。
+
+```text
+ThreadList                    ScrollArea > div[role=list]；当前线程是受控的 value
+├─ ThreadListNew              index.create() 一个空线程并选中它
+└─ ThreadListGroup            role="group"，一组
+   ├─ ThreadListGroupLabel    组标题
+   └─ ThreadListItem          一行：Item + 标题 / 预览；data-active / data-archived / data-renaming
+      ├─ ThreadListRename     切到行内改名输入框
+      ├─ ThreadListArchive    切换 archived
+      └─ ThreadListDelete     index.remove(id)；确认由你包 AlertDialog
+```
+
+- **选中**：点行内容调 `onValueChange(id, details)`，`details.reason` 是 `'item-press'`；
+  `details.cancel()` 可以拦下这次切换。
+- **新建**：`ThreadListNew` 先 `index.create()` 再选中，`reason` 同样是 `'item-press'`；
+  空线程在第一条消息写入时被 `threadPersistence` 补上标题与预览。
+- **重命名**：`ThreadListRename` 把这一行换成一个自动聚焦的 `Input`；`Enter` 或失焦提交，
+  `Escape` 取消；空标题或没改动不写入。改过的标题优先于自动标题。
+- **归档**：`ThreadListArchive` 切换 `thread.archived`，归档的线程在 `index.list()` 里排到最后；
+  要隐藏它们，在传 `threads` 之前过滤。
+- **删除**：`ThreadListDelete` 直接 `index.remove(id)`，不弹确认——把它包进
+  [AlertDialog](/docs/components/alert-dialog) 的触发器里。它只删索引，正文还在适配器里：
+  要一并清掉，在 `onClick` 里调 `persistence.removeItem(thread.id)`——经 `threadPersistence`
+  包过的适配器会顺手把索引项也删掉。
+- **搜索**：`threads` 是「已经过滤好的数组」——`useThreadIndex(index)` 拿全量，
+  按标题 / 预览 `filter` 后再传进来。
+- **分组**：`groupThreadsByDay(threads)` 按 `updatedAt` 的本地日历日分成
+  `today` / `yesterday` / `earlier` 三桶，空桶省略；标签文案由你写。
+
+页顶 demo 的完整源码（含搜索框、`AlertDialog` 确认与窄屏抽屉）：
+
+<ComponentSource name="ai/threads" />
+
+## 导入导出
+
+`messagesToMarkdown(messages, options?)` 把一条线程渲染成纯 Markdown；JSON 直接序列化
+`chat.messages`，导入走 `chat.setMessages`——它经过与运行同一条持久化通路，
+所以 `threadPersistence` 会照常更新索引。demo `ai/export` 在 Phase 2，这里只给代码：
+
+```tsx
+import type { UIMessage } from '@gedatou/cadenza-ai'
+import { messagesToMarkdown } from '@gedatou/cadenza-ai'
+
+// Markdown: `**User**` / `**Assistant**` blocks; thinking parts as block quotes when asked for
+const markdown = messagesToMarkdown(chat.messages, { title: index.get(threadId)?.title, includeThinking: false })
+await navigator.clipboard.writeText(markdown)
+
+// JSON out / in
+const json = JSON.stringify(chat.messages, null, 2)
+chat.setMessages(JSON.parse(json) as UIMessage[])
+```
+
+`messagesToMarkdown` 只写文本部件：工具调用、附件、结构化输出都跳过；
+`includeThinking: true` 时推理部件作为引用块跟在所在消息里。
+
+## 服务端持久化
+
+正文也可以住在服务端：`createChatHandler({ persistence })` 把
+`@tanstack/ai-persistence`（可选 peer，请求时才动态 import）的 `withPersistence`
+中间件挂上 `POST`，并让 `GET ?threadId=` 走 `reconstructChat`——客户端
+`useChat({ persistence: true, threadId })` 挂载时由 `fetchServerSentEvents` 内建的
+`hydrate` 取回 `{ messages, activeRun, interrupts }`。
+
+```ts
+// app/api/ai/chat/route.ts
+import { openai } from '@gedatou/cadenza-ai/providers/openai'
+import { createChatHandler } from '@gedatou/cadenza-ai/server'
+import { memoryPersistence } from '@tanstack/ai-persistence'
+
+// memoryPersistence() is the in-process reference store; back it with your database in production.
+const persistence = memoryPersistence()
+
+export const { POST, GET } = createChatHandler({
+  providers: [openai],
+  persistence,
+  // Without `authorize`, anyone who guesses a threadId reads the whole transcript.
+  authorize: async (threadId, request) => userOwnsThread(await sessionUser(request), threadId),
+})
+```
+
+```tsx
+// client: no adapter — the server is the store
+const chat = useChat({ connection: fetchServerSentEvents('/api/ai/chat'), persistence: true, threadId })
+```
+
+服务端的 `MessageStore` 同样只有 `loadThread` / `saveThread`——整体覆盖、没有列表；
+线程索引仍然是你的事：要么留在浏览器（本页的 `createThreadIndex`），要么自己建一个列表接口。
+docs 站不接服务端持久化，页顶 demo 全部在本地。
+
+## 状态与 className
+
+每个部件的最外层都带 `data-slot`；行的状态是布尔型属性，在场时值为空串，
+用 `data-active:` 这样的变体即可命中。
+
+| 属性 | 出现在 | 值 | 出现时机 |
+| --- | --- | --- | --- |
+| `data-active` | `thread-list-item` | 空串 | `value === thread.id`；同时 `aria-current="page"` |
+| `data-archived` | `thread-list-item` | 空串 | `thread.archived` |
+| `data-renaming` | `thread-list-item` | 空串 | 行内改名输入框在场 |
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `thread-list` | `div[role=list]`，在 `ScrollArea` 根之内 |
+| `thread-list-group` / `thread-list-group-label` | `div[role=group]` / 组标题 `div` |
+| `thread-list-item` | 一行（[Item](/docs/components/item)，`role="listitem"`） |
+| `thread-list-rename` / `thread-list-archive` / `thread-list-delete` / `thread-list-new` | 四个 [Button](/docs/components/button) |
+
+`className` 在这些部件上都是 `string`。`ThreadList` 的 `className` 落在 `ScrollArea` 根上——
+高度从这里给；`ThreadListItem` 的落在 `Item` 上（默认带 `data-active:bg-muted`），
+四个按钮的落在 `Button` 上。
+
+## 导出的类型
+
+```tsx
+// 索引
+import type { ThreadDayGroup, ThreadDayLabel, ThreadIndex, ThreadIndexOptions, ThreadMeta } from '@gedatou/cadenza-ai'
+import { createThreadIndex, groupThreadsByDay, newThreadId, threadPersistence, threadTitleFrom, useStoredState, useThreadIndex } from '@gedatou/cadenza-ai'
+
+// 导出
+import type { MessagesToMarkdownOptions } from '@gedatou/cadenza-ai'
+import { messagesToMarkdown } from '@gedatou/cadenza-ai'
+
+// 视图
+import type { ThreadListArchiveProps, ThreadListChangeEventDetails, ThreadListChangeEventReason, ThreadListDeleteProps, ThreadListGroupLabelProps, ThreadListGroupProps, ThreadListItemProps, ThreadListItemState, ThreadListNewProps, ThreadListProps, ThreadListRenameProps } from '@gedatou/cadenza-ai'
+import { useThreadListItem } from '@gedatou/cadenza-ai'
+```
+
+### ThreadMeta
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | `string` | `newThreadId()` 生成的 `thread-<base36 时间>-<随机>` |
+| `title` | `string` | 自动标题或手动改名；空串表示还没有 |
+| `createdAt` / `updatedAt` | `number` | 毫秒时间戳；`touch` 缺省把 `updatedAt` 设为 now |
+| `messageCount` | `number` | 上次写入时的消息数 |
+| `preview` | `string` | 最后一条消息的文本，最多 200 字 |
+| `archived` | `boolean` | — |
+| `provider` / `model` | `string`（可选） | 留给你记录该线程用的模型；索引本身不写 |
+
+### 运行时 API
+
+| 导出 | 签名 | 说明 |
+| --- | --- | --- |
+| `createThreadIndex(options?)` | `({ key?, storage? }) => ThreadIndex` | `key` 默认 `cadenza-ai:threads`；`storage` 默认 `'local'`，`'memory'` 不碰 `localStorage` |
+| `ThreadIndex.list()` | `() => readonly ThreadMeta[]` | 最新在前，归档排后；下次写入前引用稳定 |
+| `ThreadIndex.get(id)` | `(id) => ThreadMeta \| undefined` | — |
+| `ThreadIndex.create(init?)` | `(init?: Partial<ThreadMeta>) => ThreadMeta` | 生成 id 并写入 |
+| `ThreadIndex.touch(id, patch)` | `(id, patch) => ThreadMeta` | upsert：未知 id 以 `createdAt = now` 创建；本会话里被 `remove` 过的 id 不再落库（被删线程上还挂着的 chat 会再写一次——删除赢） |
+| `ThreadIndex.rename` / `archive` / `remove` | `(id, title)` / `(id, archived)` / `(id)` | 前两个是 `touch` 的便捷写法；`remove` 过滤并留下墓碑 |
+| `ThreadIndex.wasRemoved(id)` | `(id) => boolean` | 本会话里 `remove` 过且之后没有 `create`；`threadPersistence` 据此跳过已删线程的读写 |
+| `ThreadIndex.subscribe(listener)` | `(listener) => unsubscribe` | 本地写入 + 跨 tab `storage` 事件 |
+| `useThreadIndex(index)` | `(ThreadIndex) => readonly ThreadMeta[]` | `useSyncExternalStore`；服务端快照为空数组 |
+| `threadPersistence(index, base)` | `(ThreadIndex, ChatClientPersistence) => ChatClientPersistence` | 见[思路](#思路) |
+| `threadTitleFrom(messages, max?)` | `(readonly UIMessage[], max = 40) => string` | 首条 user 消息的文本，折叠空白，超长加省略号 |
+| `groupThreadsByDay(threads, now?)` | `(readonly ThreadMeta[], now = Date.now()) => readonly ThreadDayGroup[]` | 按 `updatedAt` 的本地日历日分桶 |
+| `useStoredState(key, initial)` | `<T>(string, T) => [T, (next: T) => void]` | `localStorage` JSON 的 `useState`，跨 hook / 跨 tab 同步；SSR 与无存储时回退到 `initial` |
+| `messagesToMarkdown(messages, options?)` | `(readonly UIMessage[], { title?, includeThinking? }) => string` | 见[导入导出](#导入导出) |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### ThreadList
+
+滚动列表：`ScrollArea` 根 > `div[role=list]`。缺了它，其余部件抛
+`cadenza-ai: ThreadListContext is missing…`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `index` | `ThreadIndex` | — | 动作按钮通过它写入 |
+| `threads` | `readonly ThreadMeta[]` | — | 已过滤好的数组；只在省略 `children` 时用来渲染 |
+| `defaultValue` | `string` | — | 非受控的当前线程 |
+| `value` | `string` | — | 受控的当前线程 |
+| `onValueChange` | `(id: string, details: ThreadListChangeEventDetails) => void` | — | 选中或新建时；`details.cancel()` 拦下 |
+| `children` | `ReactNode` | 每个线程一个裸 `ThreadListItem` | — |
+| `className` | `string` | — | 落在 `ScrollArea` 根上；高度从这里给 |
+
+`ThreadListChangeEventDetails` 是 `ChangeEventDetails<'item-press' | 'none'>`。
+
+### ThreadListGroup
+
+`div[role=group]`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | — | 先放一个 `ThreadListGroupLabel`，再放这组的行 |
+| `className` | `string` | — | 落在 `div` 上 |
+
+### ThreadListGroupLabel
+
+组标题 `div`，收 `ComponentProps<'div'>`。
+
+### ThreadListItem
+
+一行。内容区是一个选中按钮，或——改名中——一个行内 `Input`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `thread` | `ThreadMeta` | — | — |
+| `children` | `ReactNode` | — | 动作区（`ItemActions`）：三个动作按钮，或装着它们的菜单 |
+| `className` | `string` | — | 落在 `Item` 上 |
+
+`ThreadListItemState`：`{ active, archived, renaming }`。自定义动作用
+`useThreadListItem()` 拿到 `{ thread, active }`。
+
+### ThreadListRename
+
+`Button variant="ghost" size="icon-xs"`，默认内容是铅笔图标；收
+[Button](/docs/components/button#props) 的全部 props。`onClick` 先于内置动作执行，
+`event.preventDefault()` 跳过内置动作。
+
+### ThreadListArchive
+
+同上，默认内容是归档图标；点击 `index.archive(id, !thread.archived)`。
+
+### ThreadListDelete
+
+同上，默认内容是垃圾桶图标；点击 `index.remove(id)`，不弹确认。
+
+### ThreadListNew
+
+`Button variant="outline"`，没有默认内容——文案由你写；收
+[Button](/docs/components/button#props) 的全部 props。点击 `index.create()` 并选中新线程。

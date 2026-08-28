@@ -105,7 +105,12 @@ export function ResettableDemo({
 `@gedatou/cadenza-ai/styles.css` 自带 `@import 'streamdown/styles.css'`、katex css 与 `@source './dist'`；streamdown 的运行时类名来自它的 dist，`@source './dist'` 相对于 `packages/ai/styles.css` 指向 `packages/ai/dist`——不覆盖 streamdown 自身。所以再加一行让 Tailwind 扫到 streamdown 的产物：
 
 ```css
-@source '../../node_modules/streamdown/dist/*.js';
+@source '../node_modules/streamdown/dist/*.js';
+```
+
+（路径相对 `docs/app/globals.css`：pnpm 只把 streamdown 链到 `docs/node_modules`，仓库根没有。实测：指向 `../../node_modules` 时 `list-disc` 等类不生成，列表没有圆点。）
+
+```css
 ```
 
 验证（memory：Tailwind 类要 grep 产物 CSS）：起 dev 后 `curl -s http://localhost:3001/docs/ai/conversation | grep -oE 'href="[^"]*\.css"'` 拿到 css 链接，`curl` 它并 `grep -c 'streamdown'`（>0）与 `grep -c 'katex'`（>0）。

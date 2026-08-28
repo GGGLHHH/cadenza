@@ -36,11 +36,22 @@ function Demo() {
 }
 ```
 
-入口 CSS：
+入口 CSS（streamdown 的样式与 KaTeX 都在里面；再让 Tailwind 扫到 streamdown 的产物）：
 
 ```css
 @import "@gedatou/cadenza-ai/styles.css";
+@source "../node_modules/streamdown/dist/*.js";
 ```
+
+## 文档
+
+- [会话](https://cadenza-ui-docs.vercel.app/docs/ai/conversation) — `useChat` 接线与 Transcript 家族
+- [消息部件](https://cadenza-ui-docs.vercel.app/docs/ai/parts) — Markdown、推理、工具、审批、附件、来源、结构化输出
+- [输入区](https://cadenza-ui-docs.vercel.app/docs/ai/composer) — 输入、附件、模型与思考强度、建议、排队、听写
+- [会话列表](https://cadenza-ui-docs.vercel.app/docs/ai/threads) — 线程索引与本地持久化
+- [接入提供者](https://cadenza-ui-docs.vercel.app/docs/ai/providers) — 目录、thinking 映射、BYOK、route handler
+- [脚本化传输](https://cadenza-ui-docs.vercel.app/docs/ai/scripted) — `./mock` 的步骤 DSL
+- [试玩](https://cadenza-ui-docs.vercel.app/docs/ai/playground) — 用自己的 key 跑真模型
 
 ## 与官方 API 的差异
 

@@ -1,0 +1,477 @@
+---
+title: Providers
+description: The model catalog, the seven thinking levels, BYOK keys and the route handler — whatever the client selects, the server translates through a preset into that vendor's parameters
+---
+
+<ComponentPreview name="ai/catalog" align="stretch" />
+
+Wiring up a provider is two halves. The **catalog** is pure data (`Provider` / `Model`),
+shared by client and server; `defaultCatalog` holds 12 vendors. A **preset** exists only on
+the server: the catalog data plus two functions — build the adapter, and translate a thinking
+level into that vendor's `modelOptions`. Four presets ship today — `openai` / `anthropic` /
+`gemini` / `openrouter`, each at `@gedatou/cadenza-ai/providers/<id>`; the other eight are
+catalog data only, and [`definePreset`](#custom-provider) is how you add the two functions
+yourself.
+
+Keys follow TanStack AI's BYOK shape: the browser holds the key and sends it per request in
+an `x-byok-<id>` header to your route handler; the server uses it without storing it, answers
+401 when it is missing, and the client opens a dialog.
+
+## Usage
+
+One route handler on the server; install the adapter of each provider you wire (all are
+optional peers):
+
+```bash
+pnpm add @gedatou/cadenza-ai @tanstack/ai-openai
+```
+
+```ts
+// app/api/ai/chat/route.ts
+import { openai } from '@gedatou/cadenza-ai/providers/openai'
+import { createChatHandler } from '@gedatou/cadenza-ai/server'
+
+export const { POST, GET } = createChatHandler({ providers: [openai], defaultModel: 'openai/gpt-5.2' })
+```
+
+On the client, hand a `ByokClient` to `useChat` and let the dialog subscribe to the same client:
+
+```tsx
+import {
+  ByokKeyDialog,
+  createByok,
+  defaultCatalog,
+  fetchServerSentEvents,
+  useChat,
+  useModelSelection,
+  useServerCoverage,
+} from '@gedatou/cadenza-ai'
+```
+
+```tsx
+function Chat(): ReactElement {
+  const byok = useMemo(() => createByok({ catalog: defaultCatalog }), [])
+  const { coverage } = useServerCoverage(byok)
+  const { selection, forwardedProps } = useModelSelection()
+  const chat = useChat({
+    connection: fetchServerSentEvents('/api/ai/chat'),
+    byok,
+    byokProvider: () => selection.provider,
+    forwardedProps,
+  })
+
+  return (
+    <>
+      {/* TranscriptProvider / Transcript / Composer — see /docs/ai/conversation */}
+      <ByokKeyDialog byok={byok} catalog={defaultCatalog} coverage={coverage} />
+    </>
+  )
+}
+```
+
+## Approach
+
+- **The catalog is data, shared by both ends.** `defaultCatalog` is 12 `Provider`s, each
+  with `models`, `byok` (header slug and env names), `keyRequired` and `runtime`; it imports
+  no adapter, so no server code reaches the browser bundle.
+- **Presets live on the server only.** `ProviderPreset = Provider + create(model, key) +
+  thinking(level, model)`; importing from `./providers/<id>` is what pulls in the adapter.
+- **Selection is three keys.** `provider` / `model` / `thinking` on the client's
+  `forwardedProps` are all the server reads: the provider must be in `providers`, the model
+  must be in the preset's catalog, an invalid thinking level counts as `'off'`; every other
+  key is ignored and never spread into `chat()`.
+- **Keys belong to the browser.** A `ByokClient` holds them; `useChat({ byok, byokProvider })`
+  stamps `x-byok-<id>` for the current provider on every request. On the server `getByokKey`
+  prefers the header and falls back to env; with neither it answers 401 `byok_missing`, and
+  the client opens `ByokKeyDialog`.
+
+## Model catalog
+
+`Catalog` is an immutable object: the `providers` / `models` arrays, `getProvider(id)` /
+`getModel('provider/id')`, and `withProvider(p)` / `withoutProvider(id)` (which return a new
+catalog). The demo at the top adds a custom provider row with `defaultCatalog.withProvider(local)`.
+
+| id | Label | `keyRequired` / `runtime` | Preset | Notes |
+| --- | --- | --- | --- | --- |
+| `openai` | OpenAI | `true` / `node` | shipped | — |
+| `anthropic` | Anthropic | `true` / `node` | shipped | thinking maps by generation, four ways, see below |
+| `gemini` | Google Gemini | `true` / `node` | shipped | — |
+| `openrouter` | OpenRouter | `true` / `node` | shipped | model ids are `vendor/model`; the catalog is a suggestion list, not a gate |
+| `grok` | xAI Grok | `true` / `node` | data only | `grok-build-*` sends no reasoning parameter |
+| `groq` | Groq | `true` / `node` | data only | — |
+| `mistral` | Mistral | `true` / `node` | data only | the adapter has no thinking setting; everything is `reasoning: false` |
+| `vercel-gateway` | Vercel AI Gateway | `true` / `node` | data only | no pricing or context data |
+| `llmgateway` | LLM Gateway | `true` / `node` | data only | — |
+| `bedrock` | Amazon Bedrock | `true` / `node` | data only | bearer key; the Converse path has no reasoning parameter, no pricing |
+| `vertex` | Vertex AI | `false` / `node` | data only | reuses gemini's model table; ADC or an express key is read from env by the adapter |
+| `ollama` | Ollama | `false` / `local` | data only | local models have no pricing; the `x-byok-ollama` header carries the host URL |
+
+`Model`'s fields: `id` / `name` / `provider` / `input` (modalities) / `reasoning` /
+`contextWindow?` / `maxOutputTokens?` / `cost?` (USD per million tokens, with `cacheRead` /
+`cacheWrite`) / `thinkingLevels?` (default = `reasoning ? THINKING_LEVELS : ['off']`).
+`modelRef(model)` builds `'openai/gpt-5.2'`; `parseModelRef(ref)` splits on the first slash
+only — OpenRouter and Vercel Gateway model ids contain slashes themselves. Cost estimation is
+covered in [Usage and cost](/docs/ai/conversation#usage-and-cost).
+
+Each catalog table's file header records the adapter version it was copied from
+(`sourceVersion`); diff that table when you upgrade the adapter.
+
+The source of the demo at the top:
+
+<ComponentSource name="ai/catalog" />
+
+## Thinking level
+
+Seven `ThinkingLevel`s, in order of strength:
+
+```tsx
+THINKING_LEVELS // ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+```
+
+- `supportedThinkingLevels(model)`: a non-reasoning model has only `['off']`; a reasoning
+  model has `model.thinkingLevels ?? THINKING_LEVELS`.
+- `clampThinkingLevel(model, level)`: an unsupported level rounds down to the nearest
+  supported one; below the model's floor it takes the floor (a model that cannot be switched
+  off, like Fable 5, bottoms out at `'low'`).
+- On the server `pickSelection` reads `forwardedProps.thinking` (anything outside the seven
+  counts as `'off'`) and clamps; `resolveThinking` sends nothing when the clamped level is
+  `off` and the model does not reason, and otherwise defers to `preset.thinking(level, model)`.
+
+The mapping of the four shipped presets (the `off` column is the fragment actually sent when
+thinking is switched off):
+
+| Preset | Fragment | `off` | Cannot be switched off |
+| --- | --- | --- | --- |
+| `openai` | `{ reasoning: { effort, summary: 'auto' } }`; minimal → `'minimal'`, low / medium / high as-is, xhigh / max → `'high'`; non-reasoning models `{}` | `{ reasoning: { effort: 'none' } }` | — |
+| `anthropic` · budget generation (opus-5 / opus-5-fast / opus-4-5 / sonnet-4-5 / haiku-4-5 / opus-4-1) | `{ thinking: { type: 'enabled', budget_tokens } }`; 1024 / 4096 / 16000 / 32000 / 48000 / 64000 | `{ thinking: { type: 'disabled' } }` | — |
+| `anthropic` · 4.6 (opus-4-6 / sonnet-4-6) | `{ thinking: { type: 'adaptive', display: 'summarized' } }`, no tiers; catalog `thinkingLevels: ['off', 'medium']` | `{ thinking: { type: 'disabled' } }` | — |
+| `anthropic` · 4.7+ / Sonnet 5 (opus-4-7 / opus-4-8 / sonnet-5) | adaptive + `output_config: { effort }`; minimal → `'low'`, the rest as-is | `{ thinking: { type: 'disabled' } }` | — |
+| `anthropic` · Fable 5 (fable-5) | as above | catalog `thinkingLevels` starts at `'low'`, so `off` / `minimal` clamp to `'low'`; the preset itself also lands `off` on `'low'` | **yes** |
+| `gemini` 3.x | `{ thinkingConfig: { includeThoughts: true, thinkingLevel } }`; MINIMAL / LOW / MEDIUM / HIGH, high / xhigh / max → HIGH | `{}` (nothing sent) | — |
+| `gemini` 2.5 | `{ thinkingConfig: { includeThoughts: true, thinkingBudget } }`; 1024 / 4096 / 8192 / 16384 / 20480 / 24576 | `{ thinkingConfig: { thinkingBudget: 0 } }` | — |
+| `openrouter` | `{ reasoning: { effort: level } }`, all seven levels passed through | `{ reasoning: { enabled: false } }` | — |
+
+Anthropic's four generations are matched by exact model id, never guessed from a prefix
+(opus-5 is a budget-generation model). `./server` also exports `EFFORT_3` — the folding table
+for three-tier effort (minimal → low, xhigh / max → high), for presets such as grok / groq /
+vercel-gateway / ollama that only know low / medium / high. The client-side pickers
+(`ModelPicker` / `ThinkingLevelPicker`) are on the [Composer](/docs/ai/composer) page.
+
+## Keys
+
+`ByokKeyDialog` subscribes to a `ByokClient`, opens itself as soon as the client raises a
+prompt, and focuses that provider's input.
+
+<ComponentPreview name="ai/byok-dialog" align="stretch" />
+
+- **`createByok({ persistent?, catalog? })`** is `defineByok` with house defaults. The
+  default is `memoryStorage()` — keys live in this tab's memory and vanish on reload;
+  `persistent: true` switches to `passkeyStorage()` — the keyring is encrypted with a WebAuthn
+  passkey (PRF) and kept in IndexedDB, comes back `locked` after a reload, and
+  `byok.unlock()` (the dialog's Unlock button) opens it; hide that switch when
+  `isPasskeyStorageSupported()` is false. `persistent` is a page-level setting: `useChat` takes
+  `byok` only when it creates the client, so changing it means remounting the conversation.
+  With `catalog`, providers with `keyRequired: false` (vertex / ollama) are marked
+  server-covered immediately, so `prepare()` never blocks on them.
+- **`useServerCoverage(byok, url?)`** fetches `/api/ai/catalog` once on mount, feeds the
+  returned `coverage` into `byok.setServerCoverage()`, and returns
+  `{ coverage, providers, error }` — pass `coverage` to the dialog and the row shows the
+  "server key" icon (`data-server-key`).
+- **The per-request header**: `useChat({ byok, byokProvider })` calls `byok.prepare(provider)`
+  before sending — no key and no server coverage means `request(provider, 'missing')` and a
+  block; with a key it stamps `x-byok-<id>`. `byokProvider` returns the current provider id, so
+  it always resolves.
+- **Four `KeyStatus` states**: `empty` / `set` (with `masked`) / `locked` (with `masked`) /
+  `error` (with `masked` and `message`, shown as a `FieldError` under the row).
+- **Server refusal**: when the route handler finds no key it answers 401
+  `{ error: { type: 'byok_missing', provider } }`; the client turns that into a
+  `ByokMissingError` → `byok.request(provider, 'missing')` → the dialog opens
+  (`onOpenChange` gets `reason: 'none'`). This section's demo takes exactly that path through
+  the scripted transport's `byokMissing('openai')`.
+- **Ollama's header**: the value of `x-byok-ollama` is not a key but the host URL; the server
+  checks it against the `ollamaHosts` allowlist (loopback and private ranges by default).
+
+## Route handler
+
+The docs site's `/api/ai/chat`, verbatim — the Playground runs on it:
+
+```ts
+// docs/app/api/ai/chat/route.ts
+import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
+import { gemini } from '@gedatou/cadenza-ai/providers/gemini'
+import { openai } from '@gedatou/cadenza-ai/providers/openai'
+import { openrouter } from '@gedatou/cadenza-ai/providers/openrouter'
+import { createChatHandler, toolDefinition } from '@gedatou/cadenza-ai/server'
+import { z } from 'zod'
+
+// Playground is pure BYOK (spec Q1): keys arrive per request in `x-byok-<provider>`
+// headers; nothing is read from the deployment's env.
+export const maxDuration = 300
+
+const getTime = toolDefinition({
+  name: 'get_time',
+  description: 'Current time in a timezone',
+  inputSchema: z.object({ tz: z.string() }),
+}).server(async ({ tz }) => ({ iso: new Date().toLocaleString('en-US', { timeZone: tz }) }))
+
+export const { POST, GET } = createChatHandler({
+  providers: [openai, anthropic, gemini, openrouter],
+  defaultModel: 'openai/gpt-5.2',
+  systemPrompts: ['You are the cadenza docs playground assistant. Keep answers short.'],
+  tools: [getTime],
+})
+```
+
+```ts
+// docs/app/api/ai/catalog/route.ts
+import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
+import { gemini } from '@gedatou/cadenza-ai/providers/gemini'
+import { openai } from '@gedatou/cadenza-ai/providers/openai'
+import { openrouter } from '@gedatou/cadenza-ai/providers/openrouter'
+import { createCatalogHandler } from '@gedatou/cadenza-ai/server'
+
+export const { GET } = createCatalogHandler([openai, anthropic, gemini, openrouter])
+```
+
+`POST`'s lifecycle: `content-length` over `maxBodyBytes` → 413; `chatParamsFromRequest`
+parses (a bad request → 400); `pickSelection` resolves the three keys (→ 400
+`unknown_provider` / `unknown_model`); the `onSelect` hook; `getByokKey` (missing → 401
+`byok_missing`); the ollama host allowlist; `preset.create(model, key)`; `resolveThinking`;
+`chat({...})` → `toServerSentEventsResponse`, aborted when the client disconnects. `GET` has
+content only when `persistence` / `durability` are configured (`?threadId=` reconstruction,
+`?runId=` resumption), and answers 404 otherwise. With `process.env.VERCEL === '1'`, presets
+with `runtime: 'local'` are dropped.
+
+`createCatalogHandler(presets)`'s `GET` returns `{ providers, coverage, generatedAt }`:
+`providers` is each preset minus its three functions, `coverage` a boolean map of "can the
+server key this provider by itself".
+
+### ChatHandlerOptions
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `providers` | `readonly ProviderPreset[]` | — | — |
+| `defaultModel` | `string` | — | `'provider/model'`; used when the request carries no provider / model |
+| `systemPrompts` | `SystemPrompt[] \| ((selection: Selection) => SystemPrompt[])` | — | server-configured only |
+| `tools` | `ReadonlyArray<AnyTool>` | `[]` | merged with client tools by `mergeAgentTools`; a same-named server tool wins |
+| `middleware` | `Array<ChatMiddleware<TContext>>` | `[]` | — |
+| `context` | `(request: Request) => TContext \| Promise<TContext>` | — | — |
+| `agentLoopStrategy` | `AgentLoopStrategy` | TanStack's default | not exposed to the client |
+| `onSelect` | `(selection: Selection, request: Request) => Selection \| Response` | — | inspect or replace the selection; return a `Response` to refuse |
+| `persistence` | `AIPersistence<ChatTranscriptStores>` | — | see [Server-side persistence](/docs/ai/threads#server-side-persistence); typed as `unknown`, the peer is imported on demand |
+| `authorize` | `ReconstructChatOptions['authorize']` | — | read only together with `persistence` |
+| `durability` | `(request: Request) => StreamDurability` | — | stream resumption; not enabled on the docs site |
+| `maxBodyBytes` | `number` | `4 * 1024 * 1024` | over it → 413 |
+| `ollamaHosts` | `readonly string[]` | loopback + RFC 1918 | hosts `x-byok-ollama` may point at |
+| `debug` | `DebugOption` | — | forwarded to `chat()` and the SSE response |
+
+## Environment variables
+
+`getByokKey(request, provider)` prefers the header, then reads env in `byok.env` order;
+`createCatalogHandler`'s `coverage` judges by the same table. The docs deployment sets none of
+them, which is what makes it pure BYOK.
+
+| Provider | env (in order) | Notes |
+| --- | --- | --- |
+| `openai` | `OPENAI_API_KEY` | — |
+| `anthropic` | `ANTHROPIC_API_KEY` | — |
+| `gemini` | `GOOGLE_API_KEY` → `GEMINI_API_KEY` | — |
+| `openrouter` | `OPENROUTER_API_KEY` | — |
+| `grok` | `XAI_API_KEY` | — |
+| `groq` | `GROQ_API_KEY` | — |
+| `mistral` | `MISTRAL_API_KEY` | — |
+| `vercel-gateway` | `AI_GATEWAY_API_KEY` → `VERCEL_OIDC_TOKEN` | — |
+| `llmgateway` | `LLM_GATEWAY_API_KEY` | — |
+| `bedrock` | `BEDROCK_API_KEY` → `AWS_BEARER_TOKEN_BEDROCK` | bearer token; no SigV4 |
+| `vertex` | `GOOGLE_VERTEX_API_KEY` | `keyRequired: false`; coverage special case: this key, **or** (any of `GOOGLE_CLOUD_PROJECT` / `GOOGLE_VERTEX_PROJECT` **and** any of `GOOGLE_CLOUD_LOCATION` / `GOOGLE_VERTEX_LOCATION`) |
+| `ollama` | — | `keyRequired: false`, always covered; the host comes only from the `x-byok-ollama` header |
+
+## Custom provider
+
+Keep the catalog data in a file both ends share, build the preset in the route file with
+`definePreset` adding `create` / `thinking`, and merge the same data into the client catalog
+with `withProvider`. An OpenAI-compatible endpoint as the example:
+
+```ts
+// ai/deepseek.ts — catalog data, shared by client and server
+import type { Provider } from '@gedatou/cadenza-ai'
+
+export const deepseek: Provider = {
+  id: 'deepseek', // the `x-byok-deepseek` slug: /^[a-z][a-z0-9-]{0,63}$/
+  label: 'DeepSeek',
+  byok: { id: 'deepseek', label: 'DeepSeek', env: ['DEEPSEEK_API_KEY'] },
+  keyRequired: true,
+  runtime: 'node',
+  models: [
+    { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'deepseek', input: ['text'], reasoning: false, contextWindow: 128_000 },
+    { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', provider: 'deepseek', input: ['text'], reasoning: true, contextWindow: 128_000 },
+  ],
+}
+```
+
+```ts
+// app/api/ai/chat/route.ts — the preset: data + adapter + thinking
+import { createChatHandler, definePreset } from '@gedatou/cadenza-ai/server'
+import { openaiCompatibleText } from '@tanstack/ai-openai/compatible'
+import { deepseek } from '@/ai/deepseek'
+
+const deepseekPreset = definePreset({
+  ...deepseek,
+  create: (model, key) => openaiCompatibleText(model, { baseURL: 'https://api.deepseek.com/v1', apiKey: key ?? '' }),
+  // Return the adapter's own modelOptions fragment for a clamped level; `{}` sends nothing.
+  thinking: () => ({}),
+})
+
+export const { POST, GET } = createChatHandler({ providers: [deepseekPreset] })
+```
+
+```tsx
+// client — the same data, merged into the catalog
+const catalog = useMemo(() => defaultCatalog.withProvider(deepseek), [])
+const { selection, forwardedProps } = useModelSelection({ catalog })
+// … <ByokKeyDialog byok={byok} catalog={catalog} coverage={coverage} />
+```
+
+`definePreset` checks `byok.id === id` (the header name is derived from the id) and is
+otherwise the identity. `create` receives `null` for `key` when `keyRequired: false`;
+`thinking` receives the already-clamped level. To discover models online, add
+`discoverModels(key)`: an id outside the catalog is admitted only when that exists. The
+`openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` functions
+exported from `./server` can be reused as-is for endpoints that speak the same protocol.
+
+## MCP
+
+> Phase 3. `createChatHandler` has no `mcp` option yet; to wire MCP tools, write the handler
+> yourself around the `chat()` re-exported from `./server` — this path bypasses selection
+> resolution and BYOK.
+
+```ts
+import { chat, chatParamsFromRequest, toServerSentEventsResponse } from '@gedatou/cadenza-ai/server'
+import { createOpenaiChat } from '@tanstack/ai-openai'
+
+export async function POST(request: Request): Promise<Response> {
+  const params = await chatParamsFromRequest(request)
+  const stream = chat({
+    adapter: createOpenaiChat('gpt-5.2', process.env.OPENAI_API_KEY ?? ''),
+    messages: params.messages,
+    // `clients` is any `MCPToolSource` — TanStack AI's `@tanstack/ai-mcp` MCPClient fits by shape.
+    mcp: { clients: [mcpClient], connection: 'keep-alive' },
+  })
+  return toServerSentEventsResponse(stream)
+}
+```
+
+For the remaining `ChatMCPOptions` fields (`lazyTools`, `onDiscoveryError`) the
+[TanStack AI MCP docs](https://tanstack.com/ai) are the reference.
+
+## Harnesses that are not wired
+
+Harness adapters (claude-code / acp / codex / opencode / grok-build) need
+`@tanstack/ai-sandbox` and copy their key from the host `process.env` only — BYOK cannot
+reach them, so there is no preset. Also re-exported without a page: `useRealtimeChat`
+(realtime voice), the generation-family hooks such as `useGenerateImage`, `useMcpAppBridge`
+(the MCP Apps host) and the `live` subscription's `connectionStatus`; they appear under
+[Exported types](#exported-types) and nowhere else.
+
+## State and className
+
+The catalog and presets are data with no DOM; this section is only about `ByokKeyDialog`.
+
+| Attribute | On | Value | When |
+| --- | --- | --- | --- |
+| `data-provider` | `byok-key-dialog-provider` | the provider id | always |
+| `data-key-status` | `byok-key-dialog-provider` | `"empty"` \| `"set"` \| `"locked"` \| `"error"` | mirrors this provider's `KeyStatus.state` in the client |
+| `data-server-key` | `byok-key-dialog-provider` | empty | `!provider.keyRequired` or `coverage[id] === true` |
+
+| `data-slot` | What it is |
+| --- | --- |
+| `byok-key-dialog` | the `DialogPopup` ([Dialog](/docs/components/dialog) family) |
+| `byok-key-dialog-provider` | one row: `Field` + password `Input` + save / clear icon buttons |
+
+`ByokKeyDialog` has no `className` — the shell is the Dialog family and the styling hook is
+`data-slot`; `ByokKeyDialogProvider`'s `className` is a `string` that lands on the row.
+
+## Exported types
+
+The root entry (the catalog part is listed on [Conversation](/docs/ai/conversation#exported-types)):
+
+```tsx
+// BYOK: re-exported from @tanstack/ai-client/byok
+import type { ByokClient, ByokPrompt, ByokSnapshot, KeyringStorage, KeyStatus } from '@gedatou/cadenza-ai'
+import { defaultByokStorage, defineByok, isPasskeyStorageSupported, memoryStorage, passkeyStorage } from '@gedatou/cadenza-ai'
+
+// facade
+import type { ByokKeyDialogLabels, ByokKeyDialogProps, ByokKeyDialogProviderProps, CreateByokOptions, ServerCoverage } from '@gedatou/cadenza-ai'
+import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage } from '@gedatou/cadenza-ai'
+```
+
+`@gedatou/cadenza-ai/server` (no `'use client'`; route handlers only):
+
+| Export | Signature / description |
+| --- | --- |
+| `ProviderPreset` | `Provider & { create(model: string, key: string \| null): AnyTextAdapter; thinking(level: ThinkingLevel, model: Model): Record<string, unknown>; discoverModels?(key: string \| null): Promise<Model[]> }` |
+| `definePreset(preset)` | identity + checks `byok.id === id` |
+| `createChatHandler(options)` | `(ChatHandlerOptions) => { POST, GET }`, see [Route handler](#route-handler) |
+| `ChatHandlerOptions` / `ChatHandler` | the table above / `{ POST, GET }` |
+| `createCatalogHandler(presets)` | `=> { GET }`: `{ providers, coverage, generatedAt }` |
+| `pickSelection(forwardedProps, presets, { defaultModel? })` | `=> Selection \| Response`; `Selection = { preset, model, thinking }` |
+| `resolveThinking(preset, model, level)` | clamps, then defers to `preset.thinking`; `{}` for a non-reasoning model that is off |
+| `openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` | `(level, model) => fragment`, the four presets' mapping functions |
+| `EFFORT_3` | `{ minimal: 'low', low: 'low', medium: 'medium', high: 'high', xhigh: 'high', max: 'high' }` |
+| re-exported from `@tanstack/ai` | `chat` / `chatParamsFromRequest` / `maxIterations` / `memoryStream` / `mergeAgentTools` / `toolDefinition` / `toServerSentEventsResponse` |
+| re-exported from `@tanstack/ai/byok` | `defineByokProvider` |
+| re-exported from `@tanstack/ai/byok/server` | `byokMissing` / `getByokKey` |
+
+`@gedatou/cadenza-ai/providers/<id>`: one `ProviderPreset` per file — `openai` / `anthropic` /
+`gemini` / `openrouter`; importing one pulls in the matching `@tanstack/ai-<id>` adapter. The
+scripted transport's `byokMissing(provider)` is on [Scripted Transport](/docs/ai/scripted#api).
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks → behaviour → appearance → `className`**.
+
+### ByokKeyDialog
+
+The key-entry dialog for one `ByokClient`. It subscribes to the client and opens itself as
+soon as `snapshot.prompt` appears (`prepare()` blocked on a missing key, or the server answered
+`byok_missing`), focusing that provider's input; while `snapshot.locked` the footer gains an
+Unlock button.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `byok` | `ByokClient` | — | — |
+| `catalog` | `Catalog` | — | row labels and `keyRequired` come from here |
+| `coverage` | `Record<string, boolean>` | — | `useServerCoverage(byok).coverage`; `ByokClient` keeps its own coverage private, so the dialog is told separately |
+| `defaultOpen` | `boolean` | `false` | — |
+| `open` | `boolean` | — | controlled |
+| `onOpenChange` | `(open: boolean, details: DialogChangeEventDetails \| ChangeEventDetails<'none'>) => void` | — | a programmatic open (the client's prompt) carries `reason: 'none'`; `details.cancel()` blocks it |
+| `labels` | `Partial<ByokKeyDialogLabels>` | `DEFAULT_BYOK_KEY_DIALOG_LABELS` | — |
+| `children` | `ReactNode` | one `ByokKeyDialogProvider` per catalog provider | — |
+
+`ByokKeyDialogLabels` and the English defaults:
+
+| Key | Default | Where |
+| --- | --- | --- |
+| `title` | `API keys` | the title |
+| `description` | `Keys stay in this browser and are sent per request in a header.` | the description |
+| `save` / `clear` | `Save` / `Clear` | `aria-label` of the two icon buttons |
+| `unlock` | `Unlock` | the footer button while `locked` |
+| `close` | `Close` | the footer button |
+| `serverKey` | `Server key` | `aria-label` of the "server key" icon |
+
+### ByokKeyDialogProvider
+
+One provider's row: `FieldLabel` = `provider.label`, a password `Input`, save / clear icon
+buttons. Throws when `provider` is not in `catalog`. The input auto-focuses when
+`snapshot.prompt.provider` matches and shows `masked` as its `placeholder` once a key is set;
+save calls `byok.update(id, key)` (disabled while the draft is empty), clear calls
+`byok.clear(id)` (disabled while `empty`), and the `error` state shows `message` under the row.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `provider` | `string` | — | a catalog provider id |
+| `children` | `ReactNode` | — | appended at the end of the row — an OAuth / PKCE button, say |
+| `className` | `string` | — | lands on the row |
+
+5 types are exported alongside: `ByokKeyDialogProps` / `ByokKeyDialogProviderProps` /
+`ByokKeyDialogLabels` / `CreateByokOptions` / `ServerCoverage`.

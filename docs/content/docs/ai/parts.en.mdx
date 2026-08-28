@@ -1,0 +1,491 @@
+---
+title: Message Parts
+description: One built-in part per kind of part in a message — Markdown, reasoning, tool calls and approval, attachments, sources, structured output — replaceable by name, with copy overridden in one place
+---
+
+<ComponentPreview name="ai/tool-call" align="stretch" />
+
+A TanStack AI `UIMessage` is a list of `part`s: `text`, `thinking`, `tool-call` / `tool-result`,
+`image` / `audio` / `video` / `document`, `structured-output` …
+[`TranscriptParts`](/docs/ai/conversation#props) hands each one to the built-in parts on this
+page by `part.type`, and every part also works outside a Transcript — they take TanStack's part
+object and never touch `useChat`. To replace one kind, register it by name under
+[Tool renderers](#tool-renderers); the built-in parts' copy lives in [Default copy](#default-copy).
+
+Every demo on this page runs on the [scripted transport](/docs/ai/scripted) and needs no key.
+
+## Usage
+
+```tsx
+import {
+  ApprovalActions,
+  ApprovalApprove,
+  ApprovalDeny,
+  definePartRenderers,
+  Markdown,
+  MediaPart,
+  PartRenderersProvider,
+  Reasoning,
+  Sources,
+  StructuredOutput,
+  ToolCallCard,
+  ToolCallGroup,
+  ToolCallGroupTrigger,
+} from '@gedatou/cadenza-ai'
+```
+
+```tsx
+// Inside a Transcript nothing is needed: TranscriptParts dispatches by part.type.
+// Standalone, each part takes the TanStack part object:
+<Markdown content={part.content} streaming />
+<Reasoning content={part.content} complete>Thought for </Reasoning>
+<ToolCallCard part={part} result={result} />
+```
+
+## Composition
+
+The tree `TranscriptParts` dispatches into:
+
+```text
+TranscriptParts               dispatch on part.type; a type hit in the registry uses your renderer
+├─ Markdown                   text
+├─ Reasoning                  thinking; complete decided by isThinkingComplete
+├─ ToolCallCard               tool-call (the tool-result with the same id goes with it)
+│  └─ ApprovalActions         while state is approval-requested and a live interrupt exists
+│     ├─ ApprovalApprove
+│     └─ ApprovalDeny
+├─ ToolCallGroup              ≥ 2 consecutive tool-calls fold into one group
+│  ├─ ToolCallGroupTrigger    wording labels.toolGroup(n)
+│  └─ ToolCallCard × n
+├─ MediaPart                  image / audio / video / document
+├─ StructuredOutput           structured-output
+└─ Sources                    at the end, when sourcesOf(message) is non-empty
+```
+
+Two part types have no built-in part: `tool-result` is already folded into its `ToolCallCard`,
+and `ui-resource` renders only once `renderers.uiResource` is registered.
+
+## Reasoning
+
+A `thinking` part streams open and shimmering, then folds itself and reports how long it took.
+
+<ComponentPreview name="ai/reasoning" align="stretch" />
+
+`Reasoning` is a [Collapsible](/docs/components/collapsible): the trigger is a real `<button>`
+inside a [Marker](/docs/components/marker) (keyboard and `aria-expanded` included), the panel is
+`Markdown`. It does exactly three things:
+
+- **The default open state follows `complete`**: open on first render while incomplete, closed
+  when already complete (first frame only; afterwards it is ordinary uncontrolled state). The
+  moment `complete` flips from `false` to `true` it folds once, with `reason: 'none'` in the
+  callback; **a block the reader has toggled by hand is never auto-folded** (send a second turn to see).
+- **The duration is data, the label is copy**: on completion it records
+  `Math.round((Date.now() - startedAt) / 1000)`, at least 1 second, rendered as `Ns` in
+  `data-slot="reasoning-duration"`; the "Thought for " before it is [`labels.thought`](#default-copy),
+  and `labels.thinking` while incomplete. `startedAt` defaults to the moment the part mounted —
+  which is when the reasoning arrived; restored history can pass the real timestamp.
+- **`complete` is the caller's call.** `TranscriptParts` uses `isThinkingComplete(message, index, status)`:
+  the run is no longer `streaming`, the provider signed it (`part.signature`), or a text /
+  tool-call part has already started after it — any one of the three means complete.
+
+## Tool calls
+
+One tool call is one collapsible card: the header holds only the tool name and a state icon,
+the body the input and output JSON.
+
+<ComponentPreview name="ai/tool-call" align="stretch" />
+
+`ToolCallCard` folds TanStack's seven `ToolCallState`s into five name-type attributes, and the
+header icon follows:
+
+| `part.state` | Attribute | Icon |
+| --- | --- | --- |
+| `awaiting-input` / `input-streaming` / `input-complete` | `data-pending` | [Spinner](/docs/components/spinner) |
+| `approval-requested` | `data-approval-requested` | clock |
+| `approval-responded` | `data-approval-responded` | — |
+| `complete` | `data-complete` | ✓ |
+| `error`, or `result.state === 'error'` | `data-error` | ✗ (`text-destructive`) |
+
+The panel holds, in order: the input (`part.input`; while the arguments are still streaming,
+`parsePartialJSON(part.arguments)` is the fallback, and the raw text if that fails), the output
+(`part.output ?? result.content`), the error line (`result.error`, `data-slot="tool-call-error"`),
+then `children`. Both JSON blocks are ```` ```json ```` code blocks rendered by `Markdown`, so
+they come with highlighting and copy; the input block parses leniently while `streaming` and
+pending. The card is closed by default; `open` / `defaultOpen` / `onOpenChange` work as in
+Collapsible, with `details.reason` being `'trigger-press'` or `'none'`.
+
+## Tool renderers
+
+Give one tool its own card by name and let the rest fall back to the default; override the copy
+in the same Provider.
+
+<ComponentPreview name="ai/tool-renderers" align="stretch" />
+
+`PartRenderersProvider` is an optional context: without it `TranscriptParts` uses the full
+defaults; with it, whichever part types `renderers` names are replaced. `toolCall` is keyed by
+tool name, with `default` catching the tools not named; each renderer receives `ToolRendererProps`:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `part` | `ToolCallPart` | `name` / `arguments` (raw string) / `input` (the parsed object once complete) / `state` / `output` |
+| `result` | `ToolResultPart \| undefined` | the result part of the same message with the same `toolCallId`, once it exists |
+| `interrupt` | `AnyToolApprovalInterrupt \| undefined` | the live interrupt while the call waits for approval: `originalArgs` / `status` / `resolveInterrupt` |
+| `streaming` | `boolean` | the run is streaming and this is the message's last part |
+
+`part.input` is `undefined` until the arguments have finished streaming; a custom card falls
+back to `parsePartialJSON(part.arguments)` like the default one does (the root entry re-exports
+it). The other keys — `text`, `thinking`, `toolResult`, `image` / `audio` / `video` / `document`,
+`structuredOutput`, `uiResource` — each receive their own part (plus `message` for `text` and
+media, `complete` for `thinking`, `streaming` for `text`). `definePartRenderers()` is an identity
+function with a type check, so a registry can be declared outside a component.
+
+Two merge rules: **`labels` merge with the parent** (write only the keys you change);
+**`renderers` replace wholesale** — a nested Provider that passes `renderers` no longer sees the
+parent's. `usePartRenderers()` returns `{ renderers, labels }`; a custom part reads the current
+copy from it.
+
+## Approval
+
+A tool with `needsApproval` parks the run on an interrupt and approve / deny appear at the bottom
+of the card; edit the arguments before approving and the edited ones are sent instead.
+
+<ComponentPreview name="ai/approval" align="stretch" />
+
+The flow is all TanStack's: the tool definition says `needsApproval: true` → the server (or the
+script) finishes on an interrupt → the part enters `approval-requested` and `useChat().interrupts`
+gains an entry with `kind: 'tool-approval'`. `TranscriptParts` finds it by `toolCallId` in
+[`TranscriptProvider.interrupts`](/docs/ai/conversation#props) and puts `ApprovalActions` into
+the `ToolCallCard`'s `children`:
+
+- `ApprovalApprove` calls `interrupt.resolveInterrupt(true, { editedArgs })`, `ApprovalDeny`
+  calls `resolveInterrupt(false)`; both are [Button](/docs/components/button)s (`size="sm"`, deny
+  is `outline`) whose wording comes from children — the default rendering uses
+  `labels.approve` / `labels.deny`.
+- Once `interrupt.status` leaves `'pending'` both buttons disable; the reader's choice is
+  written on the row as `data-approved` / `data-denied`.
+- An `onClick` that calls `preventDefault()` leaves the interrupt unresolved.
+- **Editing arguments takes a custom renderer** (the demo is one): the default card has only the
+  two buttons; a custom card reads the original arguments from `interrupt.originalArgs` and hands
+  the edited object to `ApprovalApprove editedArgs`.
+
+An `approval-requested` part without a live interrupt (restored history) takes the other path:
+when `part.approval` is present and `TranscriptProvider` was given `addToolApprovalResponse`, a
+pair of plain buttons calls `addToolApprovalResponse({ id: part.approval.id, approved })` — that
+pair is also `data-slot="approval-actions"`, but carries no `data-approved` / `data-denied`.
+
+## Client tools
+
+A `.client()` tool runs in the browser and its result is sent back automatically; a tool without
+an execute function answers by hand through `addToolResult`.
+
+<ComponentPreview name="ai/client-tool" align="stretch" />
+
+```tsx
+import { toolDefinition, useChat } from '@gedatou/cadenza-ai'
+import { z } from 'zod'
+
+const getViewport = toolDefinition({ name: 'get_viewport', inputSchema: z.object({}) })
+  .client(() => ({ width: window.innerWidth, height: window.innerHeight }))
+
+const chat = useChat({ fetcher, tools: [getViewport] })
+// Manual path, for a tool declared without .client():
+await chat.addToolResult({ toolCallId, tool: 'get_viewport', output: { width: 1280, height: 720 } })
+```
+
+Both paths look the same to the card: `data-pending` when the call arrives, `data-complete`
+once the result is back. `addToolResult` also takes `state: 'output-error'` with `errorText`,
+which puts the card into `data-error`. On the script side, `tool(name, input, { client: true })`
+emits the client-tool interrupt and the next turn reads what the browser computed with
+`clientResultOf(ctx, toolCallId)`.
+
+## Groups
+
+Several consecutive tool calls fold into one group behind a single trigger.
+
+When `TranscriptParts` meets a run of consecutive `tool-call`s (interleaved `tool-result`s do
+not break it), it wraps them in one `ToolCallGroup` whose trigger says `labels.toolGroup(n)`
+(`Ran 3 tools` by default). Standalone, it composes by position like
+[DialogTrigger](/docs/components/dialog): **the first child is the trigger, the rest go into the panel**.
+
+```tsx
+<ToolCallGroup count={calls.length}>
+  <ToolCallGroupTrigger>{`Ran ${calls.length} tools`}</ToolCallGroupTrigger>
+  {calls.map(([part, result]) => (
+    <ToolCallCard key={part.id} part={part} result={result} />
+  ))}
+</ToolCallGroup>
+```
+
+The group is closed by default and `data-count` mirrors `count`; `ToolCallGroupTrigger` is a
+`CollapsibleTrigger` and takes all of its props.
+
+## Attachments
+
+Images, documents and audio in a user message render by type.
+
+<ComponentPreview name="ai/attachments-in-message" align="stretch" />
+
+`MediaPart` takes the four part types `image` / `audio` / `video` / `document`; with
+`source.type === 'data'` it builds a `data:` URL, otherwise it uses `source.value` as is:
+
+| `part.type` | Rendered as | Title / alt |
+| --- | --- | --- |
+| `image` | an `<img>` inside an [Attachment](/docs/components/attachment) (`size="sm"`, vertical) | `metadata.name`, else the empty string |
+| `audio` | native `<audio controls>` | — |
+| `video` | native `<video controls>` | — |
+| `document` | an Attachment card with a file icon | `metadata.name`, then the MIME subtype, then `source.value` |
+
+`data-type` mirrors `part.type`. How files become these parts is in
+[Composer → Attachments](/docs/ai/composer#attachments).
+
+## Sources
+
+The links a provider-executed search brought back, folded into a list at the end of the message.
+
+`sourcesOf(message)` looks only at `tool-call` parts: a `metadata.sources` array is collected as
+is; when `metadata.providerExecuted === true` and the tool name matches `/search/i`, it also
+collects from `part.output` (an array or `{ results: [...] }`). Each entry needs a `url` string;
+`title` / `snippet` are optional; duplicates are removed by `url`. In a script:
+
+```tsx
+import { text, tool } from '@gedatou/cadenza-ai/mock'
+
+tool('web_search', { q: 'Philharmonie de Paris capacity' }, {
+  providerExecuted: true,
+  output: { results: [{ url: 'https://philharmoniedeparis.fr', title: 'Philharmonie de Paris', snippet: '2,400 seats.' }] },
+})
+text('The Philharmonie seats 2,400.')
+```
+
+`Sources` is closed by default; the trigger's wording comes from children (the default rendering
+uses `labels.sources(n)`), the panel is an ordered list with `target="_blank" rel="noreferrer"`
+links; `data-count` mirrors the number of entries.
+
+## Structured output
+
+A reply from `useChat({ outputSchema })` carries one more part, `structured-output`: progressively
+completed JSON while streaming, the validated data once complete.
+
+```tsx
+const chat = useChat({ fetcher, outputSchema: z.object({ works: z.array(z.string()), minutes: z.number() }) })
+// chat.partial / chat.final are typed by the schema; the message carries the part as well.
+```
+
+`StructuredOutput` switches on `part.status`: while `streaming` it renders the JSON block of
+`part.partial` (parsed leniently) plus a Spinner, on `complete` it renders `part.data`, on
+`error` it renders `part.errorMessage` (`data-slot="structured-output-error"`). In a script,
+`structured(object)` emits one.
+
+## Custom events
+
+A custom event is not a part: it never enters the message; `useChat`'s callback hands it to you.
+
+<ComponentPreview name="ai/custom-events" align="stretch" />
+
+```tsx
+const chat = useChat({
+  fetcher,
+  onCustomEvent: (name, data, { toolCallId }) => {
+    if (name === 'progress')
+      setProgress(data as { done: number, total: number })
+  },
+})
+```
+
+Scripts emit one with `custom(name, value)`; `TranscriptParts` has nothing to do with it. The two
+names `structured-output.start` / `structured-output.complete` are reserved by TanStack for
+structured output.
+
+## Default copy
+
+Every visible string of the built-in parts lives in `PartLabels`, overridden per key through
+`PartRenderersProvider labels={…}` and merged with the parent; `DEFAULT_PART_LABELS` is exported
+from the root entry too.
+
+| Key | Default | Appears in |
+| --- | --- | --- |
+| `thinking` | `'Thinking…'` | the `Reasoning` trigger while incomplete |
+| `thought` | `'Thought for '` | the `Reasoning` trigger once complete, followed by the seconds |
+| `toolGroup` | ``count => `Ran ${count} tools` `` | `ToolCallGroupTrigger` |
+| `approve` | `'Approve'` | the default-rendered `ApprovalApprove` and the history-replay approve button |
+| `deny` | `'Deny'` | the default-rendered `ApprovalDeny` and the history-replay deny button |
+| `sources` | ``count => `${count} sources` `` | the `Sources` trigger |
+| `toolPending` | `'Preparing'` | screen-reader text (`sr-only`) beside the `ToolCallCard` state icon: arguments still arriving (`awaiting-input` / `input-streaming`) |
+| `toolRunning` | `'Running'` | same: `input-complete`, the tool is executing |
+| `toolApprovalRequested` | `'Needs approval'` | same: `approval-requested` |
+| `toolApproved` | `'Approved'` | same: `approval-responded` with `approval.approved !== false` |
+| `toolDenied` | `'Denied'` | same: `approval-responded` with `approval.approved === false` |
+| `toolDone` | `'Done'` | same: `complete` |
+| `toolFailed` | `'Failed'` | same: `error` (or a result with `state === 'error'`) |
+
+The last seven keys are there for custom tool cards to read through `usePartRenderers().labels`,
+so copy stays in one place. English `aria-label` defaults (icon buttons and the like) are not in
+this table; override them through the part's props.
+
+## State and className
+
+State is expressed as named attributes: a boolean state is present as an empty-valued attribute
+while it holds; counts and types are value-typed.
+
+| Attribute | On | Value | When |
+| --- | --- | --- | --- |
+| `data-streaming` | `markdown` / `tool-call-card` / `structured-output` | empty | given `streaming`; structured output goes by `status === 'streaming'` |
+| `data-complete` | `reasoning` / `tool-call-card` / `structured-output` | empty | `complete` / `state === 'complete'` / `status === 'complete'` |
+| `data-open` | `reasoning` | empty | while open (Collapsible's own `data-open` / `data-closed` are there too) |
+| `data-pending` `data-approval-requested` `data-approval-responded` `data-error` | `tool-call-card` | empty | see the state table under [Tool calls](#tool-calls) |
+| `data-error` | `structured-output` | empty | `status === 'error'` |
+| `data-count` | `tool-call-group` / `sources` | `number` | calls in the group / number of sources |
+| `data-approved` `data-denied` | `approval-actions` | empty | after the reader pressed approve / deny |
+| `data-type` | `media-part` | `"image"` \| `"audio"` \| `"video"` \| `"document"` | mirrors `part.type` |
+| `data-open` `data-closed` `data-panel-open` | the roots / triggers of the four collapsible parts | see Collapsible | inherited from [Collapsible](/docs/components/collapsible#state-and-classname) |
+
+| `data-slot` | What it is |
+| --- | --- |
+| `markdown` | the `<div>` around streamdown |
+| `reasoning` / `reasoning-trigger` / `reasoning-duration` | collapsible root / trigger button / the duration `<span>` |
+| `tool-call-card` / `tool-call-card-trigger` / `tool-call-name` / `tool-call-error` | collapsible root / header button / tool name / error line |
+| `tool-call-group` / `tool-call-group-trigger` | the group's collapsible root / trigger |
+| `approval-actions` / `approval-approve` / `approval-deny` | the `role="group"` row / the two buttons |
+| `media-part` | the Attachment root or the native `<audio>` / `<video>` |
+| `sources` / `sources-trigger` | collapsible root / trigger |
+| `structured-output` / `structured-output-error` | root / error line |
+
+`className` is a `string` on all of these: `Markdown`'s lands on streamdown's own root (the
+`data-slot="markdown"` wrapper takes none), the four collapsible parts' on the Collapsible root,
+`ApprovalActions`' on the row, `MediaPart`'s on the Attachment root or the media element.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks → behaviour → appearance → `className`**.
+
+### Markdown
+
+[streamdown](https://streamdown.ai) with the code / math / CJK plugins: code blocks and tables
+with copy, links always in a new tab; shiki themes `github-light-default` / `vesper`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `content` | `string` | — | the Markdown source |
+| `streaming` | `boolean` | `false` | streaming mode + animation; `parseIncompleteMarkdown` is always on |
+| `translations` | `Partial<StreamdownTranslations>` | — | streamdown's own UI strings |
+| `className` | `string` | — | lands on streamdown's root `<div>` |
+
+### Reasoning
+
+The collapsible block for one piece of reasoning.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `content` | `string` | — | the reasoning text, rendered by `Markdown` |
+| `complete` | `boolean` | — | flipping to `true` folds once and freezes the duration |
+| `children` | `ReactNode` | — | the trigger's wording ("Thinking…" / "Thought for "); the part ships none |
+| `defaultOpen` | `boolean` | `!complete` on the first frame | — |
+| `open` | `boolean` | — | controlled |
+| `onOpenChange` | `(open, details: ReasoningChangeEventDetails) => void` | — | `reason` is `'trigger-press'` or `'none'` for the automatic fold; `details.cancel()` vetoes |
+| `startedAt` | `number` | `Date.now()` at mount | where timing starts |
+| `className` | `string` | — | lands on the Collapsible root |
+
+`ReasoningState`: `{ complete, open }`.
+
+### ToolCallCard
+
+The collapsible card for one tool call.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `part` | `ToolCallPart` | — | — |
+| `result` | `ToolResultPart` | — | the result part with the same id; `content` is the output, `error` the error line, `state === 'error'` also counts as failure |
+| `interrupt` | `AnyToolApprovalInterrupt` | — | same shape as `ToolRendererProps`, so it forwards as is; the card itself does not read it yet |
+| `defaultOpen` | `boolean` | `false` | — |
+| `open` | `boolean` | — | controlled |
+| `onOpenChange` | `(open, details: ToolCallChangeEventDetails) => void` | — | `reason` is `'trigger-press'` or `'none'` |
+| `streaming` | `boolean` | `false` | writes `data-streaming`; the input block parses leniently while pending |
+| `children` | `ReactNode` | — | the end of the panel — where `ApprovalActions` goes |
+| `className` | `string` | — | lands on the Collapsible root |
+
+`ToolCallCardState`: `{ pending, approvalRequested, approvalResponded, complete, error }`.
+
+### ToolCallGroup
+
+The collapsible group for consecutive tool calls; the first child is the trigger.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `count` | `number` | — | written as `data-count` |
+| `children` | `ReactNode \| ReactNode[]` | — | `ToolCallGroupTrigger` first, the cards after |
+| `defaultOpen` | `boolean` | `false` | — |
+| `open` | `boolean` | — | controlled |
+| `onOpenChange` | `(open, details: ToolCallChangeEventDetails) => void` | — | as `ToolCallCard` |
+| `className` | `string` | — | lands on the Collapsible root |
+
+### ToolCallGroupTrigger
+
+`CollapsibleTrigger` with `data-slot="tool-call-group-trigger"`; takes every
+[CollapsibleTrigger](/docs/components/collapsible#props) prop, wording yours.
+
+### ApprovalActions
+
+The approve / deny row, `role="group"`; resolves the approval through the interrupt.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `interrupt` | `AnyToolApprovalInterrupt` | — | both buttons disable once `status` leaves `'pending'` |
+| `children` | `ReactNode` | — | `ApprovalApprove` / `ApprovalDeny`, each with its wording |
+| `className` | `string` | — | lands on the row |
+
+### ApprovalApprove
+
+`Button size="sm"`; pressing it calls `interrupt.resolveInterrupt(true, { editedArgs })`.
+Takes every [Button](/docs/components/button#props) prop, plus:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `editedArgs` | `unknown` | — | the object sent in place of the original arguments |
+| `disabled` | `boolean` | — | OR-ed with "already responded" |
+| `onClick` | `MouseEventHandler` | — | runs before the interrupt is resolved; `preventDefault()` skips resolving |
+
+### ApprovalDeny
+
+`Button size="sm" variant="outline"`; pressing it calls `interrupt.resolveInterrupt(false)`.
+Takes every [Button](/docs/components/button#props) prop; `disabled` / `onClick` follow the
+`ApprovalApprove` rules.
+
+### MediaPart
+
+Renders one media part by type.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `part` | `ImagePart \| AudioPart \| VideoPart \| DocumentPart` | — | — |
+| `className` | `string` | — | lands on the Attachment root or on `<audio>` / `<video>` |
+
+### Sources
+
+The collapsible list of source links.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `sources` | `readonly Source[]` | — | `{ url, title?, snippet? }`, what `sourcesOf(message)` returns |
+| `children` | `ReactNode` | — | the trigger's wording ("3 sources"); the part ships none |
+| `defaultOpen` | `boolean` | `false` | — |
+| `open` | `boolean` | — | controlled |
+| `onOpenChange` | `(open, details: SourcesChangeEventDetails) => void` | — | `reason` is `'trigger-press'` or `'none'` |
+| `className` | `string` | — | lands on the Collapsible root |
+
+### StructuredOutput
+
+The `structured-output` part: the partial while streaming, the data once complete, the error
+message on failure.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `part` | `StructuredOutputPart` | — | `status` / `partial` / `data` / `errorMessage` |
+| `className` | `string` | — | lands on the root |
+
+The view types are exported alongside: `MarkdownProps` / `ReasoningProps` / `ReasoningState` /
+`ReasoningChangeEventDetails` / `ToolCallCardProps` / `ToolCallCardState` / `ToolCallChangeEventDetails` /
+`ToolCallGroupProps` / `ToolCallGroupTriggerProps` / `ApprovalActionsProps` / `ApprovalApproveProps` /
+`ApprovalDenyProps` / `MediaPartProps` / `SourcesProps` / `SourcesChangeEventDetails` / `StructuredOutputProps`;
+on the registry side: `PartLabels` / `PartRenderers` / `PartRenderersProviderProps` / `PartRenderersContextValue` /
+`ToolRenderer` / `ToolRendererProps` / `AnyToolApprovalInterrupt` / `Source`, along with
+`DEFAULT_PART_LABELS`, `definePartRenderers`, `usePartRenderers`, `isThinkingComplete`, `sourcesOf` and `parsePartialJSON`.

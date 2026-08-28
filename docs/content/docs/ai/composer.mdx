@@ -1,0 +1,380 @@
+---
+title: 输入区
+description: 一个 <form> 包一个 InputGroup——文本、附件、模型与思考强度、建议、排队、草稿、听写，全部只靠 useChat 的返回值接线
+---
+
+<ComponentPreview name="ai/composer" align="stretch" />
+
+`Composer` 是会话的输入端：一个 `<form>` 包一个 [InputGroup](/docs/components/input-group)，
+提交走 `onValueCommitted(value, details)`，`status` 从 `useChat` 传进来决定发送按钮是发送还是停止。
+其余部件都是这个表单里的插槽——附件条与附件按钮、听写按钮、模型与思考强度选择器——
+再加两个放在表单外面的：空态里的 `Suggestions` 与流式中的 `QueueList`。
+附件、模型选择、草稿三件事各有一个只依赖 `useChat` 返回值的 hook：`useAttachmentDraft`、
+`useModelSelection`、`useStoredState`。
+
+本页 demo 全部走 [脚本化传输](/docs/ai/scripted)，不需要密钥。
+
+## 使用
+
+```tsx
+import {
+  Composer,
+  ComposerAttach,
+  ComposerAttachments,
+  ComposerDictate,
+  ComposerSubmit,
+  ComposerTextarea,
+  ComposerToolbar,
+  ModelPicker,
+  QueueList,
+  Suggestions,
+  SuggestionsItem,
+  ThinkingLevelPicker,
+  useAttachmentDraft,
+  useModelSelection,
+  useStoredState,
+} from '@gedatou/cadenza-ai'
+```
+
+```tsx
+<Composer status={chat.status} onValueCommitted={text => void chat.sendMessage(text)} onStop={() => chat.stop()}>
+  <ComposerTextarea placeholder="Ask about the programme…" />
+  <ComposerToolbar>
+    <ComposerSubmit />
+  </ComposerToolbar>
+</Composer>
+```
+
+## 组成
+
+```text
+Composer                      <form> + InputGroup；data-submitted / data-streaming / data-error / data-dragging / data-editing
+├─ ComposerAttachments        待发附件条（放在文本域之前）
+├─ ComposerTextarea           InputGroupTextarea：自增高、Enter 提交、Shift+Enter 换行、Escape 停止或取消编辑
+└─ ComposerToolbar            InputGroupAddon align="block-end"
+   ├─ ComposerAttach          文件选择
+   ├─ ComposerDictate         录音
+   ├─ ModelPicker             模型（Combobox）
+   ├─ ThinkingLevelPicker     思考强度（Select；只有一档时不渲染）
+   └─ ComposerSubmit          空闲时发送，运行中停止
+
+Suggestions                   提示词 chip 行，通常放在 TranscriptEmpty 里
+└─ SuggestionsItem
+QueueList                     chat.queue 里排队的消息，各带取消
+```
+
+`Composer` 的 children 直接落在 `InputGroup` 里，所以文本域与工具条必须是它的直接子元素——
+InputGroup 的自增高与底部工具条规则靠 `>` 选择器；附件条也放在同一层，文本域之前。
+`Composer` 没有默认文案：占位符、工具条里的提示都由你写；图标按钮自带英文 `aria-label`，按 props 覆盖。
+
+## 附件
+
+文件从按钮、拖放或粘贴进来，先在附件条里等着，发送时变成消息的 content part。
+
+<ComponentPreview name="ai/attachments" align="stretch" />
+
+三个入口、一个草稿、一次转换：
+
+- **入口**：`ComposerAttach` 打开文件选择器，选中的文件走它的 `onFiles(files, { reason: 'input-change' })`；
+  `Composer` 自己的 `onFiles` 收拖放（`'drag'`）与粘贴（`'input-paste'`）——不传它，
+  拖放与粘贴按浏览器默认处理，`data-dragging` 也不会出现。
+- **草稿**：`useAttachmentDraft({ maxBytes, accept })` 持有待发列表，字段见下表。
+- **附件条**：`ComposerAttachments items onRemove` 把每一项画成 [Attachment](/docs/components/attachment)，
+  `item.state` 直接落到它的 `state`（`idle` / `uploading` / `done` / `error`），图片有缩略图，其余是回形针图标。
+- **发送**：`await draft.toParts()` 之后把文本与 part 合成 `MultimodalContent` 交给 `sendMessage`，再 `draft.clear()`。
+  `Composer` 只提交文本，合并由你做——demo 的 `onCommit` 就是这几行。
+
+`useAttachmentDraft` 返回的 `AttachmentDraft`：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `items` | `readonly DraftAttachment[]` | `{ id, kind, state, name, mimeType, size, file?, part?, error?, previewUrl? }` |
+| `add` | `(items: (File \| ContentPart)[]) => void` | 文件按 MIME（没有就按扩展名）归到 `image` / `audio` / `video` / `document`；不在 `accept` 里的进 `state: 'error'`、`error: 'unsupported'`，超过 `maxBytes` 的 `error: 'too-large'`；现成的 part（听写）直接 `'done'` |
+| `remove` / `clear` | `(id) => void` / `() => void` | 一并回收图片缩略图的 object URL |
+| `toParts` | `() => Promise<ContentPart[]>` | 跳过出错项，把文件读成 base64 的 `data` part |
+| `accept` | `string` | 给 `<input type="file">` 的 `accept`，由 `accept` 选项算出 |
+
+`document` 只认 `application/pdf` / `text/plain` / `text/markdown`。`fileToContentPart(file, { maxBytes })`
+是 `toParts` 用的那一步，可以单独调。
+
+**为什么默认 3 MiB**：`DEFAULT_MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024`。附件以 base64 内联在 JSON 请求体里，
+体积膨胀到原文件的约 4/3；Vercel 函数的请求体上限是 4.5 MB，一个 3 MiB 的文件编码后约 4 MiB，
+刚好留在线内。上限是**逐文件**的（`fileToContentPart` 逐个检查），多个附件加起来仍可能超过平台上限；
+自建服务用 `maxBytes` 改，服务端另有 [`createChatHandler` 的 `maxBodyBytes`](/docs/ai/providers#route-handler)（默认 4 MiB，超过回 413）兜底。
+
+## 模型与思考强度
+
+模型选择器按 provider 分组、可搜索，值是 `provider/model`；思考强度只列这个模型支持的档位。
+
+<ComponentPreview name="ai/model-picker" align="stretch" />
+
+- `ModelPicker` 是一个 [Combobox](/docs/components/combobox)：搜索匹配模型名、id 与 provider 名；
+  条目右侧按 `Model` 的元数据显示推理图标、视觉图标与上下文窗口（`128k` / `1M`）。
+  值是 `modelRef(model)` 的 `provider/model` 字符串，`parseModelRef` 拆回去。
+  传 `byok` 快照时，需要密钥但还没填的 provider 的分组标题带 `data-key-missing` 与钥匙图标；
+  `disabledProviders` 把整组条目禁用。
+- `ThinkingLevelPicker` 是一个 [Select](/docs/components/select)，选项来自 `supportedThinkingLevels(model)`；
+  **只有一档（不支持推理的模型）时返回 `null`**，所以切到 GPT-4.1 它就消失。
+- `useModelSelection({ catalog, key, initial })` 把两者串起来并持久化（`localStorage`，键默认 `cadenza-ai:selection`）：
+  `selection` / `model` / `provider`、`setModel(ref)`（把思考档位 clamp 到新模型支持的范围）、
+  `setThinking(level)`，以及给 `useChat({ forwardedProps })` 的稳定对象 `forwardedProps`——
+  切完模型立刻发送也用新值，服务端从 `data.provider` / `data.model` / `data.thinking` 读。
+
+七个档位从弱到强：`off` / `minimal` / `low` / `medium` / `high` / `xhigh` / `max`。
+
+<ComponentPreview name="ai/thinking-levels" align="stretch" />
+
+`supportedThinkingLevels(model)`：不支持推理 → `['off']`；支持 → `model.thinkingLevels`，
+缺省是全部七档。`clampThinkingLevel(model, level)`：支持就原样返回，否则向下取最近的支持档；
+目标低于模型下限（Claude Fable 5 不可关，最低 `low`）时取下限。每家 provider 把档位翻成什么参数，
+见 [接入提供者 → 思考强度](/docs/ai/providers#思考强度)。
+
+## 建议
+
+一排提示词 chip，按下即发送。
+
+<ComponentPreview name="ai/suggestions" align="stretch" />
+
+`Suggestions` 是一个横向 [ScrollArea](/docs/components/scroll-area) 里的 `role="group"`，
+值经根部的 `onValueChange(value, { reason: 'item-press' })` 上来——同 Base UI 的 Menu / Select，
+条目自己不带回调。`SuggestionsItem` 是 `Button variant="outline" size="sm"`，`value` 通常就是提示词本身，
+显示文案可以短一些；`data-value` 镜像它。放在 `TranscriptEmpty` 里，第一条消息一到它就跟着空态一起消失。
+
+## 排队
+
+运行中再发的消息默认排队，运行成功收尾后自动发出；`QueueList` 列出它们，各带一个取消。
+
+```tsx
+const chat = useChat({ fetcher, queue: { whenBusy: 'queue', drain: 'fifo', maxSize: 3, onOverflow: 'drop-oldest' } })
+
+<QueueList queue={chat.queue} onCancel={id => chat.cancelQueued(id)}>
+  <p className="text-xs text-muted-foreground">Sends when the reply finishes.</p>
+</QueueList>
+```
+
+队列是 TanStack 的：`useChat({ queue })` 收 `'queue'` / `'drop'` / `'interrupt'`（等价于 `{ whenBusy }`）、
+一个 `QueueConfig`（`whenBusy` / `drain: 'fifo' | 'batch'` / `maxSize` / `onOverflow: 'reject' | 'drop-oldest'`），
+或一个按次决定的函数；单次 `sendMessage(text, { whenBusy })` 覆盖策略。`chat.queue` 是 `QueuedMessage[]`
+（`{ id, content, createdAt }`），`chat.cancelQueued(id)` 在发出前撤回；`stop()`、出错、`clear()`、`reload()`
+都会清空队列。`QueueList` 把每条画成一个 [Item](/docs/components/item)（`size="xs"`）：
+文本内容原样，多模态内容把文本 part 拼起来、其余写成 `[image]` 这样的占位；
+右侧是 `aria-label="Cancel"` 的图标按钮，`onCancel(id, { reason: 'none' })`。`children` 排在行之后。
+
+## 草稿
+
+输入到一半切走再切回来，草稿还在——把 `Composer` 的值放进 `localStorage`。
+
+```tsx
+const [draft, setDraft] = useStoredState(`cadenza-ai:draft:${threadId}`, '')
+
+<Composer
+  status={chat.status}
+  value={draft}
+  onValueChange={setDraft}
+  onValueCommitted={text => void chat.sendMessage(text)}
+>
+  <ComposerTextarea />
+  <ComposerToolbar><ComposerSubmit /></ComposerToolbar>
+</Composer>
+```
+
+`useStoredState(key, initial)` 是一个 `useState`，值经 `JSON` 往返 `localStorage[key]`：
+同一个 key 的多个 hook 同步，跨标签页经 `storage` 事件同步；服务端渲染返回 `initial`，
+没有 storage（隐私模式、被禁的站点数据）时退回内存副本，写入永不抛错。
+`Composer` 提交后把值设成空串，草稿随之清掉。`useModelSelection` 的持久化用的也是它。
+
+## 听写
+
+按一下开始录音，再按一下停止；录好的音频作为附件进入附件条，随下一条消息发出。
+
+<ComponentPreview name="ai/dictate" align="stretch" />
+
+`ComposerDictate` 包着 TanStack 的 `useAudioRecorder()`：录音中 `aria-pressed` 与 `data-recording` 在场，
+停止后 `recording.part`（一个 `AudioPart`）交给 `onRecording(part, { reason: 'imperative-action' })`——
+`draft.add([part])` 就把它放进附件条（`state: 'done'`），发送路径与文件附件相同。
+需要麦克风权限；浏览器不支持 `MediaRecorder` 时按钮禁用（`recorder.isSupported`）。
+包内不做转写，音频原样作为 part 发给模型。
+
+## 状态与 className
+
+`Composer` 的状态镜像 `status` 与两个本地态，全是名称型属性；其余部件各有一两个。
+
+| 属性 | 出现在 | 值 | 出现时机 |
+| --- | --- | --- | --- |
+| `data-submitted` `data-streaming` `data-error` | `composer` | 空串 | 镜像 `status`；`ready` 是三者都不在场 |
+| `data-dragging` | `composer` | 空串 | 传了 `onFiles` 且有文件拖在表单上方 |
+| `data-editing` | `composer` | 空串 | 传了 `editing` |
+| `data-recording` | `composer-dictate` | 空串 | 录音中（同时 `aria-pressed="true"`） |
+| `data-value` | `suggestions-item` | `string` | 镜像 `value` |
+| `data-key-missing` | `model-picker` 弹层里的分组标题 | 空串 | 传了 `byok` 且该 provider 需要密钥而状态为 `empty` |
+| `data-state` | `composer-attachments` 里的每个 Attachment | `"idle"` \| `"uploading"` \| `"done"` \| `"error"` | 镜像 `item.state`，见 [Attachment](/docs/components/attachment#状态与-classname) |
+| `disabled` | `composer-submit` | — | 空草稿（`trim()` 后为空，除非 `allowEmpty`）或 `Composer disabled`；运行中它是 `type="button"` 的停止键 |
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `composer` | 根 `<form>` |
+| `composer-textarea` | `InputGroupTextarea` |
+| `composer-toolbar` | `InputGroupAddon`（`align="block-end"`） |
+| `composer-submit` | 发送 / 停止按钮（`aria-label` `Send` / `Stop`） |
+| `composer-attach` | 附件按钮；它前面有一个 `hidden` 的 `<input type="file">` |
+| `composer-attachments` | `AttachmentGroup` |
+| `composer-dictate` | 录音按钮 |
+| `suggestions` / `suggestions-item` | `role="group"` 的行 / 一个 chip |
+| `queue-list` / `queue-list-item` | `ItemGroup` / 一行 |
+| `model-picker` | Combobox 的触发器按钮 |
+| `thinking-level-picker` | Select 的触发器按钮 |
+
+`className` 在这些部件上都是 `string`：`Composer` 的落在 `<form>` 上，`ComposerTextarea` / `ComposerToolbar` /
+`ComposerSubmit` / `ComposerAttach` / `ComposerDictate` 的落在各自的 InputGroup 部件上，`ComposerAttachments` 的落在
+`AttachmentGroup` 上，`Suggestions` 的落在 ScrollArea 根上，`QueueList` 的落在 `ItemGroup` 上，
+两个选择器的落在触发器按钮上。
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| `Enter`（焦点在 `ComposerTextarea`） | 提交，`onValueCommitted(value, { reason: 'keyboard' })`；输入法组合中（`isComposing` / `key === 'Process'`）不触发；空草稿不触发 |
+| `Shift` + `Enter` | 换行 |
+| `Escape` | `editing` 时 `onEditCancel`；否则 `submitted` / `streaming` 时 `onStop`；其余无事 |
+| `Tab` | 文本域 → 工具条里的按钮与选择器，按 DOM 顺序 |
+| `Enter` / `Space`（焦点在 `ComposerDictate`） | 开始 / 停止录音 |
+| 选择器内 | 同 [Combobox](/docs/components/combobox#键盘交互) / [Select](/docs/components/select#键盘交互) |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### Composer
+
+根 `<form>` + `InputGroup`，持有草稿文本并向下发 context（`useComposer()` 可读）。
+原生的 `onSubmit` / `onChange` / `value` / `defaultValue` 被去掉，换成下面带 `details` 的版本。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `status` | `ChatClientState` | — | `chat.status`；决定发送 / 停止与 `data-*` |
+| `onValueCommitted` | `(value: string, details: GenericEventDetails<'keyboard' \| 'none'>) => void` | — | Enter 或表单提交；之后草稿清空。`disabled` 或空白草稿不触发 |
+| `children` | `ReactNode` | — | 附件条、文本域、工具条 |
+| `defaultValue` | `string` | `''` | 草稿初值 |
+| `value` | `string` | — | 受控草稿 |
+| `onValueChange` | `(value, details: ChangeEventDetails<'input-change' \| 'none'>) => void` | — | 输入是 `'input-change'`，提交后清空是 `'none'`；`details.cancel()` 可否决 |
+| `onStop` | `(details: GenericEventDetails<'escape-key' \| 'none'>) => void` | — | `submitted` / `streaming` 时按 Escape 或按停止键 |
+| `onEditCancel` | `(details: GenericEventDetails<'escape-key'>) => void` | — | `editing` 时按 Escape，优先于 `onStop` |
+| `onFiles` | `(files: File[], details: GenericEventDetails<'drag' \| 'input-paste'>) => void` | — | 拖到表单上或粘贴进来的文件；不传则不拦截 |
+| `editing` | `boolean` | `false` | 编辑重发态，写 `data-editing` |
+| `allowEmpty` | `boolean` | `false` | 允许提交空草稿——附件条承载内容时打开；发送键随之可用 |
+| `disabled` | `boolean` | `false` | 文本域、附件、听写、发送一并禁用 |
+| `className` | `string` | — | 落在 `<form>` 上 |
+| 其余 | `ComponentProps<'form'>` 去掉上述四个原生名 | — | 透传给 `<form>` |
+
+`ComposerState`：`{ submitted, streaming, error, dragging, editing }`。
+
+### ComposerTextarea
+
+`InputGroupTextarea`，`rows={1}`、内容自增高（`field-sizing-content`）、最高 `max-block-48`。
+`value` / `onChange` 由 context 接管；收 [InputGroupTextarea](/docs/components/input-group#props) 的其余 props，
+自己的 `onChange` / `onKeyDown` 先调用，`preventDefault()` 后部件不再处理。
+
+### ComposerToolbar
+
+`InputGroupAddon align="block-end"`；收 [InputGroupAddon](/docs/components/input-group#props) 的全部 props。
+
+### ComposerSubmit
+
+空闲时 `type="submit"` 的发送键（`aria-label="Send"`，空草稿禁用），`submitted` / `streaming` 时变成
+`type="button"` 的停止键（`aria-label="Stop"`，调 `onStop`）；`size="icon-sm"`。
+收 [Button](/docs/components/button#props) 的全部 props，`children` 替换默认图标。
+
+### ComposerAttach
+
+`InputGroupButton size="icon-xs"`（`aria-label="Attach"`）+ 一个隐藏的 `<input type="file">`；
+每次选择后清空 input，所以同一个文件可以再选一次。收
+[InputGroupButton](/docs/components/input-group#props) 的全部 props，另加：
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `onFiles` | `(files: File[], details: GenericEventDetails<'input-change'>) => void` | — | 选中的文件 |
+| `accept` | `string` | — | 透传给 `<input>`；通常是 `draft.accept` |
+| `multiple` | `boolean` | `true` | — |
+
+### ComposerAttachments
+
+待发附件条，`AttachmentGroup` 里每项一个 `Attachment size="sm"`；`items` 为空时不渲染任何东西。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `items` | `readonly DraftAttachment[]` | — | `draft.items` |
+| `onRemove` | `(id: string, details: GenericEventDetails<'none'>) => void` | — | 每项右侧 `aria-label="Remove"` 的按钮 |
+| `className` | `string` | — | 落在 `AttachmentGroup` 上 |
+
+### ComposerDictate
+
+`InputGroupButton size="icon-xs"`（`aria-label="Dictate"`），按一下开始、再按停止；
+不支持录音时禁用。收 [InputGroupButton](/docs/components/input-group#props) 的全部 props，另加：
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `onRecording` | `(part: AudioPart, details: GenericEventDetails<'imperative-action'>) => void` | — | 停止后的录音 part |
+
+### Suggestions
+
+横向滚动的 chip 行，`role="group"`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `onValueChange` | `(value: string, details: ChangeEventDetails<'item-press'>) => void` | — | 被按下的 chip 的 `value` |
+| `children` | `ReactNode` | — | 若干 `SuggestionsItem` |
+| `className` | `string` | — | 落在 ScrollArea 根上 |
+
+### SuggestionsItem
+
+`Button variant="outline" size="sm"`；收 [Button](/docs/components/button#props) 除 `value` 外的全部 props，另加：
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `value` | `string` | — | 交给根的 `onValueChange`；写成 `data-value` |
+
+### QueueList
+
+排队消息列表，`ItemGroup`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `queue` | `readonly QueuedMessage[]` | — | `chat.queue` |
+| `onCancel` | `(id: string, details: GenericEventDetails<'none'>) => void` | — | 每行的取消按钮；通常是 `chat.cancelQueued` |
+| `children` | `ReactNode` | — | 排在行之后的标题或提示 |
+| `className` | `string` | — | 落在 `ItemGroup` 上 |
+
+### ModelPicker
+
+按 provider 分组、可搜索的模型 Combobox；值是 `provider/model`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `catalog` | `Catalog` | — | 通常是 `defaultCatalog` |
+| `onValueChange` | `(ref: string, details: ComboboxChangeEventDetails) => void` | — | Combobox 自己的 details，实际为 `item-press` / `none` |
+| `defaultValue` | `string` | — | — |
+| `value` | `string` | — | 受控 |
+| `byok` | `ByokSnapshot` | — | 有它才标 `data-key-missing` |
+| `disabledProviders` | `readonly string[]` | — | 这些 provider 的条目禁用 |
+| `className` | `string` | — | 落在触发器按钮上 |
+
+### ThinkingLevelPicker
+
+模型支持的思考档位 Select；无可选时返回 `null`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `onValueChange` | `(level: ThinkingLevel, details: SelectChangeEventDetails) => void` | — | Select 自己的 details |
+| `model` | `Model` | — | 决定档位；缺省视为不支持推理 |
+| `defaultValue` | `ThinkingLevel` | — | — |
+| `value` | `ThinkingLevel` | — | 受控 |
+| `className` | `string` | — | 落在触发器按钮上 |
+
+类型一并导出：`ComposerProps` / `ComposerState` / `ComposerSubmitReason` / `ComposerChangeEventDetails` /
+`ComposerTextareaProps` / `ComposerToolbarProps` / `ComposerSubmitProps` / `ComposerAttachProps` /
+`ComposerAttachmentsProps` / `ComposerDictateProps` / `SuggestionsProps` / `SuggestionsItemProps` /
+`SuggestionsChangeEventDetails` / `QueueListProps` / `ModelPickerProps` / `ModelPickerChangeEventDetails` /
+`ThinkingLevelPickerProps` / `ThinkingLevelPickerChangeEventDetails`；hook 一侧：`AttachmentDraft` /
+`DraftAttachment` / `AttachmentKind` / `AttachmentState` / `UseAttachmentDraftOptions` / `ModelSelection` /
+`UseModelSelectionOptions` / `UseModelSelectionReturn`，以及 `DEFAULT_MAX_ATTACHMENT_BYTES`、
+`attachmentKindOf`、`fileToContentPart`、`useComposer`。

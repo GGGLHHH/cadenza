@@ -8,8 +8,8 @@ import {
   MessageScrollerViewport,
   useMessageScrollerVisibility,
 } from '@gedatou/cadenza-ui'
+import { ResettableDemo } from '../lib/resettable'
 import { MessageRow } from './message-row'
-import { ResettableDemo } from './resettable'
 import { TRANSCRIPT } from './transcript'
 
 const ANCHORS = TRANSCRIPT.filter(message => message.role === 'user').map(message => message.id)

@@ -1,0 +1,463 @@
+---
+title: 消息部件
+description: 一条消息里的每一种 part 各有一个内置部件——Markdown、推理、工具调用与审批、附件、来源、结构化输出——按名替换，文案一处覆盖
+---
+
+<ComponentPreview name="ai/tool-call" align="stretch" />
+
+TanStack AI 的一条 `UIMessage` 是若干 `part`：`text`、`thinking`、`tool-call` / `tool-result`、
+`image` / `audio` / `video` / `document`、`structured-output`……
+[`TranscriptParts`](/docs/ai/conversation#props) 按 `part.type` 把每一个交给本页的内置部件，
+每个部件也都可以脱离 Transcript 单独用——它们只收 TanStack 的 part 对象，不碰 `useChat`。
+要换掉其中某一种，在 [工具渲染器](#工具渲染器) 里按名注册；内置部件的文案集中在
+[默认文案](#默认文案)。
+
+本页 demo 全部走 [脚本化传输](/docs/ai/scripted)，不需要密钥。
+
+## 使用
+
+```tsx
+import {
+  ApprovalActions,
+  ApprovalApprove,
+  ApprovalDeny,
+  definePartRenderers,
+  Markdown,
+  MediaPart,
+  PartRenderersProvider,
+  Reasoning,
+  Sources,
+  StructuredOutput,
+  ToolCallCard,
+  ToolCallGroup,
+  ToolCallGroupTrigger,
+} from '@gedatou/cadenza-ai'
+```
+
+```tsx
+// Inside a Transcript nothing is needed: TranscriptParts dispatches by part.type.
+// Standalone, each part takes the TanStack part object:
+<Markdown content={part.content} streaming />
+<Reasoning content={part.content} complete>Thought for </Reasoning>
+<ToolCallCard part={part} result={result} />
+```
+
+## 组成
+
+`TranscriptParts` 分发出来的树：
+
+```text
+TranscriptParts               按 part.type 分发；注册表命中的类型用你的渲染器
+├─ Markdown                   text
+├─ Reasoning                  thinking；complete 由 isThinkingComplete 判定
+├─ ToolCallCard               tool-call（同 id 的 tool-result 一并交给它）
+│  └─ ApprovalActions         state 为 approval-requested 且有活中断时
+│     ├─ ApprovalApprove
+│     └─ ApprovalDeny
+├─ ToolCallGroup              连续 ≥ 2 个 tool-call 折成一组
+│  ├─ ToolCallGroupTrigger    文案 labels.toolGroup(n)
+│  └─ ToolCallCard × n
+├─ MediaPart                  image / audio / video / document
+├─ StructuredOutput           structured-output
+└─ Sources                    末尾；sourcesOf(message) 非空时
+```
+
+`tool-result` 与 `ui-resource` 两种 part 没有内置部件：前者已经并进对应的 `ToolCallCard`，
+后者只有注册了 `renderers.uiResource` 才渲染。
+
+## 推理
+
+`thinking` part 流式时展开、闪烁，完成后自己折起来并报出耗时。
+
+<ComponentPreview name="ai/reasoning" align="stretch" />
+
+`Reasoning` 是一个 [Collapsible](/docs/components/collapsible)：触发器是 [Marker](/docs/components/marker)
+里的一个真 `<button>`（键盘与 `aria-expanded` 都在），面板里是 `Markdown`。
+它只做三件事：
+
+- **开合的默认值跟 `complete` 走**：首次渲染时未完成就展开、已完成就收起（只在首帧生效，
+  之后是普通的非受控状态）。`complete` 从 `false` 翻成 `true` 的那一刻自动收起一次，
+  回调收到 `reason: 'none'`；**读者手动开合过就不再自动收起**（第二轮发送可以验证）。
+- **耗时是数据，标签是文案**：完成瞬间记下 `Math.round((Date.now() - startedAt) / 1000)`，
+  至少 1 秒，渲染成 `data-slot="reasoning-duration"` 的 `Ns`；前面的「Thought for 」来自
+  [`labels.thought`](#默认文案)，未完成时是 `labels.thinking`。`startedAt` 默认是部件挂载的时刻，
+  也就是这段推理到达的时刻；恢复的历史可以传真实时间戳。
+- **`complete` 由调用方判定**。`TranscriptParts` 用 `isThinkingComplete(message, index, status)`：
+  运行不在 `streaming`、provider 签过名（`part.signature`）、或后面已经出现 text / tool-call part，
+  三者任一成立即为完成。
+
+## 工具调用
+
+一次工具调用是一张可折叠的卡片：标题只有工具名和状态图标，展开是输入输出的 JSON。
+
+<ComponentPreview name="ai/tool-call" align="stretch" />
+
+`ToolCallCard` 把 TanStack 的七个 `ToolCallState` 折成五个名称型属性，标题图标跟着走：
+
+| `part.state` | 属性 | 图标 |
+| --- | --- | --- |
+| `awaiting-input` / `input-streaming` / `input-complete` | `data-pending` | [Spinner](/docs/components/spinner) |
+| `approval-requested` | `data-approval-requested` | 时钟 |
+| `approval-responded` | `data-approval-responded` | — |
+| `complete` | `data-complete` | ✓ |
+| `error`，或 `result.state === 'error'` | `data-error` | ✗（`text-destructive`） |
+
+面板内容依次是：输入（`part.input`；参数还在流式时用 `parsePartialJSON(part.arguments)`
+兜底，解析不了就显示原文）、输出（`part.output ?? result.content`）、错误行
+（`result.error`，`data-slot="tool-call-error"`）、`children`。两段 JSON 都是 `Markdown`
+渲染的 ```` ```json ```` 代码块，所以自带高亮与复制；输入块在 `streaming` 且 pending 时走流式解析。
+卡片默认收起，`open` / `defaultOpen` / `onOpenChange` 三件套同 Collapsible，
+`onOpenChange` 的 `details.reason` 是 `'trigger-press'` 或 `'none'`。
+
+## 工具渲染器
+
+按工具名给某个工具一张自己的卡片，其余回退到默认；文案在同一个 Provider 里覆盖。
+
+<ComponentPreview name="ai/tool-renderers" align="stretch" />
+
+`PartRenderersProvider` 是可选的 context：不放它，`TranscriptParts` 用全套默认；放了，
+`renderers` 里写了哪种 part 就换哪种。`toolCall` 按工具名索引，`default` 兜住没点名的工具；
+每个渲染器收 `ToolRendererProps`：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `part` | `ToolCallPart` | `name` / `arguments`（原始字符串）/ `input`（完整后解析出的对象）/ `state` / `output` |
+| `result` | `ToolResultPart \| undefined` | 同一条消息里 `toolCallId` 相同的结果 part，有了才有 |
+| `interrupt` | `AnyToolApprovalInterrupt \| undefined` | 等待审批时的活中断，`originalArgs` / `status` / `resolveInterrupt` |
+| `streaming` | `boolean` | 运行在流式中且这是消息的最后一个 part |
+
+`part.input` 在参数流完之前是 `undefined`，自定义卡片要像默认卡片一样拿 `parsePartialJSON(part.arguments)`
+兜底（root 入口转出了它）。其他键——`text`、`thinking`、`toolResult`、`image` / `audio` / `video` / `document`、
+`structuredOutput`、`uiResource`——各收自己的 part（以及 `text` / 媒体的 `message`、`thinking` 的 `complete`、
+`text` 的 `streaming`）。`definePartRenderers()` 只是带类型检查的恒等函数，让注册表可以写在组件外面。
+
+两条合并规则：**`labels` 与上层合并**（只写要改的键），**`renderers` 整份替换**——嵌套的 Provider
+传了 `renderers` 就不再看上层的。`usePartRenderers()` 返回 `{ renderers, labels }`，
+自定义部件用它取当前文案。
+
+## 审批
+
+带 `needsApproval` 的工具让运行停在中断上，卡片底部出现批准 / 拒绝；改过参数再批准，改的参数替代原参数发出去。
+
+<ComponentPreview name="ai/approval" align="stretch" />
+
+流程全在 TanStack 一侧：工具定义 `needsApproval: true` → 服务端（或脚本）以中断收尾 →
+part 进入 `approval-requested`，`useChat().interrupts` 里出现一条 `kind: 'tool-approval'` 的中断。
+`TranscriptParts` 从 [`TranscriptProvider.interrupts`](/docs/ai/conversation#props) 里按
+`toolCallId` 找到它，把 `ApprovalActions` 放进 `ToolCallCard` 的 `children`：
+
+- `ApprovalApprove` 调 `interrupt.resolveInterrupt(true, { editedArgs })`，`ApprovalDeny` 调
+  `resolveInterrupt(false)`；两者都是 [Button](/docs/components/button)（`size="sm"`，拒绝是 `outline`），
+  文案由 children 给——默认渲染用 `labels.approve` / `labels.deny`。
+- `interrupt.status` 离开 `'pending'` 后两个按钮都禁用；读者的选择写到行上：`data-approved` / `data-denied`。
+- 传了 `onClick` 且 `preventDefault()`，就不解决中断。
+- **要编辑参数就得自定义渲染器**（demo 就是）：默认卡片只有两个按钮；自定义卡片从
+  `interrupt.originalArgs` 取原参数，把改好的对象交给 `ApprovalApprove editedArgs`。
+
+没有活中断的 `approval-requested` part（恢复的历史）走另一条路：`part.approval` 在且
+`TranscriptProvider` 传了 `addToolApprovalResponse`，就渲染一对普通按钮调
+`addToolApprovalResponse({ id: part.approval.id, approved })`——这对按钮同样是 `data-slot="approval-actions"`，
+但没有 `data-approved` / `data-denied`。
+
+## 客户端工具
+
+`.client()` 的工具在浏览器里执行，结果自动回传；没有执行函数的工具，用 `addToolResult` 手动回。
+
+<ComponentPreview name="ai/client-tool" align="stretch" />
+
+```tsx
+import { toolDefinition, useChat } from '@gedatou/cadenza-ai'
+import { z } from 'zod'
+
+const getViewport = toolDefinition({ name: 'get_viewport', inputSchema: z.object({}) })
+  .client(() => ({ width: window.innerWidth, height: window.innerHeight }))
+
+const chat = useChat({ fetcher, tools: [getViewport] })
+// Manual path, for a tool declared without .client():
+await chat.addToolResult({ toolCallId, tool: 'get_viewport', output: { width: 1280, height: 720 } })
+```
+
+两条路径对卡片是一样的：调用到达时 `data-pending`，结果回来后 `data-complete`。
+`addToolResult` 还收 `state: 'output-error'` 与 `errorText`，那样卡片进入 `data-error`。
+脚本侧用 `tool(name, input, { client: true })` 发出客户端工具中断，下一轮用 `clientResultOf(ctx, toolCallId)`
+读回浏览器算出的值。
+
+## 分组
+
+连续多个工具调用折成一组，只露一个触发器。
+
+`TranscriptParts` 扫到连续的 `tool-call`（中间夹着的 `tool-result` 不打断）时，把它们塞进一个
+`ToolCallGroup`，触发器文案是 `labels.toolGroup(n)`（默认 `Ran 3 tools`）。单独用时按位置组合，
+同 [DialogTrigger](/docs/components/dialog)：**第一个 child 是触发器，其余进面板**。
+
+```tsx
+<ToolCallGroup count={calls.length}>
+  <ToolCallGroupTrigger>{`Ran ${calls.length} tools`}</ToolCallGroupTrigger>
+  {calls.map(([part, result]) => (
+    <ToolCallCard key={part.id} part={part} result={result} />
+  ))}
+</ToolCallGroup>
+```
+
+组默认收起，`data-count` 镜像 `count`；`ToolCallGroupTrigger` 就是 `CollapsibleTrigger`，收它的全部 props。
+
+## 附件
+
+用户消息里的图片、文档、音频按类型渲染。
+
+<ComponentPreview name="ai/attachments-in-message" align="stretch" />
+
+`MediaPart` 收 `image` / `audio` / `video` / `document` 四种 part，`source.type === 'data'`
+时拼成 `data:` URL，否则直接用 `source.value`：
+
+| `part.type` | 渲染成 | 标题 / alt |
+| --- | --- | --- |
+| `image` | [Attachment](/docs/components/attachment)（`size="sm"`，竖排）里的 `<img>` | `metadata.name`，没有则空串 |
+| `audio` | 原生 `<audio controls>` | — |
+| `video` | 原生 `<video controls>` | — |
+| `document` | Attachment 卡片 + 文件图标 | `metadata.name`，其次 MIME 子类型，最后 `source.value` |
+
+`data-type` 镜像 `part.type`。怎么把文件变成这些 part，见 [输入区 → 附件](/docs/ai/composer#附件)。
+
+## 来源
+
+provider 自己执行的搜索带回的链接，收在一条消息末尾的折叠列表里。
+
+`sourcesOf(message)` 只看 `tool-call` part：`metadata.sources` 数组直接收；
+`metadata.providerExecuted === true` 且工具名匹配 `/search/i` 的，再从 `part.output`
+（数组或 `{ results: [...] }`）里收。每一项要有 `url` 字符串，`title` / `snippet` 可选，
+按 `url` 去重。脚本里这样造：
+
+```tsx
+import { text, tool } from '@gedatou/cadenza-ai/mock'
+
+tool('web_search', { q: 'Philharmonie de Paris capacity' }, {
+  providerExecuted: true,
+  output: { results: [{ url: 'https://philharmoniedeparis.fr', title: 'Philharmonie de Paris', snippet: '2,400 seats.' }] },
+})
+text('The Philharmonie seats 2,400.')
+```
+
+`Sources` 默认收起，触发器文案来自 children（默认渲染用 `labels.sources(n)`），面板是有序列表，
+链接 `target="_blank" rel="noreferrer"`；`data-count` 镜像条数。
+
+## 结构化输出
+
+`useChat({ outputSchema })` 的回复多一个 `structured-output` part：流式中是逐步补全的 JSON，完成后是校验过的数据。
+
+```tsx
+const chat = useChat({ fetcher, outputSchema: z.object({ works: z.array(z.string()), minutes: z.number() }) })
+// chat.partial / chat.final are typed by the schema; the message carries the part as well.
+```
+
+`StructuredOutput` 按 `part.status` 切换：`streaming` 时渲染 `part.partial` 的 JSON 块
+（流式解析）加一个 Spinner，`complete` 时渲染 `part.data`，`error` 时渲染 `part.errorMessage`
+（`data-slot="structured-output-error"`）。脚本里用 `structured(object)` 发一段。
+
+## 自定义事件
+
+自定义事件不是 part：它不进消息，由 `useChat` 的回调交给你。
+
+<ComponentPreview name="ai/custom-events" align="stretch" />
+
+```tsx
+const chat = useChat({
+  fetcher,
+  onCustomEvent: (name, data, { toolCallId }) => {
+    if (name === 'progress')
+      setProgress(data as { done: number, total: number })
+  },
+})
+```
+
+脚本用 `custom(name, value)` 发出；`TranscriptParts` 对它无事可做。
+`structured-output.start` / `structured-output.complete` 两个名字由 TanStack 保留给结构化输出。
+
+## 默认文案
+
+内置部件的全部可见字符串在 `PartLabels` 里，通过 `PartRenderersProvider labels={…}` 按键覆盖，
+与上层合并；`DEFAULT_PART_LABELS` 也从 root 入口导出。
+
+| 键 | 默认 | 出现在 |
+| --- | --- | --- |
+| `thinking` | `'Thinking…'` | `Reasoning` 触发器，未完成时 |
+| `thought` | `'Thought for '` | `Reasoning` 触发器，完成后；后面接耗时秒数 |
+| `toolGroup` | ``count => `Ran ${count} tools` `` | `ToolCallGroupTrigger` |
+| `approve` | `'Approve'` | 默认渲染的 `ApprovalApprove` 与历史回放的批准按钮 |
+| `deny` | `'Deny'` | 默认渲染的 `ApprovalDeny` 与历史回放的拒绝按钮 |
+| `sources` | ``count => `${count} sources` `` | `Sources` 触发器 |
+| `toolPending` | `'Preparing'` | `ToolCallCard` 状态图标旁的读屏文本（`sr-only`）：参数还在到达（`awaiting-input` / `input-streaming`） |
+| `toolRunning` | `'Running'` | 同上：`input-complete`，工具在执行 |
+| `toolApprovalRequested` | `'Needs approval'` | 同上：`approval-requested` |
+| `toolApproved` | `'Approved'` | 同上：`approval-responded` 且 `approval.approved !== false` |
+| `toolDenied` | `'Denied'` | 同上：`approval-responded` 且 `approval.approved === false` |
+| `toolDone` | `'Done'` | 同上：`complete` |
+| `toolFailed` | `'Failed'` | 同上：`error`（或结果的 `state === 'error'`） |
+
+后七个键留给自定义工具卡片用 `usePartRenderers().labels` 读取，使文案仍然集中在一处。
+`aria-label` 类的英文默认（按钮图标等）不在这张表里，按部件 props 覆盖。
+
+## 状态与 className
+
+状态是名称型属性：布尔状态在场时属性存在、值为空串；计数与类型是值型。
+
+| 属性 | 出现在 | 值 | 出现时机 |
+| --- | --- | --- | --- |
+| `data-streaming` | `markdown` / `tool-call-card` / `structured-output` | 空串 | 传了 `streaming`；结构化输出按 `status === 'streaming'` |
+| `data-complete` | `reasoning` / `tool-call-card` / `structured-output` | 空串 | `complete` / `state === 'complete'` / `status === 'complete'` |
+| `data-open` | `reasoning` | 空串 | 展开时（Collapsible 自己的 `data-open` / `data-closed` 也在） |
+| `data-pending` `data-approval-requested` `data-approval-responded` `data-error` | `tool-call-card` | 空串 | 见 [工具调用](#工具调用) 的状态表 |
+| `data-error` | `structured-output` | 空串 | `status === 'error'` |
+| `data-count` | `tool-call-group` / `sources` | `number` | 组内调用数 / 来源条数 |
+| `data-approved` `data-denied` | `approval-actions` | 空串 | 读者按下批准 / 拒绝之后 |
+| `data-type` | `media-part` | `"image"` \| `"audio"` \| `"video"` \| `"document"` | 镜像 `part.type` |
+| `data-open` `data-closed` `data-panel-open` | 四个折叠部件的根 / 触发器 | 见 Collapsible | 继承自 [Collapsible](/docs/components/collapsible#状态与-classname) |
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `markdown` | 包住 streamdown 的 `<div>` |
+| `reasoning` / `reasoning-trigger` / `reasoning-duration` | 折叠根 / 触发器按钮 / 耗时 `<span>` |
+| `tool-call-card` / `tool-call-card-trigger` / `tool-call-name` / `tool-call-error` | 折叠根 / 标题按钮 / 工具名 / 错误行 |
+| `tool-call-group` / `tool-call-group-trigger` | 组的折叠根 / 触发器 |
+| `approval-actions` / `approval-approve` / `approval-deny` | `role="group"` 的行 / 两个按钮 |
+| `media-part` | Attachment 根或原生 `<audio>` / `<video>` |
+| `sources` / `sources-trigger` | 折叠根 / 触发器 |
+| `structured-output` / `structured-output-error` | 根 / 错误行 |
+
+`className` 在这些部件上都是 `string`：`Markdown` 的落在 streamdown 自己的根上（`data-slot="markdown"`
+的外壳没有 className），四个折叠部件的落在 Collapsible 根上，`ApprovalActions` 的落在行上，
+`MediaPart` 的落在 Attachment 根或媒体元素上。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### Markdown
+
+[streamdown](https://streamdown.ai) 加 code / math / CJK 插件：代码块与表格带复制、
+链接一律新开页；shiki 主题 `github-light-default` / `vesper`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `content` | `string` | — | Markdown 源 |
+| `streaming` | `boolean` | `false` | 流式模式 + 动画；`parseIncompleteMarkdown` 始终打开 |
+| `translations` | `Partial<StreamdownTranslations>` | — | streamdown 自己的 UI 文案 |
+| `className` | `string` | — | 落在 streamdown 根 `<div>` 上 |
+
+### Reasoning
+
+一段推理的折叠块。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `content` | `string` | — | 推理文本，`Markdown` 渲染 |
+| `complete` | `boolean` | — | 翻成 `true` 时自动收起一次并定格耗时 |
+| `children` | `ReactNode` | — | 触发器文案（「Thinking…」/「Thought for 」），部件不带 |
+| `defaultOpen` | `boolean` | 首帧 `!complete` | — |
+| `open` | `boolean` | — | 受控 |
+| `onOpenChange` | `(open, details: ReasoningChangeEventDetails) => void` | — | `reason` 为 `'trigger-press'` 或自动收起的 `'none'`；`details.cancel()` 可否决 |
+| `startedAt` | `number` | 挂载时的 `Date.now()` | 计时起点 |
+| `className` | `string` | — | 落在 Collapsible 根上 |
+
+`ReasoningState`：`{ complete, open }`。
+
+### ToolCallCard
+
+一次工具调用的折叠卡片。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `part` | `ToolCallPart` | — | — |
+| `result` | `ToolResultPart` | — | 同 id 的结果 part；`content` 是输出、`error` 是错误行、`state === 'error'` 也算失败 |
+| `interrupt` | `AnyToolApprovalInterrupt` | — | 与 `ToolRendererProps` 同形，便于原样转发；卡片本身目前不读它 |
+| `defaultOpen` | `boolean` | `false` | — |
+| `open` | `boolean` | — | 受控 |
+| `onOpenChange` | `(open, details: ToolCallChangeEventDetails) => void` | — | `reason` 为 `'trigger-press'` 或 `'none'` |
+| `streaming` | `boolean` | `false` | 写 `data-streaming`；pending 时输入块走流式解析 |
+| `children` | `ReactNode` | — | 面板末尾，放 `ApprovalActions` 的位置 |
+| `className` | `string` | — | 落在 Collapsible 根上 |
+
+`ToolCallCardState`：`{ pending, approvalRequested, approvalResponded, complete, error }`。
+
+### ToolCallGroup
+
+连续工具调用的折叠组；第一个 child 是触发器。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `count` | `number` | — | 写成 `data-count` |
+| `children` | `ReactNode \| ReactNode[]` | — | `ToolCallGroupTrigger` 在前，卡片在后 |
+| `defaultOpen` | `boolean` | `false` | — |
+| `open` | `boolean` | — | 受控 |
+| `onOpenChange` | `(open, details: ToolCallChangeEventDetails) => void` | — | 同 `ToolCallCard` |
+| `className` | `string` | — | 落在 Collapsible 根上 |
+
+### ToolCallGroupTrigger
+
+`CollapsibleTrigger` 加 `data-slot="tool-call-group-trigger"`；收
+[CollapsibleTrigger](/docs/components/collapsible#props) 的全部 props，文案由你写。
+
+### ApprovalActions
+
+批准 / 拒绝的那一行，`role="group"`；通过中断解决审批。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `interrupt` | `AnyToolApprovalInterrupt` | — | `status` 离开 `'pending'` 后两个按钮禁用 |
+| `children` | `ReactNode` | — | `ApprovalApprove` / `ApprovalDeny`，各带文案 |
+| `className` | `string` | — | 落在行上 |
+
+### ApprovalApprove
+
+`Button size="sm"`；按下调 `interrupt.resolveInterrupt(true, { editedArgs })`。
+收 [Button](/docs/components/button#props) 的全部 props，另加：
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `editedArgs` | `unknown` | — | 替代原参数发出的对象 |
+| `disabled` | `boolean` | — | 与「已响应」取或 |
+| `onClick` | `MouseEventHandler` | — | 先于解决中断调用；`preventDefault()` 则不解决 |
+
+### ApprovalDeny
+
+`Button size="sm" variant="outline"`；按下调 `interrupt.resolveInterrupt(false)`。
+收 [Button](/docs/components/button#props) 的全部 props；`disabled` / `onClick` 的规则同 `ApprovalApprove`。
+
+### MediaPart
+
+按类型渲染一个媒体 part。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `part` | `ImagePart \| AudioPart \| VideoPart \| DocumentPart` | — | — |
+| `className` | `string` | — | 落在 Attachment 根或 `<audio>` / `<video>` 上 |
+
+### Sources
+
+来源链接的折叠列表。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `sources` | `readonly Source[]` | — | `{ url, title?, snippet? }`，`sourcesOf(message)` 的返回 |
+| `children` | `ReactNode` | — | 触发器文案（「3 sources」），部件不带 |
+| `defaultOpen` | `boolean` | `false` | — |
+| `open` | `boolean` | — | 受控 |
+| `onOpenChange` | `(open, details: SourcesChangeEventDetails) => void` | — | `reason` 为 `'trigger-press'` 或 `'none'` |
+| `className` | `string` | — | 落在 Collapsible 根上 |
+
+### StructuredOutput
+
+`structured-output` part：流式中的 partial、完成后的 data、失败时的错误信息。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `part` | `StructuredOutputPart` | — | `status` / `partial` / `data` / `errorMessage` |
+| `className` | `string` | — | 落在根上 |
+
+视图类型一并导出：`MarkdownProps` / `ReasoningProps` / `ReasoningState` / `ReasoningChangeEventDetails` /
+`ToolCallCardProps` / `ToolCallCardState` / `ToolCallChangeEventDetails` / `ToolCallGroupProps` /
+`ToolCallGroupTriggerProps` / `ApprovalActionsProps` / `ApprovalApproveProps` / `ApprovalDenyProps` /
+`MediaPartProps` / `SourcesProps` / `SourcesChangeEventDetails` / `StructuredOutputProps`；
+注册表一侧：`PartLabels` / `PartRenderers` / `PartRenderersProviderProps` / `PartRenderersContextValue` /
+`ToolRenderer` / `ToolRendererProps` / `AnyToolApprovalInterrupt` / `Source`，
+以及 `DEFAULT_PART_LABELS`、`definePartRenderers`、`usePartRenderers`、`isThinkingComplete`、`sourcesOf`、`parsePartialJSON`。

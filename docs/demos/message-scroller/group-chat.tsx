@@ -16,7 +16,7 @@ import {
   MessageScrollerViewport,
 } from '@gedatou/cadenza-ui'
 import { Fragment, useState } from 'react'
-import { ResettableDemo } from './resettable'
+import { ResettableDemo } from '../lib/resettable'
 import { GROUP_TRANSCRIPT, JOINER_LINES, JOINERS } from './transcript'
 
 // In a group thread a turn does not start with "the user's message" — nobody

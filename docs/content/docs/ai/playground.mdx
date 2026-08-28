@@ -1,0 +1,109 @@
+---
+title: 试玩
+description: 用你自己的 API key 和真实模型对话 —— 同一套 Transcript / Composer，传输换成 /api/ai/chat
+---
+
+<ComponentPreview name="ai/playground" align="stretch" previewClassName="min-block-160" />
+
+本分区其余 demo 都在回放[脚本](/docs/ai/scripted)；这一页接真模型。本站不持有任何 provider
+的 key：你贴进来的 key 留在这个浏览器的内存里，每次请求以 `x-byok-<provider>` 头发给
+`/api/ai/chat`，route 只在这一次请求里用它建 adapter。刷新页面 key 就没了。
+
+## 使用
+
+三步：贴 key → 选模型 → 发送。没 key 直接发送也行——route 回 401，对话框自己弹出来要 key，
+保存后再发一次。
+
+要在自己的站点里复现这一页，客户端换掉的只有传输与密钥两处：
+
+```tsx
+import { ByokKeyDialog, createByok, defaultCatalog, fetchServerSentEvents, useChat, useModelSelection, useServerCoverage } from '@gedatou/cadenza-ai'
+```
+
+```tsx
+const [byok] = useState(() => createByok({ catalog: defaultCatalog }))
+const { coverage } = useServerCoverage(byok)
+const sel = useModelSelection()
+const chat = useChat({
+  connection: fetchServerSentEvents('/api/ai/chat'),
+  forwardedProps: sel.forwardedProps,
+  byok,
+  byokProvider: () => sel.selection.provider,
+})
+
+<ByokKeyDialog byok={byok} catalog={defaultCatalog} coverage={coverage} />
+```
+
+服务端是 [Route handler](/docs/ai/providers#route-handler) 一节里的那份 `docs/app/api/ai/chat/route.ts`。
+`createByok()` 默认 `memoryStorage()`——key 只在内存；`persistent: true` 换成 `passkeyStorage()`，
+用 WebAuthn 解锁、跨刷新保留。发送前客户端调 `byok.prepare(provider)`，再把这一家的 key
+写成请求头；`byokProvider` 决定「这一家」是谁，缺省从 body 的 `provider` 字段读。
+
+## 思路
+
+- **纯 BYOK 是选出来的。** `getByokKey` 头优先、env 兜底，所以配不配服务端 key 只是部署时
+  设不设环境变量。本站不设：没有 key 的请求得到 401 `{ error: { type: 'byok_missing', provider } }`，
+  客户端调 `byok.request(provider, 'missing')`，`ByokKeyDialog` 打开并聚焦那一家的输入框。
+  费用、限流、模型权限都跟着你的 key 走，本站不做代理配额。
+- **`useServerCoverage` 把服务端的情况告诉客户端。** 它 `GET /api/ai/catalog` 一次，拿回
+  `providers`（目录里的纯数据）与 `coverage`（每家是否有服务端 key：`keyRequired: false` 的恒为
+  `true`，其余看 env），然后调 `byok.setServerCoverage(coverage)`，`prepare()` 对被覆盖的 provider
+  不再要 key；同一份 `coverage` 传给对话框，它给那一行标「Server key」。在纯 BYOK 部署里四家
+  全是 `false`。
+- **`maxDuration` 决定一条回复能流多久。** route 里 `export const maxDuration = 300`：流式回复
+  受 serverless 函数时长上限约束，按你的 Vercel 计划调。
+
+## 限制
+
+- **四家 provider。** route 接了 `openai` / `anthropic` / `gemini` / `openrouter`
+  （`@gedatou/cadenza-ai/providers/*` 目前就这四个 preset）；目录里其余 provider 在
+  [模型目录](/docs/ai/providers#模型目录) 里可见，但这一页选不到。
+- **附件每条 3 MiB。** `DEFAULT_MAX_ATTACHMENT_BYTES` 是 base64 进 JSON body 的安全线；route 的
+  `maxBodyBytes` 默认 4 MiB，超过回 413。
+- **时长按计划。** Vercel Hobby 60 s、Pro 300 s；长推理的回复可能在上限处被切断，
+  `TranscriptError` 会报出来，重试即可。
+- **本站零费用。** 没有服务端 key，就没有任何请求能记到本站头上；记到你 key 头上的费用
+  可以在 [用量与费用](/docs/ai/conversation#用量与费用) 的部件里看到估算。
+- **工具。** route 注册了一个服务端工具 `get_time`；客户端声明的工具经 `mergeAgentTools`
+  合并，与 [客户端工具](/docs/ai/parts#客户端工具) 的 demo 同一套机制。
+
+## API
+
+这一页用到的两条 route 与三个客户端导出。
+
+### Route
+
+| 路由 | 方法 | 说明 |
+| --- | --- | --- |
+| `/api/ai/chat` | `POST` | `createChatHandler({ providers, defaultModel, systemPrompts, tools })`：体积门禁 → 解析 → `pickSelection`（只信 `forwardedProps` 的 `provider` / `model` / `thinking`）→ `onSelect` → BYOK key → adapter → thinking → `chat()` → SSE |
+| `/api/ai/chat` | `GET` | 只在配了 `persistence`（`?threadId=`）或 `durability`（`?runId=` / `last-event-id`）时有内容，否则 404 |
+| `/api/ai/catalog` | `GET` | `createCatalogHandler(presets)`：`{ providers, coverage, generatedAt }` |
+
+route 的 options 全表见 [接入提供者](/docs/ai/providers#route-handler)。
+
+### createByok
+
+`createByok(options?): ByokClient`——带本库默认值的 `defineByok()`，直接给 `useChat({ byok })`。
+
+| 选项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `persistent` | `boolean` | `false` | `true` 用 `passkeyStorage()`（passkey 解锁、跨刷新）；否则 `memoryStorage()` |
+| `catalog` | `Catalog` | — | 传了就把 `keyRequired: false` 的 provider 预先标成服务端覆盖 |
+
+### useServerCoverage
+
+`useServerCoverage(byok, url?): ServerCoverage`——`url` 默认 `'/api/ai/catalog'`，挂载时请求一次，
+成功后调 `byok.setServerCoverage()`。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `coverage` | `Record<string, boolean> \| undefined` | 每家是否有服务端 key；请求完成前 `undefined` |
+| `providers` | `readonly Provider[] \| undefined` | 服务端接了哪些 provider（纯数据） |
+| `error` | `Error \| undefined` | 非 2xx 或网络错误；`cadenza-ai: <url> answered <status>` |
+
+### fetchServerSentEvents
+
+`fetchServerSentEvents(url, options?)` 是 TanStack AI 的连接适配器，从 root 入口原样转发：
+返回 `ResumableConnectConnectionAdapter`，给 `useChat({ connection })`。`url` 可以是函数，
+`options` 可以是函数或异步函数（按次请求算 headers）；BYOK 头由 `ChatClient` 在每次
+`send` 时合进去，不用你自己写。

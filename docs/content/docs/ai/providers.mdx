@@ -1,0 +1,453 @@
+---
+title: 接入提供者
+description: 模型目录、七级思考强度、BYOK 密钥与 route handler——客户端选什么，服务端就按 preset 翻成哪家的参数
+---
+
+<ComponentPreview name="ai/catalog" align="stretch" />
+
+接入一家 provider 是两半事：**目录**是纯数据（`Provider` / `Model`），客户端与服务端共用，
+`defaultCatalog` 里有 12 家；**preset** 只在服务端，等于目录数据加上「建 adapter」与
+「把思考强度翻成这家的 `modelOptions`」两个函数。目前发布的 preset 有四个——
+`openai` / `anthropic` / `gemini` / `openrouter`，各在 `@gedatou/cadenza-ai/providers/<id>`；
+其余八家只有目录数据，要接就用 [`definePreset`](#自定义-provider) 自己补两个函数。
+
+密钥走 TanStack AI 的 BYOK 形态：浏览器持有 key，每次请求以 `x-byok-<id>` 头送到你的
+route handler；服务端只用不存，缺 key 回 401，客户端弹对话框。
+
+## 使用
+
+服务端一个 route handler，装到哪家 provider 就装哪家的 adapter（都是可选 peer）：
+
+```bash
+pnpm add @gedatou/cadenza-ai @tanstack/ai-openai
+```
+
+```ts
+// app/api/ai/chat/route.ts
+import { openai } from '@gedatou/cadenza-ai/providers/openai'
+import { createChatHandler } from '@gedatou/cadenza-ai/server'
+
+export const { POST, GET } = createChatHandler({ providers: [openai], defaultModel: 'openai/gpt-5.2' })
+```
+
+客户端把 `ByokClient` 交给 `useChat`，对话框订阅同一个 client：
+
+```tsx
+import {
+  ByokKeyDialog,
+  createByok,
+  defaultCatalog,
+  fetchServerSentEvents,
+  useChat,
+  useModelSelection,
+  useServerCoverage,
+} from '@gedatou/cadenza-ai'
+```
+
+```tsx
+function Chat(): ReactElement {
+  const byok = useMemo(() => createByok({ catalog: defaultCatalog }), [])
+  const { coverage } = useServerCoverage(byok)
+  const { selection, forwardedProps } = useModelSelection()
+  const chat = useChat({
+    connection: fetchServerSentEvents('/api/ai/chat'),
+    byok,
+    byokProvider: () => selection.provider,
+    forwardedProps,
+  })
+
+  return (
+    <>
+      {/* TranscriptProvider / Transcript / Composer — see /docs/ai/conversation */}
+      <ByokKeyDialog byok={byok} catalog={defaultCatalog} coverage={coverage} />
+    </>
+  )
+}
+```
+
+## 思路
+
+- **目录是数据，两端共用。** `defaultCatalog` 由 12 个 `Provider` 组成，每个带 `models`、
+  `byok`（头名与 env 名）、`keyRequired` 与 `runtime`；不 import 任何 adapter，
+  浏览器包里没有服务端代码。
+- **preset 只在服务端。** `ProviderPreset = Provider + create(model, key) + thinking(level, model)`，
+  从 `./providers/<id>` 导入才会带上 adapter。
+- **选择只走三个键。** 客户端 `forwardedProps` 里的 `provider` / `model` / `thinking`
+  是服务端唯一读取的内容：provider 必须在 `providers` 里，model 必须在 preset 的目录里，
+  thinking 不合法按 `'off'`；其余键一概不看，也不会 spread 进 `chat()`。
+- **密钥归浏览器。** `ByokClient` 持有 key，`useChat({ byok, byokProvider })` 每次请求给当前
+  provider 盖 `x-byok-<id>` 头；服务端 `getByokKey` 头优先、env 兜底，都没有就回 401
+  `byok_missing`，客户端收到后打开 `ByokKeyDialog`。
+
+## 模型目录
+
+`Catalog` 是不可变对象：`providers` / `models` 两个数组，加 `getProvider(id)` /
+`getModel('provider/id')` 与 `withProvider(p)` / `withoutProvider(id)`（返回新目录）。
+页顶 demo 用 `defaultCatalog.withProvider(local)` 加了一行自定义 provider。
+
+| id | 标签 | `keyRequired` / `runtime` | preset | 备注 |
+| --- | --- | --- | --- | --- |
+| `openai` | OpenAI | `true` / `node` | 已发布 | — |
+| `anthropic` | Anthropic | `true` / `node` | 已发布 | 思考强度按世代分四段，见下 |
+| `gemini` | Google Gemini | `true` / `node` | 已发布 | — |
+| `openrouter` | OpenRouter | `true` / `node` | 已发布 | 模型 id 自带 `vendor/model`；目录是建议清单，不是白名单 |
+| `grok` | xAI Grok | `true` / `node` | 仅数据 | `grok-build-*` 不发推理参数 |
+| `groq` | Groq | `true` / `node` | 仅数据 | — |
+| `mistral` | Mistral | `true` / `node` | 仅数据 | adapter 没有 thinking 设置项，全部 `reasoning: false` |
+| `vercel-gateway` | Vercel AI Gateway | `true` / `node` | 仅数据 | 无定价与上下文数据 |
+| `llmgateway` | LLM Gateway | `true` / `node` | 仅数据 | — |
+| `bedrock` | Amazon Bedrock | `true` / `node` | 仅数据 | bearer key；Converse 路径无推理参数，无定价 |
+| `vertex` | Vertex AI | `false` / `node` | 仅数据 | 复用 gemini 的模型表；ADC 或 express key 由 adapter 读 env |
+| `ollama` | Ollama | `false` / `local` | 仅数据 | 本地模型无定价；`x-byok-ollama` 头的值是 host URL |
+
+`Model` 的字段：`id` / `name` / `provider` / `input`（模态数组）/ `reasoning` /
+`contextWindow?` / `maxOutputTokens?` / `cost?`（美元 / 百万 token，含 `cacheRead` /
+`cacheWrite`）/ `thinkingLevels?`（缺省 = `reasoning ? THINKING_LEVELS : ['off']`）。
+`modelRef(model)` 拼出 `'openai/gpt-5.2'`，`parseModelRef(ref)` 只切第一个斜杠——
+OpenRouter 与 Vercel Gateway 的模型 id 自己就含斜杠。费用估算见
+[用量与费用](/docs/ai/conversation#用量与费用)。
+
+每张目录表的文件头都记了它抄自哪个版本的 adapter（`sourceVersion`），升级 adapter 时 diff 那张表。
+
+页顶 demo 的源码：
+
+<ComponentSource name="ai/catalog" />
+
+## 思考强度
+
+七级 `ThinkingLevel`，顺序即强度：
+
+```tsx
+THINKING_LEVELS // ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+```
+
+- `supportedThinkingLevels(model)`：非推理模型只有 `['off']`；推理模型是
+  `model.thinkingLevels ?? THINKING_LEVELS`。
+- `clampThinkingLevel(model, level)`：不支持的档位向下取最近支持档；目标低于模型下限时
+  取下限（Fable 5 这类不可关的模型最低 `'low'`）。
+- 服务端 `pickSelection` 读 `forwardedProps.thinking`（不在七级里按 `'off'`）并 clamp；
+  `resolveThinking` 在「clamp 后为 `off` 且模型不推理」时什么都不发，否则交给
+  `preset.thinking(level, model)`。
+
+四个已发布 preset 的映射（`off` 一列是关闭时真正发出的片段）：
+
+| preset | 片段 | `off` | 不可关 |
+| --- | --- | --- | --- |
+| `openai` | `{ reasoning: { effort, summary: 'auto' } }`；minimal → `'minimal'`，low / medium / high 同名，xhigh / max → `'high'`；非推理模型 `{}` | `{ reasoning: { effort: 'none' } }` | — |
+| `anthropic` · budget 代（opus-5 / opus-5-fast / opus-4-5 / sonnet-4-5 / haiku-4-5 / opus-4-1） | `{ thinking: { type: 'enabled', budget_tokens } }`；1024 / 4096 / 16000 / 32000 / 48000 / 64000 | `{ thinking: { type: 'disabled' } }` | — |
+| `anthropic` · 4.6（opus-4-6 / sonnet-4-6） | `{ thinking: { type: 'adaptive', display: 'summarized' } }`，无分档；目录 `thinkingLevels: ['off', 'medium']` | `{ thinking: { type: 'disabled' } }` | — |
+| `anthropic` · 4.7+ / Sonnet 5（opus-4-7 / opus-4-8 / sonnet-5） | adaptive + `output_config: { effort }`；minimal → `'low'`，其余同名 | `{ thinking: { type: 'disabled' } }` | — |
+| `anthropic` · Fable 5（fable-5） | 同上 | 目录 `thinkingLevels` 从 `'low'` 起，`off` / `minimal` 被 clamp 到 `'low'`；preset 自身也把 `off` 落到 `'low'` | **是** |
+| `gemini` 3.x | `{ thinkingConfig: { includeThoughts: true, thinkingLevel } }`；MINIMAL / LOW / MEDIUM / HIGH，high / xhigh / max → HIGH | `{}`（不发） | — |
+| `gemini` 2.5 | `{ thinkingConfig: { includeThoughts: true, thinkingBudget } }`；1024 / 4096 / 8192 / 16384 / 20480 / 24576 | `{ thinkingConfig: { thinkingBudget: 0 } }` | — |
+| `openrouter` | `{ reasoning: { effort: level } }`，七级原样透传 | `{ reasoning: { enabled: false } }` | — |
+
+Anthropic 的四段分代按模型 id 精确匹配，不按前缀猜（opus-5 是 budget 代）。
+`./server` 另导出 `EFFORT_3`——三档 effort 的折叠表（minimal → low，xhigh / max → high），
+留给 grok / groq / vercel-gateway / ollama 这类只有 low / medium / high 的 preset 使用。
+客户端的选择器（`ModelPicker` / `ThinkingLevelPicker`）见 [输入区](/docs/ai/composer)。
+
+## 密钥
+
+`ByokKeyDialog` 订阅一个 `ByokClient`，client 一提示就自己打开，并聚焦那家的输入框。
+
+<ComponentPreview name="ai/byok-dialog" align="stretch" />
+
+- **`createByok({ persistent?, catalog? })`** 是带默认值的 `defineByok`：默认
+  `memoryStorage()`——key 只在这个 tab 的内存里，刷新即失；`persistent: true` 换成
+  `passkeyStorage()`——密钥环用 WebAuthn passkey（PRF）加密后存进 IndexedDB，刷新后处于
+  `locked`，`byok.unlock()`（对话框的 Unlock 按钮）解锁；`isPasskeyStorageSupported()`
+  为假时不要给这个开关。`persistent` 是页面级设置：`useChat` 只在创建 client 时接 `byok`，
+  改动要连同会话一起重挂。传 `catalog` 时，`keyRequired: false` 的 provider（vertex / ollama）
+  立即标为服务端已覆盖，`prepare()` 不再为它们阻断。
+- **`useServerCoverage(byok, url?)`** 挂载时 `fetch('/api/ai/catalog')` 一次，把返回的
+  `coverage` 喂给 `byok.setServerCoverage()`，并返回 `{ coverage, providers, error }`——
+  `coverage` 传给对话框，行上出现「服务端已有 key」图标（`data-server-key`）。
+- **每次请求的头**：`useChat({ byok, byokProvider })` 发送前调 `byok.prepare(provider)`——
+  没 key 又没被服务端覆盖就 `request(provider, 'missing')` 并阻断；有 key 就盖上
+  `x-byok-<id>`。`byokProvider` 返回当前 provider id，永远能解析出来。
+- **四种 `KeyStatus`**：`empty` / `set`（带 `masked`）/ `locked`（带 `masked`）/
+  `error`（带 `masked` 与 `message`，行下显示 `FieldError`）。
+- **服务端拒收**：route handler 找不到 key 时回 401 `{ error: { type: 'byok_missing', provider } }`，
+  客户端翻成 `ByokMissingError` → `byok.request(provider, 'missing')` → 对话框打开
+  （`onOpenChange` 的 `reason` 是 `'none'`）。本节 demo 就是用脚本化传输的
+  `byokMissing('openai')` 走这条路。
+- **Ollama 的头**：`x-byok-ollama` 的值不是 key，是 host URL；服务端按 `ollamaHosts`
+  白名单校验（默认 loopback 与私网段）。
+
+## Route handler
+
+docs 站的 `/api/ai/chat` 原文——Playground 就跑在它上面：
+
+```ts
+// docs/app/api/ai/chat/route.ts
+import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
+import { gemini } from '@gedatou/cadenza-ai/providers/gemini'
+import { openai } from '@gedatou/cadenza-ai/providers/openai'
+import { openrouter } from '@gedatou/cadenza-ai/providers/openrouter'
+import { createChatHandler, toolDefinition } from '@gedatou/cadenza-ai/server'
+import { z } from 'zod'
+
+// Playground is pure BYOK (spec Q1): keys arrive per request in `x-byok-<provider>`
+// headers; nothing is read from the deployment's env.
+export const maxDuration = 300
+
+const getTime = toolDefinition({
+  name: 'get_time',
+  description: 'Current time in a timezone',
+  inputSchema: z.object({ tz: z.string() }),
+}).server(async ({ tz }) => ({ iso: new Date().toLocaleString('en-US', { timeZone: tz }) }))
+
+export const { POST, GET } = createChatHandler({
+  providers: [openai, anthropic, gemini, openrouter],
+  defaultModel: 'openai/gpt-5.2',
+  systemPrompts: ['You are the cadenza docs playground assistant. Keep answers short.'],
+  tools: [getTime],
+})
+```
+
+```ts
+// docs/app/api/ai/catalog/route.ts
+import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
+import { gemini } from '@gedatou/cadenza-ai/providers/gemini'
+import { openai } from '@gedatou/cadenza-ai/providers/openai'
+import { openrouter } from '@gedatou/cadenza-ai/providers/openrouter'
+import { createCatalogHandler } from '@gedatou/cadenza-ai/server'
+
+export const { GET } = createCatalogHandler([openai, anthropic, gemini, openrouter])
+```
+
+`POST` 的生命周期：`content-length` 超过 `maxBodyBytes` → 413；`chatParamsFromRequest`
+解析（坏请求 → 400）；`pickSelection` 解析三键（→ 400 `unknown_provider` /
+`unknown_model`）；`onSelect` 钩子；`getByokKey`（缺 → 401 `byok_missing`）；ollama host
+白名单；`preset.create(model, key)`；`resolveThinking`；`chat({...})` →
+`toServerSentEventsResponse`，客户端断开即 abort。`GET` 只在 `persistence` /
+`durability` 配置了才有内容（`?threadId=` 重建、`?runId=` 续流），否则 404。
+`process.env.VERCEL === '1'` 时 `runtime: 'local'` 的 preset 被剔除。
+
+`createCatalogHandler(presets)` 的 `GET` 返回 `{ providers, coverage, generatedAt }`：
+`providers` 是 preset 去掉三个函数后的纯数据，`coverage` 是每家「服务端能否自己出 key」
+的布尔表。
+
+### ChatHandlerOptions
+
+| 选项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `providers` | `readonly ProviderPreset[]` | — | — |
+| `defaultModel` | `string` | — | `'provider/model'`；请求不带 provider / model 时用 |
+| `systemPrompts` | `SystemPrompt[] \| ((selection: Selection) => SystemPrompt[])` | — | 只由服务端配置 |
+| `tools` | `ReadonlyArray<AnyTool>` | `[]` | 与客户端工具 `mergeAgentTools`，同名服务端优先 |
+| `middleware` | `Array<ChatMiddleware<TContext>>` | `[]` | — |
+| `context` | `(request: Request) => TContext \| Promise<TContext>` | — | — |
+| `agentLoopStrategy` | `AgentLoopStrategy` | TanStack 默认 | 不放开给客户端 |
+| `onSelect` | `(selection: Selection, request: Request) => Selection \| Response` | — | 检查或替换选择；返回 `Response` 即拒绝 |
+| `persistence` | `AIPersistence<ChatTranscriptStores>` | — | 见 [服务端持久化](/docs/ai/threads#服务端持久化)；类型写成 `unknown`，peer 按需 import |
+| `authorize` | `ReconstructChatOptions['authorize']` | — | 只与 `persistence` 一起读 |
+| `durability` | `(request: Request) => StreamDurability` | — | 断线续流；docs 不开 |
+| `maxBodyBytes` | `number` | `4 * 1024 * 1024` | 超过回 413 |
+| `ollamaHosts` | `readonly string[]` | loopback + RFC 1918 | `x-byok-ollama` 允许指向的 host |
+| `debug` | `DebugOption` | — | 透传给 `chat()` 与 SSE |
+
+## 环境变量
+
+`getByokKey(request, provider)` 头优先，然后按 `byok.env` 的顺序读 env；
+`createCatalogHandler` 的 `coverage` 也按同一张表判断。docs 的部署一个都没设，所以是纯 BYOK。
+
+| provider | env（按顺序） | 说明 |
+| --- | --- | --- |
+| `openai` | `OPENAI_API_KEY` | — |
+| `anthropic` | `ANTHROPIC_API_KEY` | — |
+| `gemini` | `GOOGLE_API_KEY` → `GEMINI_API_KEY` | — |
+| `openrouter` | `OPENROUTER_API_KEY` | — |
+| `grok` | `XAI_API_KEY` | — |
+| `groq` | `GROQ_API_KEY` | — |
+| `mistral` | `MISTRAL_API_KEY` | — |
+| `vercel-gateway` | `AI_GATEWAY_API_KEY` → `VERCEL_OIDC_TOKEN` | — |
+| `llmgateway` | `LLM_GATEWAY_API_KEY` | — |
+| `bedrock` | `BEDROCK_API_KEY` → `AWS_BEARER_TOKEN_BEDROCK` | bearer token，不做 SigV4 |
+| `vertex` | `GOOGLE_VERTEX_API_KEY` | `keyRequired: false`；coverage 特判：有这个 key，**或**（`GOOGLE_CLOUD_PROJECT` / `GOOGLE_VERTEX_PROJECT` 任一 **且** `GOOGLE_CLOUD_LOCATION` / `GOOGLE_VERTEX_LOCATION` 任一） |
+| `ollama` | — | `keyRequired: false`，总是覆盖；host 只从 `x-byok-ollama` 头来 |
+
+## 自定义 provider
+
+目录数据放在两端共用的文件里，preset 在 route 文件里用 `definePreset` 补上 `create` /
+`thinking`；客户端用 `withProvider` 把同一份数据并进目录。以一个 OpenAI 兼容端点为例：
+
+```ts
+// ai/deepseek.ts — catalog data, shared by client and server
+import type { Provider } from '@gedatou/cadenza-ai'
+
+export const deepseek: Provider = {
+  id: 'deepseek', // the `x-byok-deepseek` slug: /^[a-z][a-z0-9-]{0,63}$/
+  label: 'DeepSeek',
+  byok: { id: 'deepseek', label: 'DeepSeek', env: ['DEEPSEEK_API_KEY'] },
+  keyRequired: true,
+  runtime: 'node',
+  models: [
+    { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'deepseek', input: ['text'], reasoning: false, contextWindow: 128_000 },
+    { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', provider: 'deepseek', input: ['text'], reasoning: true, contextWindow: 128_000 },
+  ],
+}
+```
+
+```ts
+// app/api/ai/chat/route.ts — the preset: data + adapter + thinking
+import { createChatHandler, definePreset } from '@gedatou/cadenza-ai/server'
+import { openaiCompatibleText } from '@tanstack/ai-openai/compatible'
+import { deepseek } from '@/ai/deepseek'
+
+const deepseekPreset = definePreset({
+  ...deepseek,
+  create: (model, key) => openaiCompatibleText(model, { baseURL: 'https://api.deepseek.com/v1', apiKey: key ?? '' }),
+  // Return the adapter's own modelOptions fragment for a clamped level; `{}` sends nothing.
+  thinking: () => ({}),
+})
+
+export const { POST, GET } = createChatHandler({ providers: [deepseekPreset] })
+```
+
+```tsx
+// client — the same data, merged into the catalog
+const catalog = useMemo(() => defaultCatalog.withProvider(deepseek), [])
+const { selection, forwardedProps } = useModelSelection({ catalog })
+// … <ByokKeyDialog byok={byok} catalog={catalog} coverage={coverage} />
+```
+
+`definePreset` 校验 `byok.id === id`（头名由 id 生成），其余是恒等。`create` 收到的 `key`
+在 `keyRequired: false` 时可能是 `null`；`thinking` 收到的是 clamp 后的档位。
+要在线发现模型，再给 `discoverModels(key)`：目录外的 id 只有在它存在时才放行。
+`./server` 导出的 `openaiThinking` / `anthropicThinking` / `geminiThinking` /
+`openrouterThinking` 可以直接复用给同协议的端点。
+
+## MCP
+
+> Phase 3。`createChatHandler` 目前没有 `mcp` 选项；要接 MCP 工具，用 `./server`
+> 转出的 `chat()` 自己写 handler——这条路绕过了选择解析与 BYOK。
+
+```ts
+import { chat, chatParamsFromRequest, toServerSentEventsResponse } from '@gedatou/cadenza-ai/server'
+import { createOpenaiChat } from '@tanstack/ai-openai'
+
+export async function POST(request: Request): Promise<Response> {
+  const params = await chatParamsFromRequest(request)
+  const stream = chat({
+    adapter: createOpenaiChat('gpt-5.2', process.env.OPENAI_API_KEY ?? ''),
+    messages: params.messages,
+    // `clients` is any `MCPToolSource` — TanStack AI's `@tanstack/ai-mcp` MCPClient fits by shape.
+    mcp: { clients: [mcpClient], connection: 'keep-alive' },
+  })
+  return toServerSentEventsResponse(stream)
+}
+```
+
+`ChatMCPOptions` 的其余字段（`lazyTools`、`onDiscoveryError`）以
+[TanStack AI 的 MCP 文档](https://tanstack.com/ai) 为准。
+
+## 不接入的 harness
+
+harness 类 adapter（claude-code / acp / codex / opencode / grok-build）需要
+`@tanstack/ai-sandbox`，且 key 只从宿主 `process.env` 复制——BYOK 走不通，所以没有 preset。
+同样只转发不做页面的还有：`useRealtimeChat`（实时语音）、`useGenerateImage` 等生成家族 hook、
+`useMcpAppBridge`（MCP Apps 宿主）与 `live` 订阅的 `connectionStatus`；它们出现在
+[导出的类型](#导出的类型) 里，仅此而已。
+
+## 状态与 className
+
+目录与 preset 是数据，没有 DOM；这一节只关乎 `ByokKeyDialog`。
+
+| 属性 | 出现在 | 值 | 出现时机 |
+| --- | --- | --- | --- |
+| `data-provider` | `byok-key-dialog-provider` | provider id | 总是 |
+| `data-key-status` | `byok-key-dialog-provider` | `"empty"` \| `"set"` \| `"locked"` \| `"error"` | 镜像 client 里这家的 `KeyStatus.state` |
+| `data-server-key` | `byok-key-dialog-provider` | 空串 | `!provider.keyRequired` 或 `coverage[id] === true` |
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `byok-key-dialog` | `DialogPopup`（[Dialog](/docs/components/dialog) 家族） |
+| `byok-key-dialog-provider` | 一行：`Field` + 密码 `Input` + 保存 / 清除图标按钮 |
+
+`ByokKeyDialog` 没有 `className`——外壳是 Dialog 家族，样式钩子是 `data-slot`；
+`ByokKeyDialogProvider` 的 `className` 是 `string`，落在行上。
+
+## 导出的类型
+
+root 入口（目录部分见 [会话](/docs/ai/conversation#导出的类型)）：
+
+```tsx
+// BYOK：转出自 @tanstack/ai-client/byok
+import type { ByokClient, ByokPrompt, ByokSnapshot, KeyringStorage, KeyStatus } from '@gedatou/cadenza-ai'
+import { defaultByokStorage, defineByok, isPasskeyStorageSupported, memoryStorage, passkeyStorage } from '@gedatou/cadenza-ai'
+
+// 门面
+import type { ByokKeyDialogLabels, ByokKeyDialogProps, ByokKeyDialogProviderProps, CreateByokOptions, ServerCoverage } from '@gedatou/cadenza-ai'
+import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage } from '@gedatou/cadenza-ai'
+```
+
+`@gedatou/cadenza-ai/server`（无 `'use client'`，只给 route handler）：
+
+| 导出 | 签名 / 说明 |
+| --- | --- |
+| `ProviderPreset` | `Provider & { create(model: string, key: string \| null): AnyTextAdapter; thinking(level: ThinkingLevel, model: Model): Record<string, unknown>; discoverModels?(key: string \| null): Promise<Model[]> }` |
+| `definePreset(preset)` | 恒等 + 校验 `byok.id === id` |
+| `createChatHandler(options)` | `(ChatHandlerOptions) => { POST, GET }`，见 [Route handler](#route-handler) |
+| `ChatHandlerOptions` / `ChatHandler` | 上表 / `{ POST, GET }` |
+| `createCatalogHandler(presets)` | `=> { GET }`：`{ providers, coverage, generatedAt }` |
+| `pickSelection(forwardedProps, presets, { defaultModel? })` | `=> Selection \| Response`；`Selection = { preset, model, thinking }` |
+| `resolveThinking(preset, model, level)` | clamp 后交给 `preset.thinking`；非推理模型关着时 `{}` |
+| `openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` | `(level, model) => fragment`，四个 preset 的映射函数 |
+| `EFFORT_3` | `{ minimal: 'low', low: 'low', medium: 'medium', high: 'high', xhigh: 'high', max: 'high' }` |
+| 转出自 `@tanstack/ai` | `chat` / `chatParamsFromRequest` / `maxIterations` / `memoryStream` / `mergeAgentTools` / `toolDefinition` / `toServerSentEventsResponse` |
+| 转出自 `@tanstack/ai/byok` | `defineByokProvider` |
+| 转出自 `@tanstack/ai/byok/server` | `byokMissing` / `getByokKey` |
+
+`@gedatou/cadenza-ai/providers/<id>`：每个文件一个 `ProviderPreset`——`openai` /
+`anthropic` / `gemini` / `openrouter`；import 即引入对应的 `@tanstack/ai-<id>` adapter。
+脚本化传输里的 `byokMissing(provider)` 见 [脚本化传输](/docs/ai/scripted#api)。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### ByokKeyDialog
+
+一个 `ByokClient` 的密钥对话框。订阅 client，`snapshot.prompt` 一出现就打开自己
+（`prepare()` 因缺 key 阻断，或服务端回了 `byok_missing`），并聚焦那家的输入框；
+`snapshot.locked` 时页脚多一个 Unlock 按钮。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `byok` | `ByokClient` | — | — |
+| `catalog` | `Catalog` | — | 行的标签与 `keyRequired` 从这里来 |
+| `coverage` | `Record<string, boolean>` | — | `useServerCoverage(byok).coverage`；`ByokClient` 不外露自己的覆盖表，所以单独告诉对话框 |
+| `defaultOpen` | `boolean` | `false` | — |
+| `open` | `boolean` | — | 受控 |
+| `onOpenChange` | `(open: boolean, details: DialogChangeEventDetails \| ChangeEventDetails<'none'>) => void` | — | 程序性打开（client 的提示）带 `reason: 'none'`；`details.cancel()` 拦下 |
+| `labels` | `Partial<ByokKeyDialogLabels>` | `DEFAULT_BYOK_KEY_DIALOG_LABELS` | — |
+| `children` | `ReactNode` | 目录里每家一个 `ByokKeyDialogProvider` | — |
+
+`ByokKeyDialogLabels` 与默认英文：
+
+| 键 | 默认 | 出现在 |
+| --- | --- | --- |
+| `title` | `API keys` | 标题 |
+| `description` | `Keys stay in this browser and are sent per request in a header.` | 描述 |
+| `save` / `clear` | `Save` / `Clear` | 两个图标按钮的 `aria-label` |
+| `unlock` | `Unlock` | 页脚按钮，`locked` 时 |
+| `close` | `Close` | 页脚按钮 |
+| `serverKey` | `Server key` | 「服务端已有 key」图标的 `aria-label` |
+
+### ByokKeyDialogProvider
+
+一家的行：`FieldLabel` = `provider.label`，密码 `Input`，保存 / 清除图标按钮。
+`provider` 不在 `catalog` 里时抛错。输入框在 `snapshot.prompt.provider` 命中时自动聚焦，
+有 key 时 `placeholder` 显示 `masked`；保存调 `byok.update(id, key)`（草稿为空时禁用），
+清除调 `byok.clear(id)`（`empty` 时禁用），`error` 态在行下显示 `message`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `provider` | `string` | — | 目录里的 provider id |
+| `children` | `ReactNode` | — | 追加在行尾——例如一个 OAuth / PKCE 按钮 |
+| `className` | `string` | — | 落在行上 |
+
+5 个类型一并导出：`ByokKeyDialogProps` / `ByokKeyDialogProviderProps` / `ByokKeyDialogLabels` /
+`CreateByokOptions` / `ServerCoverage`。

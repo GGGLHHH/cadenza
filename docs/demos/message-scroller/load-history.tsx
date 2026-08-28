@@ -10,8 +10,8 @@ import {
   Spinner,
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
+import { ResettableDemo } from '../lib/resettable'
 import { MessageRow } from './message-row'
-import { ResettableDemo } from './resettable'
 import { EARLIER, TRANSCRIPT } from './transcript'
 
 // Prepending older rows must not move the row the reader is looking at.
