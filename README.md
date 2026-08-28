@@ -20,6 +20,7 @@ packages/ui/               @gedatou/cadenza-ui，tsdown 打包
   styles.css               base-nova token，@source 指向 dist
 packages/utils/            @gedatou/cadenza-utils，useControllableState / resolveRenderChildren
 packages/form/             @gedatou/cadenza-form，TanStack Form 门面
+packages/ai/               @gedatou/cadenza-ai，TanStack AI 门面 + 会话视图
 docs/                      Next.js + fumadocs（headless，自绘外壳），MDX 里直接跑 React demo
 ```
 
@@ -106,7 +107,7 @@ pnpm release        # bumpp：改版本 → commit → tag vX → push
 推 tag 触发 `.github/workflows/release.yml`：校验 tag 与 `packages/ui` 版本一致 →
 构建 → 用 OIDC 可信发布推到 npm（无 NPM_TOKEN，npm 自带 provenance 溯源）。
 
-版本由 `bump.config.ts` 管，根 `package.json` 与三个 `packages/*/package.json` 锁步。
+版本由 `bump.config.ts` 管，根 `package.json` 与四个 `packages/*/package.json` 锁步。
 `docs/` 是私有包，不参与版本、不发布。
 
 **首次发布需要两步前置**，OIDC 引导不了一个不存在的包：

@@ -24,6 +24,23 @@ const withMDX = createMDX()
  */
 const dev = process.env.NODE_ENV === 'development'
 const sourceAlias = {
+  '@gedatou/cadenza-ai': '../packages/ai/src/index.ts',
+  '@gedatou/cadenza-ai/mock': '../packages/ai/src/mock/index.ts',
+  '@gedatou/cadenza-ai/server': '../packages/ai/src/server/index.ts',
+  '@gedatou/cadenza-ai/providers/openai': '../packages/ai/src/providers/openai.ts',
+  '@gedatou/cadenza-ai/providers/anthropic': '../packages/ai/src/providers/anthropic.ts',
+  '@gedatou/cadenza-ai/providers/gemini': '../packages/ai/src/providers/gemini.ts',
+  '@gedatou/cadenza-ai/providers/grok': '../packages/ai/src/providers/grok.ts',
+  '@gedatou/cadenza-ai/providers/groq': '../packages/ai/src/providers/groq.ts',
+  '@gedatou/cadenza-ai/providers/mistral': '../packages/ai/src/providers/mistral.ts',
+  '@gedatou/cadenza-ai/providers/openrouter': '../packages/ai/src/providers/openrouter.ts',
+  '@gedatou/cadenza-ai/providers/vercel-gateway': '../packages/ai/src/providers/vercel-gateway.ts',
+  '@gedatou/cadenza-ai/providers/llmgateway': '../packages/ai/src/providers/llmgateway.ts',
+  '@gedatou/cadenza-ai/providers/bedrock': '../packages/ai/src/providers/bedrock.ts',
+  '@gedatou/cadenza-ai/providers/vertex': '../packages/ai/src/providers/vertex.ts',
+  '@gedatou/cadenza-ai/providers/ollama': '../packages/ai/src/providers/ollama.ts',
+  '@gedatou/cadenza-ai/providers/openai-compatible': '../packages/ai/src/providers/openai-compatible.ts',
+  '@gedatou/cadenza-ai/providers/byteplus': '../packages/ai/src/providers/byteplus.ts',
   '@gedatou/cadenza-form': '../packages/form/src/index.ts',
   '@gedatou/cadenza-ui': '../packages/ui/src/index.ts',
   '@gedatou/cadenza-utils': '../packages/utils/src/index.ts',
@@ -31,7 +48,7 @@ const sourceAlias = {
 
 const config: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@gedatou/cadenza-form', '@gedatou/cadenza-ui', '@gedatou/cadenza-utils'],
+  transpilePackages: ['@gedatou/cadenza-ai', '@gedatou/cadenza-form', '@gedatou/cadenza-ui', '@gedatou/cadenza-utils'],
   turbopack: {
     resolveAlias: dev ? sourceAlias : {},
   },
