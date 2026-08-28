@@ -43,6 +43,48 @@ WebAuthn and kept across reloads. Before sending, the client calls `byok.prepare
 writes that provider's key into the request header; `byokProvider` decides which provider that
 is, falling back to the `provider` field of the body.
 
+### Dictation
+
+The leftmost control in the composer toolbar is `ComposerDictate`: press to record, press
+again to stop; the recording goes to `/api/ai/transcription` as a data URL and the transcript is
+**appended** to the draft (whatever you already typed is kept). Transcription runs on OpenAI —
+`byokProvider: () => 'openai'` — so it needs an OpenAI key; the button is disabled while a
+transcription is in flight, and an error bar shows above the textarea when it fails. The page
+owns the draft through `ChatShell`'s `value` / `onValueChange` channel; transcription only writes
+into it:
+
+```tsx
+const [draft, setDraft] = useState('')
+const transcription = useTranscription({
+  connection: fetchServerSentEvents('/api/ai/transcription'),
+  byok,
+  byokProvider: () => 'openai',
+  onResult: r => setDraft(d => (d === '' ? r.text : `${d} ${r.text}`)),
+})
+
+<ComposerDictate
+  disabled={transcription.isLoading}
+  onRecording={part => void transcription.generate({ audio: `data:${part.source.mimeType};base64,${part.source.value}` })}
+/>
+```
+
+### Auto titles
+
+A new thread's title defaults to the first 40 characters of the first user message
+(`threadTitleFrom`). When the **first assistant reply** finishes (`useChat({ onFinish })`), this
+page sends that question and answer to `/api/ai/summarize` with `style: 'concise'` and
+`maxLength: 40`, then `index.rename(threadId, text)`. A thread already renamed by hand is left
+alone; a failed request is silent and the default title stays. OpenAI only, as with dictation.
+
+```tsx
+const summary = useSummarize({
+  connection: fetchServerSentEvents('/api/ai/summarize'),
+  byok,
+  byokProvider: () => 'openai',
+  onResult: r => index.rename(threadId, r.summary.trim()),
+})
+```
+
 ## Approach
 
 - **Pure BYOK is a choice.** `getByokKey` prefers the header and falls back to env, so whether
@@ -79,7 +121,7 @@ is, falling back to the `provider` field of the body.
 
 ## API
 
-The two routes and three client exports this page uses.
+The four routes and three client exports this page uses. The adapter is passed in by the route (`createOpenaiTranscription` / `createOpenaiSummarize`); the library's server entry imports no adapter package.
 
 ### Routes
 
@@ -88,6 +130,8 @@ The two routes and three client exports this page uses.
 | `/api/ai/chat` | `POST` | `createChatHandler({ providers, defaultModel, systemPrompts, tools })`: size guard → parse → `pickSelection` (trusts only `provider` / `model` / `thinking` on `forwardedProps`) → `onSelect` → BYOK key → adapter → thinking → `chat()` → SSE |
 | `/api/ai/chat` | `GET` | serves only with `persistence` (`?threadId=`) or `durability` (`?runId=` / `last-event-id`) configured; otherwise 404 |
 | `/api/ai/catalog` | `GET` | `createCatalogHandler(presets)`: `{ providers, coverage, generatedAt }` |
+| `/api/ai/transcription` | `POST` | `createTranscriptionHandler({ adapter, byok, defaultModel })`: size guard (8 MiB by default) → `generationParamsFromRequest('transcription')` → `forwardedProps.model` ?? `defaultModel` → BYOK key → `generateTranscription({ stream: true })` → SSE, with the result in a `generation:result` event |
+| `/api/ai/summarize` | `POST` | `createSummarizeHandler({ adapter, byok, defaultModel })`: the same lifecycle; the body carries `{ data: { text, style, maxLength, focus } }` → `summarize({ stream: true })` → SSE |
 
 The full option table of the route lives in [Providers](/docs/ai/providers#route-handler).
 

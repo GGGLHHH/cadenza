@@ -39,6 +39,44 @@ const chat = useChat({
 用 WebAuthn 解锁、跨刷新保留。发送前客户端调 `byok.prepare(provider)`，再把这一家的 key
 写成请求头；`byokProvider` 决定「这一家」是谁，缺省从 body 的 `provider` 字段读。
 
+### 听写
+
+composer 工具栏最左边是 `ComposerDictate`：按一下开始录音，再按一下停止，录音以 data URL 发给
+`/api/ai/transcription`，转写结果**追加**到草稿末尾（已经打了字不会被覆盖）。转写走 OpenAI，
+`byokProvider: () => 'openai'`，所以需要 OpenAI 的 key；转写期间按钮禁用，出错时错误条显示在
+输入框上方。草稿由页面持有——`ChatShell` 的 `value` / `onValueChange` 通道——转写只是往里写字：
+
+```tsx
+const [draft, setDraft] = useState('')
+const transcription = useTranscription({
+  connection: fetchServerSentEvents('/api/ai/transcription'),
+  byok,
+  byokProvider: () => 'openai',
+  onResult: r => setDraft(d => (d === '' ? r.text : `${d} ${r.text}`)),
+})
+
+<ComposerDictate
+  disabled={transcription.isLoading}
+  onRecording={part => void transcription.generate({ audio: `data:${part.source.mimeType};base64,${part.source.value}` })}
+/>
+```
+
+### 自动标题
+
+新线程的标题默认是第一条用户消息的前 40 字（`threadTitleFrom`）。这一页在**第一条 assistant 回复**
+完成时（`useChat({ onFinish })`）把这一问一答发给 `/api/ai/summarize`，`style: 'concise'`、
+`maxLength: 40`，结果 `index.rename(threadId, text)`。已经改过名的线程不动；请求失败静默，
+默认标题保留。同样只走 OpenAI。
+
+```tsx
+const summary = useSummarize({
+  connection: fetchServerSentEvents('/api/ai/summarize'),
+  byok,
+  byokProvider: () => 'openai',
+  onResult: r => index.rename(threadId, r.summary.trim()),
+})
+```
+
 ## 思路
 
 - **纯 BYOK 是选出来的。** `getByokKey` 头优先、env 兜底，所以配不配服务端 key 只是部署时
@@ -69,7 +107,7 @@ const chat = useChat({
 
 ## API
 
-这一页用到的两条 route 与三个客户端导出。
+这一页用到的四条 route 与三个客户端导出。adapter 由 route 传入（`createOpenaiTranscription` / `createOpenaiSummarize`），库的 server 入口不 import 任何 adapter 包。
 
 ### Route
 
@@ -78,6 +116,8 @@ const chat = useChat({
 | `/api/ai/chat` | `POST` | `createChatHandler({ providers, defaultModel, systemPrompts, tools })`：体积门禁 → 解析 → `pickSelection`（只信 `forwardedProps` 的 `provider` / `model` / `thinking`）→ `onSelect` → BYOK key → adapter → thinking → `chat()` → SSE |
 | `/api/ai/chat` | `GET` | 只在配了 `persistence`（`?threadId=`）或 `durability`（`?runId=` / `last-event-id`）时有内容，否则 404 |
 | `/api/ai/catalog` | `GET` | `createCatalogHandler(presets)`：`{ providers, coverage, generatedAt }` |
+| `/api/ai/transcription` | `POST` | `createTranscriptionHandler({ adapter, byok, defaultModel })`：体积门禁（默认 8 MiB）→ `generationParamsFromRequest('transcription')` → `forwardedProps.model` ?? `defaultModel` → BYOK key → `generateTranscription({ stream: true })` → SSE，结果在 `generation:result` 事件里 |
+| `/api/ai/summarize` | `POST` | `createSummarizeHandler({ adapter, byok, defaultModel })`：同一生命周期，body 取 `{ data: { text, style, maxLength, focus } }` → `summarize({ stream: true })` → SSE |
 
 route 的 options 全表见 [接入提供者](/docs/ai/providers#route-handler)。
 
