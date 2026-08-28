@@ -9,11 +9,12 @@ import {
   ToolCallCard,
   useChat,
 } from '@gedatou/cadenza-ai'
-import { approvalOf, scripted, sequence, text, tool } from '@gedatou/cadenza-ai/mock'
+import { approvalOf, sequence, text, tool } from '@gedatou/cadenza-ai/mock'
 import { Input } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 import { move } from './tools'
 
 // Proves the approval interrupt: Approve continues the run with the original
@@ -55,7 +56,7 @@ const renderers = definePartRenderers({
 })
 
 function Body(): ReactElement {
-  const [fetcher] = useState(() => scripted(sequence([
+  const [fetcher] = useState(() => mockFetcher(sequence([
     [tool('move', { work: 'Firebird', to: 'before interval' }, { approval: true })],
     (ctx) => {
       const decision = approvalOf(ctx, 'call-1')

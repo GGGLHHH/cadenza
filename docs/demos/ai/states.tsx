@@ -1,10 +1,11 @@
 import type { ReactElement } from 'react'
 import { Suggestions, SuggestionsItem, useChat } from '@gedatou/cadenza-ai'
-import { error, scripted, sequence } from '@gedatou/cadenza-ai/mock'
+import { error, sequence } from '@gedatou/cadenza-ai/mock'
 import { Button, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 import { rehearsalScript } from './scripts'
 import { getTime } from './tools'
 
@@ -13,7 +14,7 @@ import { getTime } from './tools'
 // (`TranscriptError` carries `data-code`) and Retry replays it through
 // `chat.reload()`, and stopping a long stream ends in `ready`, not an error.
 function Body(): ReactElement {
-  const [fetcher] = useState(() => scripted(sequence([[error('Rate limited', '429')], rehearsalScript()])))
+  const [fetcher] = useState(() => mockFetcher(sequence([[error('Rate limited', '429')], rehearsalScript()])))
   const chat = useChat({ fetcher, tools: [getTime] })
   const send = (value: string): void => {
     void chat.sendMessage(value)

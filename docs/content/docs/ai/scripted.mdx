@@ -46,6 +46,21 @@ const chat = useChat({ fetcher })
   停在中断上，由下一轮脚本读 `ctx.resume` 决定后续；`./mock` 只有 fetcher 形态——需要服务端
   `hydrate` 或持久化重建的场景用真 route。
 
+本站所有 demo 共用一份固定模式——`docs/demos/ai/mock.ts` 里的 `mockFetcher`：
+`sse: true`（真的以 `text/event-stream` 作答，客户端跑它的 SSE 解析器），`chunk: 'char'`
+（文本与推理逐字到达），`pace: 12`（每字 12 ms），`argsChunk: 4`（工具参数每 4 个字符一片）。
+每个 demo 只换脚本，不换节奏；你看到的流式形态就是生产环境的形态。
+
+```tsx
+import { scripted } from '@gedatou/cadenza-ai/mock'
+
+export const MOCK = { sse: true, chunk: 'char', pace: 12, argsChunk: 4 } as const
+
+export function mockFetcher(script: Script, options: ScriptedOptions = {}): ChatFetcher {
+  return scripted(script, { ...MOCK, ...options })
+}
+```
+
 ## 步骤
 
 每个构造器各来一次——页顶的 demo 就是这份脚本。
@@ -201,6 +216,8 @@ it('streams text, reasoning and a tool call into parts', async () => {
 | --- | --- | --- | --- |
 | `pace` | `number \| 'instant'` | `24` | 分片之间的毫秒数；`'instant'` 跳过计时器 |
 | `chunk` | `'word' \| 'char' \| number` | `'word'` | `text` / `reasoning` 的默认切片 |
+| `argsChunk` | `number` | 整段 | 工具参数的默认切片（每个 `TOOL_CALL_ARGS` 的字符数）；`tool` 步骤自己的 `argsChunk` 优先 |
+| `sse` | `boolean` | `false` | 以 `text/event-stream` 的 `Response`（每个 chunk 一行 `data:`）作答，客户端走真实的 SSE 解析器——与 `/api/ai/chat` 同一条路 |
 | `messageId` | `() => string` | 引擎的 id 生成器 | 本轮 assistant 消息的 id |
 | `toolCallId` | `() => string` | 引擎的 id 生成器 | 未显式给 `toolCallId` 的工具调用用它；测试里用来写死 id |
 

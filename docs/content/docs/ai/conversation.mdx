@@ -78,7 +78,7 @@ Markdown 样式与 KaTeX 都在 `@gedatou/cadenza-ai/styles.css` 里）：
 - **渲染归部件注册表**。一条消息是若干 `part`（文本、推理、工具调用、附件……），
   `TranscriptParts` 按 `part.type` 分发给内置部件；要换掉某一种，
   在 [`PartRenderersProvider`](/docs/ai/parts#工具渲染器) 里按名注册，不用改 Transcript。
-- **传输归 `fetcher` / `connection`**。demo 用 `scripted()`，真实服务用
+- **传输归 `fetcher` / `connection`**。demo 用 `scripted()`（本站统一包成 `mockFetcher`：模拟 SSE、逐字），真实服务用
   `fetchServerSentEvents('/api/ai/chat')`，两者对 `useChat` 是同一个形状。
 - **惯例归门面**：线程索引、模型选择、用量统计、编辑重发、附件草稿、BYOK 便捷——都是
   只依赖 `useChat` 返回值的纯函数与 hook，用不用都不影响前三条。
@@ -192,7 +192,8 @@ Escape 走 `onStop`；空草稿时发送按钮禁用。附件、模型选择、�
 
 ## 流式
 
-流式回复逐词落进最后一行，`Transcript` 在读者位于末端时跟随，读者上滚就松手；
+流式回复逐字落进最后一行（本站 demo 统一模拟 SSE、逐字、12 ms 一字，见
+[脚本化传输](/docs/ai/scripted#思路)），`Transcript` 在读者位于末端时跟随，读者上滚就松手；
 运行中发送按钮变成停止。
 
 <ComponentPreview name="ai/streaming" align="stretch" />

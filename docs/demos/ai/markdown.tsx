@@ -1,9 +1,10 @@
 import type { ReactElement } from 'react'
 import { Suggestions, SuggestionsItem, useChat } from '@gedatou/cadenza-ai'
-import { respond, scripted, text } from '@gedatou/cadenza-ai/mock'
+import { respond, text } from '@gedatou/cadenza-ai/mock'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 import { REPLIES } from './scripts'
 
 // Proves the Markdown renderer: a GFM table, KaTeX math and a highlighted
@@ -11,11 +12,11 @@ import { REPLIES } from './scripts'
 // the half-written table and code fence are repaired on every chunk. Both
 // themes are read from the page.
 function Body(): ReactElement {
-  const [fetcher] = useState(() => scripted(respond([
+  const [fetcher] = useState(() => mockFetcher(respond([
     [/table/i, [text(REPLIES.table)]],
     [/math/i, [text(REPLIES.math)]],
     [/code/i, [text(REPLIES.code)]],
-  ], [text(REPLIES.plan)]), { chunk: 'char', pace: 20 }))
+  ], [text(REPLIES.plan)])))
   const chat = useChat({ fetcher })
   return (
     <ChatShell

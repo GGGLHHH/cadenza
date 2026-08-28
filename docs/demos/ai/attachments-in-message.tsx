@@ -1,10 +1,11 @@
 import type { UIMessage } from '@gedatou/cadenza-ai'
 import type { ReactElement } from 'react'
 import { useChat } from '@gedatou/cadenza-ai'
-import { echo, scripted } from '@gedatou/cadenza-ai/mock'
+import { echo } from '@gedatou/cadenza-ai/mock'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 
 // Proves MediaPart inside a user message: an image, a document and an audio
 // part rendered by type — image card, document card with its name, a native
@@ -29,7 +30,7 @@ const history: UIMessage[] = [
 ]
 
 function Body(): ReactElement {
-  const [fetcher] = useState(() => scripted(echo()))
+  const [fetcher] = useState(() => mockFetcher(echo()))
   const chat = useChat({ fetcher, initialMessages: history })
   return <ChatShell chat={chat} />
 }

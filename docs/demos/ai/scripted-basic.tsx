@@ -1,10 +1,11 @@
 import type { Step } from '@gedatou/cadenza-ai/mock'
 import type { ReactElement } from 'react'
 import { useChat, useUsageTracker } from '@gedatou/cadenza-ai'
-import { custom, error, finish, reasoning, scripted, sequence, sleep, structured, text, tool, usage } from '@gedatou/cadenza-ai/mock'
+import { custom, error, finish, reasoning, sequence, sleep, structured, text, tool, usage } from '@gedatou/cadenza-ai/mock'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 import { getTime } from './tools'
 
 // Proves the step DSL end to end: one turn plays every constructor in the
@@ -27,7 +28,7 @@ const tour: Step[] = [
 function Body(): ReactElement {
   const tracker = useUsageTracker()
   const [events, setEvents] = useState<string[]>([])
-  const [fetcher] = useState(() => scripted(sequence([tour, [error('The scripted provider is over quota.', 'rate_limited')]])))
+  const [fetcher] = useState(() => mockFetcher(sequence([tour, [error('The scripted provider is over quota.', 'rate_limited')]])))
   const chat = useChat({
     fetcher,
     tools: [getTime],

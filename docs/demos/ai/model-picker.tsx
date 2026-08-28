@@ -1,9 +1,10 @@
 import type { ReactElement } from 'react'
 import { defaultCatalog, ModelPicker, modelRef, ThinkingLevelPicker, useChat, useModelSelection } from '@gedatou/cadenza-ai'
-import { echo, scripted } from '@gedatou/cadenza-ai/mock'
+import { echo } from '@gedatou/cadenza-ai/mock'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 
 const KEY = 'docs-model-picker'
 
@@ -12,7 +13,7 @@ const KEY = 'docs-model-picker'
 // picker disappears for a model without levels (GPT-4.1) and the stored level
 // is clamped to what the new model supports.
 function Body(): ReactElement {
-  const [fetcher] = useState(() => scripted(echo()))
+  const [fetcher] = useState(() => mockFetcher(echo()))
   const sel = useModelSelection({ key: KEY })
   const chat = useChat({ fetcher, forwardedProps: sel.forwardedProps })
   return (

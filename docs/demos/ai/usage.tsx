@@ -1,10 +1,11 @@
 import type { TokenUsage } from '@gedatou/cadenza-ai'
 import type { ReactElement } from 'react'
 import { defaultCatalog, estimateCost, useChat, useUsageTracker } from '@gedatou/cadenza-ai'
-import { scripted, text, usage } from '@gedatou/cadenza-ai/mock'
+import { text, usage } from '@gedatou/cadenza-ai/mock'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 import { REPLIES } from './scripts'
 
 // Proves `useUsageTracker`: wired to `onChunk` / `onFinish`, it books each
@@ -20,7 +21,7 @@ function describe(u: TokenUsage): string {
 
 function Body(): ReactElement {
   const tracker = useUsageTracker()
-  const [fetcher] = useState(() => scripted(ctx => [
+  const [fetcher] = useState(() => mockFetcher(ctx => [
     text(REPLIES.plan),
     usage({ inputTokens: 412 + 140 * ctx.turn, outputTokens: 96 }),
   ]))

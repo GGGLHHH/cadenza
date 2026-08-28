@@ -1,10 +1,11 @@
 import type { ScriptContext, Step } from '@gedatou/cadenza-ai/mock'
 import type { ReactElement } from 'react'
 import { useChat } from '@gedatou/cadenza-ai'
-import { approvalOf, echo, respond, scripted, sequence, text, tool } from '@gedatou/cadenza-ai/mock'
+import { approvalOf, echo, respond, sequence, text, tool } from '@gedatou/cadenza-ai/mock'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 import { planningReply } from './scripts'
 import { getTime, move } from './tools'
 
@@ -37,7 +38,7 @@ const script = respond([
 ]))
 
 function Body(): ReactElement {
-  const [fetcher] = useState(() => scripted(script))
+  const [fetcher] = useState(() => mockFetcher(script))
   const chat = useChat({ fetcher, tools: [getTime, move] })
   return <ChatShell chat={chat} empty="Try: “/plan”, “move Firebird”, or anything else." />
 }

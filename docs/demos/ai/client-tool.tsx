@@ -1,12 +1,13 @@
 import type { Script } from '@gedatou/cadenza-ai/mock'
 import type { ReactElement } from 'react'
 import { toolDefinition, useChat } from '@gedatou/cadenza-ai'
-import { clientResultOf, scripted, text, tool } from '@gedatou/cadenza-ai/mock'
+import { clientResultOf, text, tool } from '@gedatou/cadenza-ai/mock'
 import { Button } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
 import { z } from 'zod'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 import { getViewport } from './tools'
 
 // Proves client tools: `get_viewport` carries a `.client()` executor, so the
@@ -34,7 +35,7 @@ const script: Script = (ctx) => {
 }
 
 function Body(): ReactElement {
-  const [fetcher] = useState(() => scripted(script))
+  const [fetcher] = useState(() => mockFetcher(script))
   const chat = useChat({ fetcher, tools: [getViewport, getLocale] })
   const waiting = chat.messages
     .flatMap(message => message.parts)

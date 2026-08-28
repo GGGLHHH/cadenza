@@ -19,7 +19,6 @@ import {
   useThreadIndex,
   useThreadListItem,
 } from '@gedatou/cadenza-ai'
-import { scripted } from '@gedatou/cadenza-ai/mock'
 import {
   AlertDialog,
   AlertDialogClose,
@@ -43,6 +42,7 @@ import { IconMenu2, IconTrash } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 import { rehearsalScript } from './scripts'
 import { getTime } from './tools'
 
@@ -204,7 +204,7 @@ export function ThreadPane(props: ThreadPaneProps): ReactElement {
 }
 
 function Chat({ threadId }: { threadId: string }): ReactElement {
-  const [fetcher] = useState(() => scripted(rehearsalScript()))
+  const [fetcher] = useState(() => mockFetcher(rehearsalScript()))
   const chat = useChat({ fetcher, tools: [getTime], persistence, threadId })
   return <ChatShell chat={chat} empty="Each thread keeps its own transcript; the first message names it." />
 }

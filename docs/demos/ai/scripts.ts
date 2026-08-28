@@ -50,7 +50,7 @@ export function rehearsalScript(): Script {
     [/table/i, [text(REPLIES.table)]],
     [/math|minutes/i, [text(REPLIES.math)]],
     [/code/i, [text(REPLIES.code)]],
-    [/slow|long/i, [text(REPLIES.long, { chunk: 'char', pace: 8 })]],
+    [/slow|long/i, [text(REPLIES.long)]],
     [/plan|programme|program/i, planningReply()],
   ], echo())
 }

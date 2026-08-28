@@ -1,12 +1,13 @@
 import type { PartLabels, ToolRendererProps } from '@gedatou/cadenza-ai'
 import type { ReactElement } from 'react'
 import { definePartRenderers, parsePartialJSON, PartRenderersProvider, useChat } from '@gedatou/cadenza-ai'
-import { scripted, text, tool } from '@gedatou/cadenza-ai/mock'
+import { text, tool } from '@gedatou/cadenza-ai/mock'
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@gedatou/cadenza-ui'
 import { IconClock } from '@tabler/icons-react'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 import { getTime } from './tools'
 
 // Proves the renderer registry: `get_time` gets a custom card keyed by tool
@@ -58,8 +59,8 @@ const labels: Partial<PartLabels> = {
 }
 
 function Body(): ReactElement {
-  const [fetcher] = useState(() => scripted(() => [
-    tool('get_time', { tz: 'Europe/Paris' }, { argsChunk: 4, output: { iso: '2026-10-14T19:30:00+02:00' } }),
+  const [fetcher] = useState(() => mockFetcher(() => [
+    tool('get_time', { tz: 'Europe/Paris' }, { output: { iso: '2026-10-14T19:30:00+02:00' } }),
     tool('lookup_hall', { city: 'Paris' }, { output: { hall: 'Philharmonie de Paris', seats: 2400 } }),
     text('Downbeat at 19:30 at the Philharmonie.'),
   ]))

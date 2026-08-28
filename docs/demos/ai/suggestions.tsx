@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
 import { Suggestions, SuggestionsItem, useChat } from '@gedatou/cadenza-ai'
-import { scripted } from '@gedatou/cadenza-ai/mock'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 import { rehearsalScript } from './scripts'
 import { getTime } from './tools'
 
@@ -11,7 +11,7 @@ import { getTime } from './tools'
 // `onValueChange`, which sends it as the user message — no draft involved.
 // The chips live in the transcript's empty slot, so they leave with it.
 function Body(): ReactElement {
-  const [fetcher] = useState(() => scripted(rehearsalScript()))
+  const [fetcher] = useState(() => mockFetcher(rehearsalScript()))
   const chat = useChat({ fetcher, tools: [getTime] })
   return (
     <ChatShell

@@ -1,16 +1,17 @@
 import type { ReactElement } from 'react'
 import { ComposerAttachments, ComposerDictate, useAttachmentDraft, useChat } from '@gedatou/cadenza-ai'
-import { echo, scripted } from '@gedatou/cadenza-ai/mock'
+import { echo } from '@gedatou/cadenza-ai/mock'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 
 // Proves dictation is just another attachment: the finished recording arrives
 // as an `AudioPart`, joins the strip like a picked file, and ships with the
 // next message — the echo lists its MIME type. Needs a microphone and the
 // browser's permission; the button is disabled where recording is unsupported.
 function Body(): ReactElement {
-  const [fetcher] = useState(() => scripted(echo()))
+  const [fetcher] = useState(() => mockFetcher(echo()))
   const chat = useChat({ fetcher })
   const draft = useAttachmentDraft({ accept: ['audio'] })
   return (

@@ -2,11 +2,12 @@ import type { KeyStatus } from '@gedatou/cadenza-ai'
 import type { BadgeVariant } from '@gedatou/cadenza-ui'
 import type { ReactElement } from 'react'
 import { ByokKeyDialog, createByok, defaultCatalog, useByok, useChat } from '@gedatou/cadenza-ai'
-import { byokMissing, scripted } from '@gedatou/cadenza-ai/mock'
+import { byokMissing } from '@gedatou/cadenza-ai/mock'
 import { Badge, Button } from '@gedatou/cadenza-ui'
 import { useMemo, useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 
 // Proves the key flow without a network: `useByok` mirrors each provider's
 // KeyStatus (empty / set / locked / error), sending with no OpenAI key makes
@@ -25,7 +26,7 @@ function Body(): ReactElement {
     return client
   }, [])
   const snapshot = useByok(byok)
-  const [fetcher] = useState(() => scripted(() => byokMissing('openai')))
+  const [fetcher] = useState(() => mockFetcher(() => byokMissing('openai')))
   const chat = useChat({ fetcher, byok, byokProvider: () => 'openai' })
   return (
     <div className="flex flex-col gap-2">

@@ -52,6 +52,22 @@ so it lives with the component (the `turn` counter hangs off that instance).
   `ctx.resume` to decide what follows; `./mock` has only the fetcher shape — anything that needs
   server-side `hydrate` or persistence reconstruction uses a real route.
 
+Every demo on this site shares one fixed pattern — `mockFetcher` in `docs/demos/ai/mock.ts`:
+`sse: true` (a real `text/event-stream` answer, parsed by the client's SSE parser),
+`chunk: 'char'` (text and reasoning arrive one character at a time), `pace: 12` (12 ms per
+character) and `argsChunk: 4` (tool arguments in four-character pieces). Demos swap the
+script, never the rhythm; the streaming you see is the shape production has.
+
+```tsx
+import { scripted } from '@gedatou/cadenza-ai/mock'
+
+export const MOCK = { sse: true, chunk: 'char', pace: 12, argsChunk: 4 } as const
+
+export function mockFetcher(script: Script, options: ScriptedOptions = {}): ChatFetcher {
+  return scripted(script, { ...MOCK, ...options })
+}
+```
+
 ## Steps
 
 Every constructor once — the demo at the top is this script.
@@ -214,6 +230,8 @@ The single argument of a `Script`: `(ctx: ScriptContext) => Step[] | Iterable<St
 | --- | --- | --- | --- |
 | `pace` | `number \| 'instant'` | `24` | milliseconds between slices; `'instant'` skips the timers |
 | `chunk` | `'word' \| 'char' \| number` | `'word'` | default slicing for `text` / `reasoning` |
+| `argsChunk` | `number` | whole | default slicing of tool arguments (characters per `TOOL_CALL_ARGS`); a `tool` step's own `argsChunk` wins |
+| `sse` | `boolean` | `false` | answer as a `text/event-stream` `Response` (one `data:` line per chunk), so the client runs its real SSE parser — the same path `/api/ai/chat` takes |
 | `messageId` | `() => string` | the engine's id generator | the id of this run's assistant message |
 | `toolCallId` | `() => string` | the engine's id generator | used by tool calls without an explicit `toolCallId`; pins ids in tests |
 

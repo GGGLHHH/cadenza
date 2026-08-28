@@ -1,11 +1,11 @@
 import type { UIMessage } from '@gedatou/cadenza-ai'
 import type { ReactElement } from 'react'
 import { editAndResend, messageText, TranscriptAction, useChat } from '@gedatou/cadenza-ai'
-import { scripted } from '@gedatou/cadenza-ai/mock'
 import { IconCopy, IconPencil, IconRefresh, IconTrash } from '@tabler/icons-react'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 import { rehearsalScript } from './scripts'
 import { getTime } from './tools'
 
@@ -14,7 +14,7 @@ import { getTime } from './tools'
 // cancels; committing truncates from there and resends) and Clear empties the
 // thread. The bar is `data-hidden` while a run streams.
 function Body(): ReactElement {
-  const [fetcher] = useState(() => scripted(rehearsalScript()))
+  const [fetcher] = useState(() => mockFetcher(rehearsalScript()))
   const chat = useChat({ fetcher, tools: [getTime] })
   const [editing, setEditing] = useState<{ id: string, text: string } | null>(null)
 

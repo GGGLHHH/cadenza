@@ -1,9 +1,10 @@
 import type { ReactElement } from 'react'
 import { useChat } from '@gedatou/cadenza-ai'
-import { custom, scripted, sleep, text } from '@gedatou/cadenza-ai/mock'
+import { custom, sleep, text } from '@gedatou/cadenza-ai/mock'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
+import { mockFetcher } from './mock'
 
 // Proves `onCustomEvent`: the script emits three `progress` events before its
 // text, and the callback drives a native progress bar above the shell.
@@ -15,7 +16,7 @@ function isProgress(data: unknown): data is Progress {
 }
 
 function Body(): ReactElement {
-  const [fetcher] = useState(() => scripted(() => [
+  const [fetcher] = useState(() => mockFetcher(() => [
     custom('progress', { done: 1, total: 3 }),
     sleep(300),
     custom('progress', { done: 2, total: 3 }),

@@ -83,7 +83,7 @@ A conversation is four kinds of thing, each with one home:
   reasoning, tool call, attachment …); `TranscriptParts` dispatches on `part.type` to the
   built-in parts. To replace one, register it by name in
   [`PartRenderersProvider`](/docs/ai/parts#tool-renderers) — the Transcript stays as it is.
-- **Transport belongs to `fetcher` / `connection`.** Demos use `scripted()`, a real service
+- **Transport belongs to `fetcher` / `connection`.** Demos use `scripted()` (wrapped site-wide as `mockFetcher`: simulated SSE, character by character), a real service
   uses `fetchServerSentEvents('/api/ai/chat')`; to `useChat` they are the same shape.
 - **Conventions belong to the facade**: thread index, model selection, usage tracking,
   edit-and-resend, attachment drafts, BYOK helpers — pure functions and hooks that depend
@@ -206,7 +206,9 @@ is a `MessageScroller` underneath, which fills its parent — so the parent need
 
 ## Streaming
 
-A streamed reply lands word by word in the last row; `Transcript` follows while the reader is
+A streamed reply lands character by character in the last row (every demo on this site
+simulates SSE the same way — one character every 12 ms, see
+[Scripted Transport](/docs/ai/scripted#approach)); `Transcript` follows while the reader is
 at the end and lets go when they scroll up. While a run is in flight the send button turns
 into stop.
 
