@@ -78,7 +78,10 @@ export function Reasoning({ content, complete, startedAt: startedAtProp, open: o
         manualRef.current = true
         setOpen(next, details)
       }}
-      className={cn('flex flex-col gap-2', className)}
+      // No `gap` between trigger and panel: the panel animates its height to 0,
+      // and a gap on the parent would vanish in one step once it hides — the
+      // spacing lives inside the panel so it folds with the content.
+      className={cn('flex flex-col', className)}
     >
       {/* Marker gives the row its look; the trigger stays a real <button> for keyboard and aria-expanded. */}
       <CollapsibleTrigger data-slot="reasoning-trigger" render={<Marker render={<button type="button" />} />}>
@@ -93,11 +96,13 @@ export function Reasoning({ content, complete, startedAt: startedAtProp, open: o
         </MarkerContent>
       </CollapsibleTrigger>
       <CollapsiblePanel>
-        <Markdown
-          content={content}
-          streaming={!complete}
-          className="text-sm text-muted-foreground"
-        />
+        <div className="pbs-2">
+          <Markdown
+            content={content}
+            streaming={!complete}
+            className="text-sm text-muted-foreground"
+          />
+        </div>
       </CollapsiblePanel>
     </Collapsible>
   )

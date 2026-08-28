@@ -31,7 +31,7 @@ export function Sources({ sources, children, open: openProp, defaultOpen, onOpen
         if (!details.isCanceled)
           setOpen(next)
       }}
-      className={cn('flex flex-col gap-2 text-sm', className)}
+      className={cn('flex flex-col text-sm', className)}
     >
       <CollapsibleTrigger
         data-slot="sources-trigger"
@@ -40,7 +40,7 @@ export function Sources({ sources, children, open: openProp, defaultOpen, onOpen
         {children}
       </CollapsibleTrigger>
       <CollapsiblePanel>
-        <ol className="flex list-decimal flex-col gap-1 ps-5">
+        <ol className="flex list-decimal flex-col gap-1 ps-5 pbs-2">
           {sources.map(source => (
             <li key={source.url}>
               <a

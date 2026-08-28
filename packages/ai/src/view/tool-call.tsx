@@ -220,11 +220,13 @@ export function ToolCallGroup({ count, children, open: openProp, defaultOpen, on
       data-count={count}
       open={open}
       onOpenChange={setOpen}
-      className={cn('flex flex-col gap-2', className)}
+      // Spacing sits inside the panel so it folds with the cards (a `gap` on the
+      // root would disappear in one step once the panel hides).
+      className={cn('flex flex-col', className)}
     >
       {trigger}
       <CollapsiblePanel>
-        <div className="flex flex-col gap-2">{body}</div>
+        <div className="flex flex-col gap-2 pbs-2">{body}</div>
       </CollapsiblePanel>
     </Collapsible>
   )

@@ -151,7 +151,12 @@ function TranscriptMessageImpl({ message, align, streaming = false, children, cl
       data-slot="transcript-message"
       data-role={message.role}
       data-streaming={dataAttr(streaming)}
-      className={className}
+      // The vendored item opts into `content-visibility: auto` with a 10rem
+      // placeholder. Relevance is decided asynchronously, so a row that just
+      // mounted or just changed is laid out at 160px for one frame before its
+      // real height returns — a visible flicker on every reply and a scroll
+      // jump with it. Conversation rows are rendered in full instead.
+      className={cn('[content-visibility:visible]', className)}
     >
       <Message align={align ?? (user ? 'end' : 'start')}>
         <MessageContent>
