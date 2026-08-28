@@ -1,0 +1,205 @@
+---
+title: Empty
+description: 空态区块 —— 媒体、标题、描述加一个把人带出空态的动作，六个纯 div 部件
+---
+
+<ComponentPreview name="empty/basic" />
+
+「这里还什么都没有」的那一块：`EmptyHeader` 装媒体、标题、描述，`EmptyContent`
+装按钮、输入框或链接 —— 把用户带出空态的动作。六个部件底下全是纯 `<div>`，没有
+Base UI state，`className` 只收字符串，其余原生属性（含 `ref`）原样透传；
+布局只烘了居中、间距和 `border-dashed`，边框和背景都留给 `className`，
+见[描边](#描边)与[背景](#背景)。
+
+母版的「Avatar」「Avatar Group」两节本页省去：`Avatar` 尚未提升为公开组件。
+
+## 使用
+
+```tsx
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Empty>
+  <EmptyHeader>
+    <EmptyMedia variant="icon">
+      <IconInbox aria-hidden />
+    </EmptyMedia>
+    <EmptyTitle>没有数据</EmptyTitle>
+    <EmptyDescription>还没有任何记录。</EmptyDescription>
+  </EmptyHeader>
+  <EmptyContent>
+    <Button>新建</Button>
+  </EmptyContent>
+</Empty>
+```
+
+## 组成
+
+```text
+Empty
+├── EmptyHeader
+│   ├── EmptyMedia
+│   ├── EmptyTitle
+│   └── EmptyDescription
+└── EmptyContent
+```
+
+部件不写就不渲染：只要标题的空态就只放 `EmptyTitle`，没有动作就省掉
+`EmptyContent`。
+
+## 描边
+
+根部件自带 `border-dashed` 和 `rounded-xl` 但没有边框宽度，一个 `border` 就能画出
+虚线框。
+
+<ComponentPreview name="empty/outline" />
+
+## 背景
+
+背景同样是根部件的 `className`：`bg-*` 和渐变工具类与烘进去的布局类互不干扰。
+
+<ComponentPreview name="empty/background" />
+
+## InputGroup
+
+`EmptyContent` 收任意控件，不限于按钮 —— 放一个
+[InputGroup](/docs/components/input-group) 就把空态变成下一次搜索的起点。
+
+<ComponentPreview name="empty/input-group" />
+
+## 什么时候用 Empty
+
+`Empty` 只负责画一块空态，不知道数据有没有到。库里带数据的组件各有自己的空态
+**槽位**，`Empty` 是塞进槽位里的内容，不是槽位的替代品：
+
+| 要做的事 | 用 |
+| --- | --- |
+| 自己的布局里画一块「什么都没有」（页面区块、面板、列表容器） | `Empty` |
+| 表格没有行 | [DataTable](/docs/components/data-table) 的 `DataTableEmpty`，它按数据状态自己决定何时渲染；里面放 `Empty` |
+| 下拉没有匹配结果 | [InfiniteSelect](/docs/components/infinite-select) 的 `InfiniteSelectEmpty`；弹层里空间小，通常一句话就够，不必整套 `Empty` |
+
+## 状态与 className
+
+纯 DOM 家族，没有 Base UI state；唯一的状态属性挂在 `EmptyMedia` 上：
+
+| 属性 | 效果 |
+| --- | --- |
+| `data-variant="default"` | 媒体透明，尺寸由内容决定 |
+| `data-variant="icon"` | 8×8 的圆角 `bg-muted` 方块，里面没写 `size-*` 的 svg 一律 `size-4` |
+
+六个 `data-slot` 可以当选择器用：
+
+| `data-slot` | 挂在 |
+| --- | --- |
+| `empty` | 根，`flex-col` 居中的容器 |
+| `empty-header` | 媒体 / 标题 / 描述的竖排组，`max-w-sm` |
+| `empty-icon` | `EmptyMedia` —— **两个变体都叫 `empty-icon`**，vendored 的命名，seam 不改；分辨变体看 `data-variant` |
+| `empty-title` | 标题 |
+| `empty-description` | 描述 |
+| `empty-content` | 动作区，`max-w-sm` 竖排 |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+六个部件全是纯 `<div>`，`className` 一律字符串，原生 `<div>` 的 props（含 `ref`）透传。
+
+### Empty
+
+根容器：`flex-col` 居中、`gap-4`、`p-6`、`rounded-xl border-dashed`、文字居中。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名；边框宽度和背景在这里加 |
+| 其余 | 原生 `<div>` 的 props | — | 透传（含 `ref`） |
+
+```tsx
+<Empty className="border">
+  <EmptyHeader />
+  <EmptyContent />
+</Empty>
+```
+
+### EmptyHeader
+
+媒体、标题、描述的竖排组，`max-w-sm`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名 |
+| 其余 | 原生 `<div>` 的 props | — | 透传（含 `ref`） |
+
+```tsx
+<EmptyHeader>
+  <EmptyMedia />
+  <EmptyTitle />
+  <EmptyDescription />
+</EmptyHeader>
+```
+
+### EmptyMedia
+
+图标、图片或任何别的东西的位置。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `variant` | `'default' \| 'icon'` | `'default'` | `icon` 给一个 8×8 的 `bg-muted` 圆角方块并把 svg 收成 `size-4`；回显为 `data-variant` |
+| `className` | `string` | — | 类名（穿过 `cva`，所以只收字符串） |
+| 其余 | 原生 `<div>` 的 props | — | 透传（含 `ref`） |
+
+```tsx
+<EmptyMedia variant="icon">
+  <IconInbox aria-hidden />
+</EmptyMedia>
+```
+
+### EmptyTitle
+
+`text-sm font-medium` 的标题。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名 |
+| 其余 | 原生 `<div>` 的 props | — | 透传（含 `ref`） |
+
+```tsx
+<EmptyTitle>没有数据</EmptyTitle>
+```
+
+### EmptyDescription
+
+`text-muted-foreground` 的描述；直接子级的 `<a>` 自带下划线，悬停变主色。
+
+上游把它声明成 `<p>` 却渲染成 `<div>`，seam 已把类型改回 `<div>`，`ref` 和事件
+处理器按 `HTMLDivElement` 写。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名 |
+| 其余 | 原生 `<div>` 的 props | — | 透传（含 `ref`） |
+
+```tsx
+<EmptyDescription>
+  还没有任何记录，<a href="/docs">看看文档</a>。
+</EmptyDescription>
+```
+
+### EmptyContent
+
+动作区：按钮、输入框、链接，`max-w-sm` 竖排 `gap-2.5`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名 |
+| 其余 | 原生 `<div>` 的 props | — | 透传（含 `ref`） |
+
+```tsx
+<EmptyContent>
+  <Button>新建</Button>
+</EmptyContent>
+```
+
+7 个类型一并导出：`EmptyProps` / `EmptyHeaderProps` / `EmptyMediaProps` /
+`EmptyMediaVariant` / `EmptyTitleProps` / `EmptyDescriptionProps` /
+`EmptyContentProps`。

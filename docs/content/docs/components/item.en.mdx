@@ -1,0 +1,369 @@
+---
+title: Item
+description: One row of content — media, title and description, an actions area; the whole row can be a link, rows stack into a list
+---
+
+<ComponentPreview name="item/basic" />
+
+`Item` is a flex container holding every part of "one row of content":
+`ItemMedia` for an icon or image, `ItemContent` wrapping `ItemTitle` and
+`ItemDescription`, `ItemActions` for buttons on the trailing edge, and
+`ItemHeader` / `ItemFooter` each spanning a full line. `ItemGroup` stacks rows
+into a `role="list"`, and `ItemSeparator` rules between them.
+
+It is the vendored shadcn source exported as-is: `Item` goes through Base UI's
+`useRender`, so `render` turns the whole row into an `<a>` or `<button>` with
+the hover and focus styling landing on the real element; the two appearance
+dimensions `variant` / `size` are mirrored as `data-variant` / `data-size`.
+It is also the row primitive `ThreadList` in `@gedatou/cadenza-ai` is built on.
+
+## Usage
+
+```tsx
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Item>
+  <ItemMedia variant="icon">
+    <IconMessage />
+  </ItemMedia>
+  <ItemContent>
+    <ItemTitle>Title</ItemTitle>
+    <ItemDescription>Description</ItemDescription>
+  </ItemContent>
+  <ItemActions>
+    <Button>Action</Button>
+  </ItemActions>
+</Item>
+```
+
+## Composition
+
+```text
+ItemGroup
+├── Item
+│   ├── ItemHeader
+│   ├── ItemMedia
+│   ├── ItemContent
+│   │   ├── ItemTitle
+│   │   └── ItemDescription
+│   ├── ItemActions
+│   └── ItemFooter
+├── ItemSeparator
+└── Item
+```
+
+`Item` is `flex-wrap`: `ItemHeader` / `ItemFooter` are `basis-full`, so they
+naturally wrap onto their own line, with the remaining parts on the line in
+between. A part you don't write is not rendered — there are no switches.
+
+## Variant
+
+`variant` changes the surface: `default` has no border, `outline` draws one,
+`muted` lays down a soft tint.
+
+<ComponentPreview name="item/variant" />
+
+All three are mirrored as `data-variant`. When the row renders as a link or a
+button (see [Link](#link)), the hover background comes from
+`[a]:hover:bg-muted` — separate from the static tint of the `muted` variant.
+
+## Size
+
+`size` sets density: `default`, `sm`, and `xs`.
+
+<ComponentPreview name="item/size" />
+
+`xs` also collapses `ItemContent`'s gap to 0, drops `ItemDescription` to
+`text-xs`, and shrinks `ItemMedia variant="image"` to 24px; inside a
+[DropdownMenu](/en/docs/components/dropdown-menu) popup, `xs` padding goes to
+zero so the menu item manages spacing itself. `ItemGroup` reads it too: when
+`sm` / `xs` rows appear in the group, the group's gap tightens to match.
+
+## Icon
+
+`ItemMedia variant="icon"` sizes a bare svg to `size-4`; an svg carrying its own
+`size-*` class is left alone.
+
+<ComponentPreview name="item/icon" />
+
+When the row has a description, `ItemMedia` switches to `self-start` and nudges
+down half a step so the icon aligns with the title's baseline rather than the
+midline of two lines of text.
+
+## Image
+
+`ItemMedia variant="image"` crops the `<img>` into a rounded square filled with
+`object-cover`.
+
+<ComponentPreview name="item/image" />
+
+The square follows the row's `size`: `default` 40px, `sm` 32px, `xs` 24px. The
+master's `avatar` variant does not exist here — `Avatar` has not been promoted;
+for an avatar, use it as `image`.
+
+## Group
+
+`ItemGroup` stacks rows into a list, `ItemSeparator` rules between them.
+
+<ComponentPreview name="item/group" />
+
+`ItemGroup` is `role="list"`, but `Item` is a `<div>` by default — for complete
+list semantics, give each `Item` `render={<li />}` or `role="listitem"`.
+`ItemSeparator` is a Base UI `Separator` (`role="separator"`) and does not count
+as a list item.
+
+## Header
+
+`ItemHeader` spans the full row above the content.
+
+<ComponentPreview name="item/header" />
+
+`ItemHeader` and `ItemFooter` share one shape: `basis-full` +
+`justify-between`, which fits one thing at each end; with only a banner inside,
+it is the whole line by itself.
+
+## Link
+
+`render` renders the whole row as a link; hover and focus states land on the
+`<a>`.
+
+<ComponentPreview name="item/link" />
+
+```tsx
+<Item render={<a href="/dashboard" />}>
+  <ItemMedia variant="icon">
+    <IconHome />
+  </ItemMedia>
+  <ItemContent>
+    <ItemTitle>Dashboard</ItemTitle>
+    <ItemDescription>Overview of your account and activity.</ItemDescription>
+  </ItemContent>
+</Item>
+```
+
+`render` is Base UI's `useRender` channel: pass an element and the props merge
+onto it, pass a function `(props, state) => ReactElement` and assemble it
+yourself. The `focus-visible` ring and the `[a]:hover` background are both in
+`Item`'s own classes, so swapping to `<a>` / `<button>` needs no extra styling.
+
+## Dropdown
+
+Put a [DropdownMenu](/en/docs/components/dropdown-menu) inside `ItemActions`;
+the trigger borrows `Button`'s shell through `render`.
+
+<ComponentPreview name="item/dropdown" />
+
+## When to use Item
+
+`Item` and [Field](/en/docs/components/field) are both "one row of something";
+the line is what the row holds:
+
+| The row holds | Use |
+| --- | --- |
+| a form control (input, checkbox, radio, select) with its label, description, error | [Field](/en/docs/components/field) — it wires `htmlFor` / `aria-describedby` / validity |
+| content — title, description, media, action buttons | `Item` |
+| a file / attachment card | [Attachment](/en/docs/components/attachment), which carries upload state and removal |
+
+## State and className
+
+A plain-DOM family: no Base UI state underneath; the two dimensions are cva
+variants mirrored to the DOM as values:
+
+| Attribute | On | Value |
+| --- | --- | --- |
+| `data-variant` | Item | `"default"` / `"outline"` / `"muted"` |
+| `data-size` | Item | `"default"` / `"sm"` / `"xs"` |
+| `data-variant` | ItemMedia | `"default"` / `"icon"` / `"image"` |
+
+Interaction states hover / focus-visible go through CSS pseudo-classes, not
+data attributes. `className` is a `string` everywhere (cva route / plain div),
+with one exception: `ItemSeparator` sits on the Base UI `Separator` slot and
+keeps the `className={(state) => …}` function form.
+
+`data-slot` maps one-to-one onto the public part names:
+
+| Part | `data-slot` |
+| --- | --- |
+| Item | `item` |
+| ItemGroup | `item-group` |
+| ItemSeparator | `item-separator` |
+| ItemMedia | `item-media` |
+| ItemContent | `item-content` |
+| ItemTitle | `item-title` |
+| ItemDescription | `item-description` |
+| ItemActions | `item-actions` |
+| ItemHeader | `item-header` |
+| ItemFooter | `item-footer` |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+### Item
+
+The row's root. Goes through `useRender`, defaults to `<div>`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | swap the host element (`<a>` / `<button>` / `<li>`), see [Link](#link) |
+| `variant` | `'default' \| 'outline' \| 'muted'` | `'default'` | surface, mirrored as `data-variant` |
+| `size` | `'default' \| 'sm' \| 'xs'` | `'default'` | density, mirrored as `data-size` |
+| `className` | `string` | — | class. cva route, string only |
+| rest | native `div` attributes (`ref` included) | — | passed through; merged onto the target element when `render` points elsewhere |
+
+```tsx
+<Item variant="outline" size="sm" render={<a href="/t/1" />}>…</Item>
+```
+
+### ItemGroup
+
+A vertical `role="list"` container; tightens its gap when `sm` / `xs` rows are inside.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class (plain div) |
+| rest | native `div` attributes (`ref` included) | — | passed through |
+
+```tsx
+<ItemGroup>
+  <Item render={<li />} />
+  <Item render={<li />} />
+</ItemGroup>
+```
+
+### ItemSeparator
+
+A rule between rows. Base UI `Separator`, `orientation` fixed to `horizontal`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string \| (state) => string` | — | class. On a Base UI slot, the function form works |
+| rest | Base UI `Separator` props (native element attributes + ref) | — | passed through |
+
+```tsx
+<ItemGroup>
+  <Item />
+  <ItemSeparator />
+  <Item />
+</ItemGroup>
+```
+
+### ItemMedia
+
+The media slot: an icon or an image.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `variant` | `'default' \| 'icon' \| 'image'` | `'default'` | mirrored as `data-variant`; `icon` sizes the svg, `image` crops to a square |
+| `className` | `string` | — | class (cva route) |
+| rest | native `div` attributes (`ref` included) | — | passed through |
+
+```tsx
+<ItemMedia variant="image">
+  <img src="…" alt="…" />
+</ItemMedia>
+```
+
+### ItemContent
+
+The vertical container for title and description, `flex-1` to take the remaining width; a second one in a row no longer stretches.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class (plain div) |
+| rest | native `div` attributes (`ref` included) | — | passed through |
+
+```tsx
+<ItemContent>
+  <ItemTitle>Title</ItemTitle>
+  <ItemDescription>Description</ItemDescription>
+</ItemContent>
+```
+
+### ItemTitle
+
+The title, clamped to one line (`line-clamp-1`); `flex` inside so a badge can sit beside it.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class (plain div) |
+| rest | native `div` attributes (`ref` included) | — | passed through |
+
+```tsx
+<ItemTitle>Item Title</ItemTitle>
+```
+
+### ItemDescription
+
+The description, a real `<p>`, clamped to two lines; inner `<a>` elements are underlined.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class (plain p) |
+| rest | native `p` attributes (`ref` included) | — | passed through |
+
+```tsx
+<ItemDescription>Item description</ItemDescription>
+```
+
+### ItemActions
+
+The trailing actions area, horizontal `flex` + `gap-2`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class (plain div) |
+| rest | native `div` attributes (`ref` included) | — | passed through |
+
+```tsx
+<ItemActions>
+  <Button>Action</Button>
+</ItemActions>
+```
+
+### ItemHeader
+
+A full-width header, `justify-between`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class (plain div) |
+| rest | native `div` attributes (`ref` included) | — | passed through |
+
+```tsx
+<Item>
+  <ItemHeader>Header</ItemHeader>
+  <ItemContent>…</ItemContent>
+</Item>
+```
+
+### ItemFooter
+
+A full-width footer, the same shape as `ItemHeader`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class (plain div) |
+| rest | native `div` attributes (`ref` included) | — | passed through |
+
+```tsx
+<Item>
+  <ItemContent>…</ItemContent>
+  <ItemFooter>Footer</ItemFooter>
+</Item>
+```
+
+13 types are exported as well: `ItemProps` / `ItemVariant` / `ItemSize` /
+`ItemGroupProps` / `ItemSeparatorProps` / `ItemMediaProps` / `ItemMediaVariant` /
+`ItemContentProps` / `ItemTitleProps` / `ItemDescriptionProps` /
+`ItemActionsProps` / `ItemHeaderProps` / `ItemFooterProps`.

@@ -1,0 +1,216 @@
+---
+title: Empty
+description: The empty-state block — media, title, description and one action that leads out of it, six plain div parts
+---
+
+<ComponentPreview name="empty/basic" />
+
+The "nothing here yet" block: `EmptyHeader` holds the media, title and
+description, `EmptyContent` holds the button, input or link — the action that
+leads the user out of the empty state. All six parts are plain `<div>`s
+underneath, with no Base UI state: `className` only takes a string, and the
+remaining native attributes (`ref` included) pass through as-is. Only
+centring, spacing and `border-dashed` are baked in; border and background are
+left to `className`, see [Outline](#outline) and [Background](#background).
+
+The master page's "Avatar" and "Avatar Group" sections are omitted here:
+`Avatar` has not been promoted to a public component yet.
+
+## Usage
+
+```tsx
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Empty>
+  <EmptyHeader>
+    <EmptyMedia variant="icon">
+      <IconInbox aria-hidden />
+    </EmptyMedia>
+    <EmptyTitle>No data</EmptyTitle>
+    <EmptyDescription>There are no records yet.</EmptyDescription>
+  </EmptyHeader>
+  <EmptyContent>
+    <Button>Create</Button>
+  </EmptyContent>
+</Empty>
+```
+
+## Composition
+
+```text
+Empty
+├── EmptyHeader
+│   ├── EmptyMedia
+│   ├── EmptyTitle
+│   └── EmptyDescription
+└── EmptyContent
+```
+
+A part you leave out is not rendered: a title-only empty state is just an
+`EmptyTitle`, and without an action you drop `EmptyContent`.
+
+## Outline
+
+The root ships `border-dashed` and `rounded-xl` but no border width, so a
+single `border` draws the dashed frame.
+
+<ComponentPreview name="empty/outline" />
+
+## Background
+
+A background is likewise the root's `className`: `bg-*` and gradient
+utilities compose with the baked layout classes.
+
+<ComponentPreview name="empty/background" />
+
+## InputGroup
+
+`EmptyContent` takes any control, not only buttons — an
+[InputGroup](/en/docs/components/input-group) turns the empty state into the
+place where the next search starts.
+
+<ComponentPreview name="empty/input-group" />
+
+## When to use Empty
+
+`Empty` only draws an empty state; it does not know whether data has arrived.
+The data-bound components in the library each have their own empty **slot**,
+and `Empty` is the content you put into that slot, not a replacement for it:
+
+| The job | Use |
+| --- | --- |
+| draw a "nothing here" block in your own layout (page region, panel, list container) | `Empty` |
+| a table with no rows | [DataTable](/en/docs/components/data-table)'s `DataTableEmpty`, which decides from the data state when to render; put an `Empty` inside |
+| a dropdown with no matches | [InfiniteSelect](/en/docs/components/infinite-select)'s `InfiniteSelectEmpty`; space in a popup is tight, one sentence is usually enough, no need for the full `Empty` |
+
+## State and className
+
+A plain DOM family with no Base UI state; the only state attribute sits on
+`EmptyMedia`:
+
+| Attribute | Effect |
+| --- | --- |
+| `data-variant="default"` | transparent media, sized by its content |
+| `data-variant="icon"` | an 8×8 rounded `bg-muted` tile; any svg inside without a `size-*` class becomes `size-4` |
+
+Six `data-slot`s are available as selectors:
+
+| `data-slot` | On |
+| --- | --- |
+| `empty` | the root, the centred `flex-col` container |
+| `empty-header` | the vertical group of media / title / description, `max-w-sm` |
+| `empty-icon` | `EmptyMedia` — **both variants are called `empty-icon`**, a vendored name the seam leaves alone; tell the variants apart with `data-variant` |
+| `empty-title` | the title |
+| `empty-description` | the description |
+| `empty-content` | the action area, `max-w-sm` vertical |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+All six parts are plain `<div>`s: `className` is always a string, and the
+native `<div>` props (`ref` included) pass through.
+
+### Empty
+
+The root container: centred `flex-col`, `gap-4`, `p-6`,
+`rounded-xl border-dashed`, centred text.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class; border width and background go here |
+| rest | native `<div>` props | — | passed through (`ref` included) |
+
+```tsx
+<Empty className="border">
+  <EmptyHeader />
+  <EmptyContent />
+</Empty>
+```
+
+### EmptyHeader
+
+The vertical group of media, title and description, `max-w-sm`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class |
+| rest | native `<div>` props | — | passed through (`ref` included) |
+
+```tsx
+<EmptyHeader>
+  <EmptyMedia />
+  <EmptyTitle />
+  <EmptyDescription />
+</EmptyHeader>
+```
+
+### EmptyMedia
+
+Where an icon, an image or anything else goes.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `variant` | `'default' \| 'icon'` | `'default'` | `icon` gives an 8×8 rounded `bg-muted` tile and shrinks the svg to `size-4`; mirrored as `data-variant` |
+| `className` | `string` | — | class (routed through `cva`, hence string only) |
+| rest | native `<div>` props | — | passed through (`ref` included) |
+
+```tsx
+<EmptyMedia variant="icon">
+  <IconInbox aria-hidden />
+</EmptyMedia>
+```
+
+### EmptyTitle
+
+The `text-sm font-medium` title.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class |
+| rest | native `<div>` props | — | passed through (`ref` included) |
+
+```tsx
+<EmptyTitle>No data</EmptyTitle>
+```
+
+### EmptyDescription
+
+The `text-muted-foreground` description; direct `<a>` children are underlined
+and turn primary on hover.
+
+Upstream declares it as a `<p>` but renders a `<div>`; the seam re-types it as
+a `<div>`, so `ref` and event handlers are written against `HTMLDivElement`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class |
+| rest | native `<div>` props | — | passed through (`ref` included) |
+
+```tsx
+<EmptyDescription>
+  There are no records yet, <a href="/docs">read the docs</a>.
+</EmptyDescription>
+```
+
+### EmptyContent
+
+The action area: buttons, inputs, links, `max-w-sm` vertical with `gap-2.5`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class |
+| rest | native `<div>` props | — | passed through (`ref` included) |
+
+```tsx
+<EmptyContent>
+  <Button>Create</Button>
+</EmptyContent>
+```
+
+7 types are exported as well: `EmptyProps` / `EmptyHeaderProps` /
+`EmptyMediaProps` / `EmptyMediaVariant` / `EmptyTitleProps` /
+`EmptyDescriptionProps` / `EmptyContentProps`.

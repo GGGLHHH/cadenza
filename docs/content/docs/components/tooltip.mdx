@@ -1,0 +1,181 @@
+---
+title: Tooltip
+description: 悬停或键盘聚焦时弹出的说明 —— Base UI 的 Tooltip，内容部件叫 TooltipPopup
+---
+
+<ComponentPreview name="tooltip/basic" />
+
+Base UI 的 Tooltip 穿上 base-nova 皮肤。seam 只改了一件事：shadcn 的
+`TooltipContent` 其实是 Base UI 的 `Portal → Positioner → Popup`（外加箭头）折成
+一个部件，本库公开面按 Base UI 的平铺命名，所以它叫 **`TooltipPopup`** ——
+跟 [Dialog](/docs/components/dialog) 把 `DialogContent` 改成 `DialogPopup` 是同一条
+规则。四个定位 prop（`side` / `sideOffset` / `align` / `alignOffset`）留在
+popup 上；要更多定位控制就直接组合 `@base-ui/react/tooltip`。
+
+改名不改的是 `data-slot`：popup 仍标 `tooltip-content`。原因是
+[Kbd](/docs/components/kbd) 的样式靠 `in-data-[slot=tooltip-content]` 在气泡里反色，
+而 primitives 逐字节钉死 —— 这个槽名是要守的契约。
+
+## 使用
+
+```tsx
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Tooltip>
+  <TooltipTrigger render={<Button variant="outline" />}>Hover</TooltipTrigger>
+  <TooltipPopup>Add to library</TooltipPopup>
+</Tooltip>
+```
+
+## 组成
+
+```text
+Tooltip
+├── TooltipTrigger
+└── TooltipPopup
+```
+
+`TooltipProvider` 是可选的第四件：包住一组 tooltip 共享一个打开延迟
+（vendored 默认 `delay={0}`，即成组的气泡即刻弹出）。不包时每个触发器自己计时，
+Base UI 的默认是 600 ms；触发器自己的 `delay` 两种情况下都优先。
+
+## 方向
+
+`side` 决定气泡贴在触发器的哪一边，箭头跟着走。
+
+<ComponentPreview name="tooltip/sides" />
+
+`side` 收六个值：`'top' | 'bottom' | 'left' | 'right' | 'inline-start' | 'inline-end'`，
+后两个按书写方向解析。配套三个微调：`sideOffset`（离触发器的距离，默认 `4`）、
+`align`（`'start' | 'center' | 'end'`，默认 `'center'`）、`alignOffset`（默认 `0`）。
+空间不够时 Base UI 自动翻面，最终落点写在 `data-side` 上（见[状态与 className](#状态与-classname)）。
+
+## 键盘快捷键
+
+气泡里放一个 [Kbd](/docs/components/kbd)，它自己会反色。
+
+<ComponentPreview name="tooltip/keyboard" />
+
+反色不靠任何 prop：Kbd 的样式钩在 popup 的 `tooltip-content` 槽上，这也是
+seam 不动 `data-slot` 的原因。
+
+## 禁用按钮
+
+禁用的按钮不发指针事件，要给它挂 tooltip 就用一个 `span` 当触发器。
+
+<ComponentPreview name="tooltip/disabled" />
+
+`render={<span className="inline-flex" />}` 把触发器换成 span、按钮放进去当
+children；span 收到 hover，按钮照旧禁用。
+
+## 状态与 className
+
+`className` 在 `TooltipTrigger` 和 `TooltipPopup` 上都是双形态：字符串，或
+`(state) => string` 的函数。下表左列是挂在 DOM 上的 `data-*`，Tailwind 直接当变体写
+（`data-open:animate-in`）；右列是同一个状态在函数 `className` 里的名字。
+
+| 部件 | `data-*` | 出现时机 | 函数 `className` 里的名字 |
+| --- | --- | --- | --- |
+| 弹层 | `data-open` / `data-closed` | 打开 / 关闭 | `open` |
+| 弹层 | `data-side="top"` … | 最终落点（自动翻面后的值） | `side` |
+| 弹层 | `data-align="center"` … | 最终对齐 | `align` |
+| 弹层 | `data-instant="delay" \| "focus" \| "dismiss"` | 本次开合跳过过渡（成组接力、键盘聚焦、点击关闭） | `instant` |
+| 弹层 | `data-starting-style` / `data-ending-style` | 入场第一帧 / 出场进行中 | `transitionStatus` |
+| 触发器 | `data-popup-open` | 它打开的气泡正开着（注意不叫 `data-open`） | `open` |
+
+hover / focus 不写 data 属性，用 CSS 伪类。
+
+需要从外部定位时用 `data-slot`：
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `tooltip-provider` | 共享延迟的 Provider（不渲染元素，属性落在上下文上） |
+| `tooltip-trigger` | 触发器 |
+| `tooltip-content` | 气泡本体（即 `TooltipPopup`；名字守的是 Kbd 的样式契约） |
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| `Tab` 聚焦到触发器 | 立即打开（不等 `delay`） |
+| `Esc` | 关闭 |
+| 离开触发器（失焦 / 指针移出） | 关闭 |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### Tooltip
+
+根部件，不渲染元素，管开合状态。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultOpen` | `boolean` | `false` | 非受控初始态 |
+| `open` | `boolean` | — | 受控开合 |
+| `onOpenChange` | `(open, details: TooltipChangeEventDetails) => void` | — | 开合回调；`details.reason` 是 `'trigger-hover' \| 'trigger-focus' \| 'trigger-press' \| 'outside-press' \| 'escape-key' \| 'disabled' \| 'imperative-action' \| 'none'`，`details.cancel()` 拦截本次变化 |
+| `onOpenChangeComplete` | `(open) => void` | — | 开合动画结束后调用 |
+| `disabled` | `boolean` | `false` | 整个 tooltip 不再打开 |
+| `disableHoverablePopup` | `boolean` | `false` | 指针移进气泡时不再保持打开 |
+| `trackCursorAxis` | `'none' \| 'x' \| 'y' \| 'both'` | `'none'` | 气泡跟随指针的轴 |
+| `actionsRef` | `RefObject<{ unmount, close }>` | — | 命令式句柄 |
+| 其余 | Base UI `Tooltip.Root` 的 props（`handle` / `triggerId` / `defaultTriggerId`） | — | 透传 |
+
+```tsx
+<Tooltip onOpenChange={(open, details) => details.reason === 'trigger-focus' && details.cancel()}>
+```
+
+### TooltipTrigger
+
+渲染 `<button>`；用 `render` 换成别的元素。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `delay` | `number` | `600`（Provider 内为其 `delay`） | 悬停后多久打开（ms） |
+| `closeDelay` | `number` | `0` | 移出后多久关闭（ms） |
+| `closeOnClick` | `boolean` | `true` | 点击触发器时关闭 |
+| `disabled` | `boolean` | `false` | 该触发器不再打开气泡（不给元素加 `disabled` 属性） |
+| `render` | `ReactElement \| (props, state: TooltipTriggerState) => ReactElement` | — | 替换渲染的元素 |
+| `className` | `string \| (state: TooltipTriggerState) => string` | — | 落在 Base UI Trigger 槽位，函数形态可用 |
+| 其余 | Base UI `Tooltip.Trigger` 的 props（`button` 原生属性 + `ref`） | — | 透传 |
+
+```tsx
+<TooltipTrigger render={<Button variant="outline" />} delay={200}>Hover</TooltipTrigger>
+```
+
+### TooltipPopup
+
+气泡本体；内部渲染 Portal、Positioner、Popup 与箭头。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `side` | `'top' \| 'bottom' \| 'left' \| 'right' \| 'inline-start' \| 'inline-end'` | `'top'` | 贴哪一边 |
+| `sideOffset` | `number` | `4` | 与触发器的距离 |
+| `align` | `'start' \| 'center' \| 'end'` | `'center'` | 沿边对齐 |
+| `alignOffset` | `number` | `0` | 对齐偏移 |
+| `className` | `string \| (state: TooltipPopupState) => string` | — | 落在 Base UI Popup 槽位，函数形态可用 |
+| 其余 | Base UI `Tooltip.Popup` 的 props（`div` 原生属性 + `ref`） | — | 透传 |
+
+```tsx
+<TooltipPopup side="right" className={({ open }) => (open ? 'opacity-100' : 'opacity-0')}>Tip</TooltipPopup>
+```
+
+### TooltipProvider
+
+可选；共享一组 tooltip 的延迟。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `delay` | `number` | `0` | 组内打开延迟（vendored 把 Base UI 的默认改成 0） |
+| `closeDelay` | `number` | — | 组内关闭延迟 |
+| `timeout` | `number` | `400` | 上一个气泡关闭后多久内，下一个即刻打开 |
+| `children` | `ReactNode` | — | — |
+
+```tsx
+<TooltipProvider delay={300}>{children}</TooltipProvider>
+```
+
+7 个类型一并导出：`TooltipProps` / `TooltipChangeEventDetails` / `TooltipTriggerProps` /
+`TooltipTriggerState` / `TooltipPopupProps` / `TooltipPopupState` / `TooltipProviderProps`。

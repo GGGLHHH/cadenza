@@ -1,0 +1,102 @@
+---
+title: Badge
+description: 小小的状态胶囊 —— 六个变体镜像成 data-variant，render 一换就是链接
+---
+
+<ComponentPreview name="badge/basic" />
+
+一枚 `h-5` 的圆角胶囊，默认落在 `<span>` 上。底下走 Base UI 的 `useRender`，
+所以 `render` 一传就能换成 `<a>` 或任何元素，胶囊的类名与 `data-slot` 原样跟过去。
+六个变体（`default / secondary / destructive / outline / ghost / link`）由 `cva`
+路由，选中的那个镜像成 `data-variant`。
+
+`className` 只收字符串：vendored 层把它灌进 `cva`，函数形态会被静默丢掉，
+类型上就把这条路封了（同 [Button](/docs/components/button)）。要按状态改样式，
+用 `data-variant` 当选择器。
+
+## 使用
+
+```tsx
+import { Badge } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Badge variant="outline">Beta</Badge>
+```
+
+## 变体
+
+`variant` 换外观，六个值一字排开：
+
+<ComponentPreview name="badge/variants" />
+
+`ghost` 与 `link` 平时没有底色，只在 hover 时显出来 —— 适合做行内标签；
+`destructive` 是淡红底 + 红字，不是实心红，留给「有问题」而非「要删除」。
+
+## 图标
+
+图标放进 children 即可，给它标 `data-icon="inline-start"`（在前）或
+`data-icon="inline-end"`（在后）：
+
+<ComponentPreview name="badge/icon" />
+
+`data-icon` 不是装饰，它是布局钩子：胶囊看到那一侧有图标就把该侧的 padding
+从 `px-2` 收到 `1.5`，胶囊才不会一边空一边挤。svg 一律被压成 `size-3`，
+不用自己给尺寸。
+
+## Spinner
+
+[Spinner](/docs/components/spinner) 也走同一个钩子：
+
+<ComponentPreview name="badge/spinner" />
+
+记得同时传 `aria-hidden` —— spinner 自带 `role="status"`，塞进胶囊里它只是个记号，
+「在同步」这句话由胶囊文字说。两种注入方式的分界见 spinner 页的
+[无障碍](/docs/components/spinner#无障碍)。
+
+## 链接
+
+`render` 传一个 `<a>`，胶囊就是链接：
+
+<ComponentPreview name="badge/link" />
+
+每个变体里的 `[a]:hover:*` 规则只在元素真的是 `<a>` 时才亮 —— 一个 `<span>`
+胶囊没有 hover 反馈，这是刻意的：不可点的东西不该有点击暗示。
+
+## 自定义颜色
+
+变体只定形状，颜色可以整个换掉：
+
+<ComponentPreview name="badge/colors" />
+
+直接在 `className` 里写 `bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-200`
+这类工具类；`cn` 走 tailwind-merge，同族的 `bg-*` / `text-*` 会把变体自带的那份顶掉，
+不用写 `!`。
+
+## 状态与 className
+
+底下是 `useRender` 直出的单元素，没有 Base UI state 对象，属性都是手动挂的：
+
+| 属性 | 效果 |
+| --- | --- |
+| `data-variant` | 值为当前 `variant`（`"default"` … `"link"`），从外部按变体定位时当选择器 |
+| `data-icon`（在子元素上） | `"inline-start"` / `"inline-end"`，胶囊据此收紧该侧 padding，见[图标](#图标) |
+
+根元素带 `data-slot="badge"`。交互态（hover / focus-visible）走 CSS 伪类，
+没有 data 属性。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `variant` | `'default' \| 'secondary' \| 'destructive' \| 'outline' \| 'ghost' \| 'link'` | `'default'` | 变体，镜像成 `data-variant` |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | Base UI 的元素替换，见[链接](#链接) |
+| `children` | `ReactNode` | — | 内容；图标 / Spinner 标 `data-icon` |
+| `className` | `string` | — | 类名。**只收字符串** —— vendored 层把它灌进 `cva`，函数会被静默丢掉 |
+| 其余 | 原生 `span` 属性 | — | 透传（含 `ref`） |
+
+`badgeVariants` 也单独导出 —— 要把别的元素画成胶囊时直接调用：
+`badgeVariants({ variant: 'outline', className: '...' })`。
+`BadgeProps` / `BadgeVariant` 两个类型一并导出。
