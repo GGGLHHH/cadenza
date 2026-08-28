@@ -1,5 +1,8 @@
 // Server entry: no 'use client' banner. Route handlers import from here.
+export * from './catalog-handler'
+export * from './chat-handler'
 export * from './preset'
+export * from './selection'
 export * from './thinking'
 export {
   chat,
