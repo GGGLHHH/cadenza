@@ -13,7 +13,10 @@ browser's memory and travels with every request in an `x-byok-<provider>` header
 ## Usage
 
 Three steps: paste a key → pick a model → send. Sending without a key also works — the route
-answers 401, the dialog opens by itself to ask for one, and you send again after saving.
+answers 401, the dialog opens by itself to ask for one, and you send again after saving. The
+OpenRouter row also offers "Sign in with OpenRouter": a [PKCE](/docs/ai/providers#keys) round
+trip to openrouter.ai that fills the key in on return — it needs an OpenRouter account, which
+this site cannot verify for you.
 
 To reproduce this page on your own site, the client swaps only two things — the transport and
 the keys:

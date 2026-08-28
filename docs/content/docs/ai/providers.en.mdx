@@ -227,6 +227,16 @@ prompt, and focuses that provider's input.
   the scripted transport's `byokMissing('openai')`.
 - **Ollama's header**: the value of `x-byok-ollama` is not a key but the host URL; the server
   checks it against the `ollamaHosts` allowlist (loopback and private ranges by default).
+- **Sign in with OpenRouter**: `ByokKeyDialogProvider`'s `children` land at the end of the row —
+  the slot meant for an OAuth / PKCE button. OpenRouter's PKCE comes from
+  `@tanstack/ai-openrouter/pkce`; the docs site depends on that adapter package directly, the
+  library never imports it. `startOpenRouterPkceLogin()` stores a code verifier in
+  `sessionStorage` and leaves for openrouter.ai; the page comes back with `?code=`, and on mount
+  `completeOpenRouterPkceIntoByok(byok)` exchanges it with the verifier, writes the key through
+  `byok.update('openrouter', key)` and strips `code` from the URL. `ByokClient` satisfies the
+  `OpenRouterByokStore` it asks for (only `update`). The exchange is not re-entrant — the code
+  is single-use and the verifier is cleared once used — so under StrictMode you guard the second
+  effect run yourself. The openrouter row on the [playground](/docs/ai/playground) is wired this way.
 
 ## Route handler
 

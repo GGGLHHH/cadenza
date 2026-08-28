@@ -12,7 +12,8 @@ description: 用你自己的 API key 和真实模型对话 —— 同一套 Tran
 ## 使用
 
 三步：贴 key → 选模型 → 发送。没 key 直接发送也行——route 回 401，对话框自己弹出来要 key，
-保存后再发一次。
+保存后再发一次。OpenRouter 那一行还有「Sign in with OpenRouter」：走 [PKCE](/docs/ai/providers#密钥)
+去 openrouter.ai 登录，回来 key 自动填入——需要一个 OpenRouter 账号，本站没法替你验证这一步。
 
 要在自己的站点里复现这一页，客户端换掉的只有传输与密钥两处：
 

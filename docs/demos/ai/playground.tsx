@@ -2,6 +2,7 @@ import type { ByokClient, Catalog, UIMessage } from '@gedatou/cadenza-ai'
 import type { ReactElement } from 'react'
 import {
   ByokKeyDialog,
+  ByokKeyDialogProvider,
   ComposerDictate,
   createByok,
   createCatalog,
@@ -25,7 +26,8 @@ import {
 } from '@gedatou/cadenza-ai'
 import { Button } from '@gedatou/cadenza-ui'
 import { IconKey } from '@tabler/icons-react'
-import { useMemo, useRef, useState } from 'react'
+import { completeOpenRouterPkceIntoByok, startOpenRouterPkceLogin } from '@tanstack/ai-openrouter/pkce'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
 import { ThreadPane, useCurrentThread } from './threads'
@@ -41,6 +43,9 @@ import { getViewport } from './tools'
 // Two OpenAI-only side channels compose on top: dictation (`useTranscription`
 // against `/api/ai/transcription`, appended to the draft) and an auto title
 // (`useSummarize` against `/api/ai/summarize`, renaming the thread once).
+// The openrouter key row also offers PKCE sign-in: `startOpenRouterPkceLogin`
+// leaves for openrouter.ai and comes back to this page with `?code=`, which
+// `completeOpenRouterPkceIntoByok` exchanges into the keyring on mount.
 const connection = fetchServerSentEvents('/api/ai/chat')
 const dictation = fetchServerSentEvents('/api/ai/transcription')
 const titling = fetchServerSentEvents('/api/ai/summarize')
@@ -48,6 +53,9 @@ const CURRENT_KEY = 'docs-playground:current'
 const SELECTION_KEY = 'docs-playground:selection'
 const index = createThreadIndex({ key: 'docs-playground', storage: 'local' })
 const persistence = threadPersistence(index, indexedDBPersistence({ databaseName: 'cadenza-ai-docs-playground' }))
+// The exchange is not idempotent (the code is single-use and the pending
+// verifier is cleared after the first await), so StrictMode's second effect run must not repeat it.
+let pkceCompleted = false
 
 function Chat({ byok, catalog, threadId }: { byok: ByokClient, catalog: Catalog, threadId: string }): ReactElement {
   const sel = useModelSelection({ catalog, key: SELECTION_KEY })
@@ -135,6 +143,16 @@ function Workspace(): ReactElement {
   const { coverage, providers } = useServerCoverage(byok)
   const catalog = useMemo(() => (providers ? createCatalog(providers) : defaultCatalog), [providers])
   const [threadId, setThreadId] = useCurrentThread(index, CURRENT_KEY)
+  const [pkceError, setPkceError] = useState<string>()
+  useEffect(() => {
+    if (pkceCompleted)
+      return
+    pkceCompleted = true
+    void completeOpenRouterPkceIntoByok(byok).catch((error: unknown) => {
+      setPkceError(error instanceof Error ? error.message : String(error))
+      byok.request('openrouter', 'missing')
+    })
+  }, [byok])
   return (
     <div className="
       flex flex-col gap-3
@@ -145,7 +163,27 @@ function Workspace(): ReactElement {
       <div className="flex flex-1 flex-col min-inline-0">
         <Chat key={threadId} byok={byok} catalog={catalog} threadId={threadId} />
       </div>
-      <ByokKeyDialog byok={byok} catalog={catalog} coverage={coverage} />
+      <ByokKeyDialog byok={byok} catalog={catalog} coverage={coverage}>
+        {catalog.providers.map(p => (
+          <ByokKeyDialogProvider key={p.id} provider={p.id}>
+            {p.id === 'openrouter' && (
+              <div className="flex flex-col items-end gap-1">
+                {pkceError !== undefined && (
+                  <span
+                    role="alert"
+                    className="text-xs text-destructive"
+                  >
+                    {pkceError}
+                  </span>
+                )}
+                <Button size="sm" variant="outline" onClick={() => void startOpenRouterPkceLogin()}>
+                  Sign in with OpenRouter
+                </Button>
+              </div>
+            )}
+          </ByokKeyDialogProvider>
+        ))}
+      </ByokKeyDialog>
     </div>
   )
 }

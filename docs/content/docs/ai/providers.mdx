@@ -210,6 +210,14 @@ ollama gpt-oss / openai-compatible 都经它折叠。客户端的选择器（`Mo
   `byokMissing('openai')` 走这条路。
 - **Ollama 的头**：`x-byok-ollama` 的值不是 key，是 host URL；服务端按 `ollamaHosts`
   白名单校验（默认 loopback 与私网段）。
+- **Sign in with OpenRouter**：`ByokKeyDialogProvider` 的 `children` 追加在行尾，就是给
+  OAuth / PKCE 按钮留的位置。OpenRouter 的 PKCE 由 `@tanstack/ai-openrouter/pkce` 提供，
+  docs 站直接依赖这个 adapter 包，库本身不 import：`startOpenRouterPkceLogin()` 在
+  `sessionStorage` 存下 code verifier 后跳去 openrouter.ai，回来时 URL 带 `?code=`；页面挂载时
+  `completeOpenRouterPkceIntoByok(byok)` 用 verifier 换 key，`byok.update('openrouter', key)`
+  写进密钥环并清掉 URL 里的 `code`。`ByokClient` 直接满足它要的 `OpenRouterByokStore`
+  （只需 `update`）。这个交换不可重入——code 一次性、verifier 换完即清，StrictMode 下要自己挡住
+  第二次 effect。[试玩](/docs/ai/playground) 页的 openrouter 行就是这样接的。
 
 ## Route handler
 
