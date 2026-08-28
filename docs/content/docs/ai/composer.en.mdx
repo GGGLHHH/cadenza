@@ -165,6 +165,8 @@ the empty state as soon as the first message arrives.
 A message sent while a run is in flight is queued by default and sent once the run settles
 successfully; `QueueList` lists them, each with a cancel.
 
+<ComponentPreview name="ai/queue" align="stretch" />
+
 ```tsx
 const chat = useChat({ fetcher, queue: { whenBusy: 'queue', drain: 'fifo', maxSize: 3, onOverflow: 'drop-oldest' } })
 
@@ -184,10 +186,17 @@ its text parts joined and the rest written as placeholders like `[image]`; on th
 `aria-label="Cancel"` icon button calling `onCancel(id, { reason: 'none' })`. `children` come
 after the rows.
 
+One pass through the demo shows the three policies apart: `queue` joins the list and waits for the
+run to end; `drop` discards silently (the promise still resolves, nothing throws); `interrupt`
+aborts the current stream and sends at once — unlike `stop()` it does **not** flush what is
+already queued, which still drains once the interrupting run settles successfully.
+
 ## Drafts
 
 Leave halfway through typing and come back — the draft is still there: keep `Composer`'s value
 in `localStorage`.
+
+<ComponentPreview name="ai/draft" align="stretch" />
 
 ```tsx
 const [draft, setDraft] = useStoredState(`cadenza-ai:draft:${threadId}`, '')
@@ -208,7 +217,9 @@ const [draft, setDraft] = useStoredState(`cadenza-ai:draft:${threadId}`, '')
 event; server rendering returns `initial`, and where storage is unavailable (private mode,
 blocked site data) an in-memory copy takes over — writes never throw. `Composer` sets the value
 to the empty string after a commit, which clears the draft with it. `useModelSelection` persists
-through the same hook.
+through the same hook. Key by thread: the demo remounts the whole chat by `key` when switching,
+the freshly mounted hook reads its own key, and the draft comes back with the thread — a reload
+keeps it too.
 
 ## Dictation
 

@@ -33,6 +33,9 @@ export interface ChatShellChat {
 export interface ChatShellProps {
   chat: ChatShellChat
   placeholder?: string
+  /** Controlled draft: pair with `onValueChange` to keep the text outside the composer (drafts per thread). */
+  value?: string
+  onValueChange?: ComposerProps['onValueChange']
   /** Shown while the transcript is empty (the `TranscriptEmpty` children). */
   empty?: ReactNode
   /** Toolbar contents for each assistant row. */
@@ -58,6 +61,8 @@ export interface ChatShellProps {
 export function ChatShell({
   chat,
   placeholder = 'Ask about the programme…',
+  value,
+  onValueChange,
   empty,
   renderActions,
   toolbar,
@@ -95,6 +100,8 @@ export function ChatShell({
           status={chat.status}
           editing={editing !== null}
           defaultValue={editing?.text}
+          value={value}
+          onValueChange={onValueChange}
           onValueCommitted={(text) => {
             void Promise.resolve(onCommit ? onCommit(text) : chat.sendMessage(text)).catch((error: unknown) => {
               // A missing key rejects sendMessage while the client raises its prompt (the key dialog opens); nothing to do here.

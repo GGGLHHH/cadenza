@@ -256,11 +256,18 @@ whole toolbar is `data-hidden`.
 
 <ComponentPreview name="ai/actions" align="stretch" />
 
-All four actions rely only on `useChat`'s return value and the facade's pure functions: copy
+Copy, regenerate, clear and edit-and-resend rely only on `useChat`'s return value and the facade's pure functions: copy
 uses `messageText(message)`, regenerate `chat.reload()`, clear `chat.clear()`, and
 edit-and-resend `editAndResend(chat, messageId, text)` — it stops the run, drops the edited
 user message and everything after it, then sends the new text (v1 is linear: no branch tree).
 While editing, `Composer` receives `editing`, and Escape goes to `onEditCancel` instead of stop.
+
+Feedback and read-aloud share the same toolbar, and the package ships neither a store nor a voice
+API for them: thumbs up / down are two `TranscriptAction`s with `aria-pressed`, and where the verdict
+lives is the host's call — the demo keeps it in `localStorage` by message id through
+`useStoredState('docs-feedback', {})`, and pressing the same one again clears it; read-aloud is
+the browser's own `speechSynthesis.speak(new SpeechSynthesisUtterance(messageText(message)))`,
+with the button disabled where `speechSynthesis` does not exist.
 
 ## Usage and cost
 
@@ -272,6 +279,14 @@ against the assistant message that closes the run.
 
 Cost comes from the catalog's prices: `estimateCost(model, usage)` returns dollars, with
 cached input priced at `cacheRead`; a model without prices yields `undefined`.
+
+`ContextUsage` in the toolbar folds both into one part: `usage.promptTokens / model.contextWindow`
+drawn as a [Progress](/docs/components/progress) bar, next to the prompt-token count and the unit the
+caller supplies (children); the whole thing is a [Tooltip](/docs/components/tooltip) trigger whose
+detail lists prompt / completion / cached / total and `estimateCost`'s dollars. A model without
+`contextWindow` shows the number alone; the ratio is mirrored as `data-ratio` (two decimals).
+The detail's row labels default to English and `labels` overrides them — the same route as
+`ByokKeyDialog`.
 
 ## Local persistence
 
@@ -337,7 +352,8 @@ import type { AnyToolApprovalInterrupt, AttachmentDraft, DraftAttachment, Editab
 import { createByok, createThreadIndex, definePartRenderers, editAndResend, fileToContentPart, groupThreadsByDay, isThinkingComplete, messagesToMarkdown, messageText, PartRenderersProvider, sourcesOf, threadPersistence, threadTitleFrom, useAttachmentDraft, useModelSelection, usePartRenderers, useServerCoverage, useStoredState, useThreadIndex, useUsageTracker } from '@gedatou/cadenza-ai'
 
 // views
-import type { TranscriptActionProps, TranscriptActionsProps, TranscriptEmptyProps, TranscriptErrorProps, TranscriptInterrupt, TranscriptMessageProps, TranscriptMessageState, TranscriptPartsProps, TranscriptPendingProps, TranscriptProps, TranscriptProviderProps } from '@gedatou/cadenza-ai'
+import type { ContextUsageLabels, ContextUsageProps, ContextUsageState, TranscriptActionProps, TranscriptActionsProps, TranscriptEmptyProps, TranscriptErrorProps, TranscriptInterrupt, TranscriptMessageProps, TranscriptMessageState, TranscriptPartsProps, TranscriptPendingProps, TranscriptProps, TranscriptProviderProps } from '@gedatou/cadenza-ai'
+import { ContextUsage, DEFAULT_CONTEXT_USAGE_LABELS } from '@gedatou/cadenza-ai'
 ```
 
 - `TranscriptInterrupt` is the element type `TranscriptProvider.interrupts` accepts: the union
@@ -438,7 +454,28 @@ A `role="status"` Marker whose content carries `shimmer`.
 | `children` | `ReactNode` | — | the words |
 | `className` | `string` | — | lands on the root |
 
-11 types are exported alongside: `TranscriptProviderProps` / `TranscriptProps` /
+### ContextUsage
+
+Context fill: `Progress` + the number + a `Tooltip` detail; the whole thing is the trigger (a real `<button>`).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `usage` | `TokenUsage` | — | usually `useUsageTracker().total` |
+| `model` | `Model` | — | supplies `contextWindow` (the bar) and `cost` (the price row); without it only the number shows |
+| `labels` | `Partial<ContextUsageLabels>` | English | the detail's row labels: `prompt` / `completion` / `cached` / `total` / `cost` |
+| `children` | `ReactNode` | — | the unit after the prompt-token count ("tokens"); the part ships none |
+| `className` | `string` | — | lands on the trigger |
+
+```tsx
+<ContextUsage model={model} usage={tracker.total}>tokens</ContextUsage>
+```
+
+`data-ratio` is `promptTokens / contextWindow` to two decimals, absent when the model has no
+`contextWindow`; `data-slot`: `context-usage` (the trigger) / `context-usage-tokens` (the number) /
+`context-usage-details` (the detail `<dl>`).
+
+14 types are exported alongside: `TranscriptProviderProps` / `TranscriptProps` /
 `TranscriptMessageProps` / `TranscriptMessageState` / `TranscriptPartsProps` /
 `TranscriptActionsProps` / `TranscriptActionProps` / `TranscriptEmptyProps` /
-`TranscriptPendingProps` / `TranscriptErrorProps` / `TranscriptInterrupt`.
+`TranscriptPendingProps` / `TranscriptErrorProps` / `TranscriptInterrupt` / `ContextUsageProps` /
+`ContextUsageState` / `ContextUsageLabels`.

@@ -202,6 +202,8 @@ emits the client-tool interrupt and the next turn reads what the browser compute
 
 Several consecutive tool calls fold into one group behind a single trigger.
 
+<ComponentPreview name="ai/tool-group" align="stretch" />
+
 When `TranscriptParts` meets a run of consecutive `tool-call`s (interleaved `tool-result`s do
 not break it), it wraps them in one `ToolCallGroup` whose trigger says `labels.toolGroup(n)`
 (`Ran 3 tools` by default). Standalone, it composes by position like
@@ -218,6 +220,10 @@ not break it), it wraps them in one `ToolCallGroup` whose trigger says `labels.t
 
 The group is closed by default and `data-count` mirrors `count`; `ToolCallGroupTrigger` is a
 `CollapsibleTrigger` and takes all of its props.
+
+The date row above the first message in the demo is not a library part: `Transcript` is a
+`role="log"` list and any row can sit between messages — that one is a
+[Marker](/docs/components/marker) `variant="separator"`, drawn by you under whatever day rule you use.
 
 ## Attachments
 
@@ -242,6 +248,8 @@ Images, documents and audio in a user message render by type.
 
 The links a provider-executed search brought back, folded into a list at the end of the message.
 
+<ComponentPreview name="ai/sources" align="stretch" />
+
 `sourcesOf(message)` looks only at `tool-call` parts: a `metadata.sources` array is collected as
 is; when `metadata.providerExecuted === true` and the tool name matches `/search/i`, it also
 collects from `part.output` (an array or `{ results: [...] }`). Each entry needs a `url` string;
@@ -265,6 +273,8 @@ links; `data-count` mirrors the number of entries.
 
 A reply from `useChat({ outputSchema })` carries one more part, `structured-output`: progressively
 completed JSON while streaming, the validated data once complete.
+
+<ComponentPreview name="ai/structured-output" align="stretch" />
 
 ```tsx
 const chat = useChat({ fetcher, outputSchema: z.object({ works: z.array(z.string()), minutes: z.number() }) })

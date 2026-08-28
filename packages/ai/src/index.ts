@@ -2,7 +2,7 @@ export * from './catalog'
 export * from './runtime'
 export * from './view'
 // Types the facade's own props mention; ai-react does not re-export them.
-export type { ChatClientState, ChatInterrupt, MultimodalContent, QueuedMessage, ToolApprovalInterrupt } from '@tanstack/ai-client'
+export type { ChatClientState, ChatInterrupt, MultimodalContent, QueuedMessage, SendMessageOptions, ToolApprovalInterrupt, WhenBusy } from '@tanstack/ai-client'
 export {
   defaultByokStorage,
   defineByok,

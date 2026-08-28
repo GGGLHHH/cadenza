@@ -144,6 +144,8 @@ InputGroup 的自增高与底部工具条规则靠 `>` 选择器；附件条也�
 
 运行中再发的消息默认排队，运行成功收尾后自动发出；`QueueList` 列出它们，各带一个取消。
 
+<ComponentPreview name="ai/queue" align="stretch" />
+
 ```tsx
 const chat = useChat({ fetcher, queue: { whenBusy: 'queue', drain: 'fifo', maxSize: 3, onOverflow: 'drop-oldest' } })
 
@@ -160,9 +162,14 @@ const chat = useChat({ fetcher, queue: { whenBusy: 'queue', drain: 'fifo', maxSi
 文本内容原样，多模态内容把文本 part 拼起来、其余写成 `[image]` 这样的占位；
 右侧是 `aria-label="Cancel"` 的图标按钮，`onCancel(id, { reason: 'none' })`。`children` 排在行之后。
 
+三种策略的差别在 demo 里按一遍就清楚：`queue` 排进列表等这轮结束；`drop` 静默丢弃（promise 照样 resolve，不抛错）；
+`interrupt` 中止当前流、立刻发出——与 `stop()` 不同，它**不**清空已排队的消息，那些仍在打断的这轮成功收尾后依次发出。
+
 ## 草稿
 
 输入到一半切走再切回来，草稿还在——把 `Composer` 的值放进 `localStorage`。
+
+<ComponentPreview name="ai/draft" align="stretch" />
 
 ```tsx
 const [draft, setDraft] = useStoredState(`cadenza-ai:draft:${threadId}`, '')
@@ -182,6 +189,7 @@ const [draft, setDraft] = useStoredState(`cadenza-ai:draft:${threadId}`, '')
 同一个 key 的多个 hook 同步，跨标签页经 `storage` 事件同步；服务端渲染返回 `initial`，
 没有 storage（隐私模式、被禁的站点数据）时退回内存副本，写入永不抛错。
 `Composer` 提交后把值设成空串，草稿随之清掉。`useModelSelection` 的持久化用的也是它。
+键按线程分：demo 切换线程时用 `key` 重挂整个会话，新挂上来的 hook 读自己那个键，草稿跟着线程回来；刷新页面也还在。
 
 ## 听写
 

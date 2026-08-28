@@ -252,6 +252,9 @@ const registry: Record<string, ComponentType> = {
   'item/header': lazy(async () => import('./item/header')),
   'item/link': lazy(async () => import('./item/link')),
   'item/dropdown': lazy(async () => import('./item/dropdown')),
+  'progress/basic': lazy(async () => import('./progress/basic')),
+  'progress/indeterminate': lazy(async () => import('./progress/indeterminate')),
+  'progress/label': lazy(async () => import('./progress/label')),
   'ai/basic': lazy(async () => import('./ai/basic')),
   'ai/streaming': lazy(async () => import('./ai/streaming')),
   'ai/markdown': lazy(async () => import('./ai/markdown')),
@@ -278,6 +281,12 @@ const registry: Record<string, ComponentType> = {
   'ai/scripted-basic': lazy(async () => import('./ai/scripted-basic')),
   'ai/scripted-routing': lazy(async () => import('./ai/scripted-routing')),
   'ai/playground': lazy(async () => import('./ai/playground')),
+  'ai/sources': lazy(async () => import('./ai/sources')),
+  'ai/structured-output': lazy(async () => import('./ai/structured-output')),
+  'ai/export': lazy(async () => import('./ai/export')),
+  'ai/queue': lazy(async () => import('./ai/queue')),
+  'ai/draft': lazy(async () => import('./ai/draft')),
+  'ai/tool-group': lazy(async () => import('./ai/tool-group')),
 }
 
 export function DemoRenderer({ name }: { name: string }): ReactElement {

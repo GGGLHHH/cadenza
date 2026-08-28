@@ -186,6 +186,8 @@ await chat.addToolResult({ toolCallId, tool: 'get_viewport', output: { width: 12
 
 连续多个工具调用折成一组，只露一个触发器。
 
+<ComponentPreview name="ai/tool-group" align="stretch" />
+
 `TranscriptParts` 扫到连续的 `tool-call`（中间夹着的 `tool-result` 不打断）时，把它们塞进一个
 `ToolCallGroup`，触发器文案是 `labels.toolGroup(n)`（默认 `Ran 3 tools`）。单独用时按位置组合，
 同 [DialogTrigger](/docs/components/dialog)：**第一个 child 是触发器，其余进面板**。
@@ -200,6 +202,9 @@ await chat.addToolResult({ toolCallId, tool: 'get_viewport', output: { width: 12
 ```
 
 组默认收起，`data-count` 镜像 `count`；`ToolCallGroupTrigger` 就是 `CollapsibleTrigger`，收它的全部 props。
+
+demo 里第一条消息上方的日期行不是包内部件：`Transcript` 是一个 `role="log"` 的列表，消息之间可以放任何行，
+那一行是 [Marker](/docs/components/marker) `variant="separator"`，由你按自己的分日规则自绘。
 
 ## 附件
 
@@ -223,6 +228,8 @@ await chat.addToolResult({ toolCallId, tool: 'get_viewport', output: { width: 12
 
 provider 自己执行的搜索带回的链接，收在一条消息末尾的折叠列表里。
 
+<ComponentPreview name="ai/sources" align="stretch" />
+
 `sourcesOf(message)` 只看 `tool-call` part：`metadata.sources` 数组直接收；
 `metadata.providerExecuted === true` 且工具名匹配 `/search/i` 的，再从 `part.output`
 （数组或 `{ results: [...] }`）里收。每一项要有 `url` 字符串，`title` / `snippet` 可选，
@@ -244,6 +251,8 @@ text('The Philharmonie seats 2,400.')
 ## 结构化输出
 
 `useChat({ outputSchema })` 的回复多一个 `structured-output` part：流式中是逐步补全的 JSON，完成后是校验过的数据。
+
+<ComponentPreview name="ai/structured-output" align="stretch" />
 
 ```tsx
 const chat = useChat({ fetcher, outputSchema: z.object({ works: z.array(z.string()), minutes: z.number() }) })
