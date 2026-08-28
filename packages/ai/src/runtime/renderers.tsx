@@ -1,5 +1,5 @@
 'use client'
-import type { ToolApprovalInterrupt, UIMessage } from '@tanstack/ai-client'
+import type { InterruptItemStatus, UIMessage } from '@tanstack/ai-client'
 import type { AudioPart, DocumentPart, ImagePart, StructuredOutputPart, TextPart, ThinkingPart, ToolCallPart, ToolResultPart, UIResourcePart, VideoPart } from '@tanstack/ai/client'
 import type { ReactElement, ReactNode } from 'react'
 import { createContext, use, useMemo } from 'react'
@@ -7,7 +7,8 @@ import { createContext, use, useMemo } from 'react'
 /** Every visible string the default part renderers emit. Override through `PartRenderersProvider`. */
 export interface PartLabels {
   thinking: string
-  thought: (seconds: number) => string
+  /** Precedes the elapsed seconds `Reasoning` renders as data ("Thought for" → "Thought for 3s"). */
+  thought: string
   toolPending: string
   toolRunning: string
   toolApprovalRequested: string
@@ -23,7 +24,7 @@ export interface PartLabels {
 
 export const DEFAULT_PART_LABELS: PartLabels = {
   thinking: 'Thinking…',
-  thought: seconds => `Thought for ${seconds}s`,
+  thought: 'Thought for ',
   toolPending: 'Preparing',
   toolRunning: 'Running',
   toolApprovalRequested: 'Needs approval',
@@ -37,12 +38,30 @@ export const DEFAULT_PART_LABELS: PartLabels = {
   sources: count => `${count} sources`,
 }
 
+/**
+ * The approval interrupt as the views see it, for whichever tool set the chat
+ * was created with. `useChat().interrupts` is typed per tool and
+ * `ToolApprovalInterrupt<T>` is contravariant in `T` through `resolveInterrupt`,
+ * so no instantiation accepts every other one; this structural type lists only
+ * what the views read, with `resolveInterrupt` as a method (bivariant on
+ * purpose) so any tool's interrupt flows in untouched.
+ */
+export interface AnyToolApprovalInterrupt {
+  readonly kind: 'tool-approval'
+  readonly toolCallId: string
+  readonly toolName: string
+  readonly originalArgs: unknown
+  readonly status: InterruptItemStatus
+  // eslint-disable-next-line ts/method-signature-style -- bivariance: see above
+  resolveInterrupt(approved: boolean, options?: { editedArgs?: unknown }): void
+}
+
 export interface ToolRendererProps {
   part: ToolCallPart
   /** The matching `tool-result` part of the same message, once it exists. */
   result: ToolResultPart | undefined
   /** The live approval interrupt while the call waits on the user. */
-  interrupt: ToolApprovalInterrupt | undefined
+  interrupt: AnyToolApprovalInterrupt | undefined
   streaming: boolean
 }
 
@@ -51,7 +70,7 @@ export type ToolRenderer = (props: ToolRendererProps) => ReactNode
 /** Per-part-type overrides; anything omitted falls back to the built-in renderer. */
 export interface PartRenderers {
   text?: (props: { part: TextPart, message: UIMessage, streaming: boolean }) => ReactNode
-  thinking?: (props: { part: ThinkingPart, complete: boolean, startedAt: number | undefined }) => ReactNode
+  thinking?: (props: { part: ThinkingPart, complete: boolean }) => ReactNode
   /** Keyed by tool name; `default` catches the rest. */
   toolCall?: { default?: ToolRenderer } & Record<string, ToolRenderer | undefined>
   toolResult?: (props: { part: ToolResultPart }) => ReactNode

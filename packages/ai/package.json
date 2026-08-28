@@ -81,6 +81,7 @@
     "@streamdown/cjk": "catalog:ui",
     "@streamdown/code": "catalog:ui",
     "@streamdown/math": "catalog:ui",
+    "@tabler/icons-react": "catalog:ui",
     "@tanstack/ai": "catalog:ui",
     "@tanstack/ai-client": "catalog:ui",
     "@tanstack/ai-react": "catalog:ui",

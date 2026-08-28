@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 describe('entry points', () => {
-  it('re-exports the TanStack React surface and the byok helpers from the root', async () => {
+  // The root now carries the views, and with them streamdown / shiki / katex — a slow first import.
+  it('re-exports the TanStack React surface and the byok helpers from the root', { timeout: 30_000 }, async () => {
     const root = await import('../src/index')
     expect(typeof root.useChat).toBe('function')
     expect(typeof root.fetchServerSentEvents).toBe('function')
