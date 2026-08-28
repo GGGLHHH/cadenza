@@ -14,12 +14,6 @@ import { MessageRow } from './message-row'
 import { ResettableDemo } from './resettable'
 import { SHORT_REPLIES, useFakeChat } from './transcript'
 
-const PROMPTS = [
-  'Move the Firebird before the interval.',
-  'Can the Pavane open the second half instead?',
-  'How long does that make the first half?',
-]
-
 // scrollPreviousItemPeek is how much of the previous turn stays visible above
 // a newly anchored row. At 0 the new turn starts on what looks like a blank
 // page; the default 64 keeps enough of the last answer showing that the thread
@@ -27,8 +21,7 @@ const PROMPTS = [
 // anchored turn, not retroactively
 function PreviousContextBody(): ReactElement {
   const [peek, setPeek] = useState(64)
-  const { messages, send } = useFakeChat(undefined, SHORT_REPLIES)
-  const [sent, setSent] = useState(0)
+  const { messages, sendNext } = useFakeChat(undefined, SHORT_REPLIES)
 
   return (
     <div className="flex flex-col gap-3 block-96">
@@ -50,13 +43,7 @@ function PreviousContextBody(): ReactElement {
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => {
-            const prompt = PROMPTS[sent % PROMPTS.length]
-            if (prompt === undefined)
-              return
-            send(prompt)
-            setSent(count => count + 1)
-          }}
+          onClick={sendNext}
         >
           Send
         </Button>

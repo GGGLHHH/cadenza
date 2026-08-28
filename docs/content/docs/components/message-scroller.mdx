@@ -405,8 +405,9 @@ return (
 
 滚动容器保持键盘可达，记录可被播报，同时不强加任何一种消息 UI。
 
-`MessageScrollerViewport` 默认就是一个有名字、可聚焦的滚动区域：`role="region"`、
-`aria-label="Messages"`、`tabIndex={0}`，键盘用户可以聚焦记录并直接滚动它。
+`MessageScrollerViewport` 默认就是一个有名字的滚动区域：`role="region"`、
+`aria-label="Messages"`。一旦记录溢出它就是 `tabIndex={0}`，键盘用户可以聚焦并直接
+滚动；两个轴都装得下时是 `-1`——滚不动的区域不占焦点位。
 
 `MessageScrollerContent` 用 `role="log"` 和 `aria-relevant="additions"` 把记录
 标成 live region。新行可以被播报，而流式文本的变更不必逐 token 播报。
@@ -464,7 +465,7 @@ Base UI 的 `ScrollArea` 视口上，所以也收函数形态。按状态改样�
 | `data-slot` | 是什么 |
 | --- | --- |
 | `message-scroller` | 根，样式外壳 |
-| `message-scroller-scroll-area` | 视口外面那层 `ScrollArea` 根，overlay 滚动条挂在它上面 |
+| `scroll-area` | 视口外面那层就是本库的 `ScrollArea`，overlay 滚动条挂在它上面 |
 | `message-scroller-viewport` | 滚动元素 |
 | `message-scroller-content` | 记录容器 |
 | `message-scroller-item` | 一行 |
@@ -474,7 +475,7 @@ Base UI 的 `ScrollArea` 视口上，所以也收函数形态。按状态改样�
 
 | 按键 | 效果 |
 | --- | --- |
-| `Tab` | 视口是 `tabIndex={0}`，所以记录本身可以聚焦并滚动 |
+| `Tab` | 记录溢出时视口是 `tabIndex={0}`，可以聚焦并滚动；装得下时 `-1`，Tab 跳过它 |
 | `↑` `↓` `PageUp` `PageDown` `Home` `End` `Space` | 滚动视口，并释放跟随实时边缘 —— 键盘滚动和滚轮一样算读者意图 |
 | `Enter` / `Space`（焦点在按钮上） | 滚到那个方向的边缘；`autoScroll` 打开时重新接上跟随 |
 
@@ -567,10 +568,11 @@ Base UI 的视口和记录视口通过 `render` 融合成**同一个元素** —
 滚动容器自己。两边是合并不是替换：Base UI 的 ref 经 `useRenderElement` 汇入滚动器的，
 事件 handler 也是双方都跑。
 
-元素用 `absolute inset-0` 而不是 `size-full`：作为 flex 子项，滚动区的高度是算出来的
-used value，`height` 属性仍是 `auto`，百分比高度永远解析不了，什么都不会裁剪 ——
-这正是 `DialogBody` 注释里记下的那个坑。绝对定位的盒子取的是包含块的 used height，
-永远能解析。
+它整个就是一个 `ScrollArea`——通过 `viewportRender` 把记录视口融合到 ScrollArea 的
+视口上，所以聚焦环、`scrollbars` 词表、hover 配方都与库里其他滚动面同源，不会各漂各的。
+children 额外包在 Base UI 的 `ScrollArea.Content` 里：那是 Base UI 唯一的内容尺寸
+观察者。视口只在滚动和**自己**盒子变化时重算溢出——一个挂载时装得下、之后才长出来
+的记录（每个聊天的第一步）会让它一直以为没溢出：滚动条不挂载、`tabIndex` 卡在 `-1`。
 
 ### MessageScrollerContent
 

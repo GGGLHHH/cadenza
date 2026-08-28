@@ -93,6 +93,13 @@ export const JOINER_LINES: Record<string, string> = {
 /** Older rows, prepended above the transcript by the load-history demo. */
 export const EARLIER: ChatMessage[] = toMessages(EARLIER_THREAD, 'earlier')
 
+/** The scripted questions a demo's "Send" button cycles through. */
+const PROMPTS = [
+  'Move the Firebird before the interval.',
+  'Can the Pavane open the second half instead?',
+  'How long does that make the first half?',
+]
+
 const REPLIES = [
   'Programme updated. The evening still ends before ten, the winds keep their rest after La Mer, and front of house has the same interval length they had last season so the bar staffing does not need rewriting. I have left the Firebird where it was — moving it earlier would put the loudest work before the interval, which the hall has asked us twice not to do. Front of house have the running order already, so if anything moves again it needs to move today rather than at the dress rehearsal.',
   'Noted, and it costs less than you would think: four minutes, which the interval can absorb without moving the curtain. The only knock-on is that the brass now sit idle for longer between their two entries, so I would warn them rather than let them discover it in the dress rehearsal. Everything else holds: same interval, same curtain, same stage plot, and the harps still only move once. I have marked the change in the score library copy so the parts match what we actually play.',
@@ -122,6 +129,8 @@ export function useFakeChat(
   messages: ChatMessage[]
   streaming: boolean
   send: (text: string) => void
+  /** Sends the next scripted prompt — what most demos want from a "Send" button. */
+  sendNext: () => void
 } {
   const [messages, setMessages] = useState(initial)
   const [streaming, setStreaming] = useState(false)
@@ -131,6 +140,11 @@ export function useFakeChat(
   useEffect(() => () => window.clearInterval(timerRef.current), [])
 
   const send = useCallback((text: string) => {
+    // One reply at a time. A second send mid-stream would clear the running
+    // interval and leave the first reply frozen mid-sentence — which a reader
+    // of the docs would take for a scroller bug.
+    if (timerRef.current !== undefined)
+      return
     const turn = sentRef.current++
     const replyId = `sent-${turn}-assistant`
     const words = (replies[turn % replies.length] ?? '').split(' ')
@@ -143,10 +157,10 @@ export function useFakeChat(
     setStreaming(true)
 
     let word = 0
-    window.clearInterval(timerRef.current)
     timerRef.current = window.setInterval(() => {
       if (word >= words.length) {
         window.clearInterval(timerRef.current)
+        timerRef.current = undefined
         setStreaming(false)
         return
       }
@@ -159,5 +173,11 @@ export function useFakeChat(
     }, 45)
   }, [replies])
 
-  return { messages, streaming, send }
+  const sendNext = useCallback(() => {
+    const prompt = PROMPTS[sentRef.current % PROMPTS.length]
+    if (prompt !== undefined)
+      send(prompt)
+  }, [send])
+
+  return { messages, streaming, send, sendNext }
 }

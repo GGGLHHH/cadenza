@@ -27,6 +27,10 @@ const PRESET_LABELS = {
   'blur-fade': 'Blur fade',
 }
 
+const ORIGINAL_IDS = new Set(TRANSCRIPT.map(message => message.id))
+const ENTERED = { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }
+const TRANSITION = { type: 'spring', bounce: 0.2, duration: 0.35 } as const
+
 const PRESETS: Record<string, Record<string, number | string>> = {
   'fade': { opacity: 0 },
   'slide-up': { opacity: 0, y: 10 },
@@ -34,23 +38,15 @@ const PRESETS: Record<string, Record<string, number | string>> = {
   'blur-fade': { opacity: 0, filter: 'blur(4px)', y: 6 },
 }
 
-const PROMPTS = [
-  'Move the Firebird before the interval.',
-  'Can the Pavane open the second half instead?',
-  'How long does that make the first half?',
-]
-
 // Entrances ride transform, opacity and filter — never height, margin or
 // padding, which would fight the scroller while it measures rows to decide
 // where to stop. Only the sent row animates; the reply streams into an
 // ordinary row below it. Note the provider takes no autoScroll: the view
 // stays put during streaming because the spacer shrinks as the reply grows
 function AnimationBody(): ReactElement {
-  const { messages, send } = useFakeChat()
+  const { messages, sendNext } = useFakeChat()
   const [preset, setPreset] = useState('slide-up')
-  const [sent, setSent] = useState(0)
   const reducedMotion = useReducedMotion()
-  const original = new Set(TRANSCRIPT.map(message => message.id))
 
   return (
     <div className="flex flex-col gap-3 block-96">
@@ -67,13 +63,7 @@ function AnimationBody(): ReactElement {
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => {
-            const prompt = PROMPTS[sent % PROMPTS.length]
-            if (prompt === undefined)
-              return
-            send(prompt)
-            setSent(count => count + 1)
-          }}
+          onClick={sendNext}
         >
           Send
         </Button>
@@ -83,24 +73,37 @@ function AnimationBody(): ReactElement {
           <MessageScrollerViewport>
             <MessageScrollerContent className="gap-8 p-5">
               {messages.map((message) => {
-                // Only the anchor animates. An assistant row that moved while
-                // its text streamed in would be measured mid-tween.
+                // Only a freshly sent anchor animates — the original transcript
+                // and every assistant row render as plain items, so the tree
+                // that re-renders on each streamed word carries one motion
+                // element, not fourteen. An assistant row that moved while its
+                // text streamed in would also be measured mid-tween.
                 const animates = message.role === 'user'
-                  && !original.has(message.id)
+                  && !ORIGINAL_IDS.has(message.id)
                   && reducedMotion !== true
 
-                return (
-                  <MotionMessageScrollerItem
-                    animate={animates ? { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' } : undefined}
-                    initial={animates ? PRESETS[preset] : false}
-                    key={message.id}
-                    messageId={message.id}
-                    scrollAnchor={message.role === 'user'}
-                    transition={{ type: 'spring', bounce: 0.2, duration: 0.35 }}
-                  >
-                    <MessageRow message={message} />
-                  </MotionMessageScrollerItem>
-                )
+                return animates
+                  ? (
+                      <MotionMessageScrollerItem
+                        animate={ENTERED}
+                        initial={PRESETS[preset]}
+                        key={message.id}
+                        messageId={message.id}
+                        scrollAnchor
+                        transition={TRANSITION}
+                      >
+                        <MessageRow message={message} />
+                      </MotionMessageScrollerItem>
+                    )
+                  : (
+                      <MessageScrollerItem
+                        key={message.id}
+                        messageId={message.id}
+                        scrollAnchor={message.role === 'user'}
+                      >
+                        <MessageRow message={message} />
+                      </MessageScrollerItem>
+                    )
               })}
             </MessageScrollerContent>
           </MessageScrollerViewport>

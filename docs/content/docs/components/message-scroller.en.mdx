@@ -474,9 +474,10 @@ the internal one, the root's is not ([why](#props)).
 The scroll container stays keyboard reachable and the transcript announceable,
 without forcing a particular message UI.
 
-`MessageScrollerViewport` is a labelled, keyboard-focusable scroll region by
-default: `role="region"`, `aria-label="Messages"`, `tabIndex={0}`, so keyboard
-users can focus the transcript and scroll it directly.
+`MessageScrollerViewport` is a labelled scroll region by default:
+`role="region"`, `aria-label="Messages"`. Once the transcript overflows it is
+`tabIndex={0}`, so keyboard users can focus it and scroll directly; while both
+axes fit it is `-1` — a region that cannot scroll takes no focus stop.
 
 `MessageScrollerContent` marks the transcript as a live region with
 `role="log"` and `aria-relevant="additions"`. New rows can be announced, while
@@ -546,7 +547,7 @@ read the first two through `group-data-*`. Note that `data-active` and
 | `data-slot` | What it is |
 | --- | --- |
 | `message-scroller` | The root, the styled frame |
-| `message-scroller-scroll-area` | The `ScrollArea` root wrapping the viewport; the overlay scrollbar hangs off it |
+| `scroll-area` | The shell around the viewport is this library's `ScrollArea`; the overlay scrollbar hangs off it |
 | `message-scroller-viewport` | The scrolling element |
 | `message-scroller-content` | The transcript container |
 | `message-scroller-item` | One row |
@@ -556,7 +557,7 @@ read the first two through `group-data-*`. Note that `data-active` and
 
 | Key | Effect |
 | --- | --- |
-| `Tab` | The viewport is `tabIndex={0}`, so the transcript itself can be focused and scrolled |
+| `Tab` | While the transcript overflows the viewport is `tabIndex={0}` and can be focused and scrolled; while it fits it is `-1` and Tab skips it |
 | `↑` `↓` `PageUp` `PageDown` `Home` `End` `Space` | Scroll the viewport and release follow-the-live-edge — keyboard scrolling counts as reader intent, same as the wheel |
 | `Enter` / `Space` (on the button) | Scroll to that edge; re-engages following while `autoScroll` is on |
 
@@ -660,11 +661,15 @@ fade — only reads the scroll container itself. Both sides merge rather than
 replace: Base UI's ref joins the scroller's through `useRenderElement`, and each
 side's event handlers both run.
 
-It is positioned `absolute inset-0` rather than `size-full`: as a flex item the
-scroll area's height is a used value while `height` stays `auto`, so a
-percentage height never resolves and nothing clips — the trap `DialogBody`
-documents. An absolutely positioned box takes its size from the containing
-block's *used* height, which always resolves.
+The whole part is a `ScrollArea` — the transcript viewport is fused onto
+ScrollArea's viewport through `viewportRender`, so the focus ring, the
+`scrollbars` vocabulary and the hover recipe stay in step with every other
+scroll surface here instead of drifting. The children are additionally wrapped
+in Base UI's `ScrollArea.Content`: that is the only content-size observer Base
+UI has. The viewport recomputes overflow on scroll and when its *own* box
+resizes, nothing else — so a transcript that fits at mount and then grows (the
+first thing every chat does) would leave it believing nothing overflows: no
+scrollbar mounted, `tabIndex` stuck at `-1`.
 
 ### MessageScrollerContent
 

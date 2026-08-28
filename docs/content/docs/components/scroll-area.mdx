@@ -135,6 +135,7 @@ Base UI 让有溢出的视口可聚焦（否则纯键盘用户到不了滚动区
 | `scrollbars` | `'always'` \| `'hover'` \| `'hidden'` | `'hover'` | 滚动条显隐策略（导出类型 `ScrollAreaScrollbars`），见[滚动条显隐](#滚动条显隐) |
 | `viewportRef` | `Ref<HTMLDivElement>` | — | 视口引用（滚动位置、虚拟化都要它） |
 | `viewportClassName` | `string \| (state) => string` | — | 视口类名；[scroll-fade](#滚动渐隐) 挂这里。函数形式收到视口状态（`scrolling`、`hasOverflowX/Y` 与四个溢出边缘标志——正是 scroll-fade 要读的那些） |
+| `viewportRender` | `ReactElement \| (props, state) => ReactElement` | — | 把视口与另一个组件的元素融合成同一个元素（Base UI 的 `render`）。`MessageScrollerViewport` 就是这么建的 |
 | `viewportStyle` | `CSSProperties \| (state) => CSSProperties` | — | 视口内联样式（如 `maxHeight`），同样支持函数形式 |
 | `className` | `string \| (state) => string` | — | 根元素类名；尺寸约束定在这里。函数形式收到 Base UI Root 的状态（`scrolling`、`hasOverflowX/Y` 与 `overflowXStart` 等溢出方向、`cornerHidden`——`hovering` 不在其中，它只挂在滚动条元素的 `data-hovering` 上） |
 | 其余 | Base UI `ScrollArea.Root` 的 props（元素原生属性 + `ref`） | — | 透传 |

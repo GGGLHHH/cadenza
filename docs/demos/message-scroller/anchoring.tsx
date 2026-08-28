@@ -14,12 +14,6 @@ import { MessageRow } from './message-row'
 import { ResettableDemo } from './resettable'
 import { useFakeChat } from './transcript'
 
-const PROMPTS = [
-  'Move the Firebird before the interval.',
-  'Can the Pavane open the second half instead?',
-  'How long does that make the first half?',
-]
-
 // scrollAnchor is what the viewport lifts to the top when a new turn
 // arrives — and it is not tied to a role. The bar down the left marks the
 // anchored rows (read off the component's own data-scroll-anchor), so
@@ -29,8 +23,7 @@ const PROMPTS = [
 // the question off the top, with nothing left below to fill the viewport
 function AnchoringBody(): ReactElement {
   const [anchorRole, setAnchorRole] = useState<ChatMessage['role']>('user')
-  const { messages, send } = useFakeChat()
-  const [sent, setSent] = useState(0)
+  const { messages, sendNext } = useFakeChat()
 
   return (
     <div className="flex flex-col gap-3 block-96">
@@ -54,13 +47,7 @@ function AnchoringBody(): ReactElement {
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => {
-            const prompt = PROMPTS[sent % PROMPTS.length]
-            if (prompt === undefined)
-              return
-            send(prompt)
-            setSent(count => count + 1)
-          }}
+          onClick={sendNext}
         >
           Send a message
         </Button>

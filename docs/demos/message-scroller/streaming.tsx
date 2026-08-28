@@ -9,24 +9,16 @@ import {
   MessageScrollerViewport,
   useMessageScrollerScrollable,
 } from '@gedatou/cadenza-ui'
-import { useState } from 'react'
 import { MessageRow } from './message-row'
 import { ResettableDemo } from './resettable'
 import { useFakeChat } from './transcript'
-
-const PROMPTS = [
-  'Move the Firebird before the interval.',
-  'Can the Pavane open the second half instead?',
-  'How long does that make the first half?',
-]
 
 // autoScroll follows a streamed reply only while the reader is still at the
 // live edge. Start a reply, then scroll up while it is still arriving: the
 // text keeps coming without dragging you back down. The jump button returns
 // you to the edge and re-engages following
 function StreamingBody(): ReactElement {
-  const { messages, streaming, send } = useFakeChat()
-  const [sent, setSent] = useState(0)
+  const { messages, streaming, sendNext } = useFakeChat()
 
   return (
     <MessageScrollerProvider autoScroll>
@@ -36,13 +28,7 @@ function StreamingBody(): ReactElement {
             disabled={streaming}
             size="sm"
             variant="secondary"
-            onClick={() => {
-              const prompt = PROMPTS[sent % PROMPTS.length]
-              if (prompt === undefined)
-                return
-              send(prompt)
-              setSent(count => count + 1)
-            }}
+            onClick={sendNext}
           >
             {streaming ? 'Streaming…' : 'Stream a reply'}
           </Button>
