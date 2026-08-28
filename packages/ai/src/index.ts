@@ -1,4 +1,5 @@
 export * from './catalog'
+export * from './runtime'
 export {
   defaultByokStorage,
   defineByok,
