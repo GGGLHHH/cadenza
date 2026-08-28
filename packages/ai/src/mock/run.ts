@@ -37,6 +37,14 @@ export interface ScriptedOptions {
   pace?: number | 'instant'
   /** Default slicing for `text` / `reasoning`. Default `'word'`. */
   chunk?: 'word' | 'char' | number
+  /** Default slicing of tool arguments (characters per `TOOL_CALL_ARGS`); a `tool` step's own `argsChunk` wins. Default: whole. */
+  argsChunk?: number
+  /**
+   * Answer as a `text/event-stream` `Response` (`data: <chunk>` lines) instead
+   * of an `AsyncIterable<StreamChunk>`, so the client runs its real SSE parser
+   * — the same path `/api/ai/chat` takes. Default false.
+   */
+  sse?: boolean
   messageId?: () => string
   toolCallId?: () => string
 }
@@ -61,8 +69,31 @@ export function scripted(script: Script, options: ScriptedOptions = {}): ChatFet
     const out = await script(ctx)
     if (out instanceof Response)
       return out
-    return run(ctx, out, options)
+    const chunks = run(ctx, out, options)
+    return options.sse ? toSseResponse(chunks, signal) : chunks
   }
+}
+
+/** The wire shape `toServerSentEventsResponse` emits: one `data:` line per chunk, blank-line separated. */
+function toSseResponse(chunks: AsyncIterable<StreamChunk>, signal: AbortSignal): Response {
+  const encoder = new TextEncoder()
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        for await (const chunk of chunks) {
+          if (signal.aborted)
+            break
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`))
+        }
+      }
+      catch (error) {
+        controller.error(error)
+        return
+      }
+      controller.close()
+    },
+  })
+  return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' } })
 }
 
 /** Turn n answers with `turns[n]`; past the end the last entry repeats. */
@@ -234,7 +265,8 @@ async function* run(ctx: ScriptContext, steps: Iterable<Step> | AsyncIterable<St
         const metadata = step.providerExecuted ? { ...step.metadata, providerExecuted: true } : step.metadata
         yield { type: EventType.TOOL_CALL_START, toolCallId, toolCallName: step.name, parentMessageId: messageId, ...(metadata && { metadata }) }
         const args = JSON.stringify(step.input ?? {})
-        for (const delta of step.argsChunk !== undefined ? split(args, step.argsChunk) : [args]) {
+        const argsChunk = step.argsChunk ?? options.argsChunk
+        for (const delta of argsChunk !== undefined ? split(args, argsChunk) : [args]) {
           await wait(signal, pace)
           if (signal.aborted)
             return

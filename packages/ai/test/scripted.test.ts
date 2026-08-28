@@ -40,6 +40,28 @@ describe('scripted transport', () => {
     expect(finished.usage).toEqual({ promptTokens: 12, completionTokens: 3, totalTokens: 15 })
   })
 
+  it('answers as a text/event-stream Response when sse is on, and the client parses it the same way', async () => {
+    const fetcher = scripted(() => [reasoning('Think.'), tool('get_time', { tz: 'UTC' }, { output: { iso: '2026-08-28' } }), text('Done.')], { pace: 'instant', sse: true, argsChunk: 3 })
+    const raw = await fetcher({ messages: [], data: {}, threadId: 't', runId: 'r' }, { signal: new AbortController().signal })
+    expect(raw).toBeInstanceOf(Response)
+    expect((raw as Response).headers.get('content-type')).toBe('text/event-stream')
+    const body = await (raw as Response).text()
+    expect(body.startsWith('data: {')).toBe(true)
+    expect((body.match(/"type":"TOOL_CALL_ARGS"/g) ?? []).length).toBeGreaterThan(1)
+    const client = new ChatClient({ fetcher: scripted(() => [reasoning('Think.'), tool('get_time', { tz: 'UTC' }, { output: { iso: '2026-08-28' } }), text('Done.')], { pace: 'instant', sse: true }) })
+    client.attach()
+    await client.sendMessage('hi')
+    await settle(client)
+    const last = client.getMessages().at(-1)!
+    const types = last.parts.map(p => p.type)
+    // The SSE path keeps the `tool-result` part the iterable path folds away; order is what matters.
+    expect(types).toEqual(expect.arrayContaining(['thinking', 'tool-call', 'text']))
+    expect(types.indexOf('thinking')).toBeLessThan(types.indexOf('tool-call'))
+    expect(types.indexOf('tool-call')).toBeLessThan(types.indexOf('text'))
+    expect(last.parts.find(p => p.type === 'tool-call')?.state).toBe('complete')
+    expect(client.getStatus()).toBe('ready')
+  })
+
   it('keeps consecutive reasoning blocks in separate thinking parts', async () => {
     const fetcher = scripted(() => [reasoning('One.', { signature: 'sig-1' }), reasoning('Two.')], { pace: 'instant' })
     const client = new ChatClient({ fetcher })
