@@ -1,0 +1,245 @@
+---
+title: Message
+description: The row layout of one turn — alignment, avatar, header and footer, with the surface left to Bubble
+---
+
+<ComponentPreview align="stretch" name="message/basic" />
+
+Message owns how the row sits: which side, whether an avatar rides along, what
+the small print above and below says. The surface the reader sees belongs to
+[Bubble](/en/docs/components/bubble); scrolling the whole transcript belongs to
+[MessageScroller](/en/docs/components/message-scroller).
+
+It is pure layout — no state, no hooks, and its accessibility comes entirely
+from what you put inside it. The seam is a plain re-export.
+
+## Usage
+
+```tsx
+import {
+  Message,
+  MessageAvatar,
+  MessageContent,
+  MessageFooter,
+  MessageGroup,
+  MessageHeader,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Message align="end">
+  <MessageContent>
+    <Bubble variant="muted">
+      <BubbleContent>Where does the interval go?</BubbleContent>
+    </Bubble>
+  </MessageContent>
+</Message>
+```
+
+## Anatomy
+
+```text
+Message                 the row itself: alignment, direction
+├── MessageAvatar       anchored to the bottom of the row
+└── MessageContent
+    ├── MessageHeader   who is speaking
+    ├── Bubble          the visible surface
+    └── MessageFooter   status, time, actions
+```
+
+For consecutive turns from the same sender:
+
+```text
+MessageGroup
+├── Message
+└── Message
+```
+
+**`align` is the only alignment switch you need.** It writes `data-align` on the
+root, flips the row direction, and through `group-data-[align=end]/message`
+pulls the bubble, header and footer to the same side. Nothing downstream needs
+telling twice — including `Bubble`'s own `align`, which you can leave alone
+inside a `Message`.
+
+## Features
+
+- `align` sets the row's direction, and bubble, header and footer all follow
+- An avatar slot that anchors to the bottom of the row and stays clear of the footer
+- Header and footer slots for sender names, status, and message actions
+- The footer follows the message side; actions stay aligned on `align="end"` rows
+- `MessageGroup` stacks consecutive messages from the same sender
+- Customizable styling through the `className` prop on every part
+
+## Avatar
+
+<ComponentPreview align="stretch" name="message/avatar" />
+
+`MessageAvatar` anchors to the **bottom** of the row, not the top: on a long
+message it stays beside the last line instead of floating next to the first. It
+also lifts itself by 2rem when the message has a footer, so it never sits beside
+the timestamp.
+
+This library has not promoted `Avatar` yet, so the demo uses initials —
+`MessageAvatar` is an ordinary container and takes an image or an icon just as
+happily.
+
+## Group
+
+<ComponentPreview align="stretch" name="message/group" />
+
+`MessageGroup` tightens the spacing between consecutive messages from one
+sender. Note what the demo does: the **earlier rows render an empty
+`MessageAvatar`**, so their text stays lined up with the avatar on the last one
+instead of shifting left.
+
+## Header and footer
+
+<ComponentPreview align="stretch" name="message/header-footer" />
+
+Header for the sender's name, footer for metadata such as delivery or read
+status. Both carry a 0.75rem inset that lines them up with a padded bubble, and
+drop it against a `ghost` one — so the text is flush either way.
+
+## Actions
+
+<ComponentPreview align="stretch" name="message/actions" />
+
+Message-level actions go in `MessageFooter` — copy, regenerate, feedback. The
+footer follows the message's side, so actions stay right-aligned on an
+`align="end"` row.
+
+These buttons are usually icon-only, so **every one needs an `aria-label`**: the
+icon is decorative and carries no name of its own.
+
+## Attachment
+
+<ComponentPreview align="stretch" name="message/attachment" />
+
+An [Attachment](/en/docs/components/attachment) is just another child of
+`MessageContent`, sitting above or below the bubble and inheriting the row's
+alignment — so a file the user sent lands on the same side as the user's text.
+
+## Accessibility
+
+`Message` is a presentational layout wrapper; accessibility comes from the
+content you place inside it.
+
+- **Label icon-only actions** in `MessageFooter` with `aria-label`.
+- **Use a Marker for in-progress state**: for thinking, or a running tool, use
+  [Marker](/en/docs/components/marker) with `role="status"` so assistive tech
+  announces the update as it appears.
+
+```tsx
+<Message>
+  <Marker role="status">
+    <MarkerIcon><Spinner /></MarkerIcon>
+    <MarkerContent>Checking the logs…</MarkerContent>
+  </Marker>
+</Message>
+```
+
+## When to use Message
+
+A transcript row wants both: `Message` is the row, `Bubble` is the surface. An
+isolated bubble — a quoted snippet, a hint card — can use Bubble alone.
+
+If the row says something about the conversation rather than in it — someone
+joined, a date break, "Thinking…" — that is
+[Marker](/en/docs/components/marker), which sits at the same level as `Message`.
+
+## State and className
+
+Every part lands on a plain `<div>`, so `className` is honestly a `string`.
+
+| Attribute | On | Value |
+| --- | --- | --- |
+| `data-align` | Message | `"start"` \| `"end"` |
+
+| `data-slot` | What it is |
+| --- | --- |
+| `message` | The row |
+| `message-group` | Container for consecutive messages |
+| `message-avatar` | The avatar slot |
+| `message-content` | Header + bubble + footer |
+| `message-header` | Small print above |
+| `message-footer` | Small print and actions below |
+
+`Message` carries `group/message`, which is what everything downstream follows
+via `group-data-[align=end]/message`. `MessageAvatar` additionally probes for a
+footer with `group-has-data-[slot=message-footer]/message`.
+
+## Exported types
+
+```tsx
+import type {
+  MessageAlign,
+  MessageAvatarProps,
+  MessageContentProps,
+  MessageFooterProps,
+  MessageGroupProps,
+  MessageHeaderProps,
+  MessageProps,
+} from '@gedatou/cadenza-ui'
+```
+
+## Props
+
+Order: **required → uncontrolled defaults → controlled values → callbacks →
+behaviour flags → appearance → `className`**.
+
+### Message
+
+One transcript row.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `align` | `'start' \| 'end'` | `'start'` | Which side. Written as `data-align`; everything downstream follows |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### MessageGroup
+
+Container for consecutive messages from one sender; tightens spacing.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### MessageAvatar
+
+The avatar slot. Anchors to the bottom of the row and lifts clear of a footer.
+Leave it empty as a spacer inside a group.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### MessageContent
+
+The vertical stack of header, bubble and footer — and where they pick up the
+row's alignment.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### MessageHeader
+
+The line above the bubble, usually the sender's name.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### MessageFooter
+
+The line below: time, delivery status, or message-level action buttons.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |

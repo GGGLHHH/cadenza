@@ -1,0 +1,769 @@
+---
+title: MessageScroller
+description: A chat scroll container that anchors turns, follows streamed replies, loads history without jumping, and jumps to any message
+---
+
+<ComponentPreview name="message-scroller/basic" align="stretch" />
+
+This family's behaviour does not come from Base UI but from shadcn's headless
+`@shadcn/react/message-scroller`, wearing shadcn's base-nova skin. The seam
+changes none of it and does three things: it names the props upstream declares
+inline (so an app can wrap a part and still import its type), it drops the
+root's `ref` ([why](#props)), and it scrolls the viewport on this library's
+[ScrollArea](/en/docs/components/scroll-area) — a fade on both edges only works
+if the scrollbar lives outside the element the mask dims.
+
+## What Makes a Great Streaming Chat Experience
+
+Building a chat interface used to be simple. Create an inverted list with an
+input, type a message and it appends at the bottom, a reply comes in and the
+list grows and scrolls. Done.
+
+Streaming breaks that model. Messages arrive in chunks while the reader may
+still be reading, scrolling, or looking somewhere else entirely. The challenge
+turns from "append" into "preserve the reader's place while the conversation
+keeps changing". Get it wrong and the experience feels jumpy: people are pulled
+to the bottom, lose context, and have to find their way back.
+
+In practice this comes down to scroll: when to follow, when to hold, and when to
+let the reader decide. A great streaming chat should:
+
+1. **Move only when the reader asked to move.** If someone is reading, don't
+   pull them somewhere else. Auto-scroll should never be the default.
+2. **Follow only while they're following.** At the live edge, keep the stream in
+   view. If they scroll away, leave them there.
+3. **Treat every interaction as a signal.** Scrolling is not the only one.
+   Selecting text, using the keyboard, opening a link, or searching should all
+   stop the interface from moving.
+4. **Start a new turn near the top of the viewport.** That gives the new turn
+   somewhere it can be read from the beginning.
+5. **Then stream in the answer.** It should grow into the screen, not
+   immediately push everything away.
+6. **Keep part of the previous conversation in context.** Prompt and reply
+   should stay visually connected, and enough of the previous turn should remain
+   visible that the reader knows where they are.
+7. **Let new content arrive offscreen.** The conversation can keep streaming
+   without changing what the reader is looking at.
+8. **Show what's happening out of view.** Make it clear when a response is still
+   streaming or new messages have arrived.
+9. **Make it easy to return to the latest reply.** A "jump to latest" should
+   bring the reader back and resume following.
+10. **Let people jump anywhere in the conversation.** Long threads need message
+    links, search, unread markers, and direct navigation.
+11. **Reopen where the reader left off.** A saved conversation should open at
+    the last meaningful turn — often the last user message, not the absolute
+    bottom.
+12. **Keep the reader's place when layout changes.** Images load, markdown
+    expands, code blocks render, older messages appear above. None of that
+    should lose their place.
+13. **Handle interruptions without stealing position.** Stopping, retrying,
+    regenerating, branching, or errors should not unexpectedly move the
+    conversation.
+14. **Stay responsive in long threads.** Streamed text, markdown, code, images,
+    and long history should still feel responsive.
+15. **Be accessible without the noise.** Keep the transcript navigable, preserve
+    keyboard focus, and announce important events at a comfortable pace.
+
+**Never move the reader against their intent.**
+
+## MessageScroller
+
+MessageScroller is the transcript scroller built for those behaviours.
+`MessageScrollerProvider` owns the scroll state and the transcript-row
+behaviour: opening position, streamed output, new-turn anchoring, prepended
+history, visibility, and scroll commands. `MessageScroller` is the styled frame
+that renders inside it.
+
+Its scope is the scroll viewport. It does not own messages, AI state,
+transport, persistence, branching, or model state — that stays in app code,
+composing messages, markers, tools, attachments, and prompt inputs.
+
+## Usage
+
+```tsx
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<MessageScrollerProvider>
+  <MessageScroller>
+    <MessageScrollerViewport>
+      <MessageScrollerContent>
+        {messages.map(message => (
+          <MessageScrollerItem
+            key={message.id}
+            messageId={message.id}
+            scrollAnchor={message.role === 'user'}
+          >
+            {/* a message */}
+          </MessageScrollerItem>
+        ))}
+      </MessageScrollerContent>
+    </MessageScrollerViewport>
+    <MessageScrollerButton />
+  </MessageScroller>
+</MessageScrollerProvider>
+```
+
+`MessageScroller` fills its parent, so place it inside a height-constrained
+container.
+
+```tsx
+<div className="flex flex-col block-screen">
+  <MessageScrollerProvider>
+    <MessageScroller className="flex-1">{/* transcript */}</MessageScroller>
+  </MessageScrollerProvider>
+</div>
+```
+
+## Anatomy
+
+```text
+<MessageScrollerProvider>          scroll state and behaviour props, renders no DOM
+  <MessageScroller>                the styled frame
+    <MessageScrollerViewport>      the element that actually scrolls
+      <MessageScrollerContent>     transcript container, live region
+        <MessageScrollerItem />    one row: message / marker / separator
+      </MessageScrollerContent>
+    </MessageScrollerViewport>
+    <MessageScrollerButton />      jump to the start or the end
+  </MessageScroller>
+</MessageScrollerProvider>
+```
+
+- **`MessageScrollerProvider`** — the headless root. Owns scroll state and the
+  behaviour props for opening position, auto-scroll, anchoring, scroll commands,
+  and visibility tracking.
+- **`MessageScroller`** — the styled frame. Lays out the viewport, content, and
+  controls inside the provider.
+- **`MessageScrollerViewport`** — the scrollable element, and a `ScrollArea` in
+  its own right: the overlay scrollbar renders outside it, and both edges carry
+  a scroll-fade that retracts as you reach them. It receives native scroll
+  events and preserves the visible row when older messages are prepended.
+- **`MessageScrollerContent`** — the transcript container. Holds the rows and
+  provides the live-region defaults for new messages.
+- **`MessageScrollerItem`** — the transcript row boundary. Wrap every direct
+  child of the content so the scroller can measure, anchor, preserve position,
+  track visibility, and jump to it. What goes in a row is up to you: a message
+  ([Message](/en/docs/components/message) +
+  [Bubble](/en/docs/components/bubble)), a marker
+  ([Marker](/en/docs/components/marker) — join events, date breaks,
+  "Thinking…"), a typing indicator. (The "load earlier" control at the top is
+  the exception — it must stay out of this list, see [Loading Earlier
+  Messages](#loading-earlier-messages).)
+- **`MessageScrollerButton`** — the scroll control. Scrolls to the start or end
+  of the transcript, and is inert while there is nothing in its direction.
+
+## Core Concepts
+
+### Anchoring Turns
+
+A turn is the part of the conversation that starts a new exchange. In a simple
+AI chat that is usually the user's message and the assistant reply that follows.
+
+An anchor is the row the viewport should treat as the start of that turn. Mark
+it with `scrollAnchor`. When a new anchor is appended, the viewport moves it
+near the top and keeps a peek of the previous item above it, so the new turn
+does not feel detached from its context.
+
+<ComponentPreview name="message-scroller/anchoring" align="stretch" />
+
+The demo's two modes are the two ends of that choice. The bar down the left
+marks which rows are currently anchors (read off the scroller's own
+`data-scroll-anchor`), and it jumps across when you switch:
+
+- **Anchor questions** — the question stays at the top and the answer grows
+  below it, so the reader can follow one against the other. This is what
+  ChatGPT-style interfaces do.
+- **Anchor replies** — the viewport lifts the answer instead and pushes the
+  question out of view; and since a reply is usually the last row, there is
+  nothing below it to fill the viewport, so the scroller pads the room out
+  instead.
+
+Note what triggers it: a new anchor being **appended**, not a row *becoming* an
+anchor. Reassigning `scrollAnchor` scrolls nothing by itself, which is why
+switching modes above only moves the marks while the viewport stays put — press
+"Send a message" to see the difference.
+
+Scroll anchors are not tied to message role. Any row can become one: a user
+message, a system marker, a handoff event, anything that starts a meaningful
+turn. MessageScroller only needs to know which row should anchor the viewport.
+
+```tsx
+// Tells the scroller to anchor the user's message for the next turn
+<MessageScrollerItem
+  messageId={message.id}
+  scrollAnchor={message.role === 'user'}
+/>
+```
+
+### Group Chat
+
+In a group chat the turn boundary is more specific than "the user message". It
+is often the message that asks the model to respond, or a marker like "Marcus
+joined the chat". Typing indicators and history controls usually should not
+anchor.
+
+Because anchoring is role-independent, anchoring a marker is as easy as
+anchoring a message.
+
+```tsx
+<MessageScrollerItem messageId="marcus-joined" scrollAnchor>
+  <p className="text-center text-xs text-muted-foreground">
+    Marcus joined the chat
+  </p>
+</MessageScrollerItem>
+```
+
+Drop someone into the room and watch the viewport lift the join marker, not a message:
+
+<ComponentPreview name="message-scroller/group-chat" align="stretch" />
+
+### Keeping Context Visible
+
+When a new turn starts it should still feel like part of the same continuous
+thread. `scrollPreviousItemPeek` keeps a slice of the previous item visible
+above the anchor, so the reader keeps their context instead of feeling like the
+conversation restarted on a blank page.
+
+```tsx
+// Keep 64px of the previous turn visible above the newly anchored row
+<MessageScrollerProvider scrollPreviousItemPeek={64}>
+  <MessageScroller>{/* anchored turns */}</MessageScroller>
+</MessageScrollerProvider>
+```
+
+Drag the peek, then send, and see how much of the previous turn survives:
+
+<ComponentPreview name="message-scroller/previous-context" align="stretch" />
+
+### Following the Live Edge
+
+When the reader is at the live edge — because they stayed there or returned
+there — `autoScroll` keeps streamed replies in view as they grow. Scrolling
+away releases it, whether by wheel, touch, keyboard scroll keys, or dragging the
+scrollbar; an explicit message jump releases it too. New chunks can then arrive
+without moving the reader.
+
+`autoScroll` composes with turn anchoring. When a new turn anchors near the top,
+the view stays put while the reply streams into the room below it. Once the
+reply fills the viewport the reader is back at the live edge, and follow-output
+takes over from the anchor.
+
+```tsx
+<MessageScrollerProvider autoScroll>
+  <MessageScroller>{/* streamed turns */}</MessageScroller>
+</MessageScrollerProvider>
+```
+
+Start a reply, then scroll up while it is still arriving — the text keeps coming without dragging you back:
+
+<ComponentPreview name="message-scroller/streaming" align="stretch" />
+
+Calling `scrollToEnd`, or pressing `MessageScrollerButton`, re-engages
+follow-output while `autoScroll` is on, so a reader who scrolled away can return
+to the live edge and keep following. The root and the viewport expose
+`data-autoscrolling` while that programmatic scroll runs, so styles can react to
+the transition.
+
+### Opening Saved Threads
+
+Reopening a saved thread at the absolute end of the transcript seems reasonable,
+but it often drops the reader into the conversation without enough context. A
+better default is `"last-anchor"`: show the last meaningful turn, like the
+user's latest message, with the reply below it.
+
+```tsx
+<MessageScrollerProvider defaultScrollPosition="last-anchor">
+  <MessageScroller>{/* transcript */}</MessageScroller>
+</MessageScrollerProvider>
+```
+
+Press each value in turn to see where the same transcript lands:
+
+<ComponentPreview name="message-scroller/opening-position" align="stretch" />
+
+`"last-anchor"` is keyed on `scrollAnchor`, not message role. If no anchor
+exists, or the last anchored turn already fits in the viewport, it falls back to
+`"end"`. Use `"start"` to resume at the beginning of a conversation, or `"end"`
+when the absolute latest message is the right place to land. The position is
+applied once, on the first non-empty render.
+
+### Loading Earlier Messages
+
+Loading earlier messages should not move the conversation the reader is already
+looking at. When older rows are prepended above the current transcript,
+`MessageScrollerViewport` preserves the visible row so the reader stays in the
+same place while history loads above them.
+
+<ComponentPreview name="message-scroller/load-history" align="stretch" />
+
+This is enabled by default through `preserveScrollOnPrepend`. Use stable
+`messageId` values for message rows: that gives the scroller a specific row to
+preserve instead of guessing from whichever pixel happens to sit at the viewport
+edge.
+
+One constraint no type can express: the scroller recognises a prepend by
+checking whether the row that used to be first has moved down the list. So a
+**"load earlier" button must not be the first `MessageScrollerItem` inside
+`MessageScrollerContent`** — being permanently first, it hides every prepend
+behind it, and the viewport treats the incoming history as an append and scrolls
+away from the reader — 1332px of drift when measured, more than a full
+viewport. Render those controls inside the viewport but outside the content:
+
+```tsx
+<MessageScrollerViewport>
+  <LoadEarlierRow />
+  <MessageScrollerContent>{/* message rows only */}</MessageScrollerContent>
+</MessageScrollerViewport>
+```
+
+### Animating New Messages
+
+`MessageScrollerItem` can be animated directly. Create a motion version of the
+item, keep `messageId` and `scrollAnchor` on it, and use transform and opacity
+for the entrance.
+
+```tsx
+const MotionMessageScrollerItem = motion.create(MessageScrollerItem)
+```
+
+Send a message and watch the new row rise from the live edge; the transcript already there does not animate:
+
+<ComponentPreview name="message-scroller/animation" align="stretch" />
+
+Avoid animating height, margin, or padding for row entrances; those changes
+fight the scroller's positioning work. If the reader prefers reduced motion,
+skip the entrance animation and keep the scroll behaviour the same.
+
+### Jumping to Messages
+
+Search results, permalinks, outline items, and toolbar buttons often need to
+drive the transcript from outside the message list. Use `useMessageScroller` for
+those controls. Because the hooks read from `MessageScrollerProvider`, they work
+in any component inside the provider, including controls rendered outside the
+`MessageScroller` frame.
+
+<ComponentPreview name="message-scroller/commands" align="stretch" />
+
+```tsx
+const { scrollToMessage, scrollToEnd, scrollToStart } = useMessageScroller()
+```
+
+`scrollToMessage` targets the `messageId` on `MessageScrollerItem`, so rows that
+need to be addressable should have stable ids. It can queue a target before
+items exist, which covers client-resolved permalinks while the transcript
+mounts; after rows have mounted, a missing id returns `false` instead of
+starting a guessed retry loop. A `true` result means the scroll ran or was
+queued, not that the row is already in view.
+
+### Tracking the Reader's Position
+
+Use `useMessageScrollerVisibility` to track the reader's position in the
+conversation: a reading-progress indicator, a current-turn badge, read receipts
+sent only for rows actually on screen.
+
+```tsx
+const { currentAnchorId, visibleMessageIds } = useMessageScrollerVisibility()
+```
+
+Scroll the transcript and watch the line above it keep up:
+
+<ComponentPreview name="message-scroller/visibility" align="stretch" />
+
+`currentAnchorId` answers "where am I" by reporting the current anchored turn,
+and it stays set after that anchor scrolls above the viewport.
+`visibleMessageIds` answers "what is on screen", in document order.
+
+Visibility is pay-for-what-you-use. Tracking only runs while something
+subscribes to `useMessageScrollerVisibility`, and rows need a `messageId` to
+participate.
+
+### Reading Scroll State
+
+Use `useMessageScrollerScrollable` when scroll state is needed in JavaScript,
+such as a status indicator or a custom "jump to latest". It reports which edges
+the viewport can still scroll toward; "at the start/end" is the negation
+(`!start` / `!end`), and "scrollable at all" is `start || end`. For styling the
+scroller itself, prefer the `data-scrollable` attribute.
+
+<ComponentPreview name="message-scroller/scrollable" align="stretch" />
+
+```tsx
+const { start, end } = useMessageScrollerScrollable()
+```
+
+## Performance
+
+The goal is to keep the scroll hot path outside React state: no rerenders of
+transcript rows while scrolling, no forced layout on every scroll, and as little
+off-screen paint work as the browser can avoid.
+
+Scroll position, anchoring, and follow-output are tracked imperatively and
+mirrored onto the root and the viewport through `data-*` attributes, so
+scrolling and streaming do not rerender transcript rows.
+
+The styled `MessageScrollerItem` also ships with `content-visibility: auto` and
+`contain-intrinsic-size: auto 10rem`. Rows stay in the DOM for selection, copy,
+find-in-page, SSR, and assistive tech, but the browser can skip rendering work
+for rows far outside the viewport.
+
+That is comfortable for the expected range of a chat transcript: hundreds to low
+thousands of turns, including messages with markdown and composed components.
+
+## Virtualization
+
+Virtualization is intentionally left outside the component. MessageScroller
+renders real DOM rows and stays fast well into the thousands of turns, so most
+transcripts never need it.
+
+When a transcript is large enough to need it, use `MessageScrollerViewport` as
+the scroll element and let the virtualizer own the rows.
+
+```tsx
+import { useVirtualizer } from '@tanstack/react-virtual'
+
+const viewportRef = useRef<HTMLDivElement>(null)
+
+const virtualizer = useVirtualizer({
+  count: messages.length,
+  getScrollElement: () => viewportRef.current,
+  estimateSize: () => 86,
+  getItemKey: index => messages[index]?.id ?? index,
+  overscan: 8,
+})
+
+return (
+  <MessageScrollerProvider>
+    <MessageScroller>
+      <MessageScrollerViewport ref={viewportRef}>
+        <MessageScrollerContent className="block min-block-full">
+          <div className="relative inline-full" style={{ height: virtualizer.getTotalSize() }}>
+            {virtualizer.getVirtualItems().map(virtualItem => (
+              <div
+                key={virtualItem.key}
+                ref={virtualizer.measureElement}
+                data-index={virtualItem.index}
+                className="absolute start-0 top-0 inline-full"
+                style={{ transform: `translateY(${virtualItem.start}px)` }}
+              >
+                {/* a message */}
+              </div>
+            ))}
+          </div>
+        </MessageScrollerContent>
+      </MessageScrollerViewport>
+      <MessageScrollerButton />
+    </MessageScroller>
+  </MessageScrollerProvider>
+)
+```
+
+Note the `ref` on `MessageScrollerViewport` — the viewport's ref is merged with
+the internal one, the root's is not ([why](#props)).
+
+## Accessibility
+
+The scroll container stays keyboard reachable and the transcript announceable,
+without forcing a particular message UI.
+
+`MessageScrollerViewport` is a labelled scroll region by default:
+`role="region"`, `aria-label="Messages"`. Once the transcript overflows it is
+`tabIndex={0}`, so keyboard users can focus it and scroll directly; while both
+axes fit it is `-1` — a region that cannot scroll takes no focus stop.
+
+`MessageScrollerContent` marks the transcript as a live region with
+`role="log"` and `aria-relevant="additions"`. New rows can be announced, while
+streamed text mutations do not have to be announced token by token.
+
+```tsx
+<MessageScrollerContent aria-busy={status === 'streaming'}>
+  {/* messages */}
+</MessageScrollerContent>
+```
+
+Pass `aria-busy` while a turn streams if announcements should wait for the
+completed message row.
+
+`MessageScrollerButton` renders a real `<button>`. When there is nothing to
+scroll toward it sets `inert`, `tabIndex={-1}`, and `data-active="false"`, so
+inactive scroll controls do not create extra focus stops.
+
+## When to use MessageScroller
+
+For a nice scrollbar around a list, a panel, any overflowing box, use
+[ScrollArea](/en/docs/components/scroll-area): its scrollbars render outside the
+viewport, they compose naturally with the scroll-fade masks, and it never
+touches scroll position.
+
+Switch to MessageScroller when content grows on its own while the reader is
+reading it. Anchoring, following the live edge, and preserving position across a
+prepend all require the component to own the scroll position, which is exactly
+what ScrollArea deliberately does not do.
+
+The two do not nest, because MessageScrollerViewport **is** a ScrollArea —
+wrapping one in the other only adds a second scroll container and throws off
+anchoring and preservation.
+
+The master also has an Unstyled section, on using the headless
+`@shadcn/react/message-scroller` with your own markup and styles. This library
+publishes no unstyled variant — that is precisely what this seam is for — so the
+section is absent here; if you want the bare primitive, install
+`@shadcn/react` directly.
+
+## State and className
+
+Every part but the viewport lands on plain DOM (the button on a `<button>`), so
+their `className` is honestly a `string` — there is no Base UI state function to
+pass. The viewport is the one exception: it lands on Base UI's `ScrollArea`
+viewport, so it takes the function form too. Style off state through the
+attributes below.
+
+| Attribute | On | Value | When |
+| --- | --- | --- | --- |
+| `data-scrollable` | root, viewport | `"start"` \| `"end"` \| `"start end"` | Edges the viewport can scroll toward; absent when it fits. Query one with `[data-scrollable~="end"]` |
+| `data-autoscrolling` | root, viewport | empty string | Present while programmatically scrolling to the latest message |
+| `data-message-id` | Item | `string` | Mirrors `messageId` when provided |
+| `data-scroll-anchor` | Item | `"true"` \| `"false"` | Mirrors `scrollAnchor` |
+| `data-direction` | Button | `"start"` \| `"end"` | Mirrors `direction` |
+| `data-active` | Button | `"true"` \| `"false"` | Whether this button currently has anywhere to scroll |
+| `data-variant` `data-size` | Button | Button's vocabulary | The vendored part mirrors its appearance as attributes too |
+| `data-has-overflow-x` `data-has-overflow-y` | scroll-area shell | empty string | Overflow state written by Base UI's `ScrollArea` |
+| `data-overflow-y-start` `data-overflow-y-end` | scroll-area shell | empty string | Same, marking which end still has content |
+
+The root carries `group/message-scroller`, so the viewport and the content can
+read the first two through `group-data-*`. Note that `data-active` and
+`data-scroll-anchor` are value-form booleans (upstream writes the literals
+`"true"` / `"false"`, not Base UI's empty string), so write
+`data-[active=false]:` rather than `data-active:`.
+
+| `data-slot` | What it is |
+| --- | --- |
+| `message-scroller` | The root, the styled frame |
+| `scroll-area` | The shell around the viewport is this library's `ScrollArea`; the overlay scrollbar hangs off it |
+| `message-scroller-viewport` | The scrolling element |
+| `message-scroller-content` | The transcript container |
+| `message-scroller-item` | One row |
+| `message-scroller-button` | The scroll control |
+
+## Keyboard interactions
+
+| Key | Effect |
+| --- | --- |
+| `Tab` | While the transcript overflows the viewport is `tabIndex={0}` and can be focused and scrolled; while it fits it is `-1` and Tab skips it |
+| `↑` `↓` `PageUp` `PageDown` `Home` `End` `Space` | Scroll the viewport and release follow-the-live-edge — keyboard scrolling counts as reader intent, same as the wheel |
+| `Enter` / `Space` (on the button) | Scroll to that edge; re-engages following while `autoScroll` is on |
+
+## Exported types
+
+```tsx
+import type {
+  MessageScrollerButtonDirection,
+  MessageScrollerButtonProps,
+  MessageScrollerButtonState,
+  MessageScrollerContentProps,
+  MessageScrollerDefaultScrollPosition,
+  MessageScrollerItemProps,
+  MessageScrollerProps,
+  MessageScrollerProviderProps,
+  MessageScrollerScrollable,
+  MessageScrollerScrollAlign,
+  MessageScrollerScrollOptions,
+  MessageScrollerViewportProps,
+  MessageScrollerVisibilityState,
+} from '@gedatou/cadenza-ui'
+```
+
+- `MessageScrollerButtonState` is what `MessageScrollerButton`'s `render`
+  function receives: `{ active, direction }`.
+- `MessageScrollerScrollable` and `MessageScrollerVisibilityState` are the
+  return types of `useMessageScrollerScrollable` and
+  `useMessageScrollerVisibility`.
+- `MessageScrollerScrollOptions` is the second argument of the three scroll
+  commands.
+
+## Props
+
+Order: **required → uncontrolled defaults → controlled values → callbacks →
+behaviour flags → appearance → `className`**.
+
+### MessageScrollerProvider
+
+The headless root. Owns scroll state and the behaviour props, and provides them
+to the parts and the hooks. Renders no DOM of its own.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultScrollPosition` | `'start' \| 'end' \| 'last-anchor'` | `'end'` | Opening position on the first non-empty render, applied once. `'last-anchor'` opens at the last `scrollAnchor` row and falls back to `'end'` when the turn fits or no anchor exists |
+| `autoScroll` | `boolean` | `false` | Follow new content only while the reader is already at the live edge. Wheel, touch, keyboard scroll, and explicit jumps release it |
+| `scrollEdgeThreshold` | `number` | `8` | Distance from either edge that still counts as being at the start or end. Controls the state attributes and the scroll button's visibility |
+| `scrollMargin` | `number` | `0` | Margin applied to the aligned edge for `scrollToMessage`, visibility, and programmatic targets |
+| `scrollPreviousItemPeek` | `number` | `64` | Extra margin added to `scrollMargin` when a newly appended `scrollAnchor` item is positioned, so part of the previous item stays visible |
+| `children` | `ReactNode` | — | The frame, plus any control that reads the hooks |
+
+### MessageScroller
+
+The styled frame and layout container. It fills its parent, so use it inside a
+height-constrained layout, within a `MessageScrollerProvider`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<div>`, so it is a string |
+| the rest | `ComponentProps<'div'>` minus `ref` | — | Spread |
+
+`ref` is the one place on this page where the seam narrows upstream. The
+headless root renders `<div ref={setRootElement} {...props}>` — its own ref
+*before* the spread, so a caller-supplied one replaces it instead of merging.
+The element then never reaches the scroller, and `data-scrollable` /
+`data-autoscrolling` stop being written to the root (the viewport keeps both),
+silently killing every `group-data-*` style hanging off
+`group/message-scroller`. Typing the prop while it breaks the component is the
+half-open door this library refuses, so the honest surface is not to offer it.
+
+Need the scrolling element? That is `MessageScrollerViewport`, whose ref **is**
+merged. Need a box around the frame? Wrap it in your own `<div>`.
+
+### MessageScrollerViewport
+
+The element that actually scrolls, and the only part of the family the seam
+builds itself rather than promoting from the vendored file.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `preserveScrollOnPrepend` | `boolean` | `true` | Keep the first visible message row stable when older rows are prepended |
+| `role` | `string` | `'region'` | Landmark role for the labelled scrollable transcript viewport |
+| `aria-label` | `string` | `'Messages'` | Accessible name for the scrollable transcript |
+| `tabIndex` | `number` | Base UI's | `0` while either axis overflows, `-1` when both fit — a region that cannot scroll takes no focus stop |
+| `scrollbars` | `'hover' \| 'always' \| 'hidden'` | `'hover'` | Which scrollbars to render, in [ScrollArea](/en/docs/components/scroll-area)'s vocabulary |
+| `className` | `string \| (state) => string` | — | Lands on Base UI's viewport slot, so this one **also takes the function form**, resolved against `ScrollAreaViewportState` (`scrolling`, `hasOverflowX/Y`, the four overflow-edge flags) |
+| the rest | `ComponentProps<'div'>` (`ref` included, merged with the internal one) | — | Spread |
+
+shadcn dresses this viewport in a thin native scrollbar plus `scroll-fade-b`.
+Both are wrong here, and neither can be undone from the outside: a native bar
+lives *inside* the element the mask dims, so it fades along with the content
+(exactly why this library has `ScrollArea` — its bars are siblings of the
+scrolling element), and `scroll-fade-b` sets `--scroll-fade-mask`, declared
+later in styles.css than `scroll-fade-y`'s, so appending `scroll-fade-y` from
+the outside never wins. Rather than override, the seam rebuilds the part on the
+same headless `MessageScroller.Viewport` the vendored file wraps.
+
+Base UI's viewport and the transcript viewport are fused into **one** element
+through `render`, as they must be: the scroller measures, anchors and preserves
+position against the element it scrolls, and `scroll(self y)` — what drives the
+fade — only reads the scroll container itself. Both sides merge rather than
+replace: Base UI's ref joins the scroller's through `useRenderElement`, and each
+side's event handlers both run.
+
+The whole part is a `ScrollArea` — the transcript viewport is fused onto
+ScrollArea's viewport through `viewportRender`, so the focus ring, the
+`scrollbars` vocabulary and the hover recipe stay in step with every other
+scroll surface here instead of drifting. The children are additionally wrapped
+in Base UI's `ScrollArea.Content`: that is the only content-size observer Base
+UI has. The viewport recomputes overflow on scroll and when its *own* box
+resizes, nothing else — so a transcript that fits at mount and then grows (the
+first thing every chat does) would leave it believing nothing overflows: no
+scrollbar mounted, `tabIndex` stuck at `-1`.
+
+### MessageScrollerContent
+
+The transcript content element. Every direct child should be a
+`MessageScrollerItem`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `role` | `string` | `'log'` | Live-region role used to announce new rows |
+| `aria-relevant` | `string` | `'additions'` | Live-region updates to announce; new rows only by default |
+| `aria-busy` | `boolean` | — | Marks the live region busy while a turn streams |
+| `spacerClassName` | `string` | — | Class name for the internal spacer: an `aria-hidden` empty div that makes room for anchored rows. Style it, don't size it |
+| `className` | `string` | — | Lands on a plain `<div>`, so it is a string |
+| the rest | `ComponentProps<'div'>` (`ref` included, merged with the internal one) | — | Spread |
+
+### MessageScrollerItem
+
+One transcript row: a message, marker, typing row, or separator.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `messageId` | `string` | — | Stable row id used by `scrollToMessage`, visibility, and prepend preservation |
+| `scrollAnchor` | `boolean` | `false` | Marks this row as a turn boundary that can anchor newly appended turns |
+| `className` | `string` | — | Lands on a plain `<div>`, so it is a string |
+| the rest | `ComponentProps<'div'>` (`ref` included, merged with the internal one) | — | Spread |
+
+`messageId` is optional, as upstream types it, but a row without one is only
+half a row: it still counts as a turn for anchoring and it is still measured,
+yet `scrollToMessage` cannot address it and it never appears in
+`visibleMessageIds`. Leave it off only for rows that are not messages — a date
+separator or an unread marker. A control that is permanently first — a "load
+earlier" button, a start-of-thread marker — should not be an Item at all: it
+hides prepend detection, see [Loading Earlier
+Messages](#loading-earlier-messages).
+
+### MessageScrollerButton
+
+A button that scrolls to the start or end of the transcript. It is inert and
+removed from the tab order when there is nothing to scroll toward.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `direction` | `'start' \| 'end'` | `'end'` | Transcript edge the button scrolls toward |
+| `behavior` | `ScrollBehavior` | `'smooth'` | Native scroll behaviour used to reach that edge |
+| `variant` | `ButtonProps['variant']` | `'secondary'` | Appearance, forwarded to the internal `Button` |
+| `size` | `ButtonProps['size']` | `'icon-sm'` | Size, forwarded to the internal `Button` |
+| `children` | `ReactNode` | arrow icon + accessible name | Custom button content |
+| `render` | `ReactElement \| (props, state) => ReactElement` | `<Button>` | Replaces the rendered element; the function form receives `MessageScrollerButtonState` |
+| `className` | `string` | — | Funnelled through `cva`, so it is a string |
+| the rest | `ComponentProps<'button'>` (`ref` included) | — | Spread |
+
+### useMessageScroller
+
+Imperative transcript controls.
+
+| Method | Type | Description |
+| --- | --- | --- |
+| `scrollToMessage` | `(messageId: string, options?) => boolean` | Scroll to a mounted message id |
+| `scrollToEnd` | `(options?) => boolean` | Scroll to the latest message |
+| `scrollToStart` | `(options?) => boolean` | Scroll to the top |
+
+All commands return `false` when the command could not be applied.
+`scrollToStart` and `scrollToEnd` return `false` only when the viewport is not
+mounted yet; `scrollToMessage` returns `false` when the target is not mounted
+and cannot be queued.
+
+`options` is `MessageScrollerScrollOptions`:
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `align` | `'start' \| 'center' \| 'end' \| 'nearest'` | `'start'` | How a message target aligns in the viewport |
+| `behavior` | `ScrollBehavior` | `'auto'` | Native scroll behaviour for this command |
+| `scrollMargin` | `number` | the provider's `scrollMargin` | Margin applied to the aligned edge for this command |
+
+### useMessageScrollerScrollable
+
+Which edges the viewport can scroll toward, for sibling UI that needs the values
+in JavaScript. Prefer `data-scrollable` for styling the scroller itself.
+
+| Value | Type | Description |
+| --- | --- | --- |
+| `start` | `boolean` | Whether the viewport can scroll toward the start; content is hidden above (`!start` means at the top) |
+| `end` | `boolean` | Whether the viewport can scroll toward the end; content is hidden below (`!end` means at the live edge). Stays `false` while follow-output keeps the reader at the live edge |
+
+### useMessageScrollerVisibility
+
+Visibility state for outline, search, and active-turn UI. It subscribes
+separately from `useMessageScrollerScrollable`, so visibility work is only paid
+for when a consumer needs it.
+
+| Value | Type | Description |
+| --- | --- | --- |
+| `currentAnchorId` | `string \| null` | The current anchored turn: the last `scrollAnchor` row at or above the reading line |
+| `visibleMessageIds` | `string[]` | Message ids intersecting the viewport, in document order |
+
+Filter `visibleMessageIds` in your app when a narrower outline is needed — only
+user messages, only anchored turns, only search hits.

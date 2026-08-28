@@ -19,6 +19,7 @@
     "date-fns": "catalog:ui",
     "fumadocs-core": "catalog:docs",
     "fumadocs-mdx": "catalog:docs",
+    "motion": "catalog:ui",
     "next": "catalog:docs",
     "next-themes": "catalog:ui",
     "ogl": "catalog:docs",

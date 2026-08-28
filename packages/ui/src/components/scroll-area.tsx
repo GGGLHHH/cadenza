@@ -23,6 +23,15 @@ export type ScrollAreaProps = ScrollAreaPrimitive.Root.Props & {
    */
   viewportClassName?: ScrollAreaPrimitive.Viewport.Props['className']
   viewportRef?: Ref<HTMLDivElement>
+  /**
+   * Fuse the viewport with another component's element — Base UI's `render`
+   * on the Viewport part. The element passed here *becomes* the scrolling
+   * element: refs and handlers from both sides merge, and the render element's
+   * own props win. `MessageScrollerViewport` is the precedent: shadcn's
+   * headless transcript viewport must be the very element that scrolls, since
+   * the scroller measures and anchors against it.
+   */
+  viewportRender?: ScrollAreaPrimitive.Viewport.Props['render']
   viewportStyle?: ScrollAreaPrimitive.Viewport.Props['style']
 }
 
@@ -43,6 +52,7 @@ export function ScrollArea({
   scrollbars = 'hover',
   viewportClassName,
   viewportRef,
+  viewportRender,
   viewportStyle,
   ...props
 }: ScrollAreaProps): ReactElement {
@@ -56,6 +66,7 @@ export function ScrollArea({
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
         ref={viewportRef}
+        render={viewportRender}
         style={viewportStyle}
         className={cn(
           `

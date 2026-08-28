@@ -157,6 +157,7 @@ callbacks → behaviour switches → appearance → `className`**.
 | `scrollbars` | `'always'` \| `'hover'` \| `'hidden'` | `'hover'` | scrollbar visibility policy (exported type `ScrollAreaScrollbars`), see [Scrollbar visibility](#scrollbar-visibility) |
 | `viewportRef` | `Ref<HTMLDivElement>` | — | viewport ref (scroll position and virtualization both need it) |
 | `viewportClassName` | `string \| (state) => string` | — | viewport class; [scroll-fade](#scroll-fade) hangs here. The function form receives the viewport state (`scrolling`, `hasOverflowX/Y` and the four overflow-edge flags — exactly what scroll-fade reads) |
+| `viewportRender` | `ReactElement \| (props, state) => ReactElement` | — | Fuse the viewport with another component's element (Base UI's `render`). `MessageScrollerViewport` is built this way |
 | `viewportStyle` | `CSSProperties \| (state) => CSSProperties` | — | viewport inline style (e.g. `maxHeight`), function form supported as well |
 | `className` | `string \| (state) => string` | — | root element class; size constraints live here. The function form receives Base UI Root's state (`scrolling`, `hasOverflowX/Y`, the overflow directions like `overflowXStart`, and `cornerHidden` — `hovering` is not among them, living only on the scrollbar elements' `data-hovering`) |
 | rest | Base UI `ScrollArea.Root` props (native element attributes + `ref`) | — | passed through |

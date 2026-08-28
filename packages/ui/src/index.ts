@@ -2,6 +2,8 @@
 // material, never exported directly. Promote a primitive by adding a file under
 // src/components and exporting it here.
 export * from './components/alert-dialog'
+export * from './components/attachment'
+export * from './components/bubble'
 export * from './components/button'
 export * from './components/calendar'
 export * from './components/cascader'
@@ -23,6 +25,9 @@ export * from './components/input'
 export * from './components/input-group'
 export * from './components/input-otp'
 export * from './components/loading-overlay'
+export * from './components/marker'
+export * from './components/message'
+export * from './components/message-scroller'
 export * from './components/number-field'
 export * from './components/radio-group'
 export * from './components/scroll-area'

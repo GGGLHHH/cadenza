@@ -55,6 +55,7 @@
   "dependencies": {
     "@base-ui/react": "catalog:ui",
     "@gedatou/cadenza-utils": "workspace:*",
+    "@shadcn/react": "catalog:ui",
     "@tabler/icons-react": "catalog:ui",
     "@tanstack/react-virtual": "catalog:ui",
     "ahooks": "catalog:ui",
@@ -68,7 +69,6 @@
     "tailwind-merge": "catalog:ui"
   },
   "devDependencies": {
-    "@shadcn/react": "catalog:ui",
     "@types/lodash": "catalog:types",
     "@types/node": "catalog:types",
     "cmdk": "catalog:ui",

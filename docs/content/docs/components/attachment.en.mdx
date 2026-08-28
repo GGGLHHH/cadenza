@@ -1,0 +1,308 @@
+---
+title: Attachment
+description: A file or image card — five transfer states, three sizes, a whole-card trigger, and it is all styling
+---
+
+<ComponentPreview align="stretch" name="attachment/basic" />
+
+Files inside a message, the pending strip under a composer, an upload queue —
+all the same card.
+
+**It uploads nothing.** The five states only write `data-state` onto the DOM and
+let each part change its look. Moving bytes, retrying, reading files: that is
+yours. Attachment just draws the result.
+
+The seam is a plain re-export: no state, no hooks.
+
+## Usage
+
+```tsx
+import {
+  Attachment,
+  AttachmentAction,
+  AttachmentActions,
+  AttachmentContent,
+  AttachmentDescription,
+  AttachmentGroup,
+  AttachmentMedia,
+  AttachmentTitle,
+  AttachmentTrigger,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Attachment state="uploading">
+  <AttachmentMedia><IconFileText /></AttachmentMedia>
+  <AttachmentContent>
+    <AttachmentTitle>programme-draft.pdf</AttachmentTitle>
+    <AttachmentDescription>2.1 MB of 4.8 MB</AttachmentDescription>
+  </AttachmentContent>
+</Attachment>
+```
+
+## Anatomy
+
+```text
+Attachment
+├── AttachmentMedia       icon or image
+├── AttachmentContent
+│   ├── AttachmentTitle
+│   └── AttachmentDescription
+├── AttachmentActions     the button cluster
+│   └── AttachmentAction
+└── AttachmentTrigger     hit area covering the whole card
+```
+
+Several attachments in a row:
+
+```text
+AttachmentGroup
+├── Attachment
+└── Attachment
+```
+
+## Features
+
+- Icon and image media through `AttachmentMedia`
+- Five transfer states (`idle` / `uploading` / `processing` / `error` / `done`) with
+  built-in styling and a shimmering title while in progress
+- Three sizes, and horizontal or vertical orientation
+- A full-card `AttachmentTrigger`, with the actions still independently clickable
+- A scrollable, snapping `AttachmentGroup` with edge fades
+- Customizable styling through the `className` prop on every part
+
+## Image
+
+<ComponentPreview align="stretch" name="attachment/image" />
+
+Set `variant="image"` on `AttachmentMedia` and put an `<img>` inside: the
+picture fills the media box with `object-cover`. Pair it with
+`orientation="vertical"` for a fixed-width tile — picture on top, text below —
+which is the shape an image wall wants.
+
+## States
+
+<ComponentPreview align="stretch" name="attachment/states" />
+
+| `state` | How it looks |
+| --- | --- |
+| `idle` | Dashed border — nothing here yet, waiting to receive |
+| `uploading` | Title picks up `shimmer`; an `image` media dims (an `icon` one does not) |
+| `processing` | Same, for "transferred but still being worked on" |
+| `error` | Border and text turn destructive |
+| `done` | The resting state |
+
+Once more: this is `data-state` plus CSS. `uploading` moves no bytes.
+
+## Sizes
+
+<ComponentPreview align="stretch" name="attachment/sizes" />
+
+`size` scales the media box, the padding and the type together. `xs` is the one
+for a pending strip under a composer, where the card is a chip rather than a
+card.
+
+## Group
+
+<ComponentPreview align="stretch" name="attachment/group" />
+
+`AttachmentGroup` lays attachments out in a row: horizontally scrollable,
+snapping, edge-faded, with no visible scrollbar. Try scrolling it sideways.
+
+## Trigger
+
+<ComponentPreview align="stretch" name="attachment/trigger" />
+
+`AttachmentTrigger` is absolutely positioned over the entire card at `z-10`;
+`AttachmentActions` sits above it at `z-20`. That is how "open this file" and
+"delete this file" coexist without nesting one button inside another — which is
+invalid HTML and unreachable by keyboard.
+
+It has no text of its own, so it **must** carry an `aria-label`. It takes
+`render`, so making it an `<a download>` or a dialog trigger is equally easy:
+
+```tsx
+<Dialog>
+  <Attachment>
+    {/* media, content, actions */}
+    <DialogTrigger render={<AttachmentTrigger aria-label="Preview programme-draft.pdf" />} />
+  </Attachment>
+  <DialogPopup>{/* … */}</DialogPopup>
+</Dialog>
+```
+
+## Accessibility
+
+- **Name icon-only actions.** Give every `AttachmentAction` an `aria-label` that
+  includes the file name — "Remove programme-draft.pdf" beats "Remove", because
+  five cards means five identical "Remove" buttons otherwise.
+- **Name the trigger.** `AttachmentTrigger` has no text content.
+- **Images need `alt`.** The `<img>` inside `variant="image"` is yours, and so is
+  its `alt`.
+- **Colour is not the only signal.** `error` is red, but red alone does not say
+  "upload failed" — put the reason in `AttachmentDescription`.
+- **Horizontal scrolling must be keyboard-reachable.** `AttachmentGroup` is a
+  native scroll container, so Tab scrolls it as long as the cards themselves are
+  focusable (a trigger or an action).
+
+## When to use Attachment
+
+For a file inside a message, drop it into `MessageContent` as another child of
+[Message](/en/docs/components/message) — it inherits the row's alignment.
+
+For an ordinary list row that is not a file, use Item (not yet promoted here).
+For a bare picture with no name and no state, an `<img>` is enough.
+
+## State and className
+
+| Attribute | On | Value |
+| --- | --- | --- |
+| `data-state` | Attachment | `idle` \| `uploading` \| `processing` \| `error` \| `done` |
+| `data-size` | Attachment | `default` \| `sm` \| `xs` |
+| `data-orientation` | Attachment | `horizontal` \| `vertical` |
+| `data-variant` | AttachmentMedia | `icon` \| `image` |
+
+| `data-slot` | What it is |
+| --- | --- |
+| `attachment` | The card |
+| `attachment-group` | The scrolling row |
+| `attachment-media` | Icon or image box |
+| `attachment-content` | Title + description |
+| `attachment-title` | File name (shimmers while transferring) |
+| `attachment-description` | Size, progress, error reason |
+| `attachment-actions` | The button cluster |
+| `attachment-action` | One button (the vendored Base UI button, not the seam's `Button`) |
+| `attachment-trigger` | The whole-card hit area |
+
+`Attachment` carries `group/attachment`, and those three `data-*` attributes are
+what every child part follows.
+
+`className` is a `string` on every part, but only one of them was **made** so:
+`AttachmentAction` sits on the vendored Base UI button, which funnels className
+through `buttonVariants` → `cva` → `clsx`, and clsx returns `''` for a function.
+The seam narrows that type rather than let it promise a contract the element
+cannot keep. The rest land on plain DOM and were strings already.
+
+## Exported types
+
+```tsx
+import type {
+  AttachmentActionProps,
+  AttachmentActionsProps,
+  AttachmentContentProps,
+  AttachmentDescriptionProps,
+  AttachmentGroupProps,
+  AttachmentMediaProps,
+  AttachmentMediaVariant,
+  AttachmentOrientation,
+  AttachmentProps,
+  AttachmentSize,
+  AttachmentState,
+  AttachmentTitleProps,
+  AttachmentTriggerProps,
+} from '@gedatou/cadenza-ui'
+```
+
+## Props
+
+Order: **required → uncontrolled defaults → controlled values → callbacks →
+behaviour flags → appearance → `className`**.
+
+### Attachment
+
+The card. It knows nothing about files; it writes three dimensions as `data-*`
+and lets the parts follow.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `state` | `AttachmentState` | `'done'` | Where the transfer is up to. **Styling only** — it drives no upload |
+| `size` | `'default' \| 'sm' \| 'xs'` | `'default'` | Scales media box, padding and type together |
+| `orientation` | `'horizontal' \| 'vertical'` | `'horizontal'` | A text row, or a fixed-width tile |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### AttachmentMedia
+
+The icon or image box.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `variant` | `'icon' \| 'image'` | `'icon'` | `image` makes an inner `<img>` fill the box with `object-cover` |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### AttachmentContent
+
+The container for the text column, a `div`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### AttachmentTitle
+
+The file name, a `span`, truncated to one line. **This part has a contract of
+its own**: while the card is `uploading` or `processing` it picks up `shimmer`
+automatically — the in-transit animation is on the title, and you write nothing
+for it.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<span>` |
+| the rest | `ComponentProps<'span'>` (`ref` included) | — | Spread |
+
+### AttachmentDescription
+
+Size, progress, error reason. A `span`, truncated to one line, turning
+destructive on `error`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<span>` |
+| the rest | `ComponentProps<'span'>` (`ref` included) | — | Spread |
+
+### AttachmentActions
+
+The container for the button cluster, a `div`. **It has no `variant` or `size`
+of its own** — those belong to the `AttachmentAction`s inside it. Under
+`orientation="vertical"` it floats to the card's top-right corner.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### AttachmentAction
+
+One action button. Underneath is the **vendored** Base UI button: it shares the
+variant / size vocabulary with this library's
+[Button](/en/docs/components/button) but is **not** the seam's Button — no
+`pending`, and none of the assembly the seam does for it.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `variant` | `'default' \| 'outline' \| 'secondary' \| 'ghost' \| 'destructive' \| 'link'` | `'ghost'` | Appearance |
+| `size` | `'default' \| 'xs' \| 'sm' \| 'lg' \| 'icon' \| 'icon-xs' \| 'icon-sm' \| 'icon-lg'` | `'icon-xs'` | Size |
+| `className` | `string` | — | **Narrowed by the seam**: the route is `buttonVariants` → `cva` → `clsx`, and clsx returns `''` for a function, so the type only promises a string |
+| the rest | Base UI Button's props (`ref` included) | — | Spread |
+
+### AttachmentTrigger
+
+The whole-card hit area, sitting below the action buttons. It **must** carry an
+`aria-label` — it has no text.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | Replaces the rendered element — an `<a>`, or some popup's trigger |
+| `className` | `string` | — | Lands on a plain `<button>` |
+| the rest | `ComponentProps<'button'>` (`ref` included) | — | Spread |
+
+### AttachmentGroup
+
+The scrolling row: snapping, edge-faded, no visible scrollbar.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<div>` |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |

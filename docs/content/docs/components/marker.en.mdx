@@ -1,0 +1,217 @@
+---
+title: Marker
+description: The rows in a transcript that are not messages — join events, date breaks, "Thinking…"
+---
+
+<ComponentPreview align="stretch" name="marker/basic" />
+
+"Marcus joined the chat", a date break, "Thinking…", a tool that is running, an
+unread divider. Anything the conversation needs to say **about itself** rather
+than **in** itself is a Marker.
+
+It sits at the same level as [Message](/en/docs/components/message): inside
+[MessageScroller](/en/docs/components/message-scroller) each lives in its own
+`MessageScrollerItem`. And a marker **can be the anchor** — in a group thread
+the row that opens a turn is often the join event, not a message.
+
+The seam is a plain re-export: no state, no hooks.
+
+## Usage
+
+```tsx
+import { Marker, MarkerContent, MarkerIcon } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Marker variant="separator">
+  <MarkerContent>Today</MarkerContent>
+</Marker>
+```
+
+## Anatomy
+
+```text
+Marker                 the row: shape and variant
+├── MarkerIcon         optional icon, aria-hidden by default
+└── MarkerContent      the copy
+```
+
+## Features
+
+- Inline marker, bordered row, and labelled separator variants
+- A decorative icon slot, hidden from assistive tech
+- Polymorphic root via `render`, for link and button markers
+- Pairs with the `shimmer` utility for streaming status text
+- Customizable styling through the `className` prop on every part
+
+## Variants
+
+<ComponentPreview align="stretch" name="marker/variants" />
+
+Three shapes, and the difference is entirely the rule around the text:
+
+| Variant | What it looks like |
+| --- | --- |
+| `default` | A bare row — status, notes, actions |
+| `border` | An underline below the row, separating it from what follows |
+| `separator` | A hairline out to both edges with the label centred between them |
+
+All three share the same restrained type (small, muted) — a marker should never
+compete with a message for attention.
+
+## Status
+
+<ComponentPreview align="stretch" name="marker/status" />
+
+For anything still happening — thinking, a running tool, a search in flight —
+add `role="status"` so assistive tech announces the row as it appears. Without
+it a screen reader only finds the update if the reader happens to go looking.
+
+Visually, a [Spinner](/en/docs/components/spinner) inside `MarkerIcon` is the
+other half of the same signal.
+
+## Shimmer
+
+<ComponentPreview align="stretch" name="marker/shimmer" />
+
+Add the `shimmer` utility to `MarkerContent` and the text itself moves — the
+more honest indicator for streamed output: **the thing that is arriving is the
+thing that moves**.
+
+Use it *or* a Spinner, not both: the text is already the indicator, and a
+spinner beside it says the same thing twice.
+
+## Separator
+
+<ComponentPreview align="stretch" name="marker/separator" />
+
+The `separator` variant is for labelled dividers: date breaks, section breaks,
+an unread line. The rules on either side are CSS pseudo-elements and **never
+enter the accessibility tree** — only the label is read out.
+
+## Border
+
+<ComponentPreview align="stretch" name="marker/border" />
+
+The `border` variant keeps `default`'s left alignment (where `separator` centres
+the label) and adds an underline to fence off what comes next. Use it for a
+status row that introduces the block below it.
+
+## With icon
+
+<ComponentPreview align="stretch" name="marker/icon" />
+
+`MarkerIcon` carries `aria-hidden="true"` by default: the icon repeats what the
+copy already says, and announcing it twice only slows a screen reader down. To
+stack the icon above the text, add `flex-col` to `Marker`.
+
+## Links and buttons
+
+<ComponentPreview align="stretch" name="marker/interactive" />
+
+Pass `render` to `Marker` and the whole row becomes an `<a>` or a `<button>` —
+"view that change", "load 12 earlier messages". The variants already style link
+underlines and hover colour.
+
+```tsx
+<Marker render={<a href="#" />}>
+  <MarkerContent>View the running order</MarkerContent>
+</Marker>
+```
+
+## Accessibility
+
+`Marker` is presentational by default, and the right semantics depend on what
+you are using it for — choose the role by intent rather than expecting one
+default to cover everything:
+
+- **In progress** → `role="status"` (announced politely, without interrupting)
+- **Pressable** → `render={<button type="button" />}` or `render={<a href>}`, for
+  focus, keyboard activation and a focus ring
+- **Purely decorative divider** → nothing. The `separator` variant's lines are
+  CSS pseudo-elements and never enter the accessibility tree anyway
+- **Meaningful divider** → for a date break, consider `role="separator"` with an
+  `aria-label`
+- **The `border` variant** → its underline is purely visual; it fences off what
+  follows for the eye only. If assistive tech should perceive that grouping, it
+  has to come from real sectioning around it (`role="group"` with a name, or a
+  heading), not from the line
+
+The icon is always decorative; the meaning lives in `MarkerContent`.
+
+## When to use Marker
+
+To show a message, use [Message](/en/docs/components/message) +
+[Bubble](/en/docs/components/bubble). To show something that happened to the
+conversation, use Marker.
+
+For a purely visual rule unrelated to a conversation, use Separator (not yet
+promoted in this library); `Marker`'s `separator` variant is about the **label**,
+with the lines as its escort.
+
+## State and className
+
+| Attribute | On | Value |
+| --- | --- | --- |
+| `data-variant` | Marker | `"default"` \| `"border"` \| `"separator"` |
+
+| `data-slot` | What it is |
+| --- | --- |
+| `marker` | The row |
+| `marker-icon` | The icon slot (`aria-hidden`) |
+| `marker-content` | The copy |
+
+`Marker` carries `group/marker`, which is how `MarkerContent` knows to centre
+itself via `group-data-[variant=separator]/marker`.
+
+The root's `className` is funnelled through `cva`, which **drops** a function
+instead of resolving it — so the type here is honestly a `string`. Style off the
+`data-*` attributes above instead.
+
+## Exported types
+
+```tsx
+import type {
+  MarkerContentProps,
+  MarkerIconProps,
+  MarkerProps,
+  MarkerVariant,
+} from '@gedatou/cadenza-ui'
+```
+
+`markerVariants` is exported too, for reusing the same type treatment elsewhere.
+
+## Props
+
+Order: **required → uncontrolled defaults → controlled values → callbacks →
+behaviour flags → appearance → `className`**.
+
+### Marker
+
+The row itself.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `variant` | `'default' \| 'border' \| 'separator'` | `'default'` | The row's shape |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | Replaces the rendered element; pass `<a>` or `<button>` to make the row pressable |
+| `className` | `string` | — | Funnelled through `cva`, so a string |
+| the rest | `ComponentProps<'div'>` (`ref` included) | — | Spread |
+
+### MarkerIcon
+
+The icon slot. Renders a `<span>` with `aria-hidden="true"`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<span>` |
+| the rest | `ComponentProps<'span'>` (`ref` included) | — | Spread |
+
+### MarkerContent
+
+The copy. Under the `separator` variant it centres itself and stops growing, to
+leave the room to the lines on either side.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | Lands on a plain `<span>`; `shimmer` goes here |
+| the rest | `ComponentProps<'span'>` (`ref` included) | — | Spread |
