@@ -22,6 +22,8 @@ with focus in **that provider's** input; type the key and press `Enter` (or Conf
 Playground sends the message again (`onOpenChange` on close calls `chat.reload()`). Dictation works the same way: a recording refused
 for a missing OpenAI key is transcribed once the key is in. The error row also carries Retry.
 
+**Pin / Follow** at the bottom of the sidebar switches how the transcript scrolls: Pin is what ChatGPT does — the sent message pins to the top and the reply unfolds below; Follow is the classic follow-the-end. The choice lives in `localStorage`.
+
 Three steps: paste a key → pick a model → send. Sending without a key also works — the route
 answers 401, the dialog opens by itself to ask for one, and you send again after saving. The
 OpenRouter row also offers "Sign in with OpenRouter": a [PKCE](/docs/ai/providers#keys) round

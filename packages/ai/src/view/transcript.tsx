@@ -98,6 +98,12 @@ export interface TranscriptProps extends Omit<MessageScrollerViewportProps, 'cla
    * classic behaviour: the view stays at the end and follows the reply.
    */
   anchorTurns?: boolean
+  /**
+   * How much of the previous row stays visible above a freshly anchored user
+   * message, in px. The scroller's default is 80 (a context cue); 0 pins the
+   * message flush to the top, ChatGPT style.
+   */
+  previousPeek?: number
   /** Rendered beside the viewport, inside the frame — the place for `MessageScrollerButton`. */
   after?: ReactNode
   /** Lands on the scroller frame. */
@@ -115,7 +121,7 @@ if (process.env.NODE_ENV !== 'production')
   TranscriptFrameContext.displayName = 'TranscriptFrameContext'
 
 /** The scrolling frame: `MessageScroller` with the house viewport, one row per `TranscriptMessage`. */
-export function Transcript({ children, autoScroll = true, defaultScrollPosition = 'end', anchorTurns = true, after, className, ...viewport }: TranscriptProps): ReactElement {
+export function Transcript({ children, autoScroll = true, defaultScrollPosition = 'end', anchorTurns = true, previousPeek, after, className, ...viewport }: TranscriptProps): ReactElement {
   useTranscript()
   // Only the latest user message is an anchor. The scroller treats every anchor
   // it has not scrolled to as a pending target, and on a content change that
@@ -134,7 +140,7 @@ export function Transcript({ children, autoScroll = true, defaultScrollPosition 
   const frame = useMemo<TranscriptFrameContextValue>(() => ({ anchorTurns, anchorId }), [anchorTurns, anchorId])
   return (
     <TranscriptFrameContext value={frame}>
-      <MessageScrollerProvider autoScroll={autoScroll} defaultScrollPosition={defaultScrollPosition}>
+      <MessageScrollerProvider autoScroll={autoScroll} defaultScrollPosition={defaultScrollPosition} scrollPreviousItemPeek={previousPeek}>
         <MessageScroller
           data-slot="transcript"
           className={cn(`relative flex flex-1 flex-col min-block-0`, className)}

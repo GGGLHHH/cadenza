@@ -24,10 +24,11 @@ import {
   useChat,
   useModelSelection,
   useServerCoverage,
+  useStoredState,
   useSummarize,
   useTranscription,
 } from '@gedatou/cadenza-ai'
-import { Button, cn } from '@gedatou/cadenza-ui'
+import { Button, cn, ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
 import { IconKey } from '@tabler/icons-react'
 import { completeOpenRouterPkceIntoByok, startOpenRouterPkceLogin } from '@tanstack/ai-openrouter/pkce'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -57,6 +58,9 @@ const dictation = fetchServerSentEvents('/api/ai/transcription')
 const titling = fetchServerSentEvents('/api/ai/title')
 const CURRENT_KEY = 'docs-playground:current'
 const SELECTION_KEY = 'docs-playground:selection'
+const SCROLL_KEY = 'docs-playground:scroll'
+type ScrollMode = 'pin' | 'follow'
+const SCROLL_MODES: readonly ScrollMode[] = ['pin', 'follow']
 const index = createThreadIndex({ key: 'docs-playground', storage: 'local' })
 // No derived title: the list says "New chat" until the model names the thread.
 const persistence = threadPersistence(index, indexedDBPersistence({ databaseName: 'cadenza-ai-docs-playground' }), { title: false })
@@ -64,7 +68,7 @@ const persistence = threadPersistence(index, indexedDBPersistence({ databaseName
 // verifier is cleared after the first await), so StrictMode's second effect run must not repeat it.
 let pkceCompleted = false
 
-function Chat({ byok, catalog, className, resumeRef, threadId }: { byok: ByokClient, catalog: Catalog, className?: string, resumeRef: RefObject<(() => void) | null>, threadId: string }): ReactElement {
+function Chat({ anchorTurns, byok, catalog, className, resumeRef, threadId }: { anchorTurns: boolean, byok: ByokClient, catalog: Catalog, className?: string, resumeRef: RefObject<(() => void) | null>, threadId: string }): ReactElement {
   const sel = useModelSelection({ catalog, key: SELECTION_KEY })
   const snapshot = useByok(byok)
   const [draft, setDraft] = useState('')
@@ -129,6 +133,7 @@ function Chat({ byok, catalog, className, resumeRef, threadId }: { byok: ByokCli
   return (
     <ChatShell
       chat={chat}
+      anchorTurns={anchorTurns}
       className={className}
       empty="Save a key, pick a model, send. Ask for the window size to watch a client tool run."
       placeholder="Ask anything…"
@@ -177,6 +182,8 @@ function Workspace({ layout, onReset }: { layout: Layout, onReset?: () => void }
   const [threadId, setThreadId] = useCurrentThread(index, CURRENT_KEY)
   const [pkceError, setPkceError] = useState<string>()
   const resumeRef = useRef<(() => void) | null>(null)
+  // Scroll mode is a reader preference, so it lives beside the model selection in localStorage.
+  const [scroll, setScroll] = useStoredState<ScrollMode>(SCROLL_KEY, 'pin')
   const app = layout === 'app'
   useEffect(() => {
     if (pkceCompleted)
@@ -200,10 +207,29 @@ function Workspace({ layout, onReset }: { layout: Layout, onReset?: () => void }
         sidebarClassName={app ? 'p-3 inline-72' : undefined}
         untitled="New chat"
         triggerClassName={app ? 'm-3 mbe-0' : undefined}
-        footer={app && onReset !== undefined && (
-          <Button className="self-start" size="sm" variant="ghost" onClick={() => void byok.clear().catch(() => {}).finally(onReset)}>
-            Reset playground
-          </Button>
+        footer={app && (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <ToggleGroup<ScrollMode>
+              aria-label="Scroll mode"
+              size="sm"
+              spacing={0}
+              value={[scroll]}
+              variant="outline"
+              onValueChange={([next]) => {
+                if (next !== undefined)
+                  setScroll(next)
+              }}
+            >
+              {SCROLL_MODES.map(mode => (
+                <ToggleGroupItem key={mode} value={mode}>{mode === 'pin' ? 'Pin' : 'Follow'}</ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            {onReset !== undefined && (
+              <Button size="sm" variant="ghost" onClick={() => void byok.clear().catch(() => {}).finally(onReset)}>
+                Reset playground
+              </Button>
+            )}
+          </div>
         )}
         onValueChange={setThreadId}
       />
@@ -215,6 +241,7 @@ function Workspace({ layout, onReset }: { layout: Layout, onReset?: () => void }
           key={threadId}
           byok={byok}
           catalog={catalog}
+          anchorTurns={scroll === 'pin'}
           className={app ? 'flex-1 rounded-none border-0 min-block-0' : undefined}
           resumeRef={resumeRef}
           threadId={threadId}
@@ -258,6 +285,7 @@ async function wipe(): Promise<void> {
     await persistence.removeItem(thread.id)
   localStorage.removeItem(CURRENT_KEY)
   localStorage.removeItem(SELECTION_KEY)
+  localStorage.removeItem(SCROLL_KEY)
 }
 
 /** `/playground`: the workspace without a demo frame; Reset wipes both stores and remounts. */

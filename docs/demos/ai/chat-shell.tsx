@@ -58,6 +58,8 @@ export interface ChatShellProps {
   onEditCancel?: () => void
   /** Default: `chat.sendMessage(text)`. */
   onCommit?: (text: string) => void | Promise<void>
+  /** Scroll behaviour on send: `true` pins the sent message to the top (ChatGPT), `false` follows the end. Default true. */
+  anchorTurns?: boolean
   className?: string
 }
 
@@ -78,6 +80,7 @@ export function ChatShell({
   editing = null,
   onEditCancel,
   onCommit,
+  anchorTurns = true,
   className = 'block-120',
 }: ChatShellProps): ReactElement {
   const last = chat.messages.at(-1)
@@ -85,8 +88,8 @@ export function ChatShell({
     <TranscriptProvider status={chat.status} interrupts={chat.interrupts} addToolApprovalResponse={chat.addToolApprovalResponse}>
       <div className={cn('flex flex-col rounded-xl border', className)}>
         {before}
-        {/* Turn anchoring (the sent message pins to the top, the reply fills below), with the jump-to-latest button whenever the reader is above the end. */}
-        <Transcript after={<MessageScrollerButton />}>
+        {/* Turn anchoring pins the sent message flush to the top (no peek of the previous row, as ChatGPT does); the jump-to-latest button shows whenever the reader is above the end. */}
+        <Transcript anchorTurns={anchorTurns} previousPeek={0} after={<MessageScrollerButton />}>
           {chat.messages.length === 0 && empty !== undefined && <TranscriptEmpty>{empty}</TranscriptEmpty>}
           {chat.messages.map(message => (
             <TranscriptMessage key={message.id} message={message} streaming={chat.status === 'streaming' && message === last}>
