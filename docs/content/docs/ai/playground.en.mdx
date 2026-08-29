@@ -8,9 +8,12 @@ The Playground is a full-screen app: threads on the left, the conversation on th
 [**Open the Playground →**](/playground)
 
 Every other demo in this section replays a [script](/docs/ai/scripted); this page talks to a
-real model. The site holds no provider key of its own: the key you paste stays in this
-browser's memory and travels with every request in an `x-byok-<provider>` header, which
-`/api/ai/chat` uses to build the adapter for that one request. Reload the page and the key is gone.
+real model. The site holds no provider key of its own: the key you paste is encrypted with this
+device's passkey and kept in the browser's IndexedDB (`createByok({ persistent: true })`), and travels
+with every request in an `x-byok-<provider>` header, which `/api/ai/chat` uses to build the adapter for
+that one request. After a reload the keyring is locked: the first send opens the dialog to Unlock
+(one Touch ID / PIN tap), and unlocking resumes the send. Where the browser has no passkeys the keyring
+falls back to memory — the dialog says so — and a reload drops it.
 
 ## Usage
 

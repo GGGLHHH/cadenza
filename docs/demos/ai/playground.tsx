@@ -170,7 +170,8 @@ function Chat({ byok, catalog, className, resumeRef, threadId }: { byok: ByokCli
 type Layout = 'demo' | 'app'
 
 function Workspace({ layout, onReset }: { layout: Layout, onReset?: () => void }): ReactElement {
-  const byok = useMemo(() => createByok({ catalog: defaultCatalog }), [])
+  // Keys persist behind a passkey (encrypted IndexedDB) where the browser can; elsewhere memory, and the dialog says so.
+  const byok = useMemo(() => createByok({ catalog: defaultCatalog, persistent: true }), [])
   const { coverage, providers } = useServerCoverage(byok)
   const catalog = useMemo(() => (providers ? createCatalog(providers) : defaultCatalog), [providers])
   const [threadId, setThreadId] = useCurrentThread(index, CURRENT_KEY)
@@ -200,7 +201,7 @@ function Workspace({ layout, onReset }: { layout: Layout, onReset?: () => void }
         untitled="New chat"
         triggerClassName={app ? 'm-3 mbe-0' : undefined}
         footer={app && onReset !== undefined && (
-          <Button className="self-start" size="sm" variant="ghost" onClick={onReset}>
+          <Button className="self-start" size="sm" variant="ghost" onClick={() => void byok.clear().catch(() => {}).finally(onReset)}>
             Reset playground
           </Button>
         )}

@@ -133,6 +133,15 @@ export function ByokKeyDialog({ byok, catalog, coverage, open: openProp, default
           <DialogHeader>
             <DialogTitle>{labels.title}</DialogTitle>
             <DialogDescription>{labels.description}</DialogDescription>
+            {/* Where the keys go is the storage's own words: its label, and its warning when it could not persist. */}
+            <p
+              data-slot="byok-key-dialog-storage"
+              data-persistent={dataAttr(byok.storage.persistent)}
+              className="text-xs text-muted-foreground"
+            >
+              {byok.storage.label}
+              {byok.storage.warning !== undefined && ` — ${byok.storage.warning}`}
+            </p>
           </DialogHeader>
           <DialogBody>
             <form key={epoch} id={formId} className="flex flex-col gap-4" onSubmit={event => void confirm(event)}>
@@ -141,7 +150,15 @@ export function ByokKeyDialog({ byok, catalog, coverage, open: openProp, default
           </DialogBody>
           <DialogFooter>
             {snapshot.locked && (
-              <Button onClick={() => void byok.unlock().catch(() => {})}>{labels.unlock}</Button>
+              <Button
+                onClick={(event) => {
+                  // Unlocking is the whole errand when the prompt was `locked`: close as a confirm so the caller resumes.
+                  const native = event.nativeEvent
+                  void byok.unlock().then(() => change(false, createChangeEventDetails('confirm', native)), () => {})
+                }}
+              >
+                {labels.unlock}
+              </Button>
             )}
             <DialogClose render={<Button variant="outline" />}>{labels.close}</DialogClose>
             <Button form={formId} type="submit">{labels.confirm}</Button>

@@ -1,12 +1,19 @@
 'use client'
-import type { ByokClient } from '@tanstack/ai-client/byok'
+import type { ByokClient, KeyringStorage } from '@tanstack/ai-client/byok'
 import type { Catalog, Provider } from '../catalog/types'
-import { defineByok, memoryStorage, passkeyStorage } from '@tanstack/ai-client/byok'
+import { defaultByokStorage, defineByok, memoryStorage } from '@tanstack/ai-client/byok'
 import { useEffect, useState } from 'react'
 
 export interface CreateByokOptions {
-  /** `true` keeps keys behind a passkey across reloads; default `false` = memory only. */
+  /**
+   * `true` keeps the keyring across reloads, encrypted behind a passkey
+   * (`defaultByokStorage`: WebAuthn PRF → AES-256-GCM in IndexedDB); where the
+   * browser cannot do that it falls back to this tab's memory and says so in
+   * `byok.storage.warning`. Default `false` = memory only.
+   */
   persistent?: boolean
+  /** Your own `KeyringStorage`; wins over `persistent`. */
+  storage?: KeyringStorage
   /** Providers with `keyRequired: false` are marked server-covered up front. */
   catalog?: Catalog
 }
@@ -24,7 +31,7 @@ export function isByokError(error: unknown): boolean {
 
 /** A `ByokClient` with the house defaults, ready for `useChat({ byok })`. */
 export function createByok(options: CreateByokOptions = {}): ByokClient {
-  const byok = defineByok({ storage: options.persistent ? passkeyStorage() : memoryStorage() })
+  const byok = defineByok({ storage: options.storage ?? (options.persistent ? defaultByokStorage() : memoryStorage()) })
   if (options.catalog)
     byok.setServerCoverage(keylessCoverage(options.catalog))
   return byok

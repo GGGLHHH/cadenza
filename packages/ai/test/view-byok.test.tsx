@@ -64,3 +64,14 @@ describe('byokKeyDialog confirm', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 })
+
+describe('byokKeyDialog storage line', () => {
+  it('tells where keys go in the storage\'s own words', async () => {
+    const byok = createByok({ persistent: false, catalog: defaultCatalog })
+    await byok.ready()
+    render(<ByokKeyDialog byok={byok} catalog={defaultCatalog} defaultOpen />)
+    const line = (await screen.findByRole('dialog')).querySelector('[data-slot=byok-key-dialog-storage]')!
+    expect(line.textContent).toContain(byok.storage.label)
+    expect(line.hasAttribute('data-persistent')).toBe(false)
+  })
+})

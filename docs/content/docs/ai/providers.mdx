@@ -192,11 +192,13 @@ ollama gpt-oss / openai-compatible 都经它折叠。客户端的选择器（`Mo
 
 <ComponentPreview name="ai/byok-dialog" align="stretch" />
 
-- **`createByok({ persistent?, catalog? })`** 是带默认值的 `defineByok`：默认
+- **`createByok({ persistent?, storage?, catalog? })`** 是带默认值的 `defineByok`：默认
   `memoryStorage()`——key 只在这个 tab 的内存里，刷新即失；`persistent: true` 换成
-  `passkeyStorage()`——密钥环用 WebAuthn passkey（PRF）加密后存进 IndexedDB，刷新后处于
-  `locked`，`byok.unlock()`（对话框的 Unlock 按钮）解锁；`isPasskeyStorageSupported()`
-  为假时不要给这个开关。`persistent` 是页面级设置：`useChat` 只在创建 client 时接 `byok`，
+  `defaultByokStorage()`——能用 WebAuthn 的安全上下文里就是 `passkeyStorage()`：密钥环用 passkey（PRF）
+  派生的 AES-256-GCM 加密后存进 IndexedDB，刷新后处于 `locked`，`byok.unlock()`（对话框的 Unlock 按钮，
+  一次生物识别 / PIN）解锁，解锁成功对话框以 `reason: 'confirm'` 关闭；浏览器做不到时自动退回内存并在
+  `byok.storage.warning` 里说明，对话框把 `storage.label` / `warning` 原样显示出来。`storage` 传你自己的
+  `KeyringStorage` 时优先。`persistent` 是页面级设置：`useChat` 只在创建 client 时接 `byok`，
   改动要连同会话一起重挂。传 `catalog` 时，`keyRequired: false` 的 provider（vertex / ollama）
   立即标为服务端已覆盖，`prepare()` 不再为它们阻断。
 - **`useServerCoverage(byok, url?)`** 挂载时 `fetch('/api/ai/catalog')` 一次，把返回的

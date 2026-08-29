@@ -204,12 +204,15 @@ prompt, and focuses that provider's input.
 
 <ComponentPreview name="ai/byok-dialog" align="stretch" />
 
-- **`createByok({ persistent?, catalog? })`** is `defineByok` with house defaults. The
+- **`createByok({ persistent?, storage?, catalog? })`** is `defineByok` with house defaults. The
   default is `memoryStorage()` — keys live in this tab's memory and vanish on reload;
-  `persistent: true` switches to `passkeyStorage()` — the keyring is encrypted with a WebAuthn
-  passkey (PRF) and kept in IndexedDB, comes back `locked` after a reload, and
-  `byok.unlock()` (the dialog's Unlock button) opens it; hide that switch when
-  `isPasskeyStorageSupported()` is false. `persistent` is a page-level setting: `useChat` takes
+  `persistent: true` switches to `defaultByokStorage()` — in a secure context with WebAuthn that is
+  `passkeyStorage()`: the keyring is encrypted with an AES-256-GCM key derived from a passkey (PRF)
+  and kept in IndexedDB, comes back `locked` after a reload, and `byok.unlock()` (the dialog's Unlock
+  button, one biometric / PIN tap) opens it, closing the dialog with `reason: 'confirm'`; where the
+  browser cannot, it falls back to memory and says so in `byok.storage.warning`, which the dialog shows
+  verbatim along with `storage.label`. `storage` takes your own `KeyringStorage` and wins. `persistent`
+  is a page-level setting: `useChat` takes
   `byok` only when it creates the client, so changing it means remounting the conversation.
   With `catalog`, providers with `keyRequired: false` (vertex / ollama) are marked
   server-covered immediately, so `prepare()` never blocks on them.

@@ -10,3 +10,17 @@ describe('createByok', () => {
     await expect(byok.prepare('openai')).rejects.toThrow()
   })
 })
+
+describe('createByok storage', () => {
+  it('persistent: true takes the default (passkey) storage, which falls back to memory with a warning where WebAuthn is missing', async () => {
+    const byok = createByok({ persistent: true })
+    await byok.ready()
+    expect(byok.storage.persistent).toBe(false)
+    expect(byok.storage.warning).toContain('memory')
+  })
+
+  it('an explicit storage wins over persistent', () => {
+    const storage = { id: 'test', label: 'Test store', persistent: true, load: () => ({}), save: () => {}, clear: () => {} }
+    expect(createByok({ persistent: false, storage }).storage.label).toBe('Test store')
+  })
+})

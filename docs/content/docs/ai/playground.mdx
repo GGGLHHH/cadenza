@@ -8,8 +8,10 @@ description: 用你自己的 API key 和真实模型对话 —— 同一套 Tran
 [**打开试玩 →**](/playground)
 
 本分区其余 demo 都在回放[脚本](/docs/ai/scripted)；这一页接真模型。本站不持有任何 provider
-的 key：你贴进来的 key 留在这个浏览器的内存里，每次请求以 `x-byok-<provider>` 头发给
-`/api/ai/chat`，route 只在这一次请求里用它建 adapter。刷新页面 key 就没了。
+的 key：你贴进来的 key 用这台设备的 passkey 加密后存在浏览器的 IndexedDB 里（`createByok({ persistent: true })`），
+每次请求以 `x-byok-<provider>` 头发给 `/api/ai/chat`，route 只在这一次请求里用它建 adapter。
+刷新后密钥环是锁着的：第一次发送会弹出对话框让你 Unlock（一次 Touch ID / PIN），解锁即续发。
+浏览器不支持 passkey 时退回内存（对话框会写明），刷新即失。
 
 ## 使用
 
