@@ -92,24 +92,44 @@ export interface TranscriptProps extends Omit<MessageScrollerViewportProps, 'cla
   autoScroll?: boolean
   /** Where a freshly mounted transcript rests. Default `'end'`. */
   defaultScrollPosition?: MessageScrollerDefaultScrollPosition
+  /**
+   * Pin each sent user message to the top of the viewport and let the reply fill
+   * the space below (the ChatGPT turn anchor). Default true. `false` keeps the
+   * classic behaviour: the view stays at the end and follows the reply.
+   */
+  anchorTurns?: boolean
+  /** Rendered beside the viewport, inside the frame — the place for `MessageScrollerButton`. */
+  after?: ReactNode
   /** Lands on the scroller frame. */
   className?: string
 }
 
+interface TranscriptFrameContextValue {
+  anchorTurns: boolean
+}
+
+const TranscriptFrameContext = createContext<TranscriptFrameContextValue>({ anchorTurns: true })
+if (process.env.NODE_ENV !== 'production')
+  TranscriptFrameContext.displayName = 'TranscriptFrameContext'
+
 /** The scrolling frame: `MessageScroller` with the house viewport, one row per `TranscriptMessage`. */
-export function Transcript({ children, autoScroll = true, defaultScrollPosition = 'end', className, ...viewport }: TranscriptProps): ReactElement {
+export function Transcript({ children, autoScroll = true, defaultScrollPosition = 'end', anchorTurns = true, after, className, ...viewport }: TranscriptProps): ReactElement {
   useTranscript()
+  const frame = useMemo<TranscriptFrameContextValue>(() => ({ anchorTurns }), [anchorTurns])
   return (
-    <MessageScrollerProvider autoScroll={autoScroll} defaultScrollPosition={defaultScrollPosition}>
-      <MessageScroller
-        data-slot="transcript"
-        className={cn(`flex flex-1 flex-col min-block-0`, className)}
-      >
-        <MessageScrollerViewport {...viewport}>
-          <MessageScrollerContent className="flex flex-col gap-6 p-4">{children}</MessageScrollerContent>
-        </MessageScrollerViewport>
-      </MessageScroller>
-    </MessageScrollerProvider>
+    <TranscriptFrameContext value={frame}>
+      <MessageScrollerProvider autoScroll={autoScroll} defaultScrollPosition={defaultScrollPosition}>
+        <MessageScroller
+          data-slot="transcript"
+          className={cn(`relative flex flex-1 flex-col min-block-0`, className)}
+        >
+          <MessageScrollerViewport {...viewport}>
+            <MessageScrollerContent className="flex flex-col gap-6 p-4">{children}</MessageScrollerContent>
+          </MessageScrollerViewport>
+          {after}
+        </MessageScroller>
+      </MessageScrollerProvider>
+    </TranscriptFrameContext>
   )
 }
 
@@ -135,6 +155,7 @@ export interface TranscriptMessageState {
 
 function TranscriptMessageImpl({ message, align, streaming = false, children, className }: TranscriptMessageProps): ReactElement {
   const user = message.role === 'user'
+  const { anchorTurns } = use(TranscriptFrameContext)
   const parts: ReactNode[] = []
   const actions: ReactNode[] = []
   // eslint-disable-next-line react/no-children-for-each -- lift contract: a TranscriptActions child moves from the bubble to the footer
@@ -147,7 +168,7 @@ function TranscriptMessageImpl({ message, align, streaming = false, children, cl
   return (
     <MessageScrollerItem
       messageId={message.id}
-      scrollAnchor={user}
+      scrollAnchor={user && anchorTurns}
       data-slot="transcript-message"
       data-role={message.role}
       data-streaming={dataAttr(streaming)}

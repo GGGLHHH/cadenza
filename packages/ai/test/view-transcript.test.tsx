@@ -96,3 +96,43 @@ describe('transcript', () => {
     expect(el.getAttribute('data-code')).toBe('aborted')
   })
 })
+
+describe('transcript frame', () => {
+  const user: UIMessage = { id: 'u1', role: 'user', parts: [{ type: 'text', content: 'hi' }] }
+  const assistant: UIMessage = { id: 'a1', role: 'assistant', parts: [{ type: 'text', content: 'hello' }] }
+
+  it('anchors user turns by default and not when anchorTurns is false', () => {
+    const { unmount } = render(
+      <TranscriptProvider status="ready">
+        <Transcript>
+          <TranscriptMessage message={user} />
+          <TranscriptMessage message={assistant} />
+        </Transcript>
+      </TranscriptProvider>,
+    )
+    expect(document.querySelector('[data-role=user]')?.getAttribute('data-scroll-anchor')).toBe('true')
+    expect(document.querySelector('[data-role=assistant]')?.getAttribute('data-scroll-anchor')).toBe('false')
+    unmount()
+    render(
+      <TranscriptProvider status="ready">
+        <Transcript anchorTurns={false}>
+          <TranscriptMessage message={user} />
+        </Transcript>
+      </TranscriptProvider>,
+    )
+    expect(document.querySelector('[data-role=user]')?.getAttribute('data-scroll-anchor')).toBe('false')
+  })
+
+  it('renders after beside the viewport, outside the log', () => {
+    render(
+      <TranscriptProvider status="ready">
+        <Transcript after={<button type="button">Jump</button>}>
+          <TranscriptMessage message={user} />
+        </Transcript>
+      </TranscriptProvider>,
+    )
+    const jump = screen.getByRole('button', { name: 'Jump' })
+    expect(jump.closest('[role=log]')).toBeNull()
+    expect(jump.closest('[data-slot=transcript]')).not.toBeNull()
+  })
+})

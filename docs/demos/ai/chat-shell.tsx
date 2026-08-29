@@ -16,7 +16,7 @@ import {
   TranscriptPending,
   TranscriptProvider,
 } from '@gedatou/cadenza-ai'
-import { Button, cn, Kbd } from '@gedatou/cadenza-ui'
+import { Button, cn, Kbd, MessageScrollerButton } from '@gedatou/cadenza-ui'
 
 // The slice of useChat() the shell reads. Structural rather than UseChatReturn
 // because that type is generic over the tool set (its `interrupts` differ per
@@ -85,7 +85,8 @@ export function ChatShell({
     <TranscriptProvider status={chat.status} interrupts={chat.interrupts} addToolApprovalResponse={chat.addToolApprovalResponse}>
       <div className={cn('flex flex-col rounded-xl border', className)}>
         {before}
-        <Transcript>
+        {/* Classic follow-the-end (no turn anchor), with the jump-to-latest button whenever the reader is above it. */}
+        <Transcript anchorTurns={false} after={<MessageScrollerButton />}>
           {chat.messages.length === 0 && empty !== undefined && <TranscriptEmpty>{empty}</TranscriptEmpty>}
           {chat.messages.map(message => (
             <TranscriptMessage key={message.id} message={message} streaming={chat.status === 'streaming' && message === last}>
