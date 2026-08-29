@@ -1,6 +1,7 @@
 import process from 'node:process'
 import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
 import { bedrock } from '@gedatou/cadenza-ai/providers/bedrock'
+import { deepseek } from '@gedatou/cadenza-ai/providers/deepseek'
 import { gemini } from '@gedatou/cadenza-ai/providers/gemini'
 import { grok } from '@gedatou/cadenza-ai/providers/grok'
 import { groq } from '@gedatou/cadenza-ai/providers/groq'
@@ -16,6 +17,6 @@ import { createCatalogHandler } from '@gedatou/cadenza-ai/server'
 // Same list as ./chat; the catalog handler does not drop `ollama` on Vercel by
 // itself, so the Playground builds its catalog from what the server reports.
 const onVercel = process.env.VERCEL === '1'
-const presets = [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama]
+const presets = [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama, deepseek]
 
 export const { GET } = createCatalogHandler(presets.filter(p => !(onVercel && p.runtime === 'local')))

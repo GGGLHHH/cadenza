@@ -112,6 +112,17 @@ export function openaiCompatibleThinking(level: ThinkingLevel, model: Model): Fr
 }
 
 // mistral（无设置项）/ bedrock（Converse 没有推理参数）：目录里 thinkingLevels 隐含 ['off']，这里兜底也不发
+// DeepSeek（OpenAI Chat Completions 方言）：`thinking.type` 开关 + `reasoning_effort`（pi-ai openai-completions.js:646-656）；
+// 档位只有 low / high / max（thinkingLevelMap），其余折叠。
+const DEEPSEEK_EFFORT: Record<Exclude<ThinkingLevel, 'off'>, 'low' | 'high' | 'max'> = { minimal: 'low', low: 'low', medium: 'low', high: 'high', xhigh: 'high', max: 'max' }
+export function deepseekThinking(level: ThinkingLevel, model: Model): Fragment {
+  if (!model.reasoning)
+    return {}
+  if (level === 'off')
+    return { thinking: { type: 'disabled' } }
+  return { thinking: { type: 'enabled' }, reasoning_effort: DEEPSEEK_EFFORT[level] }
+}
+
 export function noThinking(_level: ThinkingLevel, _model: Model): Fragment {
   return {}
 }

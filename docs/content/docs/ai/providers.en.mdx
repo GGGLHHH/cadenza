@@ -6,10 +6,10 @@ description: The model catalog, the seven thinking levels, BYOK keys and the rou
 <ComponentPreview name="ai/catalog" align="stretch" />
 
 Wiring up a provider is two halves. The **catalog** is pure data (`Provider` / `Model`),
-shared by client and server; `defaultCatalog` holds 12 vendors. A **preset** exists only on
+shared by client and server; `defaultCatalog` holds 13 vendors. A **preset** exists only on
 the server: the catalog data plus two functions — build the adapter, and translate a thinking
 level into that vendor's `modelOptions` (plus an optional third: discover models online). All
-12 have a preset at `@gedatou/cadenza-ai/providers/<id>`; two more entry points live outside
+13 have a preset at `@gedatou/cadenza-ai/providers/<id>`; two more entry points live outside
 the catalog — [`openaiCompatiblePreset(config)`](#custom-provider) wires any OpenAI-compatible
 endpoint, and `byteplus` is a placeholder (`create()` throws until `@tanstack/ai-byteplus`
 becomes a peer).
@@ -72,7 +72,7 @@ function Chat(): ReactElement {
 
 ## Approach
 
-- **The catalog is data, shared by both ends.** `defaultCatalog` is 12 `Provider`s, each
+- **The catalog is data, shared by both ends.** `defaultCatalog` is 13 `Provider`s, each
   with `models`, `byok` (header slug and env names), `keyRequired` and `runtime`; it imports
   no adapter, so no server code reaches the browser bundle.
 - **Presets live on the server only.** `ProviderPreset = Provider + create(model, key) +
@@ -109,6 +109,7 @@ catalog). The demo at the top adds a custom provider row with `defaultCatalog.wi
 | `bedrock` | Amazon Bedrock | `true` / `node` | bearer key; the Converse path has no reasoning parameter, no pricing |
 | `vertex` | Vertex AI | `false` / `node` | reuses gemini's model table; ADC or an express key is read from env by the adapter |
 | `ollama` | Ollama | `false` / `local` | local models have no pricing; the `x-byok-ollama` header carries the host URL; tags outside the catalog are admitted too |
+| `deepseek` | DeepSeek | `true` / `node` | models, pricing and tiers copied from pi-ai's generated table (TanStack ships no DeepSeek adapter) |
 
 `Model`'s fields: `id` / `name` / `provider` / `input` (modalities) / `reasoning` /
 `contextWindow?` / `maxOutputTokens?` / `cost?` (USD per million tokens, with `cacheRead` /
@@ -146,6 +147,7 @@ receives is whatever `getByokKey` resolved from the header or env; the two provi
 | `bedrock` | `createBedrockConverse(model, key)` | `BEDROCK_API_KEY` → `AWS_BEARER_TOKEN_BEDROCK` | `{}` | bearer only; SigV4 is deployment config, not BYOK; the official `bedrockByok` has no env, this package adds it |
 | `vertex` | `vertexText(model, key ? { apiKey: key } : undefined)` | `GOOGLE_VERTEX_API_KEY`; else project + location (see below) | same as `gemini` (function reused) | `keyRequired: false`; with no env at all `create` throws `VertexAuthError` |
 | `ollama` | `key ? createOllamaChat(model, key) : ollamaText(model)` | `OLLAMA_HOST` (a host, not a key; default `http://localhost:11434`) | `{ think }` | `runtime: 'local'`, dropped on Vercel; `discoverModels` = `GET {host}/api/tags` |
+| `deepseek` | `openaiCompatibleText(model, { baseURL: 'https://api.deepseek.com', apiKey: key })` | `DEEPSEEK_API_KEY` | `{ thinking: { type }, reasoning_effort }`, low / high / max | composed from `openaiCompatiblePreset`; `discoverModels` = `GET /models`; with thinking on, multi-turn tool calls must echo `reasoning_content`, which the compatible adapter does not carry — set the level to `off` for tool-using threads |
 | `openai-compatible` | `openaiCompatibleText(model, { baseURL, apiKey: key, name })` | `config.env` | `{ reasoning_effort }`, three tiers; `config.thinking` replaces it | `openaiCompatiblePreset(config)`; `discoverModels` = `GET {baseURL}/models` |
 | `byteplus` | throws an `Error` | `ARK_API_KEY` → `BYTEPLUS_API_KEY` | `{}` | placeholder; `models: []`, not in `defaultCatalog` |
 
@@ -185,6 +187,7 @@ switched off; "three tiers" = `EFFORT_3`, minimal → low, xhigh / max → high)
 | `llmgateway` | `{ reasoning_effort: level }`, all seven levels | `{}` | — |
 | `vertex` | same as `gemini` (`geminiThinking` reused) | same as `gemini` | — |
 | `ollama` | gpt-oss family `{ think: 'low' \| 'medium' \| 'high' }`, three tiers; others `{ think: true }` | `{ think: false }` | — |
+| `deepseek` | `{ thinking: { type: 'enabled' }, reasoning_effort }`, minimal / medium fold to low, xhigh to high; non-reasoning models `{}` | `{ thinking: { type: 'disabled' } }` | DeepSeek defaults to thinking on at high, so off must send disabled explicitly |
 | `openai-compatible` | `{ reasoning_effort }`, three tiers; non-reasoning models `{}`; `config.thinking` swaps the whole function | `{}` | — |
 | `mistral` / `bedrock` | `{}` (`noThinking`); every catalog model is `reasoning: false`, so `off` is the only level | `{}` | — |
 
@@ -246,6 +249,7 @@ The docs site's `/api/ai/chat`, verbatim — the Playground runs on it:
 // docs/app/api/ai/chat/route.ts
 import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
 import { bedrock } from '@gedatou/cadenza-ai/providers/bedrock'
+import { deepseek } from '@gedatou/cadenza-ai/providers/deepseek'
 import { gemini } from '@gedatou/cadenza-ai/providers/gemini'
 import { grok } from '@gedatou/cadenza-ai/providers/grok'
 import { groq } from '@gedatou/cadenza-ai/providers/groq'
@@ -272,7 +276,7 @@ const getTime = toolDefinition({
 }).server(async ({ tz }) => ({ iso: new Date().toLocaleString('en-US', { timeZone: tz }) }))
 
 export const { POST, GET } = createChatHandler({
-  providers: [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama],
+  providers: [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama, deepseek],
   defaultModel: 'openai/gpt-5.2',
   systemPrompts: ['You are the cadenza docs playground assistant. Keep answers short.'],
   tools: [getTime],
@@ -282,20 +286,20 @@ export const { POST, GET } = createChatHandler({
 ```ts
 // docs/app/api/ai/catalog/route.ts
 import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
-// … the same twelve imports as ./chat
+// … the same thirteen imports as ./chat
 import { createCatalogHandler } from '@gedatou/cadenza-ai/server'
 import process from 'node:process'
 
 // Same list as ./chat; the catalog handler does not drop `ollama` on Vercel by
 // itself, so the Playground builds its catalog from what the server reports.
 const onVercel = process.env.VERCEL === '1'
-const presets = [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama]
+const presets = [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama, deepseek]
 
 export const { GET } = createCatalogHandler(presets.filter(p => !(onVercel && p.runtime === 'local')))
 ```
 
 The Playground's catalog is built from `useServerCoverage(byok).providers`
-(`createCatalog(providers)`), so a local dev server shows 12 vendors and Vercel 11, with no
+(`createCatalog(providers)`), so a local dev server shows 13 vendors and Vercel 12, with no
 second copy of the list on the client.
 
 `POST`'s lifecycle: `content-length` over `maxBodyBytes` → 413; `chatParamsFromRequest`
@@ -354,6 +358,7 @@ them, which is what makes it pure BYOK.
 | `bedrock` | `BEDROCK_API_KEY` → `AWS_BEARER_TOKEN_BEDROCK` | bearer token; no SigV4 |
 | `vertex` | `GOOGLE_VERTEX_API_KEY` | `keyRequired: false`; coverage special case: this key, **or** (any of `GOOGLE_CLOUD_PROJECT` / `GOOGLE_VERTEX_PROJECT` **and** any of `GOOGLE_CLOUD_LOCATION` / `GOOGLE_VERTEX_LOCATION`); the adapter reads these itself |
 | `ollama` | `OLLAMA_HOST` (read by the adapter; not `byok.env`) | `keyRequired: false`, always covered; the `x-byok-ollama` header is a host URL and overrides env; `discoverModels(null)` uses the same default host |
+| `deepseek` | `DEEPSEEK_API_KEY` | — |
 | `openai-compatible` | `config.env` | supplied by the caller of `openaiCompatiblePreset` |
 | `byteplus` | `ARK_API_KEY` → `BYTEPLUS_API_KEY` | placeholder |
 
@@ -509,7 +514,7 @@ import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage 
 | `createCatalogHandler(presets)` | `=> { GET }`: `{ providers, coverage, generatedAt }` |
 | `pickSelection(forwardedProps, presets, { defaultModel? })` | `=> Selection \| Response`; `Selection = { preset, model, thinking }` |
 | `resolveThinking(preset, model, level)` | clamps, then defers to `preset.thinking`; `{}` for a non-reasoning model that is off |
-| `openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` / `grokThinking` / `groqThinking` / `vercelGatewayThinking` / `llmgatewayThinking` / `ollamaThinking` / `openaiCompatibleThinking` / `noThinking` | `(level, model) => fragment`, the presets' mapping functions (vertex reuses `geminiThinking`; mistral / bedrock / byteplus use `noThinking`) |
+| `openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` / `grokThinking` / `groqThinking` / `vercelGatewayThinking` / `llmgatewayThinking` / `ollamaThinking` / `openaiCompatibleThinking` / `deepseekThinking` / `noThinking` | `(level, model) => fragment`, the presets' mapping functions (vertex reuses `geminiThinking`; mistral / bedrock / byteplus use `noThinking`) |
 | `EFFORT_3` | `{ minimal: 'low', low: 'low', medium: 'medium', high: 'high', xhigh: 'high', max: 'high' }` |
 | re-exported from `@tanstack/ai` | `chat` / `chatParamsFromRequest` / `maxIterations` / `memoryStream` / `mergeAgentTools` / `toolDefinition` / `toServerSentEventsResponse` |
 | re-exported from `@tanstack/ai/byok` | `defineByokProvider` |
@@ -532,6 +537,7 @@ import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage 
 | `providers/vertex` | `vertex` | `@tanstack/ai-vertex` |
 | `providers/ollama` | `ollama`, `discoverOllamaModels(host)` | `@tanstack/ai-ollama` |
 | `providers/openai-compatible` | `openaiCompatiblePreset(config)`, type `OpenAICompatibleConfig` | `@tanstack/ai-openai` (the `/compatible` subpath) |
+| `providers/deepseek` | `deepseek` | `@tanstack/ai-openai` (the `/compatible` subpath) |
 | `providers/byteplus` | `byteplus` (placeholder) | none |
 
 The scripted transport's `byokMissing(provider)` is on [Scripted Transport](/docs/ai/scripted#api).

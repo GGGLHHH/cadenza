@@ -4,6 +4,7 @@ import { providers as catalog } from '../src/catalog'
 import { anthropic } from '../src/providers/anthropic'
 import { bedrock } from '../src/providers/bedrock'
 import { byteplus } from '../src/providers/byteplus'
+import { deepseek } from '../src/providers/deepseek'
 import { gemini } from '../src/providers/gemini'
 import { grok } from '../src/providers/grok'
 import { groq } from '../src/providers/groq'
@@ -20,7 +21,7 @@ import { geminiThinking, openaiCompatibleThinking } from '../src/server/thinking
 const KEY_BY_ID = { 'vercel-gateway': 'vercelGateway' } as const
 
 describe('provider presets', () => {
-  it.each([openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock])('$id mirrors the catalog data and builds an adapter with a key', (p) => {
+  it.each([openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, deepseek])('$id mirrors the catalog data and builds an adapter with a key', (p) => {
     const data = catalog[(KEY_BY_ID[p.id as keyof typeof KEY_BY_ID] ?? p.id) as keyof typeof catalog]
     expect(p.models).toBe(data.models)
     expect(p.byok?.id).toBe(data.byok?.id)

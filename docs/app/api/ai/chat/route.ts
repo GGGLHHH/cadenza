@@ -1,5 +1,6 @@
 import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
 import { bedrock } from '@gedatou/cadenza-ai/providers/bedrock'
+import { deepseek } from '@gedatou/cadenza-ai/providers/deepseek'
 import { gemini } from '@gedatou/cadenza-ai/providers/gemini'
 import { grok } from '@gedatou/cadenza-ai/providers/grok'
 import { groq } from '@gedatou/cadenza-ai/providers/groq'
@@ -26,7 +27,7 @@ const getTime = toolDefinition({
 }).server(async ({ tz }) => ({ iso: new Date().toLocaleString('en-US', { timeZone: tz }) }))
 
 export const { POST, GET } = createChatHandler({
-  providers: [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama],
+  providers: [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama, deepseek],
   defaultModel: 'openai/gpt-5.2',
   systemPrompts: ['You are the cadenza docs playground assistant. Keep answers short.'],
   tools: [getTime],

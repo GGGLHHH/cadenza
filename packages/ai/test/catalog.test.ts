@@ -30,7 +30,7 @@ describe('catalog', () => {
       for (const m of p.models)
         expect(m.provider, `${p.id}/${m.id}`).toBe(p.id)
     }
-    expect(Object.keys(providers)).toHaveLength(12)
+    expect(Object.keys(providers)).toHaveLength(13)
   })
 
   it('estimates cost in USD from per-million pricing, counting cached input separately', () => {

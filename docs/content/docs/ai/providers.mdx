@@ -6,8 +6,8 @@ description: 模型目录、七级思考强度、BYOK 密钥与 route handler—
 <ComponentPreview name="ai/catalog" align="stretch" />
 
 接入一家 provider 是两半事：**目录**是纯数据（`Provider` / `Model`），客户端与服务端共用，
-`defaultCatalog` 里有 12 家；**preset** 只在服务端，等于目录数据加上「建 adapter」与
-「把思考强度翻成这家的 `modelOptions`」两个函数（可选第三个：在线发现模型）。12 家各有
+`defaultCatalog` 里有 13 家；**preset** 只在服务端，等于目录数据加上「建 adapter」与
+「把思考强度翻成这家的 `modelOptions`」两个函数（可选第三个：在线发现模型）。13 家各有
 preset，在 `@gedatou/cadenza-ai/providers/<id>`；此外还有两个不在目录里的入口——
 [`openaiCompatiblePreset(config)`](#自定义-provider) 接任何 OpenAI 兼容端点，`byteplus`
 是占位（`create()` 抛错，等 `@tanstack/ai-byteplus` 成为 peer）。
@@ -68,7 +68,7 @@ function Chat(): ReactElement {
 
 ## 思路
 
-- **目录是数据，两端共用。** `defaultCatalog` 由 12 个 `Provider` 组成，每个带 `models`、
+- **目录是数据，两端共用。** `defaultCatalog` 由 13 个 `Provider` 组成，每个带 `models`、
   `byok`（头名与 env 名）、`keyRequired` 与 `runtime`；不 import 任何 adapter，
   浏览器包里没有服务端代码。
 - **preset 只在服务端。** `ProviderPreset = Provider + create(model, key) + thinking(level, model) +
@@ -102,6 +102,7 @@ function Chat(): ReactElement {
 | `bedrock` | Amazon Bedrock | `true` / `node` | bearer key；Converse 路径无推理参数，无定价 |
 | `vertex` | Vertex AI | `false` / `node` | 复用 gemini 的模型表；ADC 或 express key 由 adapter 读 env |
 | `ollama` | Ollama | `false` / `local` | 本地模型无定价；`x-byok-ollama` 头的值是 host URL；目录外的 tag 也放行 |
+| `deepseek` | DeepSeek | `true` / `node` | 型号、价格与档位抄自 pi-ai 的生成表（TanStack 没有 DeepSeek adapter） |
 
 `Model` 的字段：`id` / `name` / `provider` / `input`（模态数组）/ `reasoning` /
 `contextWindow?` / `maxOutputTokens?` / `cost?`（美元 / 百万 token，含 `cacheRead` /
@@ -137,6 +138,7 @@ env；`keyRequired: false` 的两家会收到 `null`。thinking 片段的逐格�
 | `bedrock` | `createBedrockConverse(model, key)` | `BEDROCK_API_KEY` → `AWS_BEARER_TOKEN_BEDROCK` | `{}` | 只做 bearer；SigV4 是部署级配置，不走 BYOK；官方 `bedrockByok` 无 env，本包补上 |
 | `vertex` | `vertexText(model, key ? { apiKey: key } : undefined)` | `GOOGLE_VERTEX_API_KEY`；否则 project + location（见下） | 同 `gemini`（复用函数） | `keyRequired: false`；env 全缺时 `create` 抛 `VertexAuthError` |
 | `ollama` | `key ? createOllamaChat(model, key) : ollamaText(model)` | `OLLAMA_HOST`（host，不是 key；缺省 `http://localhost:11434`） | `{ think }` | `runtime: 'local'`，Vercel 上剔除；`discoverModels` = `GET {host}/api/tags` |
+| `deepseek` | `openaiCompatibleText(model, { baseURL: 'https://api.deepseek.com', apiKey: key })` | `DEEPSEEK_API_KEY` | `{ thinking: { type }, reasoning_effort }`，low / high / max | 由 `openaiCompatiblePreset` 组成；`discoverModels` = `GET /models`；thinking 开着时带工具的多轮要回传 `reasoning_content`，compatible adapter 不带——带工具的会话把档位设 `off` |
 | `openai-compatible` | `openaiCompatibleText(model, { baseURL, apiKey: key, name })` | `config.env` | `{ reasoning_effort }`，三档；`config.thinking` 可换 | `openaiCompatiblePreset(config)`；`discoverModels` = `GET {baseURL}/models` |
 | `byteplus` | 抛 `Error` | `ARK_API_KEY` → `BYTEPLUS_API_KEY` | `{}` | 占位；`models: []`，不入 `defaultCatalog` |
 
@@ -175,6 +177,7 @@ xhigh / max → high）：
 | `llmgateway` | `{ reasoning_effort: level }`，七级原样 | `{}` | — |
 | `vertex` | 同 `gemini`（`geminiThinking` 复用） | 同 `gemini` | — |
 | `ollama` | gpt-oss 系 `{ think: 'low' \| 'medium' \| 'high' }`，三档；其它 `{ think: true }` | `{ think: false }` | — |
+| `deepseek` | `{ thinking: { type: 'enabled' }, reasoning_effort }`，minimal / medium 折到 low、xhigh 折到 high；非推理模型 `{}` | `{ thinking: { type: 'disabled' } }` | DeepSeek 缺省是开着的 high，所以 off 必须显式发 disabled |
 | `openai-compatible` | `{ reasoning_effort }`，三档；非推理模型 `{}`；`config.thinking` 可整个换掉 | `{}` | — |
 | `mistral` / `bedrock` | `{}`（`noThinking`）；目录里全部 `reasoning: false`，档位只有 `off` | `{}` | — |
 
@@ -227,6 +230,7 @@ docs 站的 `/api/ai/chat` 原文——Playground 就跑在它上面：
 // docs/app/api/ai/chat/route.ts
 import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
 import { bedrock } from '@gedatou/cadenza-ai/providers/bedrock'
+import { deepseek } from '@gedatou/cadenza-ai/providers/deepseek'
 import { gemini } from '@gedatou/cadenza-ai/providers/gemini'
 import { grok } from '@gedatou/cadenza-ai/providers/grok'
 import { groq } from '@gedatou/cadenza-ai/providers/groq'
@@ -253,7 +257,7 @@ const getTime = toolDefinition({
 }).server(async ({ tz }) => ({ iso: new Date().toLocaleString('en-US', { timeZone: tz }) }))
 
 export const { POST, GET } = createChatHandler({
-  providers: [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama],
+  providers: [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama, deepseek],
   defaultModel: 'openai/gpt-5.2',
   systemPrompts: ['You are the cadenza docs playground assistant. Keep answers short.'],
   tools: [getTime],
@@ -263,20 +267,20 @@ export const { POST, GET } = createChatHandler({
 ```ts
 // docs/app/api/ai/catalog/route.ts
 import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
-// … the same twelve imports as ./chat
+// … the same thirteen imports as ./chat
 import { createCatalogHandler } from '@gedatou/cadenza-ai/server'
 import process from 'node:process'
 
 // Same list as ./chat; the catalog handler does not drop `ollama` on Vercel by
 // itself, so the Playground builds its catalog from what the server reports.
 const onVercel = process.env.VERCEL === '1'
-const presets = [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama]
+const presets = [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama, deepseek]
 
 export const { GET } = createCatalogHandler(presets.filter(p => !(onVercel && p.runtime === 'local')))
 ```
 
 Playground 的目录就是 `useServerCoverage(byok).providers` 建出来的（`createCatalog(providers)`），
-所以本地 dev 看到 12 家、Vercel 上 11 家，客户端不用再抄一遍清单。
+所以本地 dev 看到 13 家、Vercel 上 12 家，客户端不用再抄一遍清单。
 
 `POST` 的生命周期：`content-length` 超过 `maxBodyBytes` → 413；`chatParamsFromRequest`
 解析（坏请求 → 400）；`pickSelection` 解析三键（→ 400 `unknown_provider` /
@@ -331,6 +335,7 @@ Playground 的目录就是 `useServerCoverage(byok).providers` 建出来的（`c
 | `bedrock` | `BEDROCK_API_KEY` → `AWS_BEARER_TOKEN_BEDROCK` | bearer token，不做 SigV4 |
 | `vertex` | `GOOGLE_VERTEX_API_KEY` | `keyRequired: false`；coverage 特判：有这个 key，**或**（`GOOGLE_CLOUD_PROJECT` / `GOOGLE_VERTEX_PROJECT` 任一 **且** `GOOGLE_CLOUD_LOCATION` / `GOOGLE_VERTEX_LOCATION` 任一）；adapter 自己读这些 |
 | `ollama` | `OLLAMA_HOST`（adapter 读；不是 `byok.env`） | `keyRequired: false`，总是覆盖；`x-byok-ollama` 头是 host URL，覆盖 env；`discoverModels(null)` 也用同一个缺省 host |
+| `deepseek` | `DEEPSEEK_API_KEY` | — |
 | `openai-compatible` | `config.env` | 由 `openaiCompatiblePreset` 的调用方给 |
 | `byteplus` | `ARK_API_KEY` → `BYTEPLUS_API_KEY` | 占位 |
 
@@ -478,7 +483,7 @@ import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage 
 | `createCatalogHandler(presets)` | `=> { GET }`：`{ providers, coverage, generatedAt }` |
 | `pickSelection(forwardedProps, presets, { defaultModel? })` | `=> Selection \| Response`；`Selection = { preset, model, thinking }` |
 | `resolveThinking(preset, model, level)` | clamp 后交给 `preset.thinking`；非推理模型关着时 `{}` |
-| `openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` / `grokThinking` / `groqThinking` / `vercelGatewayThinking` / `llmgatewayThinking` / `ollamaThinking` / `openaiCompatibleThinking` / `noThinking` | `(level, model) => fragment`，各 preset 的映射函数（vertex 复用 `geminiThinking`，mistral / bedrock / byteplus 用 `noThinking`） |
+| `openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` / `grokThinking` / `groqThinking` / `vercelGatewayThinking` / `llmgatewayThinking` / `ollamaThinking` / `openaiCompatibleThinking` / `deepseekThinking` / `noThinking` | `(level, model) => fragment`，各 preset 的映射函数（vertex 复用 `geminiThinking`，mistral / bedrock / byteplus 用 `noThinking`） |
 | `EFFORT_3` | `{ minimal: 'low', low: 'low', medium: 'medium', high: 'high', xhigh: 'high', max: 'high' }` |
 | 转出自 `@tanstack/ai` | `chat` / `chatParamsFromRequest` / `maxIterations` / `memoryStream` / `mergeAgentTools` / `toolDefinition` / `toServerSentEventsResponse` |
 | 转出自 `@tanstack/ai/byok` | `defineByokProvider` |
@@ -501,6 +506,7 @@ import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage 
 | `providers/vertex` | `vertex` | `@tanstack/ai-vertex` |
 | `providers/ollama` | `ollama`、`discoverOllamaModels(host)` | `@tanstack/ai-ollama` |
 | `providers/openai-compatible` | `openaiCompatiblePreset(config)`、类型 `OpenAICompatibleConfig` | `@tanstack/ai-openai`（`/compatible` 子路径） |
+| `providers/deepseek` | `deepseek` | `@tanstack/ai-openai`（`/compatible` 子路径） |
 | `providers/byteplus` | `byteplus`（占位） | 无 |
 
 脚本化传输里的 `byokMissing(provider)` 见 [脚本化传输](/docs/ai/scripted#api)。

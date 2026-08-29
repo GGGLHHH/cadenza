@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { THINKING_LEVELS } from '../src/catalog/thinking'
 import {
   anthropicThinking,
+  deepseekThinking,
   geminiThinking,
   grokThinking,
   groqThinking,
@@ -21,6 +22,15 @@ function table(fn: (level: ThinkingLevel, model: Model) => unknown, model: Model
 }
 
 describe('thinking → modelOptions', () => {
+  it('deepseek: thinking switch plus reasoning_effort folded to low / high / max', () => {
+    const flash = m('deepseek-v4-flash', 'deepseek', { thinkingLevels: ['off', 'low', 'high', 'max'] })
+    expect(deepseekThinking('off', flash)).toEqual({ thinking: { type: 'disabled' } })
+    expect(deepseekThinking('medium', flash)).toEqual({ thinking: { type: 'enabled' }, reasoning_effort: 'low' })
+    expect(deepseekThinking('xhigh', flash)).toEqual({ thinking: { type: 'enabled' }, reasoning_effort: 'high' })
+    expect(deepseekThinking('max', flash)).toEqual({ thinking: { type: 'enabled' }, reasoning_effort: 'max' })
+    expect(deepseekThinking('high', m('x', 'deepseek', { reasoning: false }))).toEqual({})
+  })
+
   it('openai', () => {
     expect(table(openaiThinking, m('gpt-5.2', 'openai'))).toMatchInlineSnapshot(`
       {

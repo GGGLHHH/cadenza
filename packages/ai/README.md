@@ -26,7 +26,7 @@ export const { POST, GET } = createChatHandler({ providers: [openai] })
 ```
 
 preset 一家一个子路径（只 import 自家 adapter）：`openai` / `anthropic` / `gemini` / `openrouter` /
-`grok` / `groq` / `mistral` / `vercel-gateway` / `llmgateway` / `bedrock` / `vertex` / `ollama`；
+`grok` / `groq` / `mistral` / `vercel-gateway` / `llmgateway` / `bedrock` / `vertex` / `ollama` / `deepseek`；
 `providers/openai-compatible` 的 `openaiCompatiblePreset(config)` 接任何 OpenAI 兼容端点；
 `byteplus` 是占位。
 
