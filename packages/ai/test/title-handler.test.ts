@@ -70,8 +70,12 @@ describe('createTitleHandler', () => {
     expect(seen.user).toBe('user: hi\nassistant: hello')
   })
 
-  it('401 byok_missing without a key, 400 without text, 400 on an unknown provider', async () => {
+  it('401 byok_missing without a key, 400 without text, 400 on an unknown provider, 400 when nothing names a model', async () => {
     const h = createTitleHandler({ providers: [preset('t', {})] })
+    // No forwardedProps and no defaultModel: never fall back to a provider the user did not pick (that would prompt for its key).
+    const unnamed = await post(h, { data: { text: 'x' } }, { 'x-byok-fake': 'sk' })
+    expect(unnamed.status).toBe(400)
+    expect(await unnamed.json()).toEqual({ error: { type: 'unknown_model' } })
     expect((await post(h, { data: { text: 'x' }, forwardedProps: { provider: 'fake', model: 'm1' } })).status).toBe(401)
     expect((await post(h, { data: {}, forwardedProps: { provider: 'fake', model: 'm1' } }, { 'x-byok-fake': 'sk' })).status).toBe(400)
     expect((await post(h, { data: { text: 'x' }, forwardedProps: { provider: 'nope', model: 'm1' } }, { 'x-byok-fake': 'sk' })).status).toBe(400)

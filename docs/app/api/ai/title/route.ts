@@ -14,10 +14,11 @@ import { vertex } from '@gedatou/cadenza-ai/providers/vertex'
 import { createTitleHandler } from '@gedatou/cadenza-ai/server'
 
 // Thread titles come from the model the conversation itself uses (same BYOK
-// header), so every preset the chat route knows is wired here too.
+// header), so every preset the chat route knows is wired here too. No
+// `defaultModel`: a request that names no model must fail loudly (400) rather
+// than fall back to a provider the user never chose and prompt for its key.
 export const maxDuration = 60
 
 export const { POST } = createTitleHandler({
   providers: [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama, deepseek],
-  defaultModel: 'openai/gpt-5.2',
 })

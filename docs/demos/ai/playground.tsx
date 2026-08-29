@@ -83,6 +83,10 @@ function Chat({ byok, catalog, className, resumeRef, threadId }: { byok: ByokCli
   // if that fails, fall back to the first message so the row is not blank forever.
   const summary = useSummarize({
     connection: titling,
+    // `body` lands in the request's `forwardedProps`, so the title route picks
+    // this thread's provider / model — without it the route would fall back to a
+    // provider the user never chose and prompt for its key after every reply.
+    body: sel.forwardedProps,
     byok,
     byokProvider: () => sel.selection.provider,
     onResult: (r) => {
