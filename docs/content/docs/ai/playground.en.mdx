@@ -14,6 +14,11 @@ browser's memory and travels with every request in an `x-byok-<provider>` header
 
 ## Usage
 
+Sending without a key is fine: the message stays in the transcript with a "Missing … API key" row beneath it, the key dialog opens
+with focus in **that provider's** input; type the key and press `Enter` (or Confirm) to save and close, and as the dialog closes the
+Playground sends the message again (`onOpenChange` on close calls `chat.reload()`). Dictation works the same way: a recording refused
+for a missing OpenAI key is transcribed once the key is in. The error row also carries Retry.
+
 Three steps: paste a key → pick a model → send. Sending without a key also works — the route
 answers 401, the dialog opens by itself to ask for one, and you send again after saving. The
 OpenRouter row also offers "Sign in with OpenRouter": a [PKCE](/docs/ai/providers#keys) round

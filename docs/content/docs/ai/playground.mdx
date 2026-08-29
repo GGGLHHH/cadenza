@@ -13,6 +13,10 @@ description: 用你自己的 API key 和真实模型对话 —— 同一套 Tran
 
 ## 使用
 
+没有 key 就直接发消息也行：消息留在记录里、下面出一条「Missing … API key」，密钥对话框自己打开并把焦点放在**这家**的输入框上；
+填好按 `Enter`（或 Confirm）保存并关闭，对话框一关，Playground 就把那条消息重新发出去（`onOpenChange` 关闭时调 `chat.reload()`）。
+听写同理：缺 OpenAI key 时录下的那段音频会在 key 填好后补转写。错误条里也有 Retry。
+
 三步：贴 key → 选模型 → 发送。没 key 直接发送也行——route 回 401，对话框自己弹出来要 key，
 保存后再发一次。OpenRouter 那一行还有「Sign in with OpenRouter」：走 [PKCE](/docs/ai/providers#密钥)
 去 openrouter.ai 登录，回来 key 自动填入——需要一个 OpenRouter 账号，本站没法替你验证这一步。

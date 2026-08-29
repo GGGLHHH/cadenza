@@ -560,7 +560,7 @@ Unlock button.
 | `coverage` | `Record<string, boolean>` | — | `useServerCoverage(byok).coverage`; `ByokClient` keeps its own coverage private, so the dialog is told separately |
 | `defaultOpen` | `boolean` | `false` | — |
 | `open` | `boolean` | — | controlled |
-| `onOpenChange` | `(open: boolean, details: DialogChangeEventDetails \| ChangeEventDetails<'none'>) => void` | — | a programmatic open (the client's prompt) carries `reason: 'none'`; `details.cancel()` blocks it |
+| `onOpenChange` | `(open: boolean, details: DialogChangeEventDetails \| ChangeEventDetails<'none' \| 'confirm'>) => void` | — | a programmatic open (the client's prompt) carries `reason: 'none'`; the Confirm button / `Enter` in a row closes with `reason: 'confirm'` — the place to resume a refused send; `details.cancel()` blocks it |
 | `labels` | `Partial<ByokKeyDialogLabels>` | `DEFAULT_BYOK_KEY_DIALOG_LABELS` | — |
 | `children` | `ReactNode` | one `ByokKeyDialogProvider` per catalog provider | — |
 
@@ -573,6 +573,7 @@ Unlock button.
 | `save` / `clear` | `Save` / `Clear` | `aria-label` of the two icon buttons |
 | `unlock` | `Unlock` | the footer button while `locked` |
 | `close` | `Close` | the footer button |
+| `confirm` | `Confirm` | the footer's primary button: saves every row with a draft, then closes; `Enter` in any row's input does the same |
 | `serverKey` | `Server key` | `aria-label` of the "server key" icon |
 
 ### ByokKeyDialogProvider

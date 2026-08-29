@@ -22,3 +22,45 @@ describe('byokKeyDialog', () => {
     expect(vertex.hasAttribute('data-server-key')).toBe(true)
   })
 })
+
+describe('byokKeyDialog confirm', () => {
+  it('focuses the prompted provider, Enter saves and closes with reason confirm', async () => {
+    const byok = createByok({ persistent: false, catalog: defaultCatalog })
+    await byok.ready()
+    const closes: string[] = []
+    render(
+      <ByokKeyDialog
+        byok={byok}
+        catalog={defaultCatalog}
+        onOpenChange={(open, details) => {
+          if (!open)
+            closes.push(details.reason)
+        }}
+      />,
+    )
+    act(() => byok.request('deepseek', 'missing'))
+    const dialog = await screen.findByRole('dialog')
+    const row = dialog.querySelector('[data-provider=deepseek]')!
+    expect(row.hasAttribute('data-prompted')).toBe(true)
+    const input = row.querySelector('input')!
+    expect(document.activeElement).toBe(input)
+    await userEvent.type(input, 'sk-deepseek{Enter}')
+    expect(byok.getSnapshot().status.deepseek?.state).toBe('set')
+    expect(closes).toEqual(['confirm'])
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('confirm saves every row that has a draft', async () => {
+    const byok = createByok({ persistent: false, catalog: defaultCatalog })
+    await byok.ready()
+    render(<ByokKeyDialog byok={byok} catalog={defaultCatalog} defaultOpen />)
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.type(dialog.querySelector('[data-provider=openai] input')!, 'sk-a')
+    await userEvent.type(dialog.querySelector('[data-provider=groq] input')!, 'sk-b')
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    expect(byok.getSnapshot().status.openai?.state).toBe('set')
+    expect(byok.getSnapshot().status.groq?.state).toBe('set')
+    expect(byok.getSnapshot().status.mistral?.state ?? 'empty').toBe('empty')
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})

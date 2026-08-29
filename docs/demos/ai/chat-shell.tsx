@@ -6,6 +6,7 @@ import {
   ComposerSubmit,
   ComposerTextarea,
   ComposerToolbar,
+  isByokError,
   Transcript,
   TranscriptActions,
   TranscriptEmpty,
@@ -15,7 +16,7 @@ import {
   TranscriptPending,
   TranscriptProvider,
 } from '@gedatou/cadenza-ai'
-import { cn, Kbd } from '@gedatou/cadenza-ui'
+import { Button, cn, Kbd } from '@gedatou/cadenza-ui'
 
 // The slice of useChat() the shell reads. Structural rather than UseChatReturn
 // because that type is generic over the tool set (its `interrupts` differ per
@@ -28,6 +29,8 @@ export interface ChatShellChat {
   addToolApprovalResponse: TranscriptProviderProps['addToolApprovalResponse']
   sendMessage: (content: string | MultimodalContent) => Promise<void>
   stop: () => void
+  /** When present, the error row offers Retry. */
+  reload?: () => Promise<void>
 }
 
 export interface ChatShellProps {
@@ -93,7 +96,16 @@ export function ChatShell({
             </TranscriptMessage>
           ))}
           {chat.status === 'submitted' && <TranscriptPending>Thinking…</TranscriptPending>}
-          {chat.error !== undefined && <TranscriptError error={chat.error}>{chat.error.message}</TranscriptError>}
+          {chat.error !== undefined && (
+            <TranscriptError error={chat.error}>
+              {chat.error.message}
+              {chat.reload !== undefined && (
+                <Button className="ms-2" size="xs" variant="outline" onClick={() => void chat.reload?.()}>
+                  Retry
+                </Button>
+              )}
+            </TranscriptError>
+          )}
         </Transcript>
         <Composer
           key={editing?.id ?? 'new'}
@@ -104,8 +116,8 @@ export function ChatShell({
           onValueChange={onValueChange}
           onValueCommitted={(text) => {
             void Promise.resolve(onCommit ? onCommit(text) : chat.sendMessage(text)).catch((error: unknown) => {
-              // A missing key rejects sendMessage while the client raises its prompt (the key dialog opens); nothing to do here.
-              if (!(error instanceof Error && error.name === 'ByokBlockedError'))
+              // A missing key rejects sendMessage while the client raises its prompt (the key dialog opens); the row stays with `chat.error` until the key lands.
+              if (!isByokError(error))
                 throw error
             })
           }}

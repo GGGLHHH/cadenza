@@ -528,7 +528,7 @@ import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage 
 | `coverage` | `Record<string, boolean>` | — | `useServerCoverage(byok).coverage`；`ByokClient` 不外露自己的覆盖表，所以单独告诉对话框 |
 | `defaultOpen` | `boolean` | `false` | — |
 | `open` | `boolean` | — | 受控 |
-| `onOpenChange` | `(open: boolean, details: DialogChangeEventDetails \| ChangeEventDetails<'none'>) => void` | — | 程序性打开（client 的提示）带 `reason: 'none'`；`details.cancel()` 拦下 |
+| `onOpenChange` | `(open: boolean, details: DialogChangeEventDetails \| ChangeEventDetails<'none' \| 'confirm'>) => void` | — | 程序性打开（client 的提示）带 `reason: 'none'`；Confirm 按钮 / 行内 `Enter` 关闭时带 `reason: 'confirm'`——恢复被拒的发送就在这里做；`details.cancel()` 拦下 |
 | `labels` | `Partial<ByokKeyDialogLabels>` | `DEFAULT_BYOK_KEY_DIALOG_LABELS` | — |
 | `children` | `ReactNode` | 目录里每家一个 `ByokKeyDialogProvider` | — |
 
@@ -541,6 +541,7 @@ import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage 
 | `save` / `clear` | `Save` / `Clear` | 两个图标按钮的 `aria-label` |
 | `unlock` | `Unlock` | 页脚按钮，`locked` 时 |
 | `close` | `Close` | 页脚按钮 |
+| `confirm` | `Confirm` | 页脚主按钮：保存所有填了草稿的行再关闭；任一行输入框里按 `Enter` 等价 |
 | `serverKey` | `Server key` | 「服务端已有 key」图标的 `aria-label` |
 
 ### ByokKeyDialogProvider

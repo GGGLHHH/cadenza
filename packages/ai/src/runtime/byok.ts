@@ -15,6 +15,13 @@ function keylessCoverage(catalog: Catalog): Record<string, boolean> {
   return Object.fromEntries(catalog.providers.filter(p => !p.keyRequired).map(p => [p.id, true]))
 }
 
+const BYOK_ERRORS = new Set(['ByokBlockedError', 'ByokMissingError', 'ByokUnresolvedProviderError'])
+
+/** True for the errors a send throws when the client could not attach a key — the dialog is already asking; the send can run again once the key is in. */
+export function isByokError(error: unknown): boolean {
+  return error instanceof Error && BYOK_ERRORS.has(error.name)
+}
+
 /** A `ByokClient` with the house defaults, ready for `useChat({ byok })`. */
 export function createByok(options: CreateByokOptions = {}): ByokClient {
   const byok = defineByok({ storage: options.persistent ? passkeyStorage() : memoryStorage() })

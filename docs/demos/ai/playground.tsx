@@ -1,7 +1,7 @@
 'use client'
 
 import type { ByokClient, Catalog, UIMessage } from '@gedatou/cadenza-ai'
-import type { ReactElement } from 'react'
+import type { ReactElement, RefObject } from 'react'
 import {
   ByokKeyDialog,
   ByokKeyDialogProvider,
@@ -12,6 +12,7 @@ import {
   defaultCatalog,
   fetchServerSentEvents,
   indexedDBPersistence,
+  isByokError,
   messageText,
   ModelPicker,
   modelRef,
@@ -63,10 +64,12 @@ const persistence = threadPersistence(index, indexedDBPersistence({ databaseName
 // verifier is cleared after the first await), so StrictMode's second effect run must not repeat it.
 let pkceCompleted = false
 
-function Chat({ byok, catalog, className, threadId }: { byok: ByokClient, catalog: Catalog, className?: string, threadId: string }): ReactElement {
+function Chat({ byok, catalog, className, resumeRef, threadId }: { byok: ByokClient, catalog: Catalog, className?: string, resumeRef: RefObject<(() => void) | null>, threadId: string }): ReactElement {
   const sel = useModelSelection({ catalog, key: SELECTION_KEY })
   const snapshot = useByok(byok)
   const [draft, setDraft] = useState('')
+  // The last recording, kept so a dictation refused for a missing OpenAI key can run once the key is in.
+  const lastAudioRef = useRef<string>(null)
   const transcription = useTranscription({
     connection: dictation,
     byok,
@@ -110,6 +113,15 @@ function Chat({ byok, catalog, className, threadId }: { byok: ByokClient, catalo
     },
   })
   messagesRef.current = chat.messages
+  // The key dialog closing is the moment to finish what a missing key refused:
+  // the last send (still in the transcript, with `chat.error`) or the last dictation.
+  resumeRef.current = () => {
+    const keyed = (id: string): boolean => snapshot.status[id]?.state === 'set' || catalog.getProvider(id)?.keyRequired === false
+    if (chat.error !== undefined && isByokError(chat.error) && keyed(sel.selection.provider))
+      void chat.reload()
+    if (transcription.error !== undefined && isByokError(transcription.error) && lastAudioRef.current !== null && keyed('openai'))
+      void transcription.generate({ audio: lastAudioRef.current })
+  }
   return (
     <ChatShell
       chat={chat}
@@ -125,9 +137,10 @@ function Chat({ byok, catalog, className, threadId }: { byok: ByokClient, catalo
         <>
           <ComposerDictate
             disabled={transcription.isLoading}
-            onRecording={part => void transcription.generate({
-              audio: part.source.type === 'data' ? `data:${part.source.mimeType};base64,${part.source.value}` : part.source.value,
-            })}
+            onRecording={(part) => {
+              lastAudioRef.current = part.source.type === 'data' ? `data:${part.source.mimeType};base64,${part.source.value}` : part.source.value
+              void transcription.generate({ audio: lastAudioRef.current })
+            }}
           />
           <ModelPicker
             byok={snapshot}
@@ -158,6 +171,7 @@ function Workspace({ layout, onReset }: { layout: Layout, onReset?: () => void }
   const catalog = useMemo(() => (providers ? createCatalog(providers) : defaultCatalog), [providers])
   const [threadId, setThreadId] = useCurrentThread(index, CURRENT_KEY)
   const [pkceError, setPkceError] = useState<string>()
+  const resumeRef = useRef<(() => void) | null>(null)
   const app = layout === 'app'
   useEffect(() => {
     if (pkceCompleted)
@@ -197,10 +211,19 @@ function Workspace({ layout, onReset }: { layout: Layout, onReset?: () => void }
           byok={byok}
           catalog={catalog}
           className={app ? 'flex-1 rounded-none border-0 min-block-0' : undefined}
+          resumeRef={resumeRef}
           threadId={threadId}
         />
       </div>
-      <ByokKeyDialog byok={byok} catalog={catalog} coverage={coverage}>
+      <ByokKeyDialog
+        byok={byok}
+        catalog={catalog}
+        coverage={coverage}
+        onOpenChange={(open) => {
+          if (!open)
+            resumeRef.current?.()
+        }}
+      >
         {catalog.providers.map(p => (
           <ByokKeyDialogProvider key={p.id} provider={p.id}>
             {p.id === 'openrouter' && (
