@@ -66,17 +66,19 @@ const transcription = useTranscription({
 
 ### 自动标题
 
-新线程的标题默认是第一条用户消息的前 40 字（`threadTitleFrom`）。这一页在**第一条 assistant 回复**
-完成时（`useChat({ onFinish })`）把这一问一答发给 `/api/ai/summarize`，`style: 'concise'`、
-`maxLength: 40`，结果 `index.rename(threadId, text)`。已经改过名的线程不动；请求失败静默，
-默认标题保留。同样只走 OpenAI。
+照 ChatGPT 的做法：新线程在列表里先叫 **New chat**（`ThreadList` 的 `untitled` 文案——库里没有默认文案，
+由页面给），`threadPersistence(index, base, { title: false })` 关掉「取首条消息前 40 字」的派生标题；
+**第一条 assistant 回复**完成时（`useChat({ onFinish })`）把这一问一答发给 `/api/ai/title`，
+由**这条线程自己选的模型**（同一个 BYOK 头，thinking 关）起一个 ≤ 6 词、与用户同语言、无引号无句号的标题，
+`index.rename(threadId, title)`；只起一次，已经改过名的线程不动；请求失败才退回首条消息派生的标题。
 
 ```tsx
 const summary = useSummarize({
-  connection: fetchServerSentEvents('/api/ai/summarize'),
+  connection: fetchServerSentEvents('/api/ai/title'),
   byok,
-  byokProvider: () => 'openai',
+  byokProvider: () => sel.selection.provider,
   onResult: r => index.rename(threadId, r.summary.trim()),
+  onError: () => index.rename(threadId, threadTitleFrom(messages)),
 })
 ```
 
@@ -121,6 +123,7 @@ const summary = useSummarize({
 | `/api/ai/catalog` | `GET` | `createCatalogHandler(presets)`：`{ providers, coverage, generatedAt }` |
 | `/api/ai/transcription` | `POST` | `createTranscriptionHandler({ adapter, byok, defaultModel })`：体积门禁（默认 8 MiB）→ `generationParamsFromRequest('transcription')` → `forwardedProps.model` ?? `defaultModel` → BYOK key → `generateTranscription({ stream: true })` → SSE，结果在 `generation:result` 事件里 |
 | `/api/ai/summarize` | `POST` | `createSummarizeHandler({ adapter, byok, defaultModel })`：同一生命周期，body 取 `{ data: { text, style, maxLength, focus } }` → `summarize({ stream: true })` → SSE |
+| `/api/ai/title` | `POST` | `createTitleHandler({ providers, defaultModel, maxWords?, prompt? })`：同一 envelope，但按 `forwardedProps` 选线程自己的 preset（thinking 关），用 ChatGPT 式提示词让模型起标题，`cleanTitle` 去掉引号 / 围栏 / 句尾标点，回复仍是 summarize 形态的 SSE，所以客户端还是 `useSummarize` |
 
 route 的 options 全表见 [接入提供者](/docs/ai/providers#route-handler)。
 

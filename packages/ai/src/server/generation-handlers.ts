@@ -1,7 +1,9 @@
 import type { AnySummarizeAdapter, AnyTranscriptionAdapter, DebugOption } from '@tanstack/ai'
 import type { ByokProvider } from '@tanstack/ai/byok'
+import type { Envelope } from './envelope'
 import { generateTranscription, generationParamsFromRequest, summarize, toServerSentEventsResponse } from '@tanstack/ai'
 import { byokMissing, getByokKey } from '@tanstack/ai/byok/server'
+import { summarizeParamsFromRequest } from './envelope'
 
 export interface GenerationHandlerOptions<TAdapter> {
   /** Builds the adapter with the BYOK / env key; `null` when the provider needs no key. */
@@ -22,20 +24,10 @@ export interface GenerationHandler {
 // Same shape `pickSelection` accepts (selection.ts): `vendor/model`, `model:tag`, `~vendor/alias`.
 const MODEL_ID = /^[\w.\-:/~]{1,200}$/
 
-interface Envelope {
-  forwardedProps: Record<string, unknown>
-  threadId?: string
-  runId?: string
-}
-
 function bad(message: string, type?: string): Response {
   return type === undefined
     ? new Response(message, { status: 400 })
     : new Response(JSON.stringify({ error: { type } }), { status: 400, headers: { 'content-type': 'application/json' } })
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /**
@@ -98,42 +90,6 @@ export function createTranscriptionHandler(options: GenerationHandlerOptions<Any
       })
       return toServerSentEventsResponse(stream, { abortController, debug: options.debug })
     },
-  }
-}
-
-interface SummarizeParams extends Envelope {
-  input: { text: string, maxLength?: number, style?: 'bullet-points' | 'paragraph' | 'concise', focus?: string[] }
-}
-
-const SUMMARY_STYLES = ['bullet-points', 'paragraph', 'concise'] as const
-
-// `generationParamsFromRequest` knows only the media kinds (no `'summarize'`),
-// so this reads the same envelope `GenerationClient` posts: `{ data, forwardedProps, threadId, runId }` or the bare input.
-async function summarizeParamsFromRequest(request: Request): Promise<SummarizeParams> {
-  let body: unknown
-  try {
-    body = await request.json()
-  }
-  catch {
-    throw new Error('Invalid JSON request body.')
-  }
-  if (!isRecord(body))
-    throw new Error('Summarize request body must be a JSON object.')
-  const input = isRecord(body.data) ? body.data : body
-  if (typeof input.text !== 'string')
-    throw new Error('Summarize input must include text.')
-  const style = SUMMARY_STYLES.find(s => s === input.style)
-  const focus = Array.isArray(input.focus) ? input.focus.filter((f): f is string => typeof f === 'string') : undefined
-  return {
-    input: {
-      text: input.text,
-      maxLength: typeof input.maxLength === 'number' ? input.maxLength : undefined,
-      style,
-      focus,
-    },
-    forwardedProps: isRecord(body.forwardedProps) ? body.forwardedProps : {},
-    threadId: typeof body.threadId === 'string' ? body.threadId : undefined,
-    runId: typeof body.runId === 'string' ? body.runId : undefined,
   }
 }
 

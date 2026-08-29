@@ -59,3 +59,18 @@ describe('threadList', () => {
     expect(onValueChange).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ reason: 'item-press' }))
   })
 })
+
+describe('threadList untitled', () => {
+  it('shows the untitled label only while a thread has no title', () => {
+    const index = createThreadIndex({ key: 'untitled', storage: 'memory' })
+    const named = index.create({ title: 'Named' })
+    const blank = index.create()
+    render(
+      <ThreadList index={index} threads={index.list()} untitled="New chat" value={named.id} onValueChange={() => {}} />,
+    )
+    expect(screen.getByText('Named')).toBeTruthy()
+    expect(screen.getByText('New chat')).toBeTruthy()
+    expect(document.querySelectorAll('[data-slot=thread-list-item]')).toHaveLength(2)
+    expect(blank.title).toBe('')
+  })
+})

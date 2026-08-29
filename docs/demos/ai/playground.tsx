@@ -44,19 +44,21 @@ import { getViewport } from './tools'
 // `docs/app/api/ai/chat/route.ts` wires every built-in preset (12 on a local
 // dev server, 11 on Vercel where `ollama` is dropped), so the catalog shown is
 // whatever `/api/ai/catalog` reports, with `defaultCatalog` until it answers.
-// Two OpenAI-only side channels compose on top: dictation (`useTranscription`
-// against `/api/ai/transcription`, appended to the draft) and an auto title
-// (`useSummarize` against `/api/ai/summarize`, renaming the thread once).
+// Two side channels compose on top: dictation (`useTranscription` against
+// `/api/ai/transcription`, OpenAI only, appended to the draft) and the thread
+// title (`useSummarize` against `/api/ai/title`, which asks the thread's own
+// model — ChatGPT style: "New chat" until the first reply, then a short name).
 // The openrouter key row also offers PKCE sign-in: `startOpenRouterPkceLogin`
 // leaves for openrouter.ai and comes back to this page with `?code=`, which
 // `completeOpenRouterPkceIntoByok` exchanges into the keyring on mount.
 const connection = fetchServerSentEvents('/api/ai/chat')
 const dictation = fetchServerSentEvents('/api/ai/transcription')
-const titling = fetchServerSentEvents('/api/ai/summarize')
+const titling = fetchServerSentEvents('/api/ai/title')
 const CURRENT_KEY = 'docs-playground:current'
 const SELECTION_KEY = 'docs-playground:selection'
 const index = createThreadIndex({ key: 'docs-playground', storage: 'local' })
-const persistence = threadPersistence(index, indexedDBPersistence({ databaseName: 'cadenza-ai-docs-playground' }))
+// No derived title: the list says "New chat" until the model names the thread.
+const persistence = threadPersistence(index, indexedDBPersistence({ databaseName: 'cadenza-ai-docs-playground' }), { title: false })
 // The exchange is not idempotent (the code is single-use and the pending
 // verifier is cleared after the first await), so StrictMode's second effect run must not repeat it.
 let pkceCompleted = false
@@ -72,18 +74,24 @@ function Chat({ byok, catalog, className, threadId }: { byok: ByokClient, catalo
     // Each recording appends to whatever is already typed.
     onResult: r => setDraft(d => (d === '' ? r.text : `${d} ${r.text}`)),
   })
+  const messagesRef = useRef<readonly UIMessage[]>([])
+  const titledRef = useRef(false)
+  // The title comes from the model this thread talks to, through the same key;
+  // if that fails, fall back to the first message so the row is not blank forever.
   const summary = useSummarize({
     connection: titling,
     byok,
-    byokProvider: () => 'openai',
+    byokProvider: () => sel.selection.provider,
     onResult: (r) => {
       const title = r.summary.trim()
-      if (title !== '')
+      if (title !== '' && (index.get(threadId)?.title ?? '') === '')
         index.rename(threadId, title)
     },
+    onError: () => {
+      if ((index.get(threadId)?.title ?? '') === '')
+        index.rename(threadId, threadTitleFrom(messagesRef.current))
+    },
   })
-  const messagesRef = useRef<readonly UIMessage[]>([])
-  const titledRef = useRef(false)
   const chat = useChat({
     connection,
     forwardedProps: sel.forwardedProps,
@@ -93,13 +101,12 @@ function Chat({ byok, catalog, className, threadId }: { byok: ByokClient, catalo
     persistence,
     threadId,
     onFinish: (message) => {
-      // First assistant reply, and the thread still carries the derived title: ask for a real one. Failure is silent.
-      const own = index.get(threadId)?.title ?? ''
+      // First assistant reply and the thread is still unnamed: ask the model for a title, once.
       const user = messagesRef.current.find(m => m.role === 'user')
-      if (titledRef.current || user === undefined || (own !== '' && own !== threadTitleFrom(messagesRef.current)))
+      if (titledRef.current || user === undefined || (index.get(threadId)?.title ?? '') !== '')
         return
       titledRef.current = true
-      void summary.generate({ text: `${messageText(user)}\n${messageText(message)}`, style: 'concise', maxLength: 40 })
+      void summary.generate({ text: `User: ${messageText(user)}\nAssistant: ${messageText(message)}` })
     },
   })
   messagesRef.current = chat.messages
@@ -172,6 +179,7 @@ function Workspace({ layout, onReset }: { layout: Layout, onReset?: () => void }
         persistence={persistence}
         value={threadId}
         sidebarClassName={app ? 'p-3 inline-72' : undefined}
+        untitled="New chat"
         triggerClassName={app ? 'm-3 mbe-0' : undefined}
         footer={app && onReset !== undefined && (
           <Button className="self-start" size="sm" variant="ghost" onClick={onReset}>

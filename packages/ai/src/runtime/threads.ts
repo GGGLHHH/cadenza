@@ -164,10 +164,20 @@ export function threadTitleFrom(messages: readonly UIMessage[], max = 40): strin
 
 /**
  * Wrap a `ChatClientPersistence` so every write also updates the index:
- * message count, preview, timestamp, and a title derived from the first user
- * message unless one was set by hand.
+ * message count, preview, timestamp, and — unless one was set by hand or
+ * `title: false` — a title derived from the first user message.
  */
-export function threadPersistence(index: ThreadIndex, base: ChatClientPersistence): ChatClientPersistence {
+export interface ThreadPersistenceOptions {
+  /**
+   * Title for a thread nobody has named yet. Default: derived from the first
+   * user message (`threadTitleFrom`). `false` leaves it empty — for a caller
+   * that generates titles, showing the list's `untitled` label meanwhile.
+   */
+  title?: false | ((messages: readonly UIMessage[]) => string)
+}
+
+export function threadPersistence(index: ThreadIndex, base: ChatClientPersistence, options: ThreadPersistenceOptions = {}): ChatClientPersistence {
+  const derive = options.title === undefined ? threadTitleFrom : options.title
   return {
     getItem: id => (index.wasRemoved(id) ? null : base.getItem(id)),
     setItem: async (id, state: ChatPersistedState | UIMessage[]) => {
@@ -177,11 +187,11 @@ export function threadPersistence(index: ThreadIndex, base: ChatClientPersistenc
       await base.setItem(id, Array.isArray(state) ? { messages: state } : state)
       const messages = Array.isArray(state) ? state : state.messages
       const last = messages.at(-1)
-      const own = index.get(id)?.title
+      const own = index.get(id)?.title ?? ''
       index.touch(id, {
         messageCount: messages.length,
         preview: textOf(last).slice(0, 200),
-        title: own !== undefined && own !== '' ? own : threadTitleFrom(messages),
+        ...(own === '' && derive !== false ? { title: derive(messages) } : {}),
       })
     },
     removeItem: async (id) => {

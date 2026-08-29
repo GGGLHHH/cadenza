@@ -335,7 +335,7 @@ import { useThreadListItem } from '@gedatou/cadenza-ai'
 | `ThreadIndex.wasRemoved(id)` | `(id) => boolean` | `remove`d in this session with no `create` since; `threadPersistence` skips reads and writes for such ids |
 | `ThreadIndex.subscribe(listener)` | `(listener) => unsubscribe` | local writes + the cross-tab `storage` event |
 | `useThreadIndex(index)` | `(ThreadIndex) => readonly ThreadMeta[]` | `useSyncExternalStore`; the server snapshot is an empty array |
-| `threadPersistence(index, base)` | `(ThreadIndex, ChatClientPersistence) => ChatClientPersistence` | see [Approach](#approach) |
+| `threadPersistence(index, base, options?)` | `(ThreadIndex, ChatClientPersistence, { title?: false \| (messages) => string }) => ChatClientPersistence` | see [Approach](#approach); `title: false` derives no title (for generated titles; the list shows `untitled` meanwhile) |
 | `threadTitleFrom(messages, max?)` | `(readonly UIMessage[], max = 40) => string` | text of the first user message, whitespace collapsed, an ellipsis past `max` |
 | `groupThreadsByDay(threads, now?)` | `(readonly ThreadMeta[], now = Date.now()) => readonly ThreadDayGroup[]` | buckets by the local calendar day of `updatedAt` |
 | `useStoredState(key, initial)` | `<T>(string, T) => [T, (next: T) => void]` | `useState` over `localStorage` JSON, in sync across hooks and tabs; falls back to `initial` on the server and without storage |
@@ -359,6 +359,7 @@ The scrolling list: `ScrollArea` root > `div[role=list]`. Without it the other p
 | `onValueChange` | `(id: string, details: ThreadListChangeEventDetails) => void` | — | on select or create; `details.cancel()` blocks it |
 | `children` | `ReactNode` | one bare `ThreadListItem` per thread | — |
 | `className` | `string` | — | lands on the `ScrollArea` root; give it the height |
+| `untitled` | `ReactNode` | — | what a thread whose `title` is still empty shows in the list (e.g. "New chat"); nothing without it |
 
 `ThreadListChangeEventDetails` is `ChangeEventDetails<'item-press' | 'none'>`.
 

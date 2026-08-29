@@ -14,6 +14,7 @@ interface ThreadListContextValue {
   index: ThreadIndex
   value: string | undefined
   select: (id: string, details: ThreadListChangeEventDetails) => void
+  untitled: ReactNode
 }
 
 const ThreadListContext = createContext<ThreadListContextValue | null>(null)
@@ -62,6 +63,8 @@ export interface ThreadListProps {
   children?: ReactNode
   /** Lands on the `ScrollArea` root; give it the height. */
   className?: string
+  /** Shown as the title of a thread whose `title` is still empty. */
+  untitled?: ReactNode
 }
 
 /**
@@ -69,14 +72,14 @@ export interface ThreadListProps {
  * current thread is the controlled `value`, and selecting a row (or `ThreadListNew`
  * creating one) reports through `onValueChange(id, details)`.
  */
-export function ThreadList({ index, threads, value, defaultValue, onValueChange, children, className }: ThreadListProps): ReactElement {
+export function ThreadList({ index, threads, value, defaultValue, onValueChange, children, className, untitled }: ThreadListProps): ReactElement {
   const [current, setCurrent] = useControllableState({ value, defaultValue })
   const select = useCallback((id: string, details: ThreadListChangeEventDetails) => {
     onValueChange(id, details)
     if (!details.isCanceled)
       setCurrent(id)
   }, [onValueChange, setCurrent])
-  const context = useMemo<ThreadListContextValue>(() => ({ index, value: current, select }), [index, current, select])
+  const context = useMemo<ThreadListContextValue>(() => ({ index, value: current, select, untitled }), [index, current, select, untitled])
   return (
     <ThreadListContext value={context}>
       <ScrollArea className={className}>
@@ -137,7 +140,7 @@ export interface ThreadListItemState {
  * state as `data-active` (+ `aria-current="page"`), `data-archived`, `data-renaming`.
  */
 export function ThreadListItem({ thread, children, className }: ThreadListItemProps): ReactElement {
-  const { index, value, select } = useThreadList()
+  const { index, value, select, untitled } = useThreadList()
   const [renaming, setRenaming] = useState(false)
   // Enter / Escape settle the edit; the blur that follows their unmount must not commit again.
   const settledRef = useRef(false)
@@ -199,7 +202,7 @@ export function ThreadListItem({ thread, children, className }: ThreadListItemPr
                   "
                   onClick={event => select(thread.id, createChangeEventDetails('item-press', event.nativeEvent))}
                 >
-                  <ItemTitle>{thread.title}</ItemTitle>
+                  <ItemTitle>{thread.title !== '' ? thread.title : untitled}</ItemTitle>
                   {thread.preview !== '' && <ItemDescription>{thread.preview}</ItemDescription>}
                 </button>
               )}

@@ -129,9 +129,11 @@ export interface ThreadPaneProps {
   triggerClassName?: string
   /** Rendered under the list in the sidebar only. */
   footer?: ReactNode
+  /** Title shown for a thread that has none yet. */
+  untitled?: ReactNode
 }
 
-function ThreadSidebar({ index: threadIndex, persistence: store, value, onValueChange, className, footer }: Pick<ThreadPaneProps, 'index' | 'persistence' | 'value' | 'onValueChange' | 'footer'> & { className?: string }): ReactElement {
+function ThreadSidebar({ index: threadIndex, persistence: store, value, onValueChange, className, footer, untitled }: Pick<ThreadPaneProps, 'index' | 'persistence' | 'value' | 'onValueChange' | 'footer' | 'untitled'> & { className?: string }): ReactElement {
   const threads = useThreadIndex(threadIndex)
   const [query, setQuery] = useState('')
   const needle = query.trim().toLowerCase()
@@ -139,7 +141,7 @@ function ThreadSidebar({ index: threadIndex, persistence: store, value, onValueC
   return (
     <div className={cn('flex flex-col gap-2', className)}>
       <SearchField aria-label="Search threads" placeholder="Search threads…" value={query} onValueChange={setQuery} />
-      <ThreadList className="flex-1 min-block-0" index={threadIndex} threads={visible} value={value} onValueChange={onValueChange}>
+      <ThreadList className="flex-1 min-block-0" index={threadIndex} threads={visible} untitled={untitled} value={value} onValueChange={onValueChange}>
         <ThreadListNew size="sm">New thread</ThreadListNew>
         {groupThreadsByDay(visible).map(group => (
           <ThreadListGroup key={group.label}>
@@ -164,13 +166,14 @@ function ThreadSidebar({ index: threadIndex, persistence: store, value, onValueC
 }
 
 /** The list beside the chat from `md:` up; below it, a button that opens the same list in a dialog. */
-export function ThreadPane({ sidebarClassName, triggerClassName, footer, ...props }: ThreadPaneProps): ReactElement {
+export function ThreadPane({ sidebarClassName, triggerClassName, footer, untitled, ...props }: ThreadPaneProps): ReactElement {
   const [open, setOpen] = useState(false)
   return (
     <>
       <ThreadSidebar
         {...props}
         footer={footer}
+        untitled={untitled}
         className={cn(`
           hidden shrink-0 border-e pe-3 inline-64
           md:flex
@@ -198,6 +201,7 @@ export function ThreadPane({ sidebarClassName, triggerClassName, footer, ...prop
           <DialogBody>
             <ThreadSidebar
               {...props}
+              untitled={untitled}
               className="block-96"
               onValueChange={(id) => {
                 props.onValueChange(id)
@@ -225,7 +229,7 @@ function Workspace(): ReactElement {
       md:flex-row
     "
     >
-      <ThreadPane index={index} persistence={persistence} value={threadId} onValueChange={setThreadId} />
+      <ThreadPane index={index} persistence={persistence} untitled="New thread" value={threadId} onValueChange={setThreadId} />
       <div className="flex flex-1 flex-col min-inline-0">
         <Chat key={threadId} threadId={threadId} />
       </div>

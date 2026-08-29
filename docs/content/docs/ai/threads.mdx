@@ -86,7 +86,7 @@ function Chat({ threadId }: { threadId: string }): ReactElement {
   `ThreadMeta[]`；`subscribe` 同时挂本地 emitter 与 `storage` 事件，多个 tab 免费同步。
   `storage: 'memory'` 给 SSR 与测试。
 - **两半由 `threadPersistence(index, base)` 接起来**。它包住适配器：`setItem` 写完正文就
-  `index.touch(id, { messageCount, preview, title })`——标题取首条 user 消息的前 40 字，
+  `index.touch(id, { messageCount, preview, title })`——标题缺省取首条 user 消息的前 40 字（`{ title: false }` 关掉，交给生成式标题），
   手动改过的标题不再被覆盖；`removeItem` 同时 `index.remove(id)`。
 - **当前线程归你**。`useChat` 的身份就是 `threadId`，换线程 = `key={threadId}` 重挂；
   当前 id 用 `useStoredState` 存一份即可刷新不丢。
@@ -310,7 +310,7 @@ import { useThreadListItem } from '@gedatou/cadenza-ai'
 | `ThreadIndex.wasRemoved(id)` | `(id) => boolean` | 本会话里 `remove` 过且之后没有 `create`；`threadPersistence` 据此跳过已删线程的读写 |
 | `ThreadIndex.subscribe(listener)` | `(listener) => unsubscribe` | 本地写入 + 跨 tab `storage` 事件 |
 | `useThreadIndex(index)` | `(ThreadIndex) => readonly ThreadMeta[]` | `useSyncExternalStore`；服务端快照为空数组 |
-| `threadPersistence(index, base)` | `(ThreadIndex, ChatClientPersistence) => ChatClientPersistence` | 见[思路](#思路) |
+| `threadPersistence(index, base, options?)` | `(ThreadIndex, ChatClientPersistence, { title?: false \| (messages) => string }) => ChatClientPersistence` | 见[思路](#思路)；`title: false` 不派生标题（留给生成式标题，列表期间显示 `untitled`） |
 | `threadTitleFrom(messages, max?)` | `(readonly UIMessage[], max = 40) => string` | 首条 user 消息的文本，折叠空白，超长加省略号 |
 | `groupThreadsByDay(threads, now?)` | `(readonly ThreadMeta[], now = Date.now()) => readonly ThreadDayGroup[]` | 按 `updatedAt` 的本地日历日分桶 |
 | `useStoredState(key, initial)` | `<T>(string, T) => [T, (next: T) => void]` | `localStorage` JSON 的 `useState`，跨 hook / 跨 tab 同步；SSR 与无存储时回退到 `initial` |
@@ -334,6 +334,7 @@ import { useThreadListItem } from '@gedatou/cadenza-ai'
 | `onValueChange` | `(id: string, details: ThreadListChangeEventDetails) => void` | — | 选中或新建时；`details.cancel()` 拦下 |
 | `children` | `ReactNode` | 每个线程一个裸 `ThreadListItem` | — |
 | `className` | `string` | — | 落在 `ScrollArea` 根上；高度从这里给 |
+| `untitled` | `ReactNode` | — | `title` 还是空串的线程在列表里显示的文案（如 "New chat"）；不给就什么都不显示 |
 
 `ThreadListChangeEventDetails` 是 `ChangeEventDetails<'item-press' | 'none'>`。
 

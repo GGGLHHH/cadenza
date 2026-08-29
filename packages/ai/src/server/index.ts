@@ -5,6 +5,7 @@ export * from './generation-handlers'
 export * from './preset'
 export * from './selection'
 export * from './thinking'
+export * from './title-handler'
 export {
   chat,
   chatParamsFromRequest,

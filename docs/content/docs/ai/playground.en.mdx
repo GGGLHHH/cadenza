@@ -75,18 +75,21 @@ const transcription = useTranscription({
 
 ### Auto titles
 
-A new thread's title defaults to the first 40 characters of the first user message
-(`threadTitleFrom`). When the **first assistant reply** finishes (`useChat({ onFinish })`), this
-page sends that question and answer to `/api/ai/summarize` with `style: 'concise'` and
-`maxLength: 40`, then `index.rename(threadId, text)`. A thread already renamed by hand is left
-alone; a failed request is silent and the default title stays. OpenAI only, as with dictation.
+The ChatGPT rule: a new thread is listed as **New chat** (the `ThreadList` `untitled` label — the
+library ships no default copy, the page supplies it), and `threadPersistence(index, base, { title: false })`
+turns off the derived "first 40 characters of the first message" title. When the **first assistant
+reply** finishes (`useChat({ onFinish })`), that question and answer go to `/api/ai/title`, and
+**the model this thread talks to** (same BYOK header, thinking off) names it: at most 6 words, in
+the user's language, no quotes, no trailing punctuation — `index.rename(threadId, title)`. Once
+only; a thread renamed by hand is left alone; only a failed request falls back to the derived title.
 
 ```tsx
 const summary = useSummarize({
-  connection: fetchServerSentEvents('/api/ai/summarize'),
+  connection: fetchServerSentEvents('/api/ai/title'),
   byok,
-  byokProvider: () => 'openai',
+  byokProvider: () => sel.selection.provider,
   onResult: r => index.rename(threadId, r.summary.trim()),
+  onError: () => index.rename(threadId, threadTitleFrom(messages)),
 })
 ```
 
@@ -137,6 +140,7 @@ The four routes and three client exports this page uses. The adapter is passed i
 | `/api/ai/catalog` | `GET` | `createCatalogHandler(presets)`: `{ providers, coverage, generatedAt }` |
 | `/api/ai/transcription` | `POST` | `createTranscriptionHandler({ adapter, byok, defaultModel })`: size guard (8 MiB by default) → `generationParamsFromRequest('transcription')` → `forwardedProps.model` ?? `defaultModel` → BYOK key → `generateTranscription({ stream: true })` → SSE, with the result in a `generation:result` event |
 | `/api/ai/summarize` | `POST` | `createSummarizeHandler({ adapter, byok, defaultModel })`: the same lifecycle; the body carries `{ data: { text, style, maxLength, focus } }` → `summarize({ stream: true })` → SSE |
+| `/api/ai/title` | `POST` | `createTitleHandler({ providers, defaultModel, maxWords?, prompt? })`: the same envelope, but the preset comes from `forwardedProps` — the thread's own model, thinking off — with a ChatGPT-style instruction; `cleanTitle` strips quotes / fences / trailing punctuation, and the reply is still summarize-shaped SSE, so the client keeps `useSummarize` |
 
 The full option table of the route lives in [Providers](/docs/ai/providers#route-handler).
 
