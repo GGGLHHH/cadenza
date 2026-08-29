@@ -37,6 +37,7 @@ const sourceAlias = {
   '@gedatou/cadenza-ai/providers/vercel-gateway': '../packages/ai/src/providers/vercel-gateway.ts',
   '@gedatou/cadenza-ai/providers/llmgateway': '../packages/ai/src/providers/llmgateway.ts',
   '@gedatou/cadenza-ai/providers/bedrock': '../packages/ai/src/providers/bedrock.ts',
+  '@gedatou/cadenza-ai/providers/deepseek': '../packages/ai/src/providers/deepseek.ts',
   '@gedatou/cadenza-ai/providers/vertex': '../packages/ai/src/providers/vertex.ts',
   '@gedatou/cadenza-ai/providers/ollama': '../packages/ai/src/providers/ollama.ts',
   '@gedatou/cadenza-ai/providers/openai-compatible': '../packages/ai/src/providers/openai-compatible.ts',
