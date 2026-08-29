@@ -80,7 +80,7 @@ export function ModelPicker({ byok, catalog, className, defaultValue, disabledPr
       <ComboboxTrigger className={className} data-slot="model-picker" render={<Button size="sm" variant="outline" />}>
         <ComboboxValue>{(ref: string | null) => (ref === null ? null : catalog.getModel(ref)?.name ?? ref)}</ComboboxValue>
       </ComboboxTrigger>
-      <ComboboxPopup>
+      <ComboboxPopup className="inline-80">
         <ComboboxInput aria-label="Search models" clearable={false} trigger={false} />
         <ComboboxEmpty />
         <ComboboxList>
