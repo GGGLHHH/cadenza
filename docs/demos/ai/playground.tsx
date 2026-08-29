@@ -16,7 +16,9 @@ import {
   messageText,
   ModelPicker,
   modelRef,
+  supportedThinkingLevels,
   ThinkingLevelPicker,
+  ThinkingToggle,
   threadPersistence,
   threadTitleFrom,
   TranscriptError,
@@ -157,7 +159,13 @@ function Chat({ anchorTurns, byok, catalog, className, resumeRef, threadId }: { 
             value={modelRef({ provider: sel.selection.provider, id: sel.selection.model })}
             onValueChange={ref => sel.setModel(ref)}
           />
-          <ThinkingLevelPicker model={sel.model} value={sel.selection.thinking} onValueChange={level => sel.setThinking(level)} />
+          <ThinkingToggle model={sel.model} value={sel.selection.thinking} onValueChange={level => sel.setThinking(level)}>
+            DeepThink
+          </ThinkingToggle>
+          {/* The level dropdown only once thinking is on, and only where the model has more than one on-level to pick from. */}
+          {sel.selection.thinking !== 'off' && supportedThinkingLevels(sel.model).length > 2 && (
+            <ThinkingLevelPicker model={sel.model} value={sel.selection.thinking} onValueChange={level => sel.setThinking(level)} />
+          )}
           <Button
             aria-label="API keys"
             size="icon-sm"

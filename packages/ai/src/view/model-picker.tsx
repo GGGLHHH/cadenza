@@ -1,32 +1,14 @@
 'use client'
-import type { ComboboxChangeEventDetails, SelectChangeEventDetails } from '@gedatou/cadenza-ui'
+import type { ComboboxChangeEventDetails, SelectChangeEventDetails, ToggleChangeEventDetails } from '@gedatou/cadenza-ui'
 import type { ByokSnapshot } from '@tanstack/ai-client/byok'
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type { Catalog, Model, ThinkingLevel } from '../catalog/types'
-import {
-  Button,
-  Combobox,
-  ComboboxCollection,
-  ComboboxEmpty,
-  ComboboxGroup,
-  ComboboxGroupLabel,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxPopup,
-  ComboboxTrigger,
-  ComboboxValue,
-  dataAttr,
-  Select,
-  SelectItem,
-  SelectPopup,
-  SelectTrigger,
-  SelectValue,
-} from '@gedatou/cadenza-ui'
+import { Button, cn, Combobox, ComboboxCollection, ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxInput, ComboboxItem, ComboboxList, ComboboxPopup, ComboboxTrigger, ComboboxValue, dataAttr, Select, SelectItem, SelectPopup, SelectTrigger, SelectValue, Toggle } from '@gedatou/cadenza-ui'
+import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconBrain, IconKey, IconPhoto } from '@tabler/icons-react'
 import { useMemo } from 'react'
 import { modelRef } from '../catalog/catalog'
-import { supportedThinkingLevels } from '../catalog/thinking'
+import { clampThinkingLevel, supportedThinkingLevels } from '../catalog/thinking'
 
 /** The Combobox's own details, passed straight through — `item-press` in practice, `none` for programmatic changes. */
 export type ModelPickerChangeEventDetails = ComboboxChangeEventDetails
@@ -171,5 +153,66 @@ export function ThinkingLevelPicker({ className, defaultValue, model, onValueCha
         {levels.map(level => <SelectItem key={level} value={level}>{level}</SelectItem>)}
       </SelectPopup>
     </Select>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* ThinkingToggle                                                              */
+/* -------------------------------------------------------------------------- */
+
+/** The Toggle's own details, passed straight through. */
+export type ThinkingToggleChangeEventDetails = ToggleChangeEventDetails
+
+export interface ThinkingToggleProps {
+  model?: Model
+  value?: ThinkingLevel
+  defaultValue?: ThinkingLevel
+  /** The level switching on lands at, clamped to the model. Default `'high'`. */
+  onLevel?: ThinkingLevel
+  onValueChange: (level: ThinkingLevel, details: ThinkingToggleChangeEventDetails) => void
+  /** The label — DeepSeek's reads 深度思考. */
+  children: ReactNode
+  /** Lands on the toggle. */
+  className?: string
+}
+
+/**
+ * The one-press deep-thinking switch, DeepSeek style: a pill that lights up
+ * while thinking is on. Renders nothing for a model without reasoning; a model
+ * that cannot switch thinking off (no `'off'` level) shows it pressed and
+ * disabled. `data-thinking` mirrors the on state.
+ */
+export function ThinkingToggle({ children, className, defaultValue, model, onLevel = 'high', onValueChange, value }: ThinkingToggleProps): ReactElement | null {
+  const levels = supportedThinkingLevels(model)
+  const [level, setLevel] = useControllableState({ value, defaultValue, fallback: 'off' })
+  if (levels.length <= 1)
+    return null
+  const canOff = levels.includes('off')
+  const on = level !== 'off'
+  return (
+    <Toggle
+      data-slot="thinking-toggle"
+      data-thinking={dataAttr(on)}
+      pressed={on}
+      disabled={!canOff}
+      size="sm"
+      variant="outline"
+      className={cn(`
+        gap-1.5 rounded-full
+        data-pressed:border-primary/40 data-pressed:bg-primary/10
+        data-pressed:text-primary
+        data-pressed:hover:bg-primary/15
+      `, className)}
+      onPressedChange={(pressed, details) => {
+        // Turning on lands at `onLevel` clamped to the model; a clamp that falls to `off` takes the model's strongest level instead.
+        const clamped = clampThinkingLevel(model, onLevel)
+        const next: ThinkingLevel = pressed ? (clamped === 'off' ? levels[levels.length - 1] : clamped) : 'off'
+        setLevel(next)
+        onValueChange(next, details)
+      }}
+    >
+      <IconBrain aria-hidden />
+      {children}
+    </Toggle>
   )
 }

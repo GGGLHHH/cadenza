@@ -57,6 +57,7 @@ Composer                      <form> + InputGroup; data-submitted / data-streami
    ├─ ComposerAttach          file picker
    ├─ ComposerDictate         recording
    ├─ ModelPicker             model (Combobox)
+   ├─ ThinkingToggle          deep-thinking switch (the DeepSeek pill; not rendered for a model without reasoning)
    ├─ ThinkingLevelPicker     thinking level (Select; not rendered with a single level)
    └─ ComposerSubmit          send while idle, stop while running
 
@@ -126,9 +127,16 @@ thinking level lists only the levels this model supports.
   string; `parseModelRef` takes it apart. Given a `byok` snapshot, the group heading of a
   provider that needs a key but has none yet carries `data-key-missing` and a key icon;
   `disabledProviders` disables a whole group's items.
+- `ThinkingToggle` is DeepSeek's deep-thinking pill: a [Toggle](/docs/components/toggle) that lights
+  up while on, with `data-thinking` present; switching on lands at `onLevel` (default `'high'`)
+  clamped to the model, switching off sends `'off'`; a model without reasoning renders `null`, and
+  one that cannot switch thinking off (no `'off'` level) shows it pressed and disabled. The label is
+  your children.
 - `ThinkingLevelPicker` is a [Select](/docs/components/select) whose options come from
   `supportedThinkingLevels(model)`; **with a single level (a model without reasoning) it
-  returns `null`**, so switching to GPT-4.1 makes it disappear.
+  returns `null`**, so switching to GPT-4.1 makes it disappear. The Playground pairs the two: the
+  switch is always there, the dropdown only while thinking is on and the model offers more than one
+  on-level.
 - `useModelSelection({ catalog, key, initial })` ties the two together and persists them
   (`localStorage`, key `cadenza-ai:selection` by default): `selection` / `model` / `provider`,
   `setModel(ref)` (clamps the thinking level to what the new model supports),
@@ -406,6 +414,20 @@ The provider-grouped, searchable model Combobox; the value is `provider/model`.
 | `disabledProviders` | `readonly string[]` | — | these providers' items are disabled |
 | `className` | `string` | — | lands on the trigger button |
 
+### ThinkingToggle
+
+The deep-thinking switch; returns `null` for a model without reasoning.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onValueChange` | `(level: ThinkingLevel, details: ToggleChangeEventDetails) => void` | — | the Toggle's own details; the clamped `onLevel` when switching on, `'off'` when switching off |
+| `children` | `ReactNode` | — | the label (DeepSeek's reads 深度思考) |
+| `model` | `Model` | — | decides rendering and the clamp; absent means no reasoning |
+| `onLevel` | `ThinkingLevel` | `'high'` | the level switching on lands at, clamped to the model; a clamp that falls to `'off'` takes the model's strongest level |
+| `defaultValue` | `ThinkingLevel` | `'off'` | — |
+| `value` | `ThinkingLevel` | — | controlled |
+| `className` | `string` | — | lands on the Toggle |
+
 ### ThinkingLevelPicker
 
 The Select of the model's supported thinking levels; returns `null` when there is nothing to choose.
@@ -422,7 +444,8 @@ The types are exported alongside: `ComposerProps` / `ComposerState` / `ComposerS
 `ComposerChangeEventDetails` / `ComposerTextareaProps` / `ComposerToolbarProps` / `ComposerSubmitProps` /
 `ComposerAttachProps` / `ComposerAttachmentsProps` / `ComposerDictateProps` / `SuggestionsProps` /
 `SuggestionsItemProps` / `SuggestionsChangeEventDetails` / `QueueListProps` / `ModelPickerProps` /
-`ModelPickerChangeEventDetails` / `ThinkingLevelPickerProps` / `ThinkingLevelPickerChangeEventDetails`;
+`ModelPickerChangeEventDetails` / `ThinkingLevelPickerProps` / `ThinkingLevelPickerChangeEventDetails` /
+`ThinkingToggleProps` / `ThinkingToggleChangeEventDetails`;
 on the hook side: `AttachmentDraft` / `DraftAttachment` / `AttachmentKind` / `AttachmentState` /
 `UseAttachmentDraftOptions` / `ModelSelection` / `UseModelSelectionOptions` / `UseModelSelectionReturn`,
 along with `DEFAULT_MAX_ATTACHMENT_BYTES`, `attachmentKindOf`, `fileToContentPart` and `useComposer`.

@@ -55,6 +55,7 @@ Composer                      <form> + InputGroup；data-submitted / data-stream
    ├─ ComposerAttach          文件选择
    ├─ ComposerDictate         录音
    ├─ ModelPicker             模型（Combobox）
+   ├─ ThinkingToggle          深度思考开关（DeepSeek 式胶囊；不支持推理的模型不渲染）
    ├─ ThinkingLevelPicker     思考强度（Select；只有一档时不渲染）
    └─ ComposerSubmit          空闲时发送，运行中停止
 
@@ -113,8 +114,12 @@ InputGroup 的自增高与底部工具条规则靠 `>` 选择器；附件条也�
   值是 `modelRef(model)` 的 `provider/model` 字符串，`parseModelRef` 拆回去。
   传 `byok` 快照时，需要密钥但还没填的 provider 的分组标题带 `data-key-missing` 与钥匙图标；
   `disabledProviders` 把整组条目禁用。
+- `ThinkingToggle` 是 DeepSeek 那种「深度思考」胶囊：一个 [Toggle](/docs/components/toggle)，按下亮起、`data-thinking` 在场；
+  开启时档位落到 `onLevel`（默认 `'high'`）按模型 clamp 后的值，关闭发 `'off'`；不支持推理的模型返回 `null`，
+  关不掉推理的模型（没有 `'off'` 档）显示为按下且禁用。文案由 children 给。
 - `ThinkingLevelPicker` 是一个 [Select](/docs/components/select)，选项来自 `supportedThinkingLevels(model)`；
-  **只有一档（不支持推理的模型）时返回 `null`**，所以切到 GPT-4.1 它就消失。
+  **只有一档（不支持推理的模型）时返回 `null`**，所以切到 GPT-4.1 它就消失。试玩页把两者搭在一起：
+  开关常驻，下拉只在开启且模型有多于一档可选时出现。
 - `useModelSelection({ catalog, key, initial })` 把两者串起来并持久化（`localStorage`，键默认 `cadenza-ai:selection`）：
   `selection` / `model` / `provider`、`setModel(ref)`（把思考档位 clamp 到新模型支持的范围）、
   `setThinking(level)`，以及给 `useChat({ forwardedProps })` 的稳定对象 `forwardedProps`——
@@ -366,6 +371,20 @@ const [draft, setDraft] = useStoredState(`cadenza-ai:draft:${threadId}`, '')
 | `disabledProviders` | `readonly string[]` | — | 这些 provider 的条目禁用 |
 | `className` | `string` | — | 落在触发器按钮上 |
 
+### ThinkingToggle
+
+深度思考开关；不支持推理的模型返回 `null`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `onValueChange` | `(level: ThinkingLevel, details: ToggleChangeEventDetails) => void` | — | Toggle 自己的 details；开启时是 clamp 后的 `onLevel`，关闭时是 `'off'` |
+| `children` | `ReactNode` | — | 文案（DeepSeek 写的是「深度思考」） |
+| `model` | `Model` | — | 决定是否渲染与 clamp；缺省视为不支持推理 |
+| `onLevel` | `ThinkingLevel` | `'high'` | 开启时落到的档位，按模型 clamp；clamp 落到 `'off'` 时取模型最强一档 |
+| `defaultValue` | `ThinkingLevel` | `'off'` | — |
+| `value` | `ThinkingLevel` | — | 受控 |
+| `className` | `string` | — | 落在 Toggle 上 |
+
 ### ThinkingLevelPicker
 
 模型支持的思考档位 Select；无可选时返回 `null`。
@@ -382,7 +401,7 @@ const [draft, setDraft] = useStoredState(`cadenza-ai:draft:${threadId}`, '')
 `ComposerTextareaProps` / `ComposerToolbarProps` / `ComposerSubmitProps` / `ComposerAttachProps` /
 `ComposerAttachmentsProps` / `ComposerDictateProps` / `SuggestionsProps` / `SuggestionsItemProps` /
 `SuggestionsChangeEventDetails` / `QueueListProps` / `ModelPickerProps` / `ModelPickerChangeEventDetails` /
-`ThinkingLevelPickerProps` / `ThinkingLevelPickerChangeEventDetails`；hook 一侧：`AttachmentDraft` /
+`ThinkingLevelPickerProps` / `ThinkingLevelPickerChangeEventDetails` / `ThinkingToggleProps` / `ThinkingToggleChangeEventDetails`；hook 一侧：`AttachmentDraft` /
 `DraftAttachment` / `AttachmentKind` / `AttachmentState` / `UseAttachmentDraftOptions` / `ModelSelection` /
 `UseModelSelectionOptions` / `UseModelSelectionReturn`，以及 `DEFAULT_MAX_ATTACHMENT_BYTES`、
 `attachmentKindOf`、`fileToContentPart`、`useComposer`。

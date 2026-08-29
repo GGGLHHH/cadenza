@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { defaultCatalog } from '../src/catalog'
-import { ModelPicker, ThinkingLevelPicker } from '../src/view/model-picker'
+import { ModelPicker, ThinkingLevelPicker, ThinkingToggle } from '../src/view/model-picker'
 
 describe('pickers', () => {
   it('modelPicker shows the current model and marks providers without a key', () => {
@@ -16,5 +17,37 @@ describe('pickers', () => {
     const fable = defaultCatalog.getModel('anthropic/claude-fable-5')!
     rerender(<ThinkingLevelPicker model={fable} defaultValue="low" onValueChange={vi.fn()} />)
     expect(container.querySelector('[data-slot=thinking-level-picker]')).not.toBeNull()
+  })
+})
+
+describe('thinkingToggle', () => {
+  const flash = defaultCatalog.getModel('deepseek/deepseek-v4-flash')!
+  const pro = defaultCatalog.getModel('deepseek/deepseek-v4-pro')!
+  const plain = defaultCatalog.getModel('openai/gpt-4.1')!
+
+  it('renders nothing for a model without reasoning', () => {
+    const { container } = render(<ThinkingToggle model={plain} defaultValue="off" onValueChange={() => {}}>DeepThink</ThinkingToggle>)
+    expect(container.querySelector('[data-slot=thinking-toggle]')).toBeNull()
+  })
+
+  it('switches on at the default level clamped to the model, and off again', async () => {
+    const onValueChange = vi.fn()
+    render(<ThinkingToggle model={pro} defaultValue="off" onValueChange={onValueChange}>DeepThink</ThinkingToggle>)
+    const toggle = screen.getByRole('button', { name: 'DeepThink' })
+    expect(toggle.getAttribute('aria-pressed')).toBe('false')
+    expect(toggle.hasAttribute('data-thinking')).toBe(false)
+    await userEvent.click(toggle)
+    expect(onValueChange).toHaveBeenLastCalledWith('high', expect.anything())
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    expect(toggle.hasAttribute('data-thinking')).toBe(true)
+    await userEvent.click(toggle)
+    expect(onValueChange).toHaveBeenLastCalledWith('off', expect.anything())
+  })
+
+  it('honours onLevel and a controlled value', async () => {
+    const onValueChange = vi.fn()
+    render(<ThinkingToggle model={flash} value="off" onLevel="max" onValueChange={onValueChange}>DeepThink</ThinkingToggle>)
+    await userEvent.click(screen.getByRole('button', { name: 'DeepThink' }))
+    expect(onValueChange).toHaveBeenLastCalledWith('max', expect.anything())
   })
 })
