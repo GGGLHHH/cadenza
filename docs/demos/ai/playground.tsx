@@ -1,3 +1,5 @@
+'use client'
+
 import type { ByokClient, Catalog, UIMessage } from '@gedatou/cadenza-ai'
 import type { ReactElement } from 'react'
 import {
@@ -24,7 +26,7 @@ import {
   useSummarize,
   useTranscription,
 } from '@gedatou/cadenza-ai'
-import { Button } from '@gedatou/cadenza-ui'
+import { Button, cn } from '@gedatou/cadenza-ui'
 import { IconKey } from '@tabler/icons-react'
 import { completeOpenRouterPkceIntoByok, startOpenRouterPkceLogin } from '@tanstack/ai-openrouter/pkce'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -33,7 +35,9 @@ import { ChatShell } from './chat-shell'
 import { ThreadPane, useCurrentThread } from './threads'
 import { getViewport } from './tools'
 
-// The real thing: SSE against `/api/ai/chat`, pure BYOK (keys live in this
+// The real thing, in two frames: the docs demo (`default`) and the full-screen
+// app at `/playground` (`PlaygroundApp`) — same workspace, the app drops the
+// border and fills the viewport under the header. SSE against `/api/ai/chat`, pure BYOK (keys live in this
 // tab's memory and travel as `x-byok-<provider>` headers), the model and
 // thinking pickers feeding `forwardedProps`, a client tool the browser runs,
 // and threads persisted locally. Sending without a key opens the dialog.
@@ -57,7 +61,7 @@ const persistence = threadPersistence(index, indexedDBPersistence({ databaseName
 // verifier is cleared after the first await), so StrictMode's second effect run must not repeat it.
 let pkceCompleted = false
 
-function Chat({ byok, catalog, threadId }: { byok: ByokClient, catalog: Catalog, threadId: string }): ReactElement {
+function Chat({ byok, catalog, className, threadId }: { byok: ByokClient, catalog: Catalog, className?: string, threadId: string }): ReactElement {
   const sel = useModelSelection({ catalog, key: SELECTION_KEY })
   const snapshot = useByok(byok)
   const [draft, setDraft] = useState('')
@@ -102,6 +106,7 @@ function Chat({ byok, catalog, threadId }: { byok: ByokClient, catalog: Catalog,
   return (
     <ChatShell
       chat={chat}
+      className={className}
       empty="Save a key, pick a model, send. Ask for the window size to watch a client tool run."
       placeholder="Ask anything…"
       value={draft}
@@ -138,12 +143,15 @@ function Chat({ byok, catalog, threadId }: { byok: ByokClient, catalog: Catalog,
   )
 }
 
-function Workspace(): ReactElement {
+type Layout = 'demo' | 'app'
+
+function Workspace({ layout, onReset }: { layout: Layout, onReset?: () => void }): ReactElement {
   const byok = useMemo(() => createByok({ catalog: defaultCatalog }), [])
   const { coverage, providers } = useServerCoverage(byok)
   const catalog = useMemo(() => (providers ? createCatalog(providers) : defaultCatalog), [providers])
   const [threadId, setThreadId] = useCurrentThread(index, CURRENT_KEY)
   const [pkceError, setPkceError] = useState<string>()
+  const app = layout === 'app'
   useEffect(() => {
     if (pkceCompleted)
       return
@@ -154,14 +162,35 @@ function Workspace(): ReactElement {
     })
   }, [byok])
   return (
-    <div className="
+    <div className={cn(`
       flex flex-col gap-3
       md:flex-row
-    "
+    `, app && `flex-1 gap-0 min-block-0`)}
     >
-      <ThreadPane index={index} persistence={persistence} value={threadId} onValueChange={setThreadId} />
-      <div className="flex flex-1 flex-col min-inline-0">
-        <Chat key={threadId} byok={byok} catalog={catalog} threadId={threadId} />
+      <ThreadPane
+        index={index}
+        persistence={persistence}
+        value={threadId}
+        sidebarClassName={app ? 'p-3 inline-72' : undefined}
+        triggerClassName={app ? 'm-3 mbe-0' : undefined}
+        footer={app && onReset !== undefined && (
+          <Button className="self-start" size="sm" variant="ghost" onClick={onReset}>
+            Reset playground
+          </Button>
+        )}
+        onValueChange={setThreadId}
+      />
+      <div className={cn('flex flex-1 flex-col min-block-0 min-inline-0', app && `
+        mx-auto inline-full max-inline-4xl
+      `)}
+      >
+        <Chat
+          key={threadId}
+          byok={byok}
+          catalog={catalog}
+          className={app ? 'flex-1 rounded-none border-0 min-block-0' : undefined}
+          threadId={threadId}
+        />
       </div>
       <ByokKeyDialog byok={byok} catalog={catalog} coverage={coverage}>
         {catalog.providers.map(p => (
@@ -195,10 +224,24 @@ async function wipe(): Promise<void> {
   localStorage.removeItem(SELECTION_KEY)
 }
 
+/** `/playground`: the workspace without a demo frame; Reset wipes both stores and remounts. */
+export function PlaygroundApp(): ReactElement {
+  const [epoch, setEpoch] = useState(0)
+  return (
+    <Workspace
+      key={epoch}
+      layout="app"
+      onReset={() => {
+        void wipe().then(() => setEpoch(e => e + 1))
+      }}
+    />
+  )
+}
+
 export default function PlaygroundDemo(): ReactElement {
   return (
     <ResettableDemo className="max-inline-none" onReset={wipe}>
-      <Workspace />
+      <Workspace layout="demo" />
     </ResettableDemo>
   )
 }

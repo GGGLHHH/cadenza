@@ -1,5 +1,5 @@
 import type { ThreadDayLabel, ThreadIndex } from '@gedatou/cadenza-ai'
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import {
   createThreadIndex,
   groupThreadsByDay,
@@ -123,9 +123,15 @@ export interface ThreadPaneProps {
   persistence: Persistence
   value: string
   onValueChange: (id: string) => void
+  /** Extra classes on the `md:` sidebar (the app layout widens and pads it). */
+  sidebarClassName?: string
+  /** Extra classes on the narrow-screen Threads button. */
+  triggerClassName?: string
+  /** Rendered under the list in the sidebar only. */
+  footer?: ReactNode
 }
 
-function ThreadSidebar({ index: threadIndex, persistence: store, value, onValueChange, className }: ThreadPaneProps & { className?: string }): ReactElement {
+function ThreadSidebar({ index: threadIndex, persistence: store, value, onValueChange, className, footer }: Pick<ThreadPaneProps, 'index' | 'persistence' | 'value' | 'onValueChange' | 'footer'> & { className?: string }): ReactElement {
   const threads = useThreadIndex(threadIndex)
   const [query, setQuery] = useState('')
   const needle = query.trim().toLowerCase()
@@ -152,29 +158,31 @@ function ThreadSidebar({ index: threadIndex, persistence: store, value, onValueC
           </ThreadListGroup>
         ))}
       </ThreadList>
+      {footer}
     </div>
   )
 }
 
 /** The list beside the chat from `md:` up; below it, a button that opens the same list in a dialog. */
-export function ThreadPane(props: ThreadPaneProps): ReactElement {
+export function ThreadPane({ sidebarClassName, triggerClassName, footer, ...props }: ThreadPaneProps): ReactElement {
   const [open, setOpen] = useState(false)
   return (
     <>
       <ThreadSidebar
         {...props}
-        className="
+        footer={footer}
+        className={cn(`
           hidden shrink-0 border-e pe-3 inline-64
           md:flex
-        "
+        `, sidebarClassName)}
       />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger render={(
           <Button
-            className="
+            className={cn(`
               self-start
               md:hidden
-            "
+            `, triggerClassName)}
             size="sm"
             variant="outline"
           />

@@ -39,6 +39,15 @@ export function SiteHeader({ lang }: { lang: string }): ReactElement {
             {dict.header.docs}
           </Link>
           <Link
+            href={localizedHref(lang, '/playground')}
+            className="
+              transition-colors
+              hover:text-foreground
+            "
+          >
+            {dict.header.playground}
+          </Link>
+          <Link
             href={localizedHref(lang, '/docs/components/data-table')}
             className="
               transition-colors

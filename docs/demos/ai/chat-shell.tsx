@@ -15,7 +15,7 @@ import {
   TranscriptPending,
   TranscriptProvider,
 } from '@gedatou/cadenza-ai'
-import { Kbd } from '@gedatou/cadenza-ui'
+import { cn, Kbd } from '@gedatou/cadenza-ui'
 
 // The slice of useChat() the shell reads. Structural rather than UseChatReturn
 // because that type is generic over the tool set (its `interrupts` differ per
@@ -80,11 +80,7 @@ export function ChatShell({
   const last = chat.messages.at(-1)
   return (
     <TranscriptProvider status={chat.status} interrupts={chat.interrupts} addToolApprovalResponse={chat.addToolApprovalResponse}>
-      <div className={`
-        flex flex-col rounded-xl border
-        ${className}
-      `}
-      >
+      <div className={cn('flex flex-col rounded-xl border', className)}>
         {before}
         <Transcript>
           {chat.messages.length === 0 && empty !== undefined && <TranscriptEmpty>{empty}</TranscriptEmpty>}
