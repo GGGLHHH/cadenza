@@ -85,8 +85,8 @@ export function ChatShell({
     <TranscriptProvider status={chat.status} interrupts={chat.interrupts} addToolApprovalResponse={chat.addToolApprovalResponse}>
       <div className={cn('flex flex-col rounded-xl border', className)}>
         {before}
-        {/* Classic follow-the-end (no turn anchor), with the jump-to-latest button whenever the reader is above it. */}
-        <Transcript anchorTurns={false} after={<MessageScrollerButton />}>
+        {/* Turn anchoring (the sent message pins to the top, the reply fills below), with the jump-to-latest button whenever the reader is above the end. */}
+        <Transcript after={<MessageScrollerButton />}>
           {chat.messages.length === 0 && empty !== undefined && <TranscriptEmpty>{empty}</TranscriptEmpty>}
           {chat.messages.map(message => (
             <TranscriptMessage key={message.id} message={message} streaming={chat.status === 'streaming' && message === last}>

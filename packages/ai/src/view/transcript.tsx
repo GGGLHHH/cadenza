@@ -106,16 +106,32 @@ export interface TranscriptProps extends Omit<MessageScrollerViewportProps, 'cla
 
 interface TranscriptFrameContextValue {
   anchorTurns: boolean
+  /** The one row that may anchor: the latest user message among the direct children, or null when none is found. */
+  anchorId: string | null
 }
 
-const TranscriptFrameContext = createContext<TranscriptFrameContextValue>({ anchorTurns: true })
+const TranscriptFrameContext = createContext<TranscriptFrameContextValue>({ anchorTurns: true, anchorId: null })
 if (process.env.NODE_ENV !== 'production')
   TranscriptFrameContext.displayName = 'TranscriptFrameContext'
 
 /** The scrolling frame: `MessageScroller` with the house viewport, one row per `TranscriptMessage`. */
 export function Transcript({ children, autoScroll = true, defaultScrollPosition = 'end', anchorTurns = true, after, className, ...viewport }: TranscriptProps): ReactElement {
   useTranscript()
-  const frame = useMemo<TranscriptFrameContextValue>(() => ({ anchorTurns }), [anchorTurns])
+  // Only the latest user message is an anchor. The scroller treats every anchor
+  // it has not scrolled to as a pending target, and on a content change that
+  // keeps the child count (the pending marker giving way to the reply row) it
+  // scrolls to the first such anchor — with a loaded history that was the
+  // oldest message, and the view jumped there the moment a reply arrived.
+  const anchorId = useMemo(() => {
+    let id: string | null = null
+    for (const child of Children.toArray(children)) {
+      // By props, not by type: TranscriptMessage is declared below, and a caller's row wrapper that takes `message` should count too.
+      if (isValidElement<{ message?: UIMessage }>(child) && child.props.message?.role === 'user')
+        id = child.props.message.id
+    }
+    return id
+  }, [children])
+  const frame = useMemo<TranscriptFrameContextValue>(() => ({ anchorTurns, anchorId }), [anchorTurns, anchorId])
   return (
     <TranscriptFrameContext value={frame}>
       <MessageScrollerProvider autoScroll={autoScroll} defaultScrollPosition={defaultScrollPosition}>
@@ -155,7 +171,9 @@ export interface TranscriptMessageState {
 
 function TranscriptMessageImpl({ message, align, streaming = false, children, className }: TranscriptMessageProps): ReactElement {
   const user = message.role === 'user'
-  const { anchorTurns } = use(TranscriptFrameContext)
+  const { anchorTurns, anchorId } = use(TranscriptFrameContext)
+  // Falls back to every user row when the frame could not see the rows (they were not direct children).
+  const anchor = anchorTurns && user && (anchorId === null || anchorId === message.id)
   const parts: ReactNode[] = []
   const actions: ReactNode[] = []
   // eslint-disable-next-line react/no-children-for-each -- lift contract: a TranscriptActions child moves from the bubble to the footer
@@ -168,7 +186,7 @@ function TranscriptMessageImpl({ message, align, streaming = false, children, cl
   return (
     <MessageScrollerItem
       messageId={message.id}
-      scrollAnchor={user && anchorTurns}
+      scrollAnchor={anchor}
       data-slot="transcript-message"
       data-role={message.role}
       data-streaming={dataAttr(streaming)}

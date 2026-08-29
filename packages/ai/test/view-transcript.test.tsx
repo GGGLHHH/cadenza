@@ -101,16 +101,19 @@ describe('transcript frame', () => {
   const user: UIMessage = { id: 'u1', role: 'user', parts: [{ type: 'text', content: 'hi' }] }
   const assistant: UIMessage = { id: 'a1', role: 'assistant', parts: [{ type: 'text', content: 'hello' }] }
 
-  it('anchors user turns by default and not when anchorTurns is false', () => {
+  it('anchors only the latest user turn by default, and none when anchorTurns is false', () => {
+    const earlier: UIMessage = { id: 'u0', role: 'user', parts: [{ type: 'text', content: 'earlier' }] }
     const { unmount } = render(
       <TranscriptProvider status="ready">
         <Transcript>
-          <TranscriptMessage message={user} />
+          <TranscriptMessage message={earlier} />
           <TranscriptMessage message={assistant} />
+          <TranscriptMessage message={user} />
         </Transcript>
       </TranscriptProvider>,
     )
-    expect(document.querySelector('[data-role=user]')?.getAttribute('data-scroll-anchor')).toBe('true')
+    const anchors = Array.from(document.querySelectorAll('[data-scroll-anchor=true]')).map(e => e.getAttribute('data-message-id'))
+    expect(anchors).toEqual(['u1'])
     expect(document.querySelector('[data-role=assistant]')?.getAttribute('data-scroll-anchor')).toBe('false')
     unmount()
     render(

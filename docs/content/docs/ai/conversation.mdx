@@ -372,7 +372,7 @@ import { ContextUsage, DEFAULT_CONTEXT_USAGE_LABELS } from '@gedatou/cadenza-ai'
 | `children` | `ReactNode` | — | 一串 `TranscriptMessage` 与状态部件 |
 | `autoScroll` | `boolean` | `true` | 读者在末端时跟随新内容 |
 | `defaultScrollPosition` | `'start' \| 'end' \| 'last-anchor'` | `'end'` | 首次非空渲染的位置 |
-| `anchorTurns` | `boolean` | `true` | 发送后把这条 user 消息钉到视口顶部、回复在下方留白里展开（ChatGPT 式轮次锚定）；`false` = 经典跟底：视口留在末端跟着回复走。docs 的 `ChatShell` 用 `false` |
+| `anchorTurns` | `boolean` | `true` | 发送后把这条 user 消息钉到视口顶部、回复在下方留白里展开（ChatGPT 式轮次锚定）；只有**最新一条** user 行是锚点——老的 user 行若也是锚点，滚动器会在回复到达时跳去最早那条。`false` = 经典跟底：视口留在末端跟着回复走 |
 | `after` | `ReactNode` | — | 渲染在视口旁、框架之内、`role="log"` 之外——放 `MessageScrollerButton`（读者不在末端时出现的「回到最新」按钮） |
 | `className` | `string` | — | 落在滚动外壳上 |
 | 其余 | `MessageScrollerViewportProps` 去掉 `className` / `children` | — | 透传给视口（`scrollbars`、`preserveScrollOnPrepend` …） |
