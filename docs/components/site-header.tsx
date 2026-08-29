@@ -10,11 +10,13 @@ export function SiteHeader({ lang }: { lang: string }): ReactElement {
   const dict = getDictionary(lang)
   return (
     <header className="
-      sticky inset-bs-0 z-50 border-be bg-background inline-full
+      sticky inset-bs-0 z-50 border-be bg-background block-(--header-height)
+      inline-full
     "
     >
+      {/* The height sits on the header itself (border-box), so --header-height is the true footprint incl. the border — anything laid out as 100svh minus it comes out exact. */}
       <div className="
-        mx-auto flex items-center gap-4 px-4 block-(--header-height) inline-full
+        mx-auto flex items-center gap-4 px-4 block-full inline-full
         max-inline-350
         lg:px-8
       "
