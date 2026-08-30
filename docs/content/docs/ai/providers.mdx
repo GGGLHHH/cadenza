@@ -363,9 +363,12 @@ DeepSeek key 上。
 文本都把前面所有段重复一遍。把搜索报成工具调用，既是忠实的映射，也把段落边界还了回来。`@ai-sdk/openai`
 对同一批 wire 事件做的是同一件事。
 
-**剩下的缺口**：`Sources` 折叠块对 DeepSeek **目前恒为空**。`output_text.annotations`（url 引用）被上游
-adapter 丢弃，而我们能合成的工具结果里放的是 DeepSeek 记录的那次动作；`sourcesOf` 只从数组、或带
-`results` 键的对象里取 source，动作对象两者都不是。要填上它得等上游把 annotations 透出来。
+**剩下的缺口**：`Sources` 折叠块对 DeepSeek 目前是空的。`output_text.annotations`（url 引用）被上游
+adapter 丢弃，所以 `sourcesOf` 唯一读得到的就是我们合成的那条工具结果，而里面放的是 DeepSeek 记录的
+那次动作；它只从数组、或带 `results` 键的对象里取 source，**我们观测到的**动作形状两者都不是。
+
+这是对已观测形状下的结论，不是对协议的保证：OpenAI 的同名端点就有 `web_search_call.action.sources`
+这个 `include` 选项。DeepSeek 的动作对象哪天带上结果字段，这一段要重新量。
 
 ### 历史重放的顺序
 

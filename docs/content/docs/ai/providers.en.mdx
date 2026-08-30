@@ -391,11 +391,15 @@ reasoning does the splitting while nothing does the clearing, and every text blo
 earlier ones. Reporting the search as a tool call is both the honest mapping and the fix — it is
 what `@ai-sdk/openai` does with the same wire items.
 
-**What is still missing**: the `Sources` collapsible is **always empty** for DeepSeek.
-`output_text.annotations` (url citations) are dropped upstream, and the tool result we can synthesise
-holds DeepSeek's record of the action it took; `sourcesOf` only reads sources out of an array or an
-object with a `results` key, and an action object is neither. Filling it in waits on upstream
-surfacing the annotations.
+**What is still missing**: the `Sources` collapsible comes up empty for DeepSeek.
+`output_text.annotations` (url citations) are dropped upstream, so the only thing `sourcesOf` can
+read is the tool result we synthesise, and that holds DeepSeek's record of the action it took; it
+reads sources out of an array or an object with a `results` key, and **the action shapes we have
+observed** are neither.
+
+That is a conclusion about the shapes we have seen, not a guarantee about the protocol: OpenAI's
+endpoint of the same name carries a `web_search_call.action.sources` include option. The day
+DeepSeek's action object carries a result field, this needs measuring again.
 
 ### Ordering on history replay
 
