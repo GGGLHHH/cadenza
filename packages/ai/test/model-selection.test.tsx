@@ -44,9 +44,24 @@ describe('useModelSelection', () => {
     expect(result.current.selection.search).toBe(false)
   })
 
-  it('clamps a stored search that the current model cannot honour', () => {
+  it('clamps a stored search that the current model cannot honour, on both read surfaces', () => {
     localStorage.setItem('test:selection', JSON.stringify({ provider: 'openai', model: 'gpt-5.2', thinking: 'off', search: true }))
     const { result } = renderHook(() => useModelSelection({ catalog: defaultCatalog, key: 'test:selection' }))
     expect(result.current.forwardedProps.search).toBe(false)
+    expect(result.current.selection.search).toBe(false)
+  })
+
+  it('reads a selection stored before `search` existed as false, never undefined', () => {
+    // `SearchToggle` passes `selection.search` as its controlled `value`, and
+    // `useControllableState` locks controlled-ness at first render on
+    // `value !== undefined` — one undefined and the toggle runs uncontrolled
+    // for the rest of the session.
+    localStorage.setItem('test:selection', JSON.stringify({ provider: 'deepseek', model: 'deepseek-v4-flash', thinking: 'high' }))
+    const { result } = renderHook(() => useModelSelection({ catalog: defaultCatalog, key: 'test:selection' }))
+    expect(result.current.selection.search).toBe(false)
+    expect(result.current.forwardedProps.search).toBe(false)
+    // And the legacy shape must not survive a write through any of the setters.
+    act(() => result.current.setModel('deepseek/deepseek-v4-pro'))
+    expect(JSON.parse(localStorage.getItem('test:selection')!)).toMatchObject({ search: false })
   })
 })
