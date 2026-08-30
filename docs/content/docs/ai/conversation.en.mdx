@@ -220,6 +220,14 @@ from [MessageScroller](/docs/components/message-scroller): `Transcript` forwards
 `MessageScrollerViewport`'s props as they are, with `autoScroll` on and
 `defaultScrollPosition` `'end'` by default.
 
+**Only the block axis scrolls.** Base UI's ScrollArea puts an inline
+`min-width: fit-content` on its content wrapper, so by default the area is as wide as its widest
+content and scrolls sideways. A conversation must not behave that way — one long URL in a code
+fence would drag the whole column past the viewport and stretch every sibling with it, which reads
+as "some component is too wide". `Transcript` zeroes it, so the column is always the viewport's
+width and a wide block (a table, a code fence — `Markdown` already gives those
+`overflow-x: auto`) scrolls inside its own box.
+
 ## Markdown
 
 Text parts are rendered by [streamdown](https://streamdown.ai): GFM tables, highlighted code

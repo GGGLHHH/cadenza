@@ -120,6 +120,12 @@ const TranscriptFrameContext = createContext<TranscriptFrameContextValue>({ anch
 if (process.env.NODE_ENV !== 'production')
   TranscriptFrameContext.displayName = 'TranscriptFrameContext'
 
+/** Ran on the provider's side (Anthropic's or DeepSeek's server search), by the convention adapters stamp on the call. */
+function providerExecuted(part: ToolCallPart): boolean {
+  const metadata = (part as { metadata?: { providerExecuted?: unknown } }).metadata
+  return metadata?.providerExecuted === true
+}
+
 /** The scrolling frame: `MessageScroller` with the house viewport, one row per `TranscriptMessage`. */
 export function Transcript({ children, autoScroll = true, defaultScrollPosition = 'end', anchorTurns = true, previousPeek, after, className, ...viewport }: TranscriptProps): ReactElement {
   useTranscript()
@@ -145,7 +151,21 @@ export function Transcript({ children, autoScroll = true, defaultScrollPosition 
           data-slot="transcript"
           className={cn(`relative flex flex-1 flex-col min-block-0`, className)}
         >
-          <MessageScrollerViewport {...viewport}>
+          {/*
+            Base UI's ScrollArea gives its content wrapper an inline
+            `min-width: fit-content`, so anything wide scrolls the whole area
+            sideways. A transcript must not work that way: one long line in a
+            code fence — a URL, say — drags the entire column past the viewport
+            and every sibling stretches with it, which reads as "the tool card
+            is too wide". Zeroed, the column stays at the viewport's width and
+            the wide block scrolls inside its own box, which is what `Markdown`
+            already hands tables and code fences. `!` because the wrapper's
+            width is an inline style.
+          */}
+          <MessageScrollerViewport
+            {...viewport}
+            className="*:[[role=presentation]]:min-inline-0!"
+          >
             <MessageScrollerContent className="flex flex-col gap-6 p-4">{children}</MessageScrollerContent>
           </MessageScrollerViewport>
           {after}
@@ -289,15 +309,30 @@ export function TranscriptParts({ message, className }: TranscriptPartsProps): R
   while (index <= lastIndex) {
     const part = message.parts[index]
     if (part.type === 'tool-call') {
+      // A provider-executed call is not ours to fold: nothing here ran it, so
+      // "Ran N tools" would be untrue, and a fold would hide the only trace the
+      // reader has that the model went and searched. They lay out flat, one row
+      // each, and never join a group.
+      if (providerExecuted(part)) {
+        nodes.push(<div key={part.id}>{renderTool(part, index)}</div>)
+        index += 1
+        while (index <= lastIndex && message.parts[index].type === 'tool-result')
+          index += 1
+        continue
+      }
       // Consecutive tool calls (results interleaved) collapse into one group.
       const run: Array<[ToolCallPart, number]> = []
       let cursor = index
       while (cursor <= lastIndex) {
         const next = message.parts[cursor]
-        if (next.type === 'tool-call')
+        if (next.type === 'tool-call') {
+          if (providerExecuted(next))
+            break
           run.push([next, cursor])
-        else if (next.type !== 'tool-result')
+        }
+        else if (next.type !== 'tool-result') {
           break
+        }
         cursor += 1
       }
       const cards = run.map(([p, i]) => <div key={p.id}>{renderTool(p, i)}</div>)

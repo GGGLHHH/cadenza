@@ -28,6 +28,19 @@ describe('parts', () => {
     expect(q(container, '[data-slot=reasoning]')?.hasAttribute('data-open')).toBe(true)
   })
 
+  it('keeps the panel mounted while collapsed so its height is measured after the content settles', () => {
+    const part = { type: 'tool-call', id: 'c', name: 'get_time', arguments: '{"tz":"Asia/Shanghai"}', state: 'complete' } satisfies ToolCallPart
+    const { container } = render(<ToolCallCard part={part} />)
+    const panel = q(container, '[data-slot=collapsible-panel]')
+    // Collapsed, but present: Base UI measures the panel the instant it is
+    // revealed, and Markdown renders its code fence in a second pass. Mounting
+    // it only on open would measure it mid-render, so the card animates to the
+    // wrong height and corrects with a visible jump.
+    expect(panel).not.toBeNull()
+    expect(panel?.hasAttribute('hidden')).toBe(true)
+    expect(panel?.textContent).toContain('Asia/Shanghai')
+  })
+
   it('toolCallCard mirrors the seven tool states as named attributes', () => {
     const base = { type: 'tool-call', id: 'c', name: 'get_weather', arguments: '{"city":"Par' } satisfies Omit<ToolCallPart, 'state'>
     const { container, rerender } = render(<ToolCallCard part={{ ...base, state: 'input-streaming' }} />)

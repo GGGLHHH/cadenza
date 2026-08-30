@@ -189,7 +189,17 @@ await chat.addToolResult({ toolCallId, tool: 'get_viewport', output: { width: 12
 <ComponentPreview name="ai/tool-group" align="stretch" />
 
 `TranscriptParts` 扫到连续的 `tool-call`（中间夹着的 `tool-result` 不打断）时，把它们塞进一个
-`ToolCallGroup`，触发器文案是 `labels.toolGroup(n)`（默认 `Ran 3 tools`）。单独用时按位置组合，
+`ToolCallGroup`，触发器文案是 `labels.toolGroup(n)`（默认 `Ran 3 tools`）。
+
+`ToolCallCard`、`ToolCallGroup` 与 `Reasoning` 的面板都带 `keepMounted`——这不是性能优化，是正确性
+所需。Base UI 在面板被揭开的**那一瞬**量它的 `scrollHeight` 并把高度钉住，过渡结束才交回 `auto`；
+而 `Markdown` 的代码块是挂载后第二遍才高亮的，所以「开的时候才挂载」会量到半成品：面板先动到错的
+高度，200ms 后再瞬间校正——多了就是一片空白，少了就是内容被裁。提前挂载，量之前内容已经定型。
+代价是折叠状态下内容也会渲染。
+
+**厂商侧执行的调用不进组**：`metadata.providerExecuted` 为真的（Anthropic 与 DeepSeek 的服务端
+搜索）一律平铺，一行一个，也不会打断旁边普通工具的分组。理由有二：`Ran n tools` 的主语是「我们跑了
+n 个工具」，而这些一个都不是我们跑的；再者折起来会把「模型确实去搜了」这唯一的痕迹藏掉。单独用时按位置组合，
 同 [DialogTrigger](/docs/components/dialog)：**第一个 child 是触发器，其余进面板**。
 
 ```tsx

@@ -203,6 +203,12 @@ Escape 走 `onStop`；空草稿时发送按钮禁用。附件、模型选择、�
 `Transcript` 把 `MessageScrollerViewport` 的 props 原样透传，`autoScroll` 默认打开、
 `defaultScrollPosition` 默认 `'end'`。
 
+**只有纵向会滚。** Base UI 的 ScrollArea 给内容包装层加了行内 `min-width: fit-content`，
+默认行为是「内容多宽，整块就多宽，横着滚」。对话不能这样——代码块里一行长 URL
+就会把整列拖出视口，所有兄弟节点跟着变宽，看上去像是「某个部件超宽了」。`Transcript`
+把它清零，于是列宽恒等于视口，宽的块（表格、代码围栏，`Markdown` 本来就给了它们
+`overflow-x: auto`）在自己的盒子里横向滚动。
+
 ## Markdown
 
 文本部件交给 [streamdown](https://streamdown.ai) 渲染：GFM 表格、代码块高亮与复制、

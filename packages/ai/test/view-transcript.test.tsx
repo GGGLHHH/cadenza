@@ -138,4 +138,51 @@ describe('transcript frame', () => {
     expect(jump.closest('[role=log]')).toBeNull()
     expect(jump.closest('[data-slot=transcript]')).not.toBeNull()
   })
+
+  it('folds a run of ordinary tool calls but lays provider-executed ones out flat', () => {
+    const call = (id: string, name: string, providerExecuted?: boolean): unknown => ({
+      type: 'tool-call',
+      id,
+      name,
+      arguments: '{}',
+      state: 'complete',
+      output: {},
+      ...(providerExecuted === true ? { metadata: { providerExecuted: true } } : {}),
+    })
+    const show = (parts: unknown[]): HTMLElement => render(
+      <TranscriptProvider status="ready">
+        <Transcript>
+          <TranscriptMessage message={{ id: 'a', role: 'assistant', parts } as UIMessage} />
+        </Transcript>
+      </TranscriptProvider>,
+    ).container
+
+    // Two calls the app ran: still one group, per spec G6.
+    const grouped = show([call('c1', 'get_time'), call('c2', 'get_weather')])
+    expect(grouped.querySelector('[data-slot=tool-call-group]')).not.toBeNull()
+
+    // Two the provider ran: no group — nothing here ran them, and folding would
+    // hide the only trace that the model went and searched.
+    const flat = show([call('s1', 'web_search', true), call('s2', 'web_search', true)])
+    expect(flat.querySelector('[data-slot=tool-call-group]')).toBeNull()
+    expect(flat.querySelectorAll('[data-slot=tool-call-card]')).toHaveLength(2)
+  })
+
+  it('refuses to let wide content widen the column', () => {
+    const { container } = render(
+      <TranscriptProvider status="ready">
+        <Transcript>
+          <TranscriptMessage message={user} />
+        </Transcript>
+      </TranscriptProvider>,
+    )
+    // jsdom does no layout, so the guarantee itself (viewport width unchanged by
+    // a long code line) can only be measured in a browser — it was, on the
+    // playground. What is assertable here is that the override survives: Base UI
+    // gives the ScrollArea's content wrapper an inline `min-width: fit-content`,
+    // and only this rule keeps a wide block from dragging the whole transcript
+    // sideways.
+    const viewport = container.querySelector('[data-slot=message-scroller-viewport]')
+    expect(viewport?.className).toContain('*:[[role=presentation]]:min-inline-0!')
+  })
 })

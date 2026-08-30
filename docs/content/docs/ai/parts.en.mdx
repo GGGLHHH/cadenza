@@ -206,7 +206,22 @@ Several consecutive tool calls fold into one group behind a single trigger.
 
 When `TranscriptParts` meets a run of consecutive `tool-call`s (interleaved `tool-result`s do
 not break it), it wraps them in one `ToolCallGroup` whose trigger says `labels.toolGroup(n)`
-(`Ran 3 tools` by default). Standalone, it composes by position like
+(`Ran 3 tools` by default).
+
+The panels of `ToolCallCard`, `ToolCallGroup` and `Reasoning` all carry `keepMounted` — a
+correctness requirement, not an optimisation. Base UI measures the panel's `scrollHeight` the
+instant it is revealed and pins the height to it, handing it back to `auto` only when the transition
+ends; `Markdown` highlights its code fences in a second pass after mount. Mounting the panel on open
+therefore measures it mid-render: the panel animates to the wrong height and corrects with a visible
+jump 200ms later — overshooting into empty space, or falling short and clipping. Mounted from the
+start, the content has settled before anyone measures. The cost is that the content renders while
+collapsed.
+
+**Provider-executed calls never join a group**: anything carrying `metadata.providerExecuted`
+(Anthropic's and DeepSeek's server-side search) lays out flat, one row each, and does not break the
+grouping of ordinary tools around it. Two reasons: the subject of `Ran n tools` is "we ran n tools",
+and none of these was run here; and folding them would hide the only trace the reader has that the
+model went and searched. Standalone, it composes by position like
 [DialogTrigger](/docs/components/dialog): **the first child is the trigger, the rest go into the panel**.
 
 ```tsx

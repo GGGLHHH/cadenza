@@ -95,7 +95,8 @@ export function Reasoning({ content, complete, startedAt: startedAtProp, open: o
           )}
         </MarkerContent>
       </CollapsibleTrigger>
-      <CollapsiblePanel>
+      {/* Mounted from the start so the panel is measured after Markdown has settled — see `ToolCallCard`. */}
+      <CollapsiblePanel keepMounted>
         <div className="pbs-2">
           <Markdown
             content={content}

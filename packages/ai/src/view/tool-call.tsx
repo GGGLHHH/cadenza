@@ -165,7 +165,17 @@ export function ToolCallCard({ part, result, interrupt: _interrupt, streaming = 
           />
         )}
       </CollapsibleTrigger>
-      <CollapsiblePanel>
+      {/*
+        `keepMounted` is load-bearing, not an optimisation. Base UI pins the
+        panel to the `scrollHeight` it measures the moment the panel is
+        revealed, then hands the height back to `auto` when the transition ends.
+        Markdown renders in two passes (the code fence is highlighted after
+        mount), so a panel mounted at open time is measured mid-flight: the card
+        animates to the wrong height and snaps to the right one 200ms later —
+        overshooting into empty space, or falling short and clipping. Mounted
+        from the start, the content has already settled before anyone measures.
+      */}
+      <CollapsiblePanel keepMounted>
         <div className="flex flex-col gap-2 border-bs px-3 py-2">
           {input !== undefined && <Markdown content={jsonBlock(input)} streaming={state.pending && streaming} />}
           {output !== undefined && <Markdown content={jsonBlock(parseJson(output))} />}
@@ -225,7 +235,8 @@ export function ToolCallGroup({ count, children, open: openProp, defaultOpen, on
       className={cn('flex flex-col', className)}
     >
       {trigger}
-      <CollapsiblePanel>
+      {/* Same reason as the card: opening the group would otherwise mount the cards and measure them mid-render. */}
+      <CollapsiblePanel keepMounted>
         <div className="flex flex-col gap-2 pbs-2">{body}</div>
       </CollapsiblePanel>
     </Collapsible>
