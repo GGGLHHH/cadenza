@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from 'react'
 import type { Catalog, Model, ThinkingLevel } from '../catalog/types'
 import { Button, cn, Combobox, ComboboxCollection, ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxInput, ComboboxItem, ComboboxList, ComboboxPopup, ComboboxTrigger, ComboboxValue, dataAttr, Select, SelectItem, SelectPopup, SelectTrigger, SelectValue, Toggle } from '@gedatou/cadenza-ui'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconBrain, IconKey, IconPhoto } from '@tabler/icons-react'
+import { IconBrain, IconKey, IconPhoto, IconWorld } from '@tabler/icons-react'
 import { useMemo } from 'react'
 import { modelRef } from '../catalog/catalog'
 import { clampThinkingLevel, supportedThinkingLevels } from '../catalog/thinking'
@@ -212,6 +212,61 @@ export function ThinkingToggle({ children, className, defaultValue, model, onLev
       }}
     >
       <IconBrain aria-hidden />
+      {children}
+    </Toggle>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* SearchToggle                                                                */
+/* -------------------------------------------------------------------------- */
+
+/** The Toggle's own details, passed straight through. */
+export type SearchToggleChangeEventDetails = ToggleChangeEventDetails
+
+export interface SearchToggleProps {
+  model?: Model
+  value?: boolean
+  defaultValue?: boolean
+  onValueChange: (on: boolean, details: SearchToggleChangeEventDetails) => void
+  /** The label — DeepSeek's reads 联网搜索. */
+  children: ReactNode
+  /** Lands on the toggle. */
+  className?: string
+}
+
+/**
+ * The one-press web-search switch, the same pill as `ThinkingToggle`. Renders
+ * nothing for a model without `search`, so it appears and disappears with the
+ * model the way the thinking controls do. `data-search` mirrors the on state.
+ *
+ * The search itself runs on the provider's side; the caller's job is to put the
+ * answer into `forwardedProps` so the server can hand that provider its
+ * built-in tool (`createChatHandler`'s function form of `tools`).
+ */
+export function SearchToggle({ children, className, defaultValue, model, onValueChange, value }: SearchToggleProps): ReactElement | null {
+  const [on, setOn] = useControllableState({ value, defaultValue, fallback: false })
+  if (model?.search !== true)
+    return null
+  return (
+    <Toggle
+      data-slot="search-toggle"
+      data-search={dataAttr(on)}
+      pressed={on}
+      size="sm"
+      variant="outline"
+      className={cn(`
+        gap-1.5 rounded-full
+        data-pressed:border-primary/40 data-pressed:bg-primary/10
+        data-pressed:text-primary
+        data-pressed:hover:bg-primary/15
+      `, className)}
+      onPressedChange={(next, details) => {
+        setOn(next)
+        onValueChange(next, details)
+      }}
+    >
+      <IconWorld aria-hidden />
       {children}
     </Toggle>
   )

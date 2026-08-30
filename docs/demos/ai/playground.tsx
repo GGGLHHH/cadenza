@@ -16,6 +16,7 @@ import {
   messageText,
   ModelPicker,
   modelRef,
+  SearchToggle,
   supportedThinkingLevels,
   ThinkingLevelPicker,
   ThinkingToggle,
@@ -166,6 +167,9 @@ function Chat({ anchorTurns, byok, catalog, className, resumeRef, threadId }: { 
           {sel.selection.thinking !== 'off' && supportedThinkingLevels(sel.model).length > 2 && (
             <ThinkingLevelPicker model={sel.model} value={sel.selection.thinking} onValueChange={level => sel.setThinking(level)} />
           )}
+          <SearchToggle model={sel.model} value={sel.selection.search} onValueChange={on => sel.setSearch(on)}>
+            Search
+          </SearchToggle>
           <Button
             aria-label="API keys"
             size="icon-sm"
@@ -241,8 +245,14 @@ function Workspace({ layout, onReset }: { layout: Layout, onReset?: () => void }
         )}
         onValueChange={setThreadId}
       />
+      {/* Full-screen: the pane is whatever the sidebar leaves, and the column
+          fills it up to a cap. 3xl (48rem) is the measure the chat apps settled
+          on, and it is what the docs prose column already uses. A wider cap read
+          as roomy until tool cards arrived: prose only *looks* narrow because it
+          wraps mid-line, while a bordered card always fills the column and makes
+          its real width plain. The composer shares the cap, so both line up. */}
       <div className={cn('flex flex-1 flex-col min-block-0 min-inline-0', app && `
-        mx-auto inline-full max-inline-4xl
+        mx-auto inline-full max-inline-3xl
       `)}
       >
         <Chat

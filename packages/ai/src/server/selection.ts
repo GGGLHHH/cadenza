@@ -7,6 +7,8 @@ export interface Selection {
   preset: ProviderPreset
   model: Model
   thinking: ThinkingLevel
+  /** 客户端要的联网搜索，且模型确实声明了这个能力。 */
+  search: boolean
 }
 
 // Vendor ids are `vendor/model`, `model:tag` (ollama) or `~vendor/alias` (openrouter).
@@ -42,5 +44,6 @@ export function pickSelection(fp: Record<string, unknown>, presets: readonly Pro
     model = { id: modelId, name: modelId, provider: preset.id, input: ['text'], reasoning: false }
   }
   const raw = typeof fp.thinking === 'string' && (THINKING_LEVELS as readonly string[]).includes(fp.thinking) ? fp.thinking as ThinkingLevel : 'off'
-  return { preset, model, thinking: clampThinkingLevel(model, raw) }
+  // 能力由目录判定，不信客户端：`search: true` 配一个没有这个能力的模型只是 false。
+  return { preset, model, thinking: clampThinkingLevel(model, raw), search: fp.search === true && model.search === true }
 }

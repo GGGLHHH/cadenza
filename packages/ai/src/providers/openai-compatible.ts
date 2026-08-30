@@ -1,3 +1,4 @@
+import type { CompatibleApi } from '@tanstack/ai-openai/compatible'
 import type { Model } from '../catalog/types'
 import type { ProviderPreset } from '../server/preset'
 import { openaiCompatibleText } from '@tanstack/ai-openai/compatible'
@@ -13,6 +14,13 @@ export interface OpenAICompatibleConfig {
   /** Env names `getByokKey` may fall back to, in order. */
   env?: string | readonly string[]
   models: readonly Model[]
+  /**
+   * Which OpenAI protocol the endpoint speaks. Default `'chat-completions'`
+   * (`{baseURL}/chat/completions`); `'responses'` targets `{baseURL}/responses`,
+   * which a few compatible vendors implement — and where their built-in tools
+   * (DeepSeek's `web_search`) and native reasoning events live.
+   */
+  api?: CompatibleApi
   /** Defaults to `openaiCompatibleThinking` (`reasoning_effort` for reasoning models). */
   thinking?: ProviderPreset['thinking']
   /** Adapter name shown in TanStack AI's events / debug output; defaults to `id`. */
@@ -41,7 +49,7 @@ export function openaiCompatiblePreset(config: OpenAICompatibleConfig): Provider
     keyRequired: true,
     runtime: 'node',
     models: config.models,
-    create: (model, key) => openaiCompatibleText(model, { baseURL: config.baseURL, apiKey: key ?? '', name: config.name ?? config.id }),
+    create: (model, key) => openaiCompatibleText(model, { baseURL: config.baseURL, apiKey: key ?? '', name: config.name ?? config.id, api: config.api }),
     thinking: config.thinking ?? openaiCompatibleThinking,
     discoverModels: key => discoverCompatibleModels(config, key),
   })

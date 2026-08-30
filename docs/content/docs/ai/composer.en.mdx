@@ -59,6 +59,7 @@ Composer                      <form> + InputGroup; data-submitted / data-streami
    ├─ ModelPicker             model (Combobox)
    ├─ ThinkingToggle          deep-thinking switch (the DeepSeek pill; not rendered for a model without reasoning)
    ├─ ThinkingLevelPicker     thinking level (Select; not rendered with a single level)
+   ├─ SearchToggle            web-search switch (the same pill; not rendered for a model without search)
    └─ ComposerSubmit          send while idle, stop while running
 
 Suggestions                   a row of prompt chips, usually inside TranscriptEmpty
@@ -137,12 +138,21 @@ thinking level lists only the levels this model supports.
   returns `null`**, so switching to GPT-4.1 makes it disappear. The Playground pairs the two: the
   switch is always there, the dropdown only while thinking is on and the model offers more than one
   on-level.
-- `useModelSelection({ catalog, key, initial })` ties the two together and persists them
+- `SearchToggle` is the same pill for web search: it lights up while on, carries `data-search`, and
+  `onValueChange` receives a boolean. It renders only when `Model.search` is true, so it appears and
+  disappears with the model — today only DeepSeek's two V4 models declare the capability. The search
+  itself runs on the provider's side; this switch only puts the answer into `forwardedProps`, and the
+  server's function form of `createChatHandler`'s `tools` decides whether to attach the built-in tool
+  (see [providers](/docs/ai/providers#provider-built-in-tools)).
+- `useModelSelection({ catalog, key, initial })` ties them together and persists them
   (`localStorage`, key `cadenza-ai:selection` by default): `selection` / `model` / `provider`,
-  `setModel(ref)` (clamps the thinking level to what the new model supports),
-  `setThinking(level)`, and `forwardedProps`, a stable object for `useChat({ forwardedProps })`
-  — sending right after switching models already uses the new value, and the server reads
-  `data.provider` / `data.model` / `data.thinking`.
+  `setModel(ref)` (clamps the thinking level to what the new model supports, and drops `search` when
+  the new model has none), `setThinking(level)`, `setSearch(on)`, and `forwardedProps`, a stable
+  object for `useChat({ forwardedProps })` — sending right after switching models already uses the
+  new value, and the server reads `data.provider` / `data.model` / `data.thinking` / `data.search`.
+  The catalog is the only authority on capability: `setSearch(true)` on a model without `search` is
+  false, and the stored value is clamped again on read (a selection saved before the field existed is
+  `undefined`, and a hand-edited store may disagree with the current model).
 
 The seven levels from weakest to strongest: `off` / `minimal` / `low` / `medium` / `high` /
 `xhigh` / `max`.
@@ -428,6 +438,19 @@ The deep-thinking switch; returns `null` for a model without reasoning.
 | `value` | `ThinkingLevel` | — | controlled |
 | `className` | `string` | — | lands on the Toggle |
 
+### SearchToggle
+
+The web-search switch; returns `null` unless `model.search` is true.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onValueChange` | `(on: boolean, details: ToggleChangeEventDetails) => void` | — | the Toggle's own details |
+| `children` | `ReactNode` | — | the label (DeepSeek's reads 联网搜索) |
+| `model` | `Model` | — | decides whether it renders; absent counts as unsupported |
+| `defaultValue` | `boolean` | `false` | — |
+| `value` | `boolean` | — | controlled |
+| `className` | `string` | — | lands on the Toggle |
+
 ### ThinkingLevelPicker
 
 The Select of the model's supported thinking levels; returns `null` when there is nothing to choose.
@@ -445,7 +468,8 @@ The types are exported alongside: `ComposerProps` / `ComposerState` / `ComposerS
 `ComposerAttachProps` / `ComposerAttachmentsProps` / `ComposerDictateProps` / `SuggestionsProps` /
 `SuggestionsItemProps` / `SuggestionsChangeEventDetails` / `QueueListProps` / `ModelPickerProps` /
 `ModelPickerChangeEventDetails` / `ThinkingLevelPickerProps` / `ThinkingLevelPickerChangeEventDetails` /
-`ThinkingToggleProps` / `ThinkingToggleChangeEventDetails`;
+`ThinkingToggleProps` / `ThinkingToggleChangeEventDetails` / `SearchToggleProps` /
+`SearchToggleChangeEventDetails`;
 on the hook side: `AttachmentDraft` / `DraftAttachment` / `AttachmentKind` / `AttachmentState` /
 `UseAttachmentDraftOptions` / `ModelSelection` / `UseModelSelectionOptions` / `UseModelSelectionReturn`,
 along with `DEFAULT_MAX_ATTACHMENT_BYTES`, `attachmentKindOf`, `fileToContentPart` and `useComposer`.

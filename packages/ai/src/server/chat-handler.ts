@@ -11,7 +11,13 @@ export interface ChatHandlerOptions<TContext = unknown> {
   /** `provider/model` used when the request carries no selection. */
   defaultModel?: string
   systemPrompts?: SystemPrompt[] | ((selection: Selection) => SystemPrompt[])
-  tools?: ReadonlyArray<AnyTool>
+  /**
+   * Client tools always merge in on top. Prefer the function form whenever any
+   * entry is a provider tool (`webSearchTool()` and friends): those are branded
+   * per vendor, and an adapter that does not recognise the brand silently
+   * degrades the tool into a schema-less function call nothing can execute.
+   */
+  tools?: ReadonlyArray<AnyTool> | ((selection: Selection) => ReadonlyArray<AnyTool>)
   middleware?: Array<ChatMiddleware<TContext>>
   context?: (request: Request) => TContext | Promise<TContext>
   agentLoopStrategy?: AgentLoopStrategy
@@ -94,7 +100,7 @@ export function createChatHandler<TContext = unknown>(options: ChatHandlerOption
       runId: params.runId,
       parentRunId: params.parentRunId,
       resume: params.resume,
-      tools: mergeAgentTools(options.tools ?? [], params.tools),
+      tools: mergeAgentTools(typeof options.tools === 'function' ? options.tools(selection) : options.tools ?? [], params.tools),
       systemPrompts: typeof options.systemPrompts === 'function' ? options.systemPrompts(selection) : options.systemPrompts,
       modelOptions,
       middleware,

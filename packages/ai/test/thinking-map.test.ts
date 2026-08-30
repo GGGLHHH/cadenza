@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { THINKING_LEVELS } from '../src/catalog/thinking'
 import {
   anthropicThinking,
+  deepseekResponsesThinking,
   deepseekThinking,
   geminiThinking,
   grokThinking,
@@ -29,6 +30,20 @@ describe('thinking → modelOptions', () => {
     expect(deepseekThinking('xhigh', flash)).toEqual({ thinking: { type: 'enabled' }, reasoning_effort: 'high' })
     expect(deepseekThinking('max', flash)).toEqual({ thinking: { type: 'enabled' }, reasoning_effort: 'max' })
     expect(deepseekThinking('high', m('x', 'deepseek', { reasoning: false }))).toEqual({})
+  })
+
+  it('deepseek on the responses endpoint: one reasoning.effort, the seven levels verbatim, off is none', () => {
+    const flash = m('deepseek-v4-flash', 'deepseek', { thinkingLevels: ['off', 'low', 'high', 'max'] })
+    expect(table(deepseekResponsesThinking, flash)).toEqual({
+      off: { reasoning: { effort: 'none' } },
+      minimal: { reasoning: { effort: 'minimal' } },
+      low: { reasoning: { effort: 'low' } },
+      medium: { reasoning: { effort: 'medium' } },
+      high: { reasoning: { effort: 'high' } },
+      xhigh: { reasoning: { effort: 'xhigh' } },
+      max: { reasoning: { effort: 'max' } },
+    })
+    expect(deepseekResponsesThinking('high', m('x', 'deepseek', { reasoning: false }))).toEqual({})
   })
 
   it('openai', () => {

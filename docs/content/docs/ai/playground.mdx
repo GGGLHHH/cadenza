@@ -72,6 +72,22 @@ const transcription = useTranscription({
 />
 ```
 
+### 按模型出现的开关
+
+工具栏是 `ComposerDictate → ModelPicker → ThinkingToggle → ThinkingLevelPicker → SearchToggle → 密钥`，
+后三个都按当前模型的能力显隐，所以换模型时工具栏自己会变：
+
+- **DeepThink**（`ThinkingToggle`）：不支持推理的模型不渲染；开启落到 `'high'` 按模型 clamp 后的档。
+- **档位下拉**（`ThinkingLevelPicker`）：只在思考已开启、且模型有多于一档可选时出现（DeepSeek 两个型号都会露出来）。
+- **Search**（`SearchToggle`）：只有 `Model.search` 为真的模型才渲染，目前是 DeepSeek 的两个 V4。
+  打开它，`forwardedProps.search` 变成 `true`，`/api/ai/chat` 才把 `deepseekWebSearch()` 挂进那一轮的
+  `tools`；关着就完全不发那把工具。选择连同开关一起存在 `localStorage` 的 `docs-playground:selection`，
+  换到没有该能力的模型时会被清掉。
+
+搜索在 DeepSeek 服务端执行，记在用户自己那把 key 上，我们这边不跑任何东西——但每一轮会以一张
+`web_search` 工具卡片出现在回答里，输入是它记录的那次动作。剩下的缺口是 url 引用仍拿不到，
+原因见 [providers](/docs/ai/providers#厂商内建工具)。
+
 ### 自动标题
 
 照 ChatGPT 的做法：新线程在列表里先叫 **New chat**（`ThreadList` 的 `untitled` 文案——库里没有默认文案，

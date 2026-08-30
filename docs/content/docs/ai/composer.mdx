@@ -57,6 +57,7 @@ Composer                      <form> + InputGroup；data-submitted / data-stream
    ├─ ModelPicker             模型（Combobox）
    ├─ ThinkingToggle          深度思考开关（DeepSeek 式胶囊；不支持推理的模型不渲染）
    ├─ ThinkingLevelPicker     思考强度（Select；只有一档时不渲染）
+   ├─ SearchToggle            联网搜索开关（同款胶囊；模型没有 search 能力时不渲染）
    └─ ComposerSubmit          空闲时发送，运行中停止
 
 Suggestions                   提示词 chip 行，通常放在 TranscriptEmpty 里
@@ -120,10 +121,17 @@ InputGroup 的自增高与底部工具条规则靠 `>` 选择器；附件条也�
 - `ThinkingLevelPicker` 是一个 [Select](/docs/components/select)，选项来自 `supportedThinkingLevels(model)`；
   **只有一档（不支持推理的模型）时返回 `null`**，所以切到 GPT-4.1 它就消失。试玩页把两者搭在一起：
   开关常驻，下拉只在开启且模型有多于一档可选时出现。
-- `useModelSelection({ catalog, key, initial })` 把两者串起来并持久化（`localStorage`，键默认 `cadenza-ai:selection`）：
-  `selection` / `model` / `provider`、`setModel(ref)`（把思考档位 clamp 到新模型支持的范围）、
-  `setThinking(level)`，以及给 `useChat({ forwardedProps })` 的稳定对象 `forwardedProps`——
-  切完模型立刻发送也用新值，服务端从 `data.provider` / `data.model` / `data.thinking` 读。
+- `SearchToggle` 是同一枚胶囊的联网搜索版：按下亮起、`data-search` 在场，`onValueChange` 收到布尔。
+  `Model.search` 为真才渲染，所以它跟着模型出现和消失——目前只有 DeepSeek 的两个 V4 型号声明了这个能力。
+  搜索本身在厂商那边执行，这个开关只负责把答案送进 `forwardedProps`，由服务端 `createChatHandler`
+  的函数形式 `tools` 决定挂不挂那把内建工具（见 [providers](/docs/ai/providers#厂商内建工具)）。
+- `useModelSelection({ catalog, key, initial })` 把它们串起来并持久化（`localStorage`，键默认 `cadenza-ai:selection`）：
+  `selection` / `model` / `provider`、`setModel(ref)`（把思考档位 clamp 到新模型支持的范围，
+  新模型没有搜索能力时把 `search` 一起清掉）、`setThinking(level)`、`setSearch(on)`，
+  以及给 `useChat({ forwardedProps })` 的稳定对象 `forwardedProps`——切完模型立刻发送也用新值，
+  服务端从 `data.provider` / `data.model` / `data.thinking` / `data.search` 读。
+  能力判定只认目录：`setSearch(true)` 给一个没有 `search` 的模型是 false，读存储时也再 clamp 一次
+  （早于这个字段存下的选择是 `undefined`，手改过的存储可能与当前模型不符）。
 
 七个档位从弱到强：`off` / `minimal` / `low` / `medium` / `high` / `xhigh` / `max`。
 
@@ -385,6 +393,19 @@ const [draft, setDraft] = useStoredState(`cadenza-ai:draft:${threadId}`, '')
 | `value` | `ThinkingLevel` | — | 受控 |
 | `className` | `string` | — | 落在 Toggle 上 |
 
+### SearchToggle
+
+联网搜索开关；`model.search` 不为真时返回 `null`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `onValueChange` | `(on: boolean, details: ToggleChangeEventDetails) => void` | — | Toggle 自己的 details |
+| `children` | `ReactNode` | — | 文案（DeepSeek 写的是「联网搜索」） |
+| `model` | `Model` | — | 决定是否渲染；缺省视为不支持 |
+| `defaultValue` | `boolean` | `false` | — |
+| `value` | `boolean` | — | 受控 |
+| `className` | `string` | — | 落在 Toggle 上 |
+
 ### ThinkingLevelPicker
 
 模型支持的思考档位 Select；无可选时返回 `null`。
@@ -401,7 +422,8 @@ const [draft, setDraft] = useStoredState(`cadenza-ai:draft:${threadId}`, '')
 `ComposerTextareaProps` / `ComposerToolbarProps` / `ComposerSubmitProps` / `ComposerAttachProps` /
 `ComposerAttachmentsProps` / `ComposerDictateProps` / `SuggestionsProps` / `SuggestionsItemProps` /
 `SuggestionsChangeEventDetails` / `QueueListProps` / `ModelPickerProps` / `ModelPickerChangeEventDetails` /
-`ThinkingLevelPickerProps` / `ThinkingLevelPickerChangeEventDetails` / `ThinkingToggleProps` / `ThinkingToggleChangeEventDetails`；hook 一侧：`AttachmentDraft` /
+`ThinkingLevelPickerProps` / `ThinkingLevelPickerChangeEventDetails` / `ThinkingToggleProps` / `ThinkingToggleChangeEventDetails` /
+`SearchToggleProps` / `SearchToggleChangeEventDetails`；hook 一侧：`AttachmentDraft` /
 `DraftAttachment` / `AttachmentKind` / `AttachmentState` / `UseAttachmentDraftOptions` / `ModelSelection` /
 `UseModelSelectionOptions` / `UseModelSelectionReturn`，以及 `DEFAULT_MAX_ATTACHMENT_BYTES`、
 `attachmentKindOf`、`fileToContentPart`、`useComposer`。

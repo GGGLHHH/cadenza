@@ -79,11 +79,12 @@ function Chat(): ReactElement {
   thinking(level, model) + discoverModels?(key)`; importing from `./providers/<id>` is what
   pulls in the adapter — each file imports only its own `@tanstack/ai-<id>`, so you bundle
   exactly the vendors you install.
-- **Selection is three keys.** `provider` / `model` / `thinking` on the client's
+- **Selection is four keys.** `provider` / `model` / `thinking` / `search` on the client's
   `forwardedProps` are all the server reads: the provider must be in `providers`, the model
   must be in the preset's catalog (ollama / openai-compatible, which carry `discoverModels`,
-  admit ids outside it), an invalid thinking level counts as `'off'`; every other key is
-  ignored and never spread into `chat()`.
+  admit ids outside it), an invalid thinking level counts as `'off'`, and `search` also needs the
+  model itself to declare `Model.search`; every other key is ignored and never spread into
+  `chat()`. The catalog is the authority on capability — what the request claims is not.
 - **Keys belong to the browser.** A `ByokClient` holds them; `useChat({ byok, byokProvider })`
   stamps `x-byok-<id>` for the current provider on every request. On the server `getByokKey`
   prefers the header and falls back to env; with neither it answers 401 `byok_missing`, and
@@ -109,11 +110,12 @@ catalog). The demo at the top adds a custom provider row with `defaultCatalog.wi
 | `bedrock` | Amazon Bedrock | `true` / `node` | bearer key; the Converse path has no reasoning parameter, no pricing |
 | `vertex` | Vertex AI | `false` / `node` | reuses gemini's model table; ADC or an express key is read from env by the adapter |
 | `ollama` | Ollama | `false` / `local` | local models have no pricing; the `x-byok-ollama` header carries the host URL; tags outside the catalog are admitted too |
-| `deepseek` | DeepSeek | `true` / `node` | models, pricing and tiers copied from pi-ai's generated table (TanStack ships no DeepSeek adapter) |
+| `deepseek` | DeepSeek | `true` / `node` | models, pricing and tiers copied from pi-ai's generated table (TanStack ships no DeepSeek adapter); runs on the Responses endpoint, with built-in web search |
 
 `Model`'s fields: `id` / `name` / `provider` / `input` (modalities) / `reasoning` /
 `contextWindow?` / `maxOutputTokens?` / `cost?` (USD per million tokens, with `cacheRead` /
-`cacheWrite`) / `thinkingLevels?` (default = `reasoning ? THINKING_LEVELS : ['off']`).
+`cacheWrite`) / `thinkingLevels?` (default = `reasoning ? THINKING_LEVELS : ['off']`) /
+`search?` (the model has provider-side web search; default false).
 `modelRef(model)` builds `'openai/gpt-5.2'`; `parseModelRef(ref)` splits on the first slash
 only — OpenRouter and Vercel Gateway model ids contain slashes themselves. Cost estimation is
 covered in [Usage and cost](/docs/ai/conversation#usage-and-cost).
@@ -147,7 +149,7 @@ receives is whatever `getByokKey` resolved from the header or env; the two provi
 | `bedrock` | `createBedrockConverse(model, key)` | `BEDROCK_API_KEY` → `AWS_BEARER_TOKEN_BEDROCK` | `{}` | bearer only; SigV4 is deployment config, not BYOK; the official `bedrockByok` has no env, this package adds it |
 | `vertex` | `vertexText(model, key ? { apiKey: key } : undefined)` | `GOOGLE_VERTEX_API_KEY`; else project + location (see below) | same as `gemini` (function reused) | `keyRequired: false`; with no env at all `create` throws `VertexAuthError` |
 | `ollama` | `key ? createOllamaChat(model, key) : ollamaText(model)` | `OLLAMA_HOST` (a host, not a key; default `http://localhost:11434`) | `{ think }` | `runtime: 'local'`, dropped on Vercel; `discoverModels` = `GET {host}/api/tags` |
-| `deepseek` | `new DeepSeekChatAdapter(client, model)` — a subclass of the compatible adapter | `DEEPSEEK_API_KEY` | `{ thinking: { type }, reasoning_effort }`, low / high / max | composed from `openaiCompatiblePreset` with only the adapter swapped; `discoverModels` = `GET /models`. The subclass overrides two hooks: `extractReasoning` turns `delta.reasoning_content` into `REASONING_*` events (thinking reaches the `thinking` part), and `convertMessage` echoes `reasoning_content` on every assistant turn (DeepSeek 400s a tool round without it while thinking is on) |
+| `deepseek` | `new DeepSeekResponsesAdapter(client, model)` — a subclass of the compatible **Responses** adapter | `DEEPSEEK_API_KEY` | `{ reasoning: { effort } }`, the seven levels verbatim | composed from `openaiCompatiblePreset({ api: 'responses' })` with only the adapter swapped; `discoverModels` = `GET /models`. DeepSeek serves three protocols from one host and they are not equal: only `/responses` carries the built-in `web_search`, and only there does thinking arrive as the standard `response.reasoning_text.delta` the base already parses. The subclass overrides two hooks: `mapOptionsToRequest` (the base's Responses converter forces every tool to `{ type: 'function' }`, so it routes through the one that dispatches on `metadata.__kind` and lets `deepseekWebSearch()` reach the wire as `{ type: 'web_search' }`) and `convertMessagesToInput` (moves the assistant's text *ahead of* its `function_call` items — see below) |
 | `openai-compatible` | `openaiCompatibleText(model, { baseURL, apiKey: key, name })` | `config.env` | `{ reasoning_effort }`, three tiers; `config.thinking` replaces it | `openaiCompatiblePreset(config)`; `discoverModels` = `GET {baseURL}/models` |
 | `byteplus` | throws an `Error` | `ARK_API_KEY` → `BYTEPLUS_API_KEY` | `{}` | placeholder; `models: []`, not in `defaultCatalog` |
 
@@ -187,7 +189,7 @@ switched off; "three tiers" = `EFFORT_3`, minimal → low, xhigh / max → high)
 | `llmgateway` | `{ reasoning_effort: level }`, all seven levels | `{}` | — |
 | `vertex` | same as `gemini` (`geminiThinking` reused) | same as `gemini` | — |
 | `ollama` | gpt-oss family `{ think: 'low' \| 'medium' \| 'high' }`, three tiers; others `{ think: true }` | `{ think: false }` | — |
-| `deepseek` | `{ thinking: { type: 'enabled' }, reasoning_effort }`, minimal / medium fold to low, xhigh to high; non-reasoning models `{}` | `{ thinking: { type: 'disabled' } }` | DeepSeek defaults to thinking on at high, so off must send disabled explicitly |
+| `deepseek` | `{ reasoning: { effort: level } }`, the seven levels verbatim (`deepseekResponsesThinking`); non-reasoning models `{}` | `{ reasoning: { effort: 'none' } }` | The Responses endpoint has one `reasoning.effort` (`summary` is unsupported). The Chat Completions dialect `deepseekThinking` (`{ thinking: { type }, reasoning_effort }`, minimal / medium fold to low, xhigh to high) is still exported for other endpoints speaking it |
 | `openai-compatible` | `{ reasoning_effort }`, three tiers; non-reasoning models `{}`; `config.thinking` swaps the whole function | `{}` | — |
 | `mistral` / `bedrock` | `{}` (`noThinking`); every catalog model is `reasoning: false`, so `off` is the only level | `{}` | — |
 
@@ -252,7 +254,7 @@ The docs site's `/api/ai/chat`, verbatim — the Playground runs on it:
 // docs/app/api/ai/chat/route.ts
 import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
 import { bedrock } from '@gedatou/cadenza-ai/providers/bedrock'
-import { deepseek } from '@gedatou/cadenza-ai/providers/deepseek'
+import { deepseek, deepseekWebSearch } from '@gedatou/cadenza-ai/providers/deepseek'
 import { gemini } from '@gedatou/cadenza-ai/providers/gemini'
 import { grok } from '@gedatou/cadenza-ai/providers/grok'
 import { groq } from '@gedatou/cadenza-ai/providers/groq'
@@ -282,7 +284,12 @@ export const { POST, GET } = createChatHandler({
   providers: [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama, deepseek],
   defaultModel: 'openai/gpt-5.2',
   systemPrompts: ['You are the cadenza docs playground assistant. Keep answers short.'],
-  tools: [getTime],
+  // The function form, because `deepseekWebSearch()` is a provider tool: any
+  // adapter that does not know the brand degrades it into a schema-less
+  // function call nothing can execute, so it must only reach DeepSeek. And it
+  // only goes out when the user asked for it — `pickSelection` has already
+  // checked `Model.search`, so a request cannot switch on what the model lacks.
+  tools: sel => sel.preset.id === 'deepseek' && sel.search ? [getTime, deepseekWebSearch()] : [getTime],
 })
 ```
 
@@ -306,7 +313,7 @@ The Playground's catalog is built from `useServerCoverage(byok).providers`
 second copy of the list on the client.
 
 `POST`'s lifecycle: `content-length` over `maxBodyBytes` → 413; `chatParamsFromRequest`
-parses (a bad request → 400); `pickSelection` resolves the three keys (→ 400
+parses (a bad request → 400); `pickSelection` resolves the four keys (→ 400
 `unknown_provider` / `unknown_model`); the `onSelect` hook; `getByokKey` (missing → 401
 `byok_missing`); the ollama host allowlist; `preset.create(model, key)`; `resolveThinking`;
 `chat({...})` → `toServerSentEventsResponse`, aborted when the client disconnects. `GET` has
@@ -329,7 +336,7 @@ failure → 502 `discover_failed` (the upstream error text is not echoed).
 | `providers` | `readonly ProviderPreset[]` | — | — |
 | `defaultModel` | `string` | — | `'provider/model'`; used when the request carries no provider / model |
 | `systemPrompts` | `SystemPrompt[] \| ((selection: Selection) => SystemPrompt[])` | — | server-configured only |
-| `tools` | `ReadonlyArray<AnyTool>` | `[]` | merged with client tools by `mergeAgentTools`; a same-named server tool wins |
+| `tools` | `ReadonlyArray<AnyTool> \| ((selection: Selection) => ReadonlyArray<AnyTool>)` | `[]` | merged with client tools by `mergeAgentTools`; a same-named server tool wins. The function form is required once any entry is a provider tool — see below |
 | `middleware` | `Array<ChatMiddleware<TContext>>` | `[]` | — |
 | `context` | `(request: Request) => TContext \| Promise<TContext>` | — | — |
 | `agentLoopStrategy` | `AgentLoopStrategy` | TanStack's default | not exposed to the client |
@@ -340,6 +347,80 @@ failure → 502 `discover_failed` (the upstream error text is not echoed).
 | `maxBodyBytes` | `number` | `4 * 1024 * 1024` | over it → 413 |
 | `ollamaHosts` | `readonly string[]` | loopback + RFC 1918 | hosts `x-byok-ollama` may point at |
 | `debug` | `DebugOption` | — | forwarded to `chat()` and the SSE response |
+
+### Provider built-in tools
+
+An ordinary tool (`toolDefinition(...).server(...)`) works across providers, so a flat array is
+fine. A provider built-in does not: it carries a vendor brand (a private `metadata.__kind`), and
+the adapter that recognises it converts it into a native shape like `{ type: 'web_search' }` for
+the vendor to execute server-side — while **an adapter that does not recognise the brand silently
+degrades it into a schema-less function call nothing can execute**. So the moment one built-in is
+in the array, `tools` must take the function form and filter on the selection:
+
+```ts
+import { deepseek, deepseekWebSearch } from '@gedatou/cadenza-ai/providers/deepseek'
+
+export const { POST, GET } = createChatHandler({
+  providers: [openai, anthropic, deepseek],
+  tools: sel => sel.preset.id === 'deepseek' && sel.search ? [getTime, deepseekWebSearch()] : [getTime],
+})
+```
+
+`deepseekWebSearch()` is DeepSeek's server-side web search: the model searches, opens and reads
+pages itself (auto-continuing up to 10 rounds) before answering. Nothing runs on our side, and it
+needs no second secret — it bills to the user's own DeepSeek key.
+
+Whether the tool goes out at all is the user's call: `Model.search` marks which models have the
+capability, [`SearchToggle`](/docs/ai/composer#searchtoggle) shows and hides a switch accordingly,
+and the answer travels through `forwardedProps.search` to `pickSelection`, where the server reads it
+as `Selection.search`. `pickSelection` re-checks it against `Model.search`, so a forged request
+cannot switch on what the model lacks. Once attached, the model still decides whether to search, so
+it only costs when it does.
+
+Each round of searching appears in the reply as a tool card named `web_search`, its input the
+action DeepSeek recorded (`search` / `open_page` / `find_in_page`). Those calls are marked
+`metadata.providerExecuted`: the agent loop knows that convention and neither looks for a local
+executor nor leaves the card spinning.
+
+**Why map it that way**: the upstream Responses adapter only knows `function_call` output items and
+drops every other kind — and dropping them is not merely lossy. The client's stream processor keeps
+one text buffer per *message* and clears it only on `TOOL_CALL_START`, yet it starts a *new* text
+part whenever another part type lands at the tail. DeepSeek's search auto-continues up to 10 rounds
+inside one response (reasoning, text, search, reasoning, text), so with the searches invisible the
+reasoning does the splitting while nothing does the clearing, and every text block repeats all the
+earlier ones. Reporting the search as a tool call is both the honest mapping and the fix — it is
+what `@ai-sdk/openai` does with the same wire items.
+
+**What is still missing**: `output_text.annotations` (url citations) are still dropped upstream.
+Whether the `Sources` collapsible gets anything depends on what DeepSeek's `action` object actually
+carries, which is unverified against a live key.
+
+### Ordering on history replay
+
+Responses is stateless: every turn must replay each earlier `function_call` together with its
+`function_call_output`. The base emits one assistant message as `[...function_call, message]` while
+the tool result arrives as the *next* message, so a turn that called a tool and then answered
+replays as `function_call → message → function_call_output`. DeepSeek documents `function_call` as
+"merged into the **adjacent** assistant message": the call is folded into the message behind it, that
+turn closes, and the output left over has nothing to pair with — so **the user's next question fails
+with `400 No tool output found for tool call <call_id>` whenever the previous one used a tool**.
+
+`DeepSeekResponsesAdapter` overrides `convertMessagesToInput` to regroup each turn as
+`[assistant text, plain calls, their outputs, web_search_call]`. That keeps every call adjacent to its
+output, and it keeps **the inbound rewrite off the wire**: a built-in search that was rewritten into a
+`function_call` is recognised by `metadata.providerExecuted` (not by tool name, so a consumer's own
+`web_search` function is never mistaken for one) and restored to
+`{ type: 'web_search_call', id, action, status }`, with its paired output dropped. That step is not
+optional — DeepSeek "automatically restores the search results" only for a `web_search_call` passed
+back as-is; hand it the rewritten `function_call` and the results are gone, so **the model searches
+again on every follow-up** (measured). The search items must come after the outputs: one sitting
+between a call and its output breaks the pairing exactly like an assistant message does (measured, 400). Measured against the live API on
+2026-08-30: interleaved always fails and adjacent always succeeds, independently of whether the item
+`id` is sent and of whether a reasoning item is replayed; parallel calls
+(`[msg, fc1, fc2, out1, out2]`) are accepted too.
+
+Chat Completions never had the problem — there content and `tool_calls` ride on one assistant object,
+so there is no order to get wrong. Moving DeepSeek onto Responses is what exposed it.
 
 ## Environment variables
 
@@ -415,8 +496,13 @@ client — the catalog is plain data, so both routes work.
 
 `OpenAICompatibleConfig`'s fields: `id` / `label` / `baseURL` / `models` are required; `env`
 (`string | string[]`, the fallback order for `getByokKey`), `thinking` (replaces the mapping
-function wholesale) and `name` (what the adapter reports in events; default = `id`) are
+function wholesale), `name` (what the adapter reports in events; default = `id`) and `api` are
 optional.
+
+`api` says which OpenAI protocol the endpoint speaks: default `'chat-completions'`
+(`{baseURL}/chat/completions`), or `'responses'` for `{baseURL}/responses`. A few compatible
+vendors implement both, and their capabilities do not line up — DeepSeek's built-in `web_search`
+and its standard reasoning events exist only on the Responses one.
 
 An endpoint that does not speak the OpenAI protocol goes through the underlying
 `definePreset`: the catalog data (`Provider`) plus `create(model, key)` and
@@ -515,9 +601,9 @@ import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage 
 | `createChatHandler(options)` | `(ChatHandlerOptions) => { POST, GET }`, see [Route handler](#route-handler) |
 | `ChatHandlerOptions` / `ChatHandler` | the table above / `{ POST, GET }` |
 | `createCatalogHandler(presets)` | `=> { GET }`: `{ providers, coverage, generatedAt }` |
-| `pickSelection(forwardedProps, presets, { defaultModel? })` | `=> Selection \| Response`; `Selection = { preset, model, thinking }` |
+| `pickSelection(forwardedProps, presets, { defaultModel? })` | `=> Selection \| Response`; `Selection = { preset, model, thinking, search }` |
 | `resolveThinking(preset, model, level)` | clamps, then defers to `preset.thinking`; `{}` for a non-reasoning model that is off |
-| `openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` / `grokThinking` / `groqThinking` / `vercelGatewayThinking` / `llmgatewayThinking` / `ollamaThinking` / `openaiCompatibleThinking` / `deepseekThinking` / `noThinking` | `(level, model) => fragment`, the presets' mapping functions (vertex reuses `geminiThinking`; mistral / bedrock / byteplus use `noThinking`) |
+| `openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` / `grokThinking` / `groqThinking` / `vercelGatewayThinking` / `llmgatewayThinking` / `ollamaThinking` / `openaiCompatibleThinking` / `deepseekThinking` / `deepseekResponsesThinking` / `noThinking` | `(level, model) => fragment`, the presets' mapping functions (vertex reuses `geminiThinking`; mistral / bedrock / byteplus use `noThinking`) |
 | `EFFORT_3` | `{ minimal: 'low', low: 'low', medium: 'medium', high: 'high', xhigh: 'high', max: 'high' }` |
 | re-exported from `@tanstack/ai` | `chat` / `chatParamsFromRequest` / `maxIterations` / `memoryStream` / `mergeAgentTools` / `toolDefinition` / `toServerSentEventsResponse` |
 | re-exported from `@tanstack/ai/byok` | `defineByokProvider` |
@@ -540,7 +626,7 @@ import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage 
 | `providers/vertex` | `vertex` | `@tanstack/ai-vertex` |
 | `providers/ollama` | `ollama`, `discoverOllamaModels(host)` | `@tanstack/ai-ollama` |
 | `providers/openai-compatible` | `openaiCompatiblePreset(config)`, type `OpenAICompatibleConfig` | `@tanstack/ai-openai` (the `/compatible` subpath) |
-| `providers/deepseek` | `deepseek` | `@tanstack/ai-openai` (the `/compatible` subpath) |
+| `providers/deepseek` | `deepseek`, `deepseekWebSearch()` | `@tanstack/ai-openai` (the `/compatible` and `/tools` subpaths) |
 | `providers/byteplus` | `byteplus` (placeholder) | none |
 
 The scripted transport's `byokMissing(provider)` is on [Scripted Transport](/docs/ai/scripted#api).

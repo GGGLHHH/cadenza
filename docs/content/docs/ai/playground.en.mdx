@@ -83,6 +83,25 @@ const transcription = useTranscription({
 />
 ```
 
+### Controls that follow the model
+
+The toolbar is `ComposerDictate → ModelPicker → ThinkingToggle → ThinkingLevelPicker → SearchToggle → keys`,
+and the last three appear and disappear with the selected model's capabilities:
+
+- **DeepThink** (`ThinkingToggle`): not rendered for a model without reasoning; switching on lands at
+  `'high'` clamped to the model.
+- **The level dropdown** (`ThinkingLevelPicker`): only while thinking is on and the model offers more
+  than one on-level (both DeepSeek models do).
+- **Search** (`SearchToggle`): rendered only when `Model.search` is true — today DeepSeek's two V4
+  models. Turning it on makes `forwardedProps.search` true, which is what lets `/api/ai/chat` attach
+  `deepseekWebSearch()` to that run's `tools`; while it is off the tool is never sent. The switch is
+  persisted with the rest of the selection under `docs-playground:selection`, and is cleared when you
+  move to a model without the capability.
+
+The search runs on DeepSeek's side, billed to the user's own key; nothing runs here — but every round
+shows up in the reply as a `web_search` tool card whose input is the action it recorded. What is
+still missing is the url citations — see [providers](/docs/ai/providers#provider-built-in-tools).
+
 ### Auto titles
 
 The ChatGPT rule: a new thread is listed as **New chat** (the `ThreadList` `untitled` label — the

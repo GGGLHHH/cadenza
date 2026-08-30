@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { createChatHandler } from '../src/server/chat-handler'
 import { definePreset } from '../src/server/preset'
 
-interface Seen { modelOptions?: unknown }
+interface Seen { modelOptions?: unknown, tools?: Array<{ name: string }> }
 
 // A fake adapter that yields one text message: enough to prove the handler wires chat() to SSE.
 function fakeAdapter(seen: Seen): unknown {
@@ -13,8 +13,9 @@ function fakeAdapter(seen: Seen): unknown {
     kind: 'text' as const,
     name: 'fake',
     model: 'm1',
-    async* chatStream(options: { modelOptions?: unknown, threadId?: string, runId?: string }): AsyncGenerator<StreamChunk> {
+    async* chatStream(options: { modelOptions?: unknown, threadId?: string, runId?: string, tools?: Array<{ name: string }> }): AsyncGenerator<StreamChunk> {
       seen.modelOptions = options.modelOptions
+      seen.tools = options.tools
       yield { type: EventType.TEXT_MESSAGE_START, messageId: 'a1', role: 'assistant' }
       yield { type: EventType.TEXT_MESSAGE_CONTENT, messageId: 'a1', delta: 'hello' }
       yield { type: EventType.TEXT_MESSAGE_END, messageId: 'a1' }
@@ -84,6 +85,16 @@ describe('createChatHandler', () => {
     expect(sse).toContain('TEXT_MESSAGE_CONTENT')
     expect(sse).toContain('hello')
     expect(seen.modelOptions).toEqual({ effort: 'high' })
+  })
+  it('resolves the function form of tools against the selection', async () => {
+    const perProvider = createChatHandler({
+      providers: [fake],
+      tools: sel => sel.preset.id === 'fake' ? [{ name: 'only_for_fake', description: 'x' } as never] : [],
+    })
+    const res = await post(perProvider, { body: body({ provider: 'fake', model: 'm1' }), headers: { 'x-byok-fake': 'k' } })
+    expect(res.status).toBe(200)
+    await res.text()
+    expect(seen.tools?.map(t => t.name)).toEqual(['only_for_fake'])
   })
   it('onSelect can short-circuit with a Response', async () => {
     const gated = createChatHandler({ providers: [fake], onSelect: () => new Response('nope', { status: 403 }) })

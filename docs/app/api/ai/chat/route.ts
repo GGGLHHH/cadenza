@@ -1,6 +1,6 @@
 import { anthropic } from '@gedatou/cadenza-ai/providers/anthropic'
 import { bedrock } from '@gedatou/cadenza-ai/providers/bedrock'
-import { deepseek } from '@gedatou/cadenza-ai/providers/deepseek'
+import { deepseek, deepseekWebSearch } from '@gedatou/cadenza-ai/providers/deepseek'
 import { gemini } from '@gedatou/cadenza-ai/providers/gemini'
 import { grok } from '@gedatou/cadenza-ai/providers/grok'
 import { groq } from '@gedatou/cadenza-ai/providers/groq'
@@ -30,5 +30,10 @@ export const { POST, GET } = createChatHandler({
   providers: [openai, anthropic, gemini, openrouter, grok, groq, mistral, vercelGateway, llmgateway, bedrock, vertex, ollama, deepseek],
   defaultModel: 'openai/gpt-5.2',
   systemPrompts: ['You are the cadenza docs playground assistant. Keep answers short.'],
-  tools: [getTime],
+  // The function form, because `deepseekWebSearch()` is a provider tool: any
+  // adapter that does not know the brand degrades it into a schema-less
+  // function call nothing can execute, so it must only reach DeepSeek. And it
+  // only goes out when the user asked for it — `pickSelection` has already
+  // checked `Model.search`, so a request cannot switch on what the model lacks.
+  tools: sel => sel.preset.id === 'deepseek' && sel.search ? [getTime, deepseekWebSearch()] : [getTime],
 })

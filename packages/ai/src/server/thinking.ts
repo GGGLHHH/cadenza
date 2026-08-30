@@ -123,6 +123,16 @@ export function deepseekThinking(level: ThinkingLevel, model: Model): Fragment {
   return { thinking: { type: 'enabled' }, reasoning_effort: DEEPSEEK_EFFORT[level] }
 }
 
+// DeepSeek 的 Responses 端点换了一套：单个 `reasoning.effort`，取值就是我们这七档
+// （none 对应 off），`summary` 不支持所以不发（api-docs create-response 的
+// reasoning 一栏 "Partially supported. 'effort' supported"）。档位已由
+// `resolveThinking` 按 `Model.thinkingLevels` clamp 过，这里原样透传。
+export function deepseekResponsesThinking(level: ThinkingLevel, model: Model): Fragment {
+  if (!model.reasoning)
+    return {}
+  return { reasoning: { effort: level === 'off' ? 'none' : level } }
+}
+
 export function noThinking(_level: ThinkingLevel, _model: Model): Fragment {
   return {}
 }

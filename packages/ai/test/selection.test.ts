@@ -44,4 +44,11 @@ describe('pickSelection', () => {
   it('normalises an unknown thinking level to off', () => {
     expect(ok(pickSelection({ provider: 'fake', model: 'm1', thinking: 'ultra' }, [fake], {})).thinking).toBe('off')
   })
+  it('only grants search when the model declares it, whatever the request says', () => {
+    expect(ok(pickSelection({ provider: 'fake', model: 'm1', search: true }, [fake], {})).search).toBe(false)
+    const searching = definePreset({ ...fake, models: [{ ...fake.models[0], search: true }] })
+    expect(ok(pickSelection({ provider: 'fake', model: 'm1', search: true }, [searching], {})).search).toBe(true)
+    expect(ok(pickSelection({ provider: 'fake', model: 'm1' }, [searching], {})).search).toBe(false)
+    expect(ok(pickSelection({ provider: 'fake', model: 'm1', search: 'yes' }, [searching], {})).search).toBe(false)
+  })
 })

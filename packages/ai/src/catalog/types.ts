@@ -28,6 +28,8 @@ export interface Model {
   cost?: ModelCost
   /** 缺省 = `reasoning ? THINKING_LEVELS : ['off']`。 */
   thinkingLevels?: readonly ThinkingLevel[]
+  /** 模型有厂商侧联网搜索（服务端执行，不占我们的工具通道）。缺省 false。 */
+  search?: boolean
 }
 
 export interface Provider {
