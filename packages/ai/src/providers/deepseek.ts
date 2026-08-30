@@ -72,8 +72,12 @@ interface Item { type?: string, role?: string, call_id?: unknown, [key: string]:
 /**
  * The built-in searches in a history, keyed by the call id they were rewritten
  * under, each already shaped back into the `web_search_call` DeepSeek issued.
- * Keyed off `metadata.providerExecuted` rather than the tool name, so a
- * consumer's own function called `web_search` is never mistaken for one.
+ *
+ * Both conditions have to hold — `metadata.providerExecuted` *and* the name.
+ * The metadata alone would restore any future provider-executed tool as a
+ * search; the name alone would catch a consumer's own function called
+ * `web_search`, which carries no such metadata. (`TranscriptParts` keys on the
+ * metadata alone, because there the question is only "did we run it".)
  */
 function restorableSearches(messages: Array<ModelMessage>): Map<string, Item> {
   const searches = new Map<string, Item>()

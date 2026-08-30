@@ -391,9 +391,11 @@ reasoning does the splitting while nothing does the clearing, and every text blo
 earlier ones. Reporting the search as a tool call is both the honest mapping and the fix — it is
 what `@ai-sdk/openai` does with the same wire items.
 
-**What is still missing**: `output_text.annotations` (url citations) are still dropped upstream.
-Whether the `Sources` collapsible gets anything depends on what DeepSeek's `action` object actually
-carries, which is unverified against a live key.
+**What is still missing**: the `Sources` collapsible is **always empty** for DeepSeek.
+`output_text.annotations` (url citations) are dropped upstream, and the tool result we can synthesise
+holds DeepSeek's record of the action it took; `sourcesOf` only reads sources out of an array or an
+object with a `results` key, and an action object is neither. Filling it in waits on upstream
+surfacing the annotations.
 
 ### Ordering on history replay
 
@@ -408,8 +410,9 @@ with `400 No tool output found for tool call <call_id>` whenever the previous on
 `DeepSeekResponsesAdapter` overrides `convertMessagesToInput` to regroup each turn as
 `[assistant text, plain calls, their outputs, web_search_call]`. That keeps every call adjacent to its
 output, and it keeps **the inbound rewrite off the wire**: a built-in search that was rewritten into a
-`function_call` is recognised by `metadata.providerExecuted` (not by tool name, so a consumer's own
-`web_search` function is never mistaken for one) and restored to
+`function_call` is recognised by `metadata.providerExecuted` **and** the tool name — the metadata
+alone would restore any future provider-executed tool as a search, and the name alone would catch a
+consumer's own `web_search` function, which carries no such metadata — then restored to
 `{ type: 'web_search_call', id, action, status }`, with its paired output dropped. That step is not
 optional — DeepSeek "automatically restores the search results" only for a `web_search_call` passed
 back as-is; hand it the rewritten `function_call` and the results are gone, so **the model searches

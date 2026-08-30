@@ -363,8 +363,9 @@ DeepSeek key 上。
 文本都把前面所有段重复一遍。把搜索报成工具调用，既是忠实的映射，也把段落边界还了回来。`@ai-sdk/openai`
 对同一批 wire 事件做的是同一件事。
 
-**剩下的缺口**：`output_text.annotations`（url 引用）仍然被上游丢弃。`Sources` 折叠块里能不能有东西，
-取决于 DeepSeek 的 `action` 对象实际带什么字段——真 key 实测前不打包票。
+**剩下的缺口**：`Sources` 折叠块对 DeepSeek **目前恒为空**。`output_text.annotations`（url 引用）被上游
+adapter 丢弃，而我们能合成的工具结果里放的是 DeepSeek 记录的那次动作；`sourcesOf` 只从数组、或带
+`results` 键的对象里取 source，动作对象两者都不是。要填上它得等上游把 annotations 透出来。
 
 ### 历史重放的顺序
 
@@ -377,8 +378,9 @@ found for tool call <call_id>`。
 
 `DeepSeekResponsesAdapter` 覆盖 `convertMessagesToInput`，重排成
 `[assistant 文本, 普通调用, 它们的输出, web_search_call]`：调用与输出因此永远相邻，
-而**入站那次改写不会漏到线上**——历史里被改写成 `function_call` 的内建搜索，会按
-`metadata.providerExecuted` 认出来（不按工具名，免得撞上消费者自己叫 `web_search` 的函数），
+而**入站那次改写不会漏到线上**——历史里被改写成 `function_call` 的内建搜索，按
+`metadata.providerExecuted` **加**工具名两个条件认出来（只看 metadata 会把将来别的厂商内建工具
+也还原成搜索；只看名字会撞上消费者自己叫 `web_search` 的函数，那个没有这份 metadata），
 还原成 `{ type: 'web_search_call', id, action, status }`，配对的那条 output 一并丢掉。
 这一步不是可选的：DeepSeek 只对原样回传的 `web_search_call` 「自动恢复搜索结果」，
 递给它改写后的 `function_call` 就等于把搜到的内容扔了，**之后每次追问模型都会重搜一遍**（实测）。
