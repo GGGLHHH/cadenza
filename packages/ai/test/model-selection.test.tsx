@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultCatalog } from '../src/catalog'
+import { supportedThinkingLevels } from '../src/catalog/thinking'
 import { useModelSelection } from '../src/runtime/selection'
 import { createMemoryStorage } from './helpers/memory-storage'
 
@@ -63,5 +64,26 @@ describe('useModelSelection', () => {
     // And the legacy shape must not survive a write through any of the setters.
     act(() => result.current.setModel('deepseek/deepseek-v4-pro'))
     expect(JSON.parse(localStorage.getItem('test:selection')!)).toMatchObject({ search: false })
+  })
+
+  it('clamps a stored thinking level the current model no longer offers', () => {
+    // What a catalog update that narrows `thinkingLevels` leaves behind. Unclamped it
+    // reaches `ThinkingLevelPicker`, whose Select has no item carrying that value.
+    localStorage.setItem('test:selection', JSON.stringify({ provider: 'deepseek', model: 'deepseek-v4-pro', thinking: 'medium', search: false }))
+    const { result } = renderHook(() => useModelSelection({ catalog: defaultCatalog, key: 'test:selection' }))
+    expect(supportedThinkingLevels(result.current.model)).not.toContain('medium')
+    expect(supportedThinkingLevels(result.current.model)).toContain(result.current.selection.thinking)
+  })
+
+  it('leaves the stored choice alone while the catalog does not know the model', () => {
+    // "No entry in the catalog" is not "this model cannot do it" — an id the catalog
+    // dropped or renamed must not silently erase what the user picked.
+    localStorage.setItem('test:selection', JSON.stringify({ provider: 'deepseek', model: 'deepseek-v9-imaginary', thinking: 'high', search: true, note: 'kept' }))
+    const { result } = renderHook(() => useModelSelection({ catalog: defaultCatalog, key: 'test:selection' }))
+    expect(result.current.model).toBeUndefined()
+    expect(result.current.selection).toMatchObject({ thinking: 'high', search: true })
+    act(() => result.current.setThinking('low'))
+    // The write keeps `search`, and keys we never knew about ride along untouched.
+    expect(JSON.parse(localStorage.getItem('test:selection')!)).toMatchObject({ search: true, note: 'kept' })
   })
 })

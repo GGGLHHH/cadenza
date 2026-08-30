@@ -14,6 +14,13 @@ export interface ModelSelection {
   search: boolean
 }
 
+/**
+ * 存储里那一份。`useStoredState` 是 `JSON.parse(raw) as T`——不校验，所以任何字段都
+ * 可能缺（早于 `search` 的那些选择就没有它）。用 `Partial` 说实话，编译器才会逼着
+ * `normalize` 补每一个缺口，而不是让下一个新字段原样重演同一个 bug。
+ */
+type StoredSelection = Partial<ModelSelection>
+
 export interface UseModelSelectionOptions {
   catalog?: Catalog
   /** `localStorage` key. Default `cadenza-ai:selection`. */
@@ -30,7 +37,7 @@ export interface UseModelSelectionReturn {
   setModel: (ref: string) => void
   setThinking: (level: ThinkingLevel) => void
   setSearch: (on: boolean) => void
-  /** Stable object for `useChat({ forwardedProps })`. */
+  /** 就是上面那个 `selection`，按 `useChat({ forwardedProps })` 的用法起的名字；渲染间稳定。 */
   forwardedProps: ModelSelection
 }
 
@@ -39,43 +46,54 @@ function firstSelection(catalog: Catalog): ModelSelection {
   return { provider: model?.provider ?? '', model: model?.id ?? '', thinking: 'off', search: false }
 }
 
-/**
- * 只有模型声明了 `search` 才可能是 on——同 `clampThinkingLevel` 的道理：能力由目录
- * 说了算，不由存储说了算。`on === true` 而不是 `on`：存储里的这个字段可能根本不存在
- * （早于它的那些选择），而 `undefined && …` 求值成 `undefined`，会把这个形状一路原样
- * 写回去。返回值必须是布尔。
- */
+/** 只有模型声明了 `search` 才可能是 on——同 `clampThinkingLevel` 的道理：能力由目录说了算，不由存储说了算。 */
 function clampSearch(model: Model | undefined, on: boolean | undefined): boolean {
   return on === true && model?.search === true
+}
+
+/**
+ * 存储里那份，修成控件能用的形状。两条规矩，来源不同：
+ *
+ * 1. **字段必须存在、类型必须对。** 控件把 `undefined` 当受控值会出事——
+ *    `useControllableState` 在首帧按 `value !== undefined` 锁死受控性且不再改判，
+ *    于是 `SearchToggle` / `ThinkingToggle` 整场会话都改吃自己的内部状态，第一次
+ *    按下还会触发受控性告警。这一条无条件执行。
+ * 2. **按能力裁剪，只在目录认识这个模型时做。** 「目录里没这条」和「这个模型没这个
+ *    能力」是两回事：目录改名或删掉一个条目，就会让所有 `getModel` 落空，把它当成
+ *    「什么都不支持」会静默擦掉用户的选择。
+ *
+ * 裁剪只作用于读出来的这一份。写回存储的永远是原值展开——目录暂时不认识某个模型，
+ * 不该成为把它的档位和搜索开关抹平的理由，存储里那些我们不认识的键也一并留着。
+ */
+function normalize(model: Model | undefined, stored: StoredSelection): ModelSelection {
+  const base: ModelSelection = {
+    provider: stored.provider ?? '',
+    model: stored.model ?? '',
+    thinking: stored.thinking ?? 'off',
+    search: stored.search === true,
+  }
+  if (model === undefined)
+    return base
+  return { ...base, thinking: clampThinkingLevel(model, base.thinking), search: clampSearch(model, base.search) }
 }
 
 /** The user's model + thinking choice, persisted, always valid for the chosen model. */
 export function useModelSelection(options: UseModelSelectionOptions = {}): UseModelSelectionReturn {
   const catalog = options.catalog ?? defaultCatalog
-  const [selection, setSelection] = useStoredState<ModelSelection>(options.key ?? 'cadenza-ai:selection', options.initial ?? firstSelection(catalog))
-  const model = catalog.getModel(modelRef({ provider: selection.provider, id: selection.model }))
-  const provider = catalog.getProvider(selection.provider)
-  // 读的时候也 clamp，而且 clamp 后的那一份就是对外的全部——`selection`、
-  // `forwardedProps` 和三个 setter 的基底都是它。存储里可能是早于这个字段的选择
-  // （`search: undefined`），也可能是换模型之外的途径留下的、与当前模型能力不符的
-  // `true`。`selection` 是控件读的那一份，漏给它一个 undefined 会出事：
-  // `useControllableState` 在首帧按 `value !== undefined` 锁死受控性，于是
-  // `SearchToggle` 整场会话都改吃自己的内部状态，第一次按下还会触发受控性告警。
-  const search = clampSearch(model, selection.search)
-  const current = useMemo(
-    () => ({ provider: selection.provider, model: selection.model, thinking: selection.thinking, search }),
-    [selection.provider, selection.model, selection.thinking, search],
-  )
+  const [stored, setStored] = useStoredState<StoredSelection>(options.key ?? 'cadenza-ai:selection', options.initial ?? firstSelection(catalog))
+  const model = catalog.getModel(modelRef({ provider: stored.provider ?? '', id: stored.model ?? '' }))
+  const provider = catalog.getProvider(stored.provider ?? '')
+  const selection = useMemo(() => normalize(model, stored), [model, stored])
   const setModel = useCallback((ref: string): void => {
     const { provider: nextProvider, id } = parseModelRef(ref)
     const next = catalog.getModel(ref)
-    setSelection({ provider: nextProvider, model: id, thinking: clampThinkingLevel(next, current.thinking), search: clampSearch(next, current.search) })
-  }, [catalog, current.thinking, current.search, setSelection])
+    setStored({ ...stored, provider: nextProvider, model: id, thinking: clampThinkingLevel(next, stored.thinking ?? 'off'), search: clampSearch(next, stored.search) })
+  }, [catalog, stored, setStored])
   const setThinking = useCallback((level: ThinkingLevel): void => {
-    setSelection({ ...current, thinking: clampThinkingLevel(model, level) })
-  }, [current, model, setSelection])
+    setStored({ ...stored, thinking: clampThinkingLevel(model, level) })
+  }, [model, stored, setStored])
   const setSearch = useCallback((on: boolean): void => {
-    setSelection({ ...current, search: clampSearch(model, on) })
-  }, [current, model, setSelection])
-  return { selection: current, model, provider, setModel, setThinking, setSearch, forwardedProps: current }
+    setStored({ ...stored, search: clampSearch(model, on) })
+  }, [model, stored, setStored])
+  return { selection, model, provider, setModel, setThinking, setSearch, forwardedProps: selection }
 }

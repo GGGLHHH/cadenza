@@ -151,8 +151,12 @@ thinking level lists only the levels this model supports.
   object for `useChat({ forwardedProps })` — sending right after switching models already uses the
   new value, and the server reads `data.provider` / `data.model` / `data.thinking` / `data.search`.
   The catalog is the only authority on capability: `setSearch(true)` on a model without `search` is
-  false, and the stored value is clamped again on read (a selection saved before the field existed is
-  `undefined`, and a hand-edited store may disagree with the current model).
+  false, and both `thinking` and `search` are clamped again on read — a selection saved before a field
+  existed is missing it, and a catalog that narrows a model's levels leaves the old one stale (a value
+  no `SelectItem` carries renders `ThinkingLevelPicker`'s trigger blank). **Nothing is clamped while
+  the catalog does not know the model**, though: "no entry" and "cannot do it" are different claims,
+  and a renamed or dropped id must not erase what the user picked. The clamp applies to the value you
+  read; writes go back as they were stored, keys we do not recognise included.
 
 The seven levels from weakest to strongest: `off` / `minimal` / `low` / `medium` / `high` /
 `xhigh` / `max`.

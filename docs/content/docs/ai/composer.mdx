@@ -130,8 +130,12 @@ InputGroup 的自增高与底部工具条规则靠 `>` 选择器；附件条也�
   新模型没有搜索能力时把 `search` 一起清掉）、`setThinking(level)`、`setSearch(on)`，
   以及给 `useChat({ forwardedProps })` 的稳定对象 `forwardedProps`——切完模型立刻发送也用新值，
   服务端从 `data.provider` / `data.model` / `data.thinking` / `data.search` 读。
-  能力判定只认目录：`setSearch(true)` 给一个没有 `search` 的模型是 false，读存储时也再 clamp 一次
-  （早于这个字段存下的选择是 `undefined`，手改过的存储可能与当前模型不符）。
+  能力判定只认目录：`setSearch(true)` 给一个没有 `search` 的模型是 false，`thinking` 与 `search`
+  读存储时都会再 clamp 一次（早于某个字段存下的选择缺这个键，目录收窄档位之后旧值也会失效——
+  一个不在 `SelectItem` 里的值会让 `ThinkingLevelPicker` 的触发器渲染空白）。
+  但**目录不认识当前模型时不做裁剪**：「目录里没这条」和「这个模型没这个能力」是两回事，
+  改名或删条目不该把用户选好的档位和开关抹掉。裁剪只作用于读出来的那份，写回存储的永远是原值，
+  存储里我们不认识的键也一并留着。
 
 七个档位从弱到强：`off` / `minimal` / `low` / `medium` / `high` / `xhigh` / `max`。
 
