@@ -29,13 +29,16 @@ async function historyAfterAToolTurn(): Promise<unknown[]> {
 }
 
 /** The production round trip: the browser's AG-UI wire body, parsed server-side, converted for the wire. */
-async function replayedInput(): Promise<Array<Record<string, unknown>>> {
-  const ui = await historyAfterAToolTurn()
+async function replay(ui: unknown[]): Promise<Array<Record<string, unknown>>> {
   const body = { threadId: 't', runId: 'r', state: {}, tools: [], context: [], forwardedProps: {}, messages: uiMessagesToWire(ui as never) }
   const params = await chatParamsFromRequestBody(JSON.parse(JSON.stringify(body)) as never)
   const model = convertMessagesToModelMessages(params.messages)
   const adapter = deepseek.create('deepseek-v4-flash', 'sk-x') as unknown as { convertMessagesToInput: (m: unknown) => Array<Record<string, unknown>> }
   return adapter.convertMessagesToInput(model)
+}
+
+async function replayedInput(): Promise<Array<Record<string, unknown>>> {
+  return replay(await historyAfterAToolTurn())
 }
 
 /** A turn where DeepSeek ran its built-in search and then answered. */
@@ -71,12 +74,24 @@ async function replayedSearchInput(): Promise<Array<Record<string, unknown>>> {
   client.attach()
   await client.sendMessage('联网搜索 shadcn select')
   await settle(client)
-  const ui = [...client.getMessages(), { id: 'u2', role: 'user', parts: [{ type: 'text', content: '再补充一句' }] }]
-  const body = { threadId: 't', runId: 'r2', state: {}, tools: [], context: [], forwardedProps: {}, messages: uiMessagesToWire(ui as never) }
-  const params = await chatParamsFromRequestBody(JSON.parse(JSON.stringify(body)) as never)
-  const model = convertMessagesToModelMessages(params.messages)
-  const replay = deepseek.create('deepseek-v4-flash', 'sk-x') as unknown as { convertMessagesToInput: (m: unknown) => Array<Record<string, unknown>> }
-  return replay.convertMessagesToInput(model)
+  return replay([...client.getMessages(), { id: 'u2', role: 'user', parts: [{ type: 'text', content: '再补充一句' }] }])
+}
+
+/**
+ * A turn whose provider-executed call is some *other* built-in tool. Restoring
+ * keys on `providerExecuted` **and** the tool name; with only the metadata
+ * checked, this would go back as a `web_search_call` DeepSeek never issued —
+ * and lose its output on the way, since the restore drops the paired one.
+ */
+function foreignProviderToolTurn(): unknown[] {
+  return [
+    { id: 'u1', role: 'user', parts: [{ type: 'text', content: 'q' }] },
+    { id: 'a1', role: 'assistant', parts: [
+      { type: 'text', content: 'A.' },
+      { id: 'ci_1', type: 'tool-call', name: 'code_interpreter', arguments: '{"code":"1+1"}', state: 'complete', output: { result: 2 }, metadata: { providerExecuted: true, itemId: 'ci_1' } },
+    ] },
+    { id: 'u2', role: 'user', parts: [{ type: 'text', content: '再问一句' }] },
+  ]
 }
 
 describe('deepseek history replay', () => {
@@ -107,5 +122,12 @@ describe('deepseek history replay', () => {
     expect(search).toMatchObject({ id: 'call_00_WS', action: { type: 'search', queries: ['shadcn select'] }, status: 'completed' })
     // The rewrite must not reach the wire in either half of the pair.
     expect(input.some(item => item.type === 'function_call' || item.type === 'function_call_output')).toBe(false)
+  })
+
+  it('restores only the search — another provider-executed tool stays a function call, output and all', async () => {
+    const input = await replay(foreignProviderToolTurn())
+    expect(input.map(item => String(item.type))).toEqual(['message', 'message', 'function_call', 'function_call_output', 'message'])
+    expect(input.some(item => item.type === 'web_search_call')).toBe(false)
+    expect(input.find(item => item.type === 'function_call')).toMatchObject({ name: 'code_interpreter' })
   })
 })
