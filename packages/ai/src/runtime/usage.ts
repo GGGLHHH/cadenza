@@ -10,23 +10,43 @@ function add(a: number | undefined, b: number | undefined): number | undefined {
   return a === undefined && b === undefined ? undefined : (a ?? 0) + (b ?? 0)
 }
 
-/** Field-wise sum, including the nested cache / reasoning details. */
+type NumericDetails = Record<string, number | undefined>
+
+/**
+ * Sum the keys both sides actually carry, rather than a hand-written list.
+ *
+ * Naming the fields dropped every other one: `PromptTokensDetails` also holds
+ * `audioTokens` / `imageTokens` / `videoTokens` / `textTokens` /
+ * `documentTokens`, and a two-run sum silently threw the modality breakdown
+ * away — present on a single run, gone the moment a second one landed.
+ */
+function addDetails<T extends object>(a: T | undefined, b: T | undefined): T | undefined {
+  if (a === undefined && b === undefined)
+    return undefined
+  // The detail interfaces are all-optional numbers but declare no index
+  // signature, so walking their keys needs the wider view of them.
+  const left = a as NumericDetails | undefined
+  const right = b as NumericDetails | undefined
+  const out: NumericDetails = {}
+  for (const key of new Set([...Object.keys(left ?? {}), ...Object.keys(right ?? {})]))
+    out[key] = add(left?.[key], right?.[key])
+  return out as T
+}
+
+/** Field-wise sum, including the nested detail breakdowns and the provider's own cost. */
 export function addTokenUsage(a: TokenUsage | undefined, b: TokenUsage): TokenUsage {
   if (!a)
     return b
-  const promptTokensDetails = a.promptTokensDetails || b.promptTokensDetails
-    ? {
-        cachedTokens: add(a.promptTokensDetails?.cachedTokens, b.promptTokensDetails?.cachedTokens),
-        cacheWriteTokens: add(a.promptTokensDetails?.cacheWriteTokens, b.promptTokensDetails?.cacheWriteTokens),
-      }
-    : undefined
-  const completionTokensDetails = a.completionTokensDetails || b.completionTokensDetails
-    ? { reasoningTokens: add(a.completionTokensDetails?.reasoningTokens, b.completionTokensDetails?.reasoningTokens) }
-    : undefined
+  const promptTokensDetails = addDetails(a.promptTokensDetails, b.promptTokensDetails)
+  const completionTokensDetails = addDetails(a.completionTokensDetails, b.completionTokensDetails)
+  // What the provider itself billed, when it says. Summed for the same reason
+  // the tokens are: a session's figure is the sum of its runs.
+  const cost = add(a.cost, b.cost)
   return {
     promptTokens: a.promptTokens + b.promptTokens,
     completionTokens: a.completionTokens + b.completionTokens,
     totalTokens: a.totalTokens + b.totalTokens,
+    ...(cost !== undefined ? { cost } : {}),
     ...(promptTokensDetails ? { promptTokensDetails } : {}),
     ...(completionTokensDetails ? { completionTokensDetails } : {}),
   }

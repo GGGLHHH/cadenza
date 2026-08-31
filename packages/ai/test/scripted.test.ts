@@ -40,6 +40,34 @@ describe('scripted transport', () => {
     expect(finished.usage).toEqual({ promptTokens: 12, completionTokens: 3, totalTokens: 15 })
   })
 
+  it('carries the usage fields with no spec slot through the leftover channel', async () => {
+    // `cachedInputTokens` / `reasoningTokens` are AG-UI spec fields; cache
+    // writes and the modality breakdown are not, so they ride
+    // `metadata.tanstack.usage` — the same road the real transport uses. A
+    // script that could not send them would leave those metrics untestable.
+    const fetcher = scripted(() => [
+      text('Done.'),
+      usage(
+        { inputTokens: 100, outputTokens: 20, cachedInputTokens: 60, reasoningTokens: 8 },
+        { promptTokensDetails: { cacheWriteTokens: 15, imageTokens: 40 }, cost: 0.25 },
+      ),
+    ], { pace: 'instant' })
+    const chunks: StreamChunk[] = []
+    const client = new ChatClient({ fetcher, onChunk: c => chunks.push(c) })
+    client.attach()
+    await client.sendMessage('hi')
+    await settle(client)
+    const finished = chunks.find(c => c.type === 'RUN_FINISHED')!
+    expect(finished.usage).toEqual({
+      promptTokens: 100,
+      completionTokens: 20,
+      totalTokens: 120,
+      cost: 0.25,
+      promptTokensDetails: { cachedTokens: 60, cacheWriteTokens: 15, imageTokens: 40 },
+      completionTokensDetails: { reasoningTokens: 8 },
+    })
+  })
+
   it('answers as a text/event-stream Response when sse is on, and the client parses it the same way', async () => {
     const fetcher = scripted(() => [reasoning('Think.'), tool('get_time', { tz: 'UTC' }, { output: { iso: '2026-08-28' } }), text('Done.')], { pace: 'instant', sse: true, argsChunk: 3 })
     const raw = await fetcher({ messages: [], data: {}, threadId: 't', runId: 'r' }, { signal: new AbortController().signal })

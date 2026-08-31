@@ -35,6 +35,20 @@ describe('useUsageTracker', () => {
     expect(result.current.total.totalTokens).toBe(113)
   })
 
+  it('keeps every detail key through a sum, not just the three it used to name', () => {
+    // The modality breakdown was present on one run and gone the moment a
+    // second landed, because the sum rebuilt the details object from a
+    // hand-written key list.
+    const sum = addTokenUsage(
+      { promptTokens: 10, completionTokens: 2, totalTokens: 12, cost: 0.5, promptTokensDetails: { cachedTokens: 4, imageTokens: 6, textTokens: 4 }, completionTokensDetails: { audioTokens: 1 } },
+      { promptTokens: 20, completionTokens: 3, totalTokens: 23, cost: 0.25, promptTokensDetails: { cachedTokens: 5, imageTokens: 1 }, completionTokensDetails: { reasoningTokens: 2 } },
+    )
+    expect(sum.promptTokensDetails).toEqual({ cachedTokens: 9, imageTokens: 7, textTokens: 4 })
+    expect(sum.completionTokensDetails).toEqual({ audioTokens: 1, reasoningTokens: 2 })
+    // The provider's own figure is additive across runs too.
+    expect(sum.cost).toBeCloseTo(0.75, 10)
+  })
+
   it('adds nested details', () => {
     const sum = addTokenUsage(
       { promptTokens: 1, completionTokens: 1, totalTokens: 2, promptTokensDetails: { cachedTokens: 1 } },

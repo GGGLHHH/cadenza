@@ -52,6 +52,7 @@ export interface ScriptedOptions {
 type Chunking = NonNullable<ScriptedOptions['chunk']>
 interface Pending { name: string, toolCallId: string, input: unknown, client: boolean }
 type Usage = Extract<Step, { kind: 'usage' }>['usage']
+type UsageDetails = Extract<Step, { kind: 'usage' }>['details']
 type FinishReason = NonNullable<Extract<Step, { kind: 'finish' }>['finishReason']>
 
 const DEFAULT_PACE = 24
@@ -218,6 +219,7 @@ async function* run(ctx: ScriptContext, steps: Iterable<Step> | AsyncIterable<St
   const pending: Pending[] = []
   let textStarted = false
   let runUsage: Usage | undefined
+  let runUsageDetails: UsageDetails
   let finishReason: FinishReason | undefined
 
   yield { type: EventType.RUN_STARTED, threadId, runId, ...(parentRunId !== undefined && { parentRunId }) }
@@ -300,6 +302,7 @@ async function* run(ctx: ScriptContext, steps: Iterable<Step> | AsyncIterable<St
       }
       case 'usage':
         runUsage = step.usage
+        runUsageDetails = step.details
         break
       case 'error':
         yield { type: EventType.RUN_ERROR, message: step.message, ...(step.code !== undefined && { code: step.code }) }
@@ -333,7 +336,9 @@ async function* run(ctx: ScriptContext, steps: Iterable<Step> | AsyncIterable<St
     runId,
     // AG-UI `usage[]`; the client rebuilds it into TokenUsage and reads `totalTokens` verbatim
     ...(runUsage && { usage: [{ ...runUsage, totalTokens: runUsage.inputTokens + runUsage.outputTokens }] }),
-    metadata: { tanstack: { finishReason: finishReason ?? 'stop' } },
+    // Everything with no spec field rides `metadata.tanstack.usage`, which is
+    // exactly where `toSpecTokenUsage` puts it and where `fromSpecTokenUsage` looks.
+    metadata: { tanstack: { finishReason: finishReason ?? 'stop', ...(runUsageDetails ? { usage: runUsageDetails } : {}) } },
   }
 }
 

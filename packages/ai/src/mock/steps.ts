@@ -2,6 +2,19 @@
  * Step DSL for the scripted transport — pure data, no runtime behaviour.
  * `run.ts` translates a list of steps into AG-UI events.
  */
+/**
+ * The half of `TokenUsage` that has no AG-UI spec field, carried the way the
+ * real transport carries it — `toSpecTokenUsage` puts these in `leftover`, the
+ * server hangs them on `metadata.tanstack.usage`, and `fromSpecTokenUsage`
+ * rebuilds them on the client. A script that wants to show cache writes or the
+ * modality breakdown has to travel the same road, or it is proving nothing.
+ */
+export interface UsageLeftover {
+  promptTokensDetails?: Record<string, number>
+  completionTokensDetails?: Record<string, number>
+  cost?: number
+}
+
 export type Step
   = | { kind: 'text', content: string, chunk?: 'word' | 'char' | number, pace?: number }
     | { kind: 'reasoning', content: string, chunk?: 'word' | 'char' | number, pace?: number, signature?: string }
@@ -9,7 +22,7 @@ export type Step
     | { kind: 'tool-result', toolCallId: string, output: unknown, error?: boolean }
     | { kind: 'custom', name: string, value: unknown }
     | { kind: 'structured', object: unknown, chunk?: number }
-    | { kind: 'usage', usage: { inputTokens: number, outputTokens: number, reasoningTokens?: number, cachedInputTokens?: number } }
+    | { kind: 'usage', usage: { inputTokens: number, outputTokens: number, reasoningTokens?: number, cachedInputTokens?: number }, details?: UsageLeftover }
     | { kind: 'error', message: string, code?: string }
     | { kind: 'sleep', ms: number }
     | { kind: 'finish', finishReason?: 'stop' | 'length' | 'content_filter' | 'tool_calls' }
@@ -28,7 +41,8 @@ export const tool = Object.assign(
 )
 export const custom = (name: string, value: unknown): Step => ({ kind: 'custom', name, value })
 export const structured = (object: unknown, o: { chunk?: number } = {}): Step => ({ kind: 'structured', object, ...o })
-export const usage = (u: Extract<Step, { kind: 'usage' }>['usage']): Step => ({ kind: 'usage', usage: u })
+/** Token usage for the run. `details` carries the fields with no spec slot, through the same leftover channel the real transport uses. */
+export const usage = (u: Extract<Step, { kind: 'usage' }>['usage'], details?: UsageLeftover): Step => ({ kind: 'usage', usage: u, ...(details ? { details } : {}) })
 export const error = (message: string, code?: string): Step => ({ kind: 'error', message, code })
 export const sleep = (ms: number): Step => ({ kind: 'sleep', ms })
 export const finish = (o: { finishReason?: Extract<Step, { kind: 'finish' }>['finishReason'] } = {}): Step => ({ kind: 'finish', ...o })
