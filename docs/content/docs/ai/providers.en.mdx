@@ -329,6 +329,14 @@ first, env fallback) and returns `{ provider, models }`; an unknown preset → 4
 `unknown_provider`, one without `discoverModels` → 400 `discover_unsupported`, an upstream
 failure → 502 `discover_failed` (the upstream error text is not echoed).
 
+**`x-byok-ollama` carries a host URL, not a key**, and `?refresh=1&provider=ollama` fetches it,
+so this path runs it through `ollamaHostAllowed` the way chat does (loopback and RFC 1918 only by
+default), answering 400 `host_not_allowed` otherwise. Set `ollamaHosts` in **both** places when
+you build your own handlers — `createCatalogHandler(presets, { ollamaHosts })` and
+`createChatHandler({ ollamaHosts })` — since leaving one out leaves that path open. The check
+parses the address rather than matching a string prefix: `10.attacker.com` is an ordinary domain
+that resolves wherever its owner points it.
+
 ### ChatHandlerOptions
 
 | Option | Type | Default | Description |
@@ -607,7 +615,8 @@ import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage 
 | `definePreset(preset)` | identity + checks `byok.id === id` |
 | `createChatHandler(options)` | `(ChatHandlerOptions) => { POST, GET }`, see [Route handler](#route-handler) |
 | `ChatHandlerOptions` / `ChatHandler` | the table above / `{ POST, GET }` |
-| `createCatalogHandler(presets)` | `=> { GET }`: `{ providers, coverage, generatedAt }` |
+| `createCatalogHandler(presets, options?)` | `=> { GET }`: `{ providers, coverage, generatedAt }`; `options.ollamaHosts` as on `createChatHandler` |
+| `ollamaHostAllowed(host, allow?)` | The admission check for `x-byok-ollama`: parses the address; loopback and RFC 1918 only by default |
 | `pickSelection(forwardedProps, presets, { defaultModel? })` | `=> Selection \| Response`; `Selection = { preset, model, thinking, search }` |
 | `resolveThinking(preset, model, level)` | clamps, then defers to `preset.thinking`; `{}` for a non-reasoning model that is off |
 | `openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` / `grokThinking` / `groqThinking` / `vercelGatewayThinking` / `llmgatewayThinking` / `ollamaThinking` / `openaiCompatibleThinking` / `deepseekThinking` / `deepseekResponsesThinking` / `noThinking` | `(level, model) => fragment`, the presets' mapping functions (vertex reuses `geminiThinking`; mistral / bedrock / byteplus use `noThinking`) |

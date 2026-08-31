@@ -74,6 +74,26 @@ describe('createCatalogHandler', () => {
     expect((await get(h, '?refresh=1&provider=ollama')).status).toBe(502)
   })
 
+  it('refuses to discover against a host outside the allowlist, and never fetches it', async () => {
+    // `x-byok-ollama` is a host this request would fetch, not a key. Unguarded
+    // it is a server-side request forgery — the chat handler checks the same
+    // header, and this path used to hand it straight to `discoverModels`.
+    const fetchMock = vi.fn(async () => Response.json({ models: [] }))
+    vi.stubGlobal('fetch', fetchMock)
+    const h = createCatalogHandler([ollama])
+    const res = await get(h, '?refresh=1&provider=ollama', { 'x-byok-ollama': 'http://169.254.169.254/latest/meta-data' })
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: { type: 'host_not_allowed', provider: 'ollama' } })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('honours its own ollamaHosts option', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ models: [] })))
+    const h = createCatalogHandler([ollama], { ollamaHosts: ['ollama.internal:11434'] })
+    expect((await get(h, '?refresh=1&provider=ollama', { 'x-byok-ollama': 'http://ollama.internal:11434' })).status).toBe(200)
+    expect((await get(h, '?refresh=1&provider=ollama', { 'x-byok-ollama': 'http://127.0.0.1:11434' })).status).toBe(400)
+  })
+
   it('openai-compatible discovers via GET {baseURL}/models with a Bearer key', async () => {
     const fetchMock = vi.fn(async () => Response.json({ data: [{ id: 'deepseek-chat' }, { id: 'deepseek-reasoner' }] }))
     vi.stubGlobal('fetch', fetchMock)

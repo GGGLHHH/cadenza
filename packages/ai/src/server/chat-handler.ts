@@ -3,6 +3,7 @@ import type { ProviderPreset } from './preset'
 import type { Selection } from './selection'
 import { chat, chatParamsFromRequest, mergeAgentTools, toServerSentEventsResponse } from '@tanstack/ai'
 import { byokMissing, getByokKey } from '@tanstack/ai/byok/server'
+import { ollamaHostAllowed } from './ollama-host'
 import { pickSelection } from './selection'
 import { resolveThinking } from './thinking'
 
@@ -57,8 +58,11 @@ export function createChatHandler<TContext = unknown>(options: ChatHandlerOption
   const maxBody = options.maxBodyBytes ?? 4 * 1024 * 1024
 
   async function POST(request: Request): Promise<Response> {
-    const length = Number(request.headers.get('content-length') ?? 0)
-    if (length > maxBody)
+    // A declared length we can act on early. A body that declares nothing
+    // (HTTP/2, chunked) gets past this, so it is a cheap first cut and not the
+    // real limit — that is the platform's, and the parse below is what meets it.
+    const declared = request.headers.get('content-length')
+    if (declared !== null && !(Number(declared) <= maxBody))
       return new Response('Payload too large', { status: 413 })
     let params: Awaited<ReturnType<typeof chatParamsFromRequest>>
     try {
@@ -79,7 +83,7 @@ export function createChatHandler<TContext = unknown>(options: ChatHandlerOption
     const key = preset.byok ? getByokKey(request, preset.byok) : null
     if (preset.keyRequired && key === null && preset.byok)
       return byokMissing(preset.byok)
-    if (preset.id === 'ollama' && key !== null && !hostAllowed(key, options.ollamaHosts))
+    if (preset.id === 'ollama' && key !== null && !ollamaHostAllowed(key, options.ollamaHosts))
       return new Response('Ollama host not allowed', { status: 400 })
     const adapter = preset.create(model.id, key)
     const modelOptions = resolveThinking(preset, model, thinking)
@@ -134,20 +138,4 @@ export function createChatHandler<TContext = unknown>(options: ChatHandlerOption
   }
 
   return { POST, GET }
-}
-
-function hostAllowed(host: string, allow?: readonly string[]): boolean {
-  let url: URL
-  try {
-    url = new URL(host)
-  }
-  catch {
-    return false
-  }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:')
-    return false
-  if (allow)
-    return allow.some(a => url.host === a || url.hostname === a)
-  const h = url.hostname
-  return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h.startsWith('10.') || h.startsWith('192.168.') || /^172\.(?:1[6-9]|2\d|3[01])\./.test(h)
 }

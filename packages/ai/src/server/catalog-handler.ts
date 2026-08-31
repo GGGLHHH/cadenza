@@ -1,6 +1,7 @@
 import type { Provider } from '../catalog/types'
 import type { ProviderPreset } from './preset'
 import { getByokKey } from '@tanstack/ai/byok/server'
+import { ollamaHostAllowed } from './ollama-host'
 
 function hasEnv(...names: string[]): boolean {
   return names.some((n) => {
@@ -30,7 +31,16 @@ function json(status: number, body: unknown): Response {
  * `GET ?refresh=1&provider=<id>`: `preset.discoverModels(key)` with the same
  * header-then-env key the chat handler would use → `{ provider, models }`.
  */
-export function createCatalogHandler(presets: readonly ProviderPreset[]): { GET: (request: Request) => Promise<Response> } {
+export interface CatalogHandlerOptions {
+  /**
+   * Hosts an `x-byok-ollama` header may point at; default: loopback and RFC 1918
+   * ranges. Same option and same meaning as on `createChatHandler` — set both,
+   * because `?refresh=1&provider=ollama` fetches that host too.
+   */
+  ollamaHosts?: readonly string[]
+}
+
+export function createCatalogHandler(presets: readonly ProviderPreset[], options: CatalogHandlerOptions = {}): { GET: (request: Request) => Promise<Response> } {
   return {
     GET: async (request: Request): Promise<Response> => {
       const url = new URL(request.url)
@@ -42,6 +52,12 @@ export function createCatalogHandler(presets: readonly ProviderPreset[]): { GET:
         if (!preset.discoverModels)
           return json(400, { error: { type: 'discover_unsupported', provider: preset.id } })
         const key = preset.byok ? getByokKey(request, preset.byok) : null
+        // `x-byok-ollama` is a host URL this request is about to fetch, not a
+        // key. Unchecked it is a server-side request forgery: any caller could
+        // point `discoverModels` at the cloud metadata endpoint or an internal
+        // service. The chat handler checks the same header for the same reason.
+        if (preset.id === 'ollama' && key !== null && !ollamaHostAllowed(key, options.ollamaHosts))
+          return json(400, { error: { type: 'host_not_allowed', provider: preset.id } })
         try {
           return Response.json({ provider: preset.id, models: await preset.discoverModels(key) })
         }

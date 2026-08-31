@@ -2,6 +2,7 @@
 export * from './catalog-handler'
 export * from './chat-handler'
 export * from './generation-handlers'
+export * from './ollama-host'
 export * from './preset'
 export * from './selection'
 export * from './thinking'

@@ -306,6 +306,13 @@ Playground 的目录就是 `useServerCoverage(byok).providers` 建出来的（`c
 `unknown_provider`，没有 `discoverModels` → 400 `discover_unsupported`，上游失败 → 502
 `discover_failed`（上游的错误文本不回显）。
 
+**`x-byok-ollama` 携带的是 host URL 而不是密钥**，而 `?refresh=1&provider=ollama` 会去 fetch 它，
+所以这条路径和 chat 一样过 `ollamaHostAllowed`（缺省只放行 loopback 与 RFC 1918），不合规回 400
+`host_not_allowed`。自建 handler 时**两处都要设** `ollamaHosts`：
+`createCatalogHandler(presets, { ollamaHosts })` 与 `createChatHandler({ ollamaHosts })`——
+少设一处就等于把那条路径敞开。判定是解析地址而不是比字符串前缀：`10.attacker.com` 是一个普通域名，
+它的主人想让它解析到哪就到哪。
+
 ### ChatHandlerOptions
 
 | 选项 | 类型 | 默认值 | 说明 |
@@ -561,7 +568,8 @@ import { createByok, DEFAULT_BYOK_KEY_DIALOG_LABELS, useByok, useServerCoverage 
 | `definePreset(preset)` | 恒等 + 校验 `byok.id === id` |
 | `createChatHandler(options)` | `(ChatHandlerOptions) => { POST, GET }`，见 [Route handler](#route-handler) |
 | `ChatHandlerOptions` / `ChatHandler` | 上表 / `{ POST, GET }` |
-| `createCatalogHandler(presets)` | `=> { GET }`：`{ providers, coverage, generatedAt }` |
+| `createCatalogHandler(presets, options?)` | `=> { GET }`：`{ providers, coverage, generatedAt }`；`options.ollamaHosts` 同 `createChatHandler` |
+| `ollamaHostAllowed(host, allow?)` | `x-byok-ollama` 的准入判定：解析地址，缺省只放行 loopback 与 RFC 1918 |
 | `pickSelection(forwardedProps, presets, { defaultModel? })` | `=> Selection \| Response`；`Selection = { preset, model, thinking, search }` |
 | `resolveThinking(preset, model, level)` | clamp 后交给 `preset.thinking`；非推理模型关着时 `{}` |
 | `openaiThinking` / `anthropicThinking` / `geminiThinking` / `openrouterThinking` / `grokThinking` / `groqThinking` / `vercelGatewayThinking` / `llmgatewayThinking` / `ollamaThinking` / `openaiCompatibleThinking` / `deepseekThinking` / `deepseekResponsesThinking` / `noThinking` | `(level, model) => fragment`，各 preset 的映射函数（vertex 复用 `geminiThinking`，mistral / bedrock / byteplus 用 `noThinking`） |
