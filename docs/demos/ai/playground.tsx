@@ -6,6 +6,7 @@ import {
   ByokKeyDialog,
   ByokKeyDialogProvider,
   ComposerDictate,
+  ContextUsage,
   createByok,
   createCatalog,
   createThreadIndex,
@@ -23,6 +24,7 @@ import {
   threadPersistence,
   threadTitleFrom,
   TranscriptError,
+  UsageStats,
   useByok,
   useChat,
   useModelSelection,
@@ -30,9 +32,10 @@ import {
   useStoredState,
   useSummarize,
   useTranscription,
+  useUsageTracker,
 } from '@gedatou/cadenza-ai'
-import { Button, cn, ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
-import { IconKey } from '@tabler/icons-react'
+import { Button, cn, Dialog, DialogBody, DialogHeader, DialogPopup, DialogTitle, DialogTrigger, Tabs, TabsList, TabsPanel, TabsTab, ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
+import { IconChartBar, IconKey } from '@tabler/icons-react'
 import { completeOpenRouterPkceIntoByok, startOpenRouterPkceLogin } from '@tanstack/ai-openrouter/pkce'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
@@ -73,6 +76,7 @@ let pkceCompleted = false
 
 function Chat({ anchorTurns, byok, catalog, className, resumeRef, threadId }: { anchorTurns: boolean, byok: ByokClient, catalog: Catalog, className?: string, resumeRef: RefObject<(() => void) | null>, threadId: string }): ReactElement {
   const sel = useModelSelection({ catalog, key: SELECTION_KEY })
+  const usage = useUsageTracker()
   const snapshot = useByok(byok)
   const [draft, setDraft] = useState('')
   // The last recording, kept so a dictation refused for a missing OpenAI key can run once the key is in.
@@ -114,7 +118,9 @@ function Chat({ anchorTurns, byok, catalog, className, resumeRef, threadId }: { 
     tools: [getViewport],
     persistence,
     threadId,
+    onChunk: usage.onChunk,
     onFinish: (message) => {
+      usage.onFinish(message)
       // First assistant reply and the thread is still unnamed: ask the model for a title, once.
       const user = messagesRef.current.find(m => m.role === 'user')
       if (titledRef.current || user === undefined || (index.get(threadId)?.title ?? '') !== '')
@@ -145,6 +151,14 @@ function Chat({ anchorTurns, byok, catalog, className, resumeRef, threadId }: { 
       attachments={transcription.error !== undefined && (
         <TranscriptError error={transcription.error}>{transcription.error.message}</TranscriptError>
       )}
+      renderActions={(message) => {
+        const booked = usage.byMessage.get(message.id)
+        return booked && (
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {`${booked.totalTokens} tokens`}
+          </span>
+        )
+      }}
       toolbar={(
         <>
           <ComposerDictate
@@ -170,6 +184,40 @@ function Chat({ anchorTurns, byok, catalog, className, resumeRef, threadId }: { 
           <SearchToggle model={sel.model} value={sel.selection.search} onValueChange={on => sel.setSearch(on)}>
             Search
           </SearchToggle>
+          {/*
+            The bar reads `lastRun`, not `total`. "Context used" is about the
+            prompt this model just carried; summing every turn's prompt would
+            keep climbing past the window and mean nothing. The session figure
+            belongs in the dialog, where it is labelled as a session figure.
+          */}
+          {usage.lastRun !== undefined && (
+            <ContextUsage model={sel.model} usage={usage.lastRun}>tokens</ContextUsage>
+          )}
+          {usage.lastRun !== undefined && (
+            <Dialog>
+              <DialogTrigger
+                render={<Button aria-label="Usage" size="icon-sm" variant="ghost" />}
+              >
+                <IconChartBar />
+              </DialogTrigger>
+              <DialogPopup>
+                <DialogHeader>
+                  <DialogTitle>Usage</DialogTitle>
+                </DialogHeader>
+                <DialogBody>
+                  {/* The scope switch is the caller's, so it lives here rather than inside the part. */}
+                  <Tabs defaultValue="run">
+                    <TabsList>
+                      <TabsTab value="run">Last run</TabsTab>
+                      <TabsTab value="total">Session</TabsTab>
+                    </TabsList>
+                    <TabsPanel value="run"><UsageStats model={sel.model} usage={usage.lastRun} /></TabsPanel>
+                    <TabsPanel value="total"><UsageStats model={sel.model} usage={usage.total} /></TabsPanel>
+                  </Tabs>
+                </DialogBody>
+              </DialogPopup>
+            </Dialog>
+          )}
           <Button
             aria-label="API keys"
             size="icon-sm"
