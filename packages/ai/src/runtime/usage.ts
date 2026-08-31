@@ -74,10 +74,15 @@ export function useUsageTracker(): UsageTracker {
   }, [])
 
   const onFinish = useCallback((message: UIMessage): void => {
-    let run: TokenUsage | undefined
-    for (const usage of pendingRef.current.values())
-      run = addTokenUsage(run, usage)
-    pendingRef.current.clear()
+    // One run, not the whole map. Summing everything booked a queued or sibling
+    // run's tokens onto this message and left that run's own message with
+    // nothing. `onFinish` carries no runId, so pair them by order: a Map keeps
+    // insertion order, runs finish in order, and messages close in that order
+    // too — the oldest pending run is the one this message closes.
+    const runId = pendingRef.current.keys().next().value
+    const run = runId === undefined ? undefined : pendingRef.current.get(runId)
+    if (runId !== undefined)
+      pendingRef.current.delete(runId)
     if (!run)
       return
     const booked = run

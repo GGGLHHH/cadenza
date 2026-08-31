@@ -260,8 +260,9 @@ Escape 走 `onEditCancel` 而不是停止。
 
 <ComponentPreview name="ai/usage" align="stretch" />
 
-费用由目录里的价格算：`estimateCost(model, usage)` 返回美元，缓存命中的输入按
-`cacheRead` 计价；模型没有价格时返回 `undefined`。
+费用由目录里的价格算：`estimateCost(model, usage)` 返回美元。提示 token 分三档：命中缓存的按
+`cacheRead`，写入缓存的按 `cacheWrite`（Anthropic 是 input 的 1.25×），其余按 `input`；两个缓存价
+缺省都回落到 `input`，模型没有价格时返回 `undefined`。
 
 工具栏里的 `ContextUsage` 把这两件事收成一个部件：`usage.promptTokens / model.contextWindow`
 画成一条 [Progress](/docs/components/progress)，旁边是 prompt token 数和调用方给的单位（children），

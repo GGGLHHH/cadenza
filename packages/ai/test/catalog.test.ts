@@ -40,4 +40,13 @@ describe('catalog', () => {
     expect(usd).toBeCloseTo(1 + 0.25 + 1, 6)
     expect(estimateCost({ ...model, cost: undefined }, { promptTokens: 1, completionTokens: 1, totalTokens: 2 })).toBeUndefined()
   })
+
+  it('prices cache writes at cacheWrite, not at the plain input rate', () => {
+    const model = { id: 'm', name: 'm', provider: 'p', input: ['text'] as const, reasoning: false, cost: { input: 1, output: 2, cacheRead: 0.1, cacheWrite: 1.25 } }
+    // 1M prompt tokens: 200k read from cache, 300k written to it, 500k fresh.
+    const usage = { promptTokens: 1_000_000, completionTokens: 0, totalTokens: 1_000_000, promptTokensDetails: { cachedTokens: 200_000, cacheWriteTokens: 300_000 } }
+    expect(estimateCost(model, usage)).toBeCloseTo((500_000 * 1 + 200_000 * 0.1 + 300_000 * 1.25) / 1_000_000, 10)
+    // Without a cacheWrite price they fall back to input, not to free.
+    expect(estimateCost({ ...model, cost: { input: 1, output: 2 } }, usage)).toBeCloseTo(1, 10)
+  })
 })

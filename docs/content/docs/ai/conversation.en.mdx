@@ -286,7 +286,9 @@ against the assistant message that closes the run.
 <ComponentPreview name="ai/usage" align="stretch" />
 
 Cost comes from the catalog's prices: `estimateCost(model, usage)` returns dollars, with
-cached input priced at `cacheRead`; a model without prices yields `undefined`.
+prompt tokens priced in three tiers: cache hits at `cacheRead`, cache writes at `cacheWrite`
+(1.25× input on Anthropic), the rest at `input`. Both cache prices fall back to `input`, and a
+model without prices yields `undefined`.
 
 `ContextUsage` in the toolbar folds both into one part: `usage.promptTokens / model.contextWindow`
 drawn as a [Progress](/docs/components/progress) bar, next to the prompt-token count and the unit the
