@@ -116,7 +116,8 @@ TranscriptParts               按 part.type 分发；注册表命中的类型用
 <ComponentPreview name="ai/tool-renderers" align="stretch" />
 
 `PartRenderersProvider` 是可选的 context：不放它，`TranscriptParts` 用全套默认；放了，
-`renderers` 里写了哪种 part 就换哪种。`toolCall` 按工具名索引，`default` 兜住没点名的工具；
+`renderers` 里写了哪种 part 就换哪种。嵌套的 provider **与外层合并**（`toolCall` 再按工具名合并一层），
+所以内层只想换 `text` 不会连带丢掉外层注册的工具渲染器——和 `labels` 同一条规矩。`toolCall` 按工具名索引，`default` 兜住没点名的工具；
 每个渲染器收 `ToolRendererProps`：
 
 | 字段 | 类型 | 说明 |

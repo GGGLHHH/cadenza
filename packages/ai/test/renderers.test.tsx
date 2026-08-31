@@ -26,4 +26,17 @@ describe('part renderers', () => {
     expect(container.firstElementChild?.getAttribute('data-hit')).toBe('D')
     expect(container.textContent).toBe(DEFAULT_PART_LABELS.approve)
   })
+
+  it('a nested provider merges with the outer one instead of replacing it', () => {
+    // `labels` always merged; `renderers` replaced wholesale, so a page that
+    // customised one part type silently lost every renderer the app registered.
+    const outer = definePartRenderers({ toolCall: { get_weather: () => 'W' } })
+    const inner = definePartRenderers({ text: () => 'T' })
+    const { container } = render(
+      <PartRenderersProvider renderers={outer}>
+        <PartRenderersProvider renderers={inner}><Probe /></PartRenderersProvider>
+      </PartRenderersProvider>,
+    )
+    expect(container.firstElementChild?.getAttribute('data-hit')).toBe('W')
+  })
 })

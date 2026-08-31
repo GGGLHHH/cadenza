@@ -304,6 +304,25 @@ export function TranscriptParts({ message, className }: TranscriptPartsProps): R
     return <ToolCallCard part={part} result={result} interrupt={interrupt} streaming={streaming}>{approval}</ToolCallCard>
   }
 
+  /**
+   * The `tool-result` parts a tool-call scan walked past. They carry no node of
+   * their own by default — the card renders the output — but a caller who
+   * registers `renderers.toolResult` has asked for one, and the scan used to
+   * advance `index` straight over them so that renderer was never reached.
+   */
+  const walkedResults = (from: number, to: number): ReactNode[] => {
+    const render = renderers.toolResult
+    if (!render)
+      return []
+    const out: ReactNode[] = []
+    for (let i = from; i < to; i += 1) {
+      const part = message.parts[i]
+      if (part.type === 'tool-result')
+        out.push(<div key={`tool-result-${i}`}>{render({ part })}</div>)
+    }
+    return out
+  }
+
   const nodes: ReactNode[] = []
   let index = 0
   while (index <= lastIndex) {
@@ -315,9 +334,11 @@ export function TranscriptParts({ message, className }: TranscriptPartsProps): R
       // each, and never join a group.
       if (providerExecuted(part)) {
         nodes.push(<div key={part.id}>{renderTool(part, index)}</div>)
-        index += 1
-        while (index <= lastIndex && message.parts[index].type === 'tool-result')
-          index += 1
+        let next = index + 1
+        while (next <= lastIndex && message.parts[next].type === 'tool-result')
+          next += 1
+        nodes.push(...walkedResults(index + 1, next))
+        index = next
         continue
       }
       // Consecutive tool calls (results interleaved) collapse into one group.
@@ -344,6 +365,7 @@ export function TranscriptParts({ message, className }: TranscriptPartsProps): R
             </ToolCallGroup>
           )
         : cards[0])
+      nodes.push(...walkedResults(index, cursor))
       index = cursor
       continue
     }
@@ -399,7 +421,9 @@ export function TranscriptParts({ message, className }: TranscriptPartsProps): R
     index += 1
   }
 
-  const sources = sourcesOf(message)
+  // A streaming row re-renders per chunk; unmemoised this walks every part
+  // building a fresh array plus a Set each time, like `results` above.
+  const sources = useMemo(() => sourcesOf(message), [message])
   return (
     <div data-slot="transcript-parts" className={cn('flex flex-col gap-3', className)}>
       {nodes}

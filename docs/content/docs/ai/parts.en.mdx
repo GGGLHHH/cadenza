@@ -123,7 +123,7 @@ in the same Provider.
 
 `PartRenderersProvider` is an optional context: without it `TranscriptParts` uses the full
 defaults; with it, whichever part types `renderers` names are replaced. `toolCall` is keyed by
-tool name, with `default` catching the tools not named; each renderer receives `ToolRendererProps`:
+tool name, with `default` catching the tools not named; each renderer receives `ToolRendererProps`: A nested provider **merges with the outer one** (`toolCall` merges a level deeper, by tool name), so an inner provider swapping `text` does not drop the tool renderers the outer one registered — the same rule `labels` already followed.
 
 | Field | Type | Description |
 | --- | --- | --- |

@@ -107,8 +107,20 @@ export interface PartRenderersProviderProps {
 
 export function PartRenderersProvider({ renderers, labels, children }: PartRenderersProviderProps): ReactElement {
   const parent = use(PartRenderersContext)
+  // Both halves merge with the parent. Replacing `renderers` wholesale meant a
+  // nested provider customising one part type silently dropped every renderer
+  // the outer one registered; `toolCall` merges a level deeper still, since it
+  // is keyed by tool name and two providers may each own different tools.
   const value = useMemo<PartRenderersContextValue>(() => ({
-    renderers: renderers ?? parent.renderers,
+    renderers: renderers
+      ? {
+          ...parent.renderers,
+          ...renderers,
+          ...(parent.renderers.toolCall ?? renderers.toolCall
+            ? { toolCall: { ...parent.renderers.toolCall, ...renderers.toolCall } }
+            : {}),
+        }
+      : parent.renderers,
     labels: labels ? { ...parent.labels, ...labels } : parent.labels,
   }), [renderers, labels, parent])
   return <PartRenderersContext value={value}>{children}</PartRenderersContext>

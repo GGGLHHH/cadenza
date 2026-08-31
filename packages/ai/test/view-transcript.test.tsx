@@ -185,4 +185,26 @@ describe('transcript frame', () => {
     const viewport = container.querySelector('[data-slot=message-scroller-viewport]')
     expect(viewport?.className).toContain('*:[[role=presentation]]:min-inline-0!')
   })
+
+  it('reaches renderers.toolResult for a result the tool-call scan walks past', () => {
+    // The scan consumed interleaved `tool-result` parts and advanced `index`
+    // past them, so a registered toolResult renderer was never dispatched.
+    const message = {
+      id: 'a2',
+      role: 'assistant',
+      parts: [
+        { type: 'tool-call', id: 'c1', name: 'a', arguments: '{}', state: 'complete', output: { ok: 1 } },
+        { type: 'tool-result', toolCallId: 'c1', name: 'a', content: '{"ok":1}' },
+        { type: 'text', content: 'done' },
+      ],
+    } as unknown as UIMessage
+    render(
+      <TranscriptProvider status="ready">
+        <PartRenderersProvider renderers={{ toolResult: () => <i data-testid="result">R</i> }}>
+          <TranscriptParts message={message} />
+        </PartRenderersProvider>
+      </TranscriptProvider>,
+    )
+    expect(screen.getByTestId('result')).toBeTruthy()
+  })
 })
