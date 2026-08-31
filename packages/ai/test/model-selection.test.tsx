@@ -86,4 +86,20 @@ describe('useModelSelection', () => {
     // The write keeps `search`, and keys we never knew about ride along untouched.
     expect(JSON.parse(localStorage.getItem('test:selection')!)).toMatchObject({ search: true, note: 'kept' })
   })
+
+  it('keeps a value the store refused to persist', () => {
+    // Safari private mode / a full quota: `setItem` throws. The cache used to
+    // record "nothing stored", so the next read found the old string still in
+    // the store, judged it a miss and silently reverted the write.
+    const store = createMemoryStorage()
+    store.setItem('test:selection', JSON.stringify({ provider: 'openai', model: 'gpt-5.2', thinking: 'off', search: false }))
+    const refuse = (): never => {
+      throw new Error('QuotaExceededError')
+    }
+    vi.stubGlobal('localStorage', { ...store, getItem: (k: string) => store.getItem(k), setItem: refuse })
+    const { result, rerender } = renderHook(() => useModelSelection({ catalog: defaultCatalog, key: 'test:selection' }))
+    act(() => result.current.setModel('deepseek/deepseek-v4-flash'))
+    rerender()
+    expect(result.current.selection.model).toBe('deepseek-v4-flash')
+  })
 })

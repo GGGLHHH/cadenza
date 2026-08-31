@@ -1,7 +1,8 @@
 'use client'
 import { useCallback, useSyncExternalStore } from 'react'
 
-interface Entry { raw: string | null, value: unknown }
+/** `detached`: this page could not persist, so the cache outranks whatever the store still holds. */
+interface Entry { raw: string | null, value: unknown, detached?: boolean }
 
 const listeners = new Map<string, Set<() => void>>()
 const cache = new Map<string, Entry>()
@@ -19,8 +20,10 @@ function storage(): Storage | undefined {
 function snapshot<T>(key: string, initial: T): T {
   const store = storage()
   const hit = cache.get(key)
-  // No storage: the cache is the only state there is.
-  if (!store)
+  // No storage, or a write this page could not persist: the cache is the only
+  // state there is. Without the `detached` half, a rejected write would read
+  // back the stale string still in the store and silently revert itself.
+  if (!store || hit?.detached)
     return hit ? hit.value as T : seed(key, null, initial)
   const raw = store.getItem(key)
   if (hit && hit.raw === raw)
@@ -71,14 +74,17 @@ export function useStoredState<T>(key: string, initial: T): [T, (next: T) => voi
   const setValue = useCallback((next: T): void => {
     const raw = JSON.stringify(next)
     let stored: string | null = null
+    let detached = false
     try {
       storage()?.setItem(key, raw)
       stored = storage()?.getItem(key) ?? null
     }
     catch {
-      // Quota or private mode: the in-memory copy still serves this page.
+      // Quota or private mode: the in-memory copy serves this page from here on,
+      // which `snapshot` honours through `detached`.
+      detached = true
     }
-    cache.set(key, { raw: stored, value: next })
+    cache.set(key, { raw: stored, value: next, detached })
     emit(key)
   }, [key])
   return [value, setValue]
