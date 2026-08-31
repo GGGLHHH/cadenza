@@ -17,6 +17,7 @@ export * from './catalog'
 export * from './cost'
 export * from './thinking'
 export * from './types'
+export * from './usage-metrics'
 
 export const providers = { openai, anthropic, gemini, grok, groq, mistral, openrouter, vercelGateway, llmgateway, bedrock, vertex, ollama, deepseek } as const
 export const defaultCatalog = createCatalog(Object.values(providers))
