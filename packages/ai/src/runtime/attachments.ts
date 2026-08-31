@@ -1,6 +1,6 @@
 'use client'
 import type { ContentPart } from '@tanstack/ai/client'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 /** 3 MiB: base64 in a JSON body, comfortably under common function payload limits. */
 export const DEFAULT_MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024
@@ -126,26 +126,34 @@ export function useAttachmentDraft(options: UseAttachmentDraftOptions = {}): Att
           return { ...base, kind, state: 'error', error: 'too-large' }
         return { ...base, kind, state: 'idle', previewUrl: kind === 'image' ? URL.createObjectURL(entry) : undefined }
       }
+      // A ready-made part goes through the same `accept` gate a picked file does.
+      // Without it the recorder's audio slipped past an image-only composer while
+      // the identical audio *file* was rejected — a half-enforced trust boundary.
       const kind = entry.type === 'text' ? undefined : entry.type
+      const ok = kind !== undefined && kinds.includes(kind)
       const mimeType = entry.type === 'text' ? 'text/plain' : entry.source.mimeType ?? ''
-      return { id: nextId(), kind: kind ?? 'document', state: kind ? 'done' : 'error', name: kind ?? 'text', mimeType, size: 0, part: entry, ...(kind ? {} : { error: 'unsupported' }) }
+      return { id: nextId(), kind: kind ?? 'document', state: ok ? 'done' : 'error', name: kind ?? 'text', mimeType, size: 0, part: entry, ...(ok ? {} : { error: 'unsupported' }) }
     })
     setItems(current => [...current, ...next])
   }, [kinds, maxBytes])
 
+  // Revoking is a side effect, so it happens here and not inside the updater —
+  // React may run an updater more than once or throw its result away, and a
+  // replayed revoke would kill the preview of an item still on screen.
   const remove = useCallback((id: string): void => {
-    setItems((current) => {
-      current.filter(i => i.id === id).forEach(revoke)
-      return current.filter(i => i.id !== id)
-    })
+    itemsRef.current.filter(i => i.id === id).forEach(revoke)
+    setItems(current => current.filter(i => i.id !== id))
   }, [])
 
   const clear = useCallback((): void => {
-    setItems((current) => {
-      current.forEach(revoke)
-      return []
-    })
+    itemsRef.current.forEach(revoke)
+    setItems([])
   }, [])
+
+  // `remove` / `clear` cover the explicit paths; this covers the composer going
+  // away with attachments still in it (thread switch, dialog close), which
+  // otherwise leaks every preview blob for the lifetime of the document.
+  useEffect(() => () => itemsRef.current.forEach(revoke), [])
 
   const toParts = useCallback(async (): Promise<ContentPart[]> => {
     return Promise.all(itemsRef.current

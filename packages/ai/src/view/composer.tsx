@@ -179,7 +179,11 @@ export function Composer({
         }}
         onDragLeave={(event) => {
           onDragLeave?.(event)
-          setDragging(false)
+          // `dragleave` also fires every time the pointer crosses into a
+          // descendant, so clearing unconditionally strobed `data-dragging`
+          // for the whole drag. Only a pointer that really left the form counts.
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+            setDragging(false)
         }}
         onDrop={(event) => {
           onDrop?.(event)
@@ -393,12 +397,13 @@ export function ComposerDictate({ children, onClick, onRecording, ...props }: Co
         onClick?.(event)
         if (event.defaultPrevented)
           return
-        if (recorder.isRecording) {
-          void recorder.stop().then(recording => onRecording(recording.part, createGenericEventDetails('imperative-action', event.nativeEvent)))
-        }
-        else {
-          void recorder.start()
-        }
+        // A denied microphone prompt rejects. Swallowed here rather than left to
+        // `void`, which turns it into an unhandled rejection — the recorder's own
+        // state is what the UI reads, and it stays not-recording either way.
+        if (recorder.isRecording)
+          recorder.stop().then(recording => onRecording(recording.part, createGenericEventDetails('imperative-action', event.nativeEvent)), () => {})
+        else
+          recorder.start().catch(() => {})
       }}
     >
       {children ?? <IconMicrophone />}

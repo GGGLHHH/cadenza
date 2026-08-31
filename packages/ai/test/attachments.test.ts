@@ -43,4 +43,17 @@ describe('attachments', () => {
     expect(result.current.accept).toContain('image/*')
     expect(result.current.accept).toContain('application/pdf')
   })
+
+  it('applies `accept` to ready-made parts, not only to picked files', () => {
+    // The recorder hands in an AudioPart directly. It used to land as `done`
+    // under an image-only composer while the identical audio *file* was refused.
+    const { result } = renderHook(() => useAttachmentDraft({ accept: ['image'] }))
+    act(() => result.current.add([
+      { type: 'audio', source: { type: 'data', mimeType: 'audio/webm', value: 'AA==' } },
+      { type: 'image', source: { type: 'data', mimeType: 'image/png', value: 'AA==' } },
+      new File([new Uint8Array([1])], 'a.webm', { type: 'audio/webm' }),
+    ]))
+    expect(result.current.items.map(i => [i.kind, i.state])).toEqual([['audio', 'error'], ['image', 'done'], ['audio', 'error']])
+    expect(result.current.items[0]?.error).toBe('unsupported')
+  })
 })
