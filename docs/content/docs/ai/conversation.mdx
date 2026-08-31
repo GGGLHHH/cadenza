@@ -270,6 +270,31 @@ Escape 走 `onEditCancel` 而不是停止。
 与 `estimateCost` 的美元。模型没有 `contextWindow` 就只显示数字；比例镜像成 `data-ratio`（两位小数）。
 明细的行标签是英文默认，`labels` 可覆盖——与 `ByokKeyDialog` 同一条路。
 
+### 比例指标
+
+`usageMetrics(usage, model)` 是纯函数，把一份 `TokenUsage` 里读得出的比例一次算齐：
+`cacheHitRate` / `cacheWriteRate`（占 `promptTokens`）、`outputRatio`（回答比提示）、
+`reasoningShare`（思考占回答）、`contextRatio`（同上面那根条）、`cacheSavings`（缓存读比原价
+省下的美元），外加 `promptModalities` / `completionModalities`——按模态的非零切片，从大到小。
+
+**分母未知时是 `undefined`，不是 0。** 「没有提示 token 时的缓存命中率」不是零，是无从谈起；
+同理，模型没给 `cacheRead` 意味着缓存不打折，而不是省了 0。界面据此决定「不显示这一格」，
+而不是显示一个会被误读的 0%。`model` 只有 `contextRatio` 和 `cacheSavings` 需要。
+
+`ContextUsage` 的 tooltip 里已经带上了其中四项。要更铺开的呈现用 `UsageStats`：一格一个指标的
+网格，比率型的配一条细 Progress，按模态的那格把切片列出来；同样是**这一格算不出来就不出现**。
+
+<ComponentPreview name="ai/usage-stats" align="stretch" />
+
+它只渲染**一份** `usage`。渲染哪一份是调用方的事——`useUsageTracker` 三个粒度都给了，
+上面 demo 里那个 `[Session | Last run | Last message]` 切换器是调用方自己写的几行 Tabs，
+这样文案和 variant 留在它们该在的地方（同 `AlertDialogClose` 的判例）。行标签同样走 `labels`。
+
+数据通道有两条，值得知道：`cachedTokens` 与 `reasoningTokens` 是 AG-UI spec 的一等字段直通；
+`cacheWriteTokens` 与模态拆分没有 spec 位置，走 `toSpecTokenUsage` 的 leftover，挂在
+`metadata.tanstack.usage` 上由 `fromSpecTokenUsage` 还原。脚本化传输的 `usage(u, details)`
+第二个参数走的就是后面这条，所以上面的 demo 确实在验证这条通道，而不是绕过它。
+
 ## 本地持久化
 
 `useChat({ persistence, threadId })` 是 TanStack AI 的接口，`indexedDBPersistence()`

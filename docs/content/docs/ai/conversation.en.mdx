@@ -298,6 +298,38 @@ detail lists prompt / completion / cached / total and `estimateCost`'s dollars. 
 The detail's row labels default to English and `labels` overrides them — the same route as
 `ByokKeyDialog`.
 
+### Ratio metrics
+
+`usageMetrics(usage, model)` is a pure function that derives every ratio one `TokenUsage`
+holds: `cacheHitRate` / `cacheWriteRate` (of `promptTokens`), `outputRatio` (answer per
+prompt), `reasoningShare` (thinking per answer), `contextRatio` (the same figure as the bar),
+`cacheSavings` (dollars the cache read saved against full price), plus `promptModalities` /
+`completionModalities` — the non-zero slices per modality, largest first.
+
+**An unknown denominator yields `undefined`, not 0.** A cache hit rate with no prompt tokens
+is not zero, it is unanswerable; likewise a model with no `cacheRead` means the cache is not
+discounted, not that it saved nothing. The UI reads that as "leave this tile out" rather than
+printing a 0% that would be misread. `model` is needed only by `contextRatio` and
+`cacheSavings`.
+
+`ContextUsage`'s tooltip already carries four of them. For a fuller display there is
+`UsageStats`: a grid of one tile per metric, a thin Progress under the rates, and the slices
+listed inside the modality tile — again, **a tile whose number is unknown does not appear**.
+
+<ComponentPreview name="ai/usage-stats" align="stretch" />
+
+It renders **one** `usage`. Which one is the caller's to decide — `useUsageTracker` hands over
+all three grains, and the `[Session | Last run | Last message]` switch in the demo above is a
+few lines of Tabs the caller writes, which keeps that wording and those variants where they
+belong (the `AlertDialogClose` precedent). Row labels go through `labels` the same way.
+
+Two channels carry the data, worth knowing: `cachedTokens` and `reasoningTokens` are
+first-class AG-UI spec fields and travel directly; `cacheWriteTokens` and the modality
+breakdown have no spec slot, so they ride `toSpecTokenUsage`'s leftover, hang on
+`metadata.tanstack.usage` and are rebuilt by `fromSpecTokenUsage`. The scripted transport's
+`usage(u, details)` second argument travels that same road, so the demo above exercises the
+channel rather than bypassing it.
+
 ## Local persistence
 
 `useChat({ persistence, threadId })` is TanStack AI's interface and `indexedDBPersistence()`

@@ -4,6 +4,7 @@ import type { Model, TokenUsage } from '../catalog/types'
 import { cn, Progress, Tooltip, TooltipPopup, TooltipTrigger } from '@gedatou/cadenza-ui'
 import { useId, useMemo } from 'react'
 import { estimateCost } from '../catalog/cost'
+import { usageMetrics } from '../catalog/usage-metrics'
 
 /** The row labels of the detail tooltip. Override through `labels` (the `ByokKeyDialog` route: this part has no renderer registry to read from). */
 export interface ContextUsageLabels {
@@ -12,6 +13,10 @@ export interface ContextUsageLabels {
   cached: string
   total: string
   cost: string
+  cacheHit: string
+  outputRatio: string
+  reasoningShare: string
+  cacheSaved: string
 }
 
 export const DEFAULT_CONTEXT_USAGE_LABELS: ContextUsageLabels = {
@@ -20,6 +25,10 @@ export const DEFAULT_CONTEXT_USAGE_LABELS: ContextUsageLabels = {
   cached: 'Cached',
   total: 'Total',
   cost: 'Cost',
+  cacheHit: 'Cache hit',
+  outputRatio: 'Out per in',
+  reasoningShare: 'Reasoning',
+  cacheSaved: 'Saved by cache',
 }
 
 export interface ContextUsageProps {
@@ -39,6 +48,7 @@ export interface ContextUsageState {
 }
 
 const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 4 })
+const PERCENT = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 })
 
 /**
  * How full the context is (spec O1): a bar for `promptTokens / contextWindow`
@@ -53,6 +63,7 @@ export function ContextUsage({ model, usage, labels: labelsProp, children, class
   const ratio = window !== undefined && window > 0 ? usage.promptTokens / window : undefined
   const cached = usage.promptTokensDetails?.cachedTokens
   const cost = model && estimateCost(model, usage)
+  const metrics = useMemo(() => usageMetrics(usage, model), [usage, model])
   return (
     <Tooltip>
       <TooltipTrigger
@@ -93,10 +104,40 @@ export function ContextUsage({ model, usage, labels: labelsProp, children, class
           )}
           <dt>{labels.total}</dt>
           <dd className="text-end">{usage.totalTokens}</dd>
+          {/*
+            The ratios the same four numbers already imply. Each is skipped when
+            its denominator is unknown — a rate with nothing under it is not 0%,
+            and a provider that reports no cache detail should show one row
+            fewer rather than a row that reads zero.
+          */}
+          {metrics.cacheHitRate !== undefined && (
+            <>
+              <dt>{labels.cacheHit}</dt>
+              <dd className="text-end">{PERCENT.format(metrics.cacheHitRate)}</dd>
+            </>
+          )}
+          {metrics.outputRatio !== undefined && (
+            <>
+              <dt>{labels.outputRatio}</dt>
+              <dd className="text-end">{`${metrics.outputRatio.toFixed(2)}×`}</dd>
+            </>
+          )}
+          {metrics.reasoningShare !== undefined && (
+            <>
+              <dt>{labels.reasoningShare}</dt>
+              <dd className="text-end">{PERCENT.format(metrics.reasoningShare)}</dd>
+            </>
+          )}
           {cost !== undefined && (
             <>
               <dt>{labels.cost}</dt>
               <dd className="text-end">{USD.format(cost)}</dd>
+            </>
+          )}
+          {metrics.cacheSavings !== undefined && (
+            <>
+              <dt>{labels.cacheSaved}</dt>
+              <dd className="text-end">{USD.format(metrics.cacheSavings)}</dd>
             </>
           )}
         </dl>

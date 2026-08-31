@@ -261,6 +261,7 @@ const registry: Record<string, ComponentType> = {
   'ai/states': lazy(async () => import('./ai/states')),
   'ai/actions': lazy(async () => import('./ai/actions')),
   'ai/usage': lazy(async () => import('./ai/usage')),
+  'ai/usage-stats': lazy(async () => import('./ai/usage-stats')),
   'ai/persistence': lazy(async () => import('./ai/persistence')),
   'ai/reasoning': lazy(async () => import('./ai/reasoning')),
   'ai/tool-call': lazy(async () => import('./ai/tool-call')),
