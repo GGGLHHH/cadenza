@@ -1,0 +1,479 @@
+---
+title: Composer
+description: A <form> around an InputGroup — text, attachments, model and thinking level, suggestions, queueing, drafts, dictation — all wired from nothing but useChat's return value
+---
+
+<ComponentPreview name="ai/composer" align="stretch" />
+
+`Composer` is the input end of a conversation: a `<form>` around an
+[InputGroup](/docs/components/input-group). Submission goes through
+`onValueCommitted(value, details)`, and `status` from `useChat` decides whether the submit
+button sends or stops. The other parts are slots inside that form — the attachment strip and
+attach button, the dictate button, the model and thinking-level pickers — plus two that live
+outside it: `Suggestions` in the empty state and `QueueList` while streaming. Attachments, model
+selection and drafts each have a hook that depends only on `useChat`'s return value:
+`useAttachmentDraft`, `useModelSelection`, `useStoredState`.
+
+Every demo on this page runs on the [scripted transport](/docs/ai/scripted) and needs no key.
+
+## Usage
+
+```tsx
+import {
+  Composer,
+  ComposerAttach,
+  ComposerAttachments,
+  ComposerDictate,
+  ComposerSubmit,
+  ComposerTextarea,
+  ComposerToolbar,
+  ModelPicker,
+  QueueList,
+  Suggestions,
+  SuggestionsItem,
+  ThinkingLevelPicker,
+  useAttachmentDraft,
+  useModelSelection,
+  useStoredState,
+} from '@gedatou/cadenza-ai'
+```
+
+```tsx
+<Composer status={chat.status} onValueCommitted={text => void chat.sendMessage(text)} onStop={() => chat.stop()}>
+  <ComposerTextarea placeholder="Ask about the programme…" />
+  <ComposerToolbar>
+    <ComposerSubmit />
+  </ComposerToolbar>
+</Composer>
+```
+
+## Composition
+
+```text
+Composer                      <form> + InputGroup; data-submitted / data-streaming / data-error / data-dragging / data-editing
+├─ ComposerAttachments        the pending-attachments strip (before the textarea)
+├─ ComposerTextarea           InputGroupTextarea: grows with the draft, Enter submits, Shift+Enter breaks a line, Escape stops or cancels an edit
+└─ ComposerToolbar            InputGroupAddon align="block-end"
+   ├─ ComposerAttach          file picker
+   ├─ ComposerDictate         recording
+   ├─ ModelPicker             model (Combobox)
+   ├─ ThinkingToggle          deep-thinking switch (the DeepSeek pill; not rendered for a model without reasoning)
+   ├─ ThinkingLevelPicker     thinking level (Select; not rendered with a single level)
+   ├─ SearchToggle            web-search switch (the same pill; not rendered for a model without search)
+   └─ ComposerSubmit          send while idle, stop while running
+
+Suggestions                   a row of prompt chips, usually inside TranscriptEmpty
+└─ SuggestionsItem
+QueueList                     the messages waiting in chat.queue, each with a cancel
+```
+
+`Composer`'s children land directly in the `InputGroup`, so the textarea and the toolbar must be
+its direct children — InputGroup's auto-height and block-end toolbar rules key off `>`
+selectors; the attachment strip sits on the same level, before the textarea. `Composer` ships no
+copy: the placeholder and any hint in the toolbar are yours; icon buttons carry English
+`aria-label`s, overridable through props.
+
+## Attachments
+
+Files come in through the button, a drop or a paste, wait in the strip, and become content
+parts of the message on send.
+
+<ComponentPreview name="ai/attachments" align="stretch" />
+
+Three entry points, one draft, one conversion:
+
+- **Entry points**: `ComposerAttach` opens the file picker and the chosen files go to its
+  `onFiles(files, { reason: 'input-change' })`; `Composer`'s own `onFiles` takes drops
+  (`'drag'`) and pastes (`'input-paste'`) — without it, drops and pastes are left to the
+  browser and `data-dragging` never appears.
+- **Draft**: `useAttachmentDraft({ maxBytes, accept })` holds the pending list; its fields are in the table below.
+- **Strip**: `ComposerAttachments items onRemove` draws each item as an
+  [Attachment](/docs/components/attachment); `item.state` lands straight on its `state`
+  (`idle` / `uploading` / `done` / `error`), images get a thumbnail, everything else a paperclip.
+- **Send**: after `await draft.toParts()`, combine the text and the parts into a
+  `MultimodalContent` for `sendMessage`, then `draft.clear()`. `Composer` commits text only;
+  the merge is yours — the demo's `onCommit` is exactly those lines.
+
+The `AttachmentDraft` that `useAttachmentDraft` returns:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `items` | `readonly DraftAttachment[]` | `{ id, kind, state, name, mimeType, size, file?, part?, error?, previewUrl? }` |
+| `add` | `(items: (File \| ContentPart)[]) => void` | files are sorted by MIME (by extension when missing) into `image` / `audio` / `video` / `document`; a kind outside `accept` lands in `state: 'error'` with `error: 'unsupported'`, one over `maxBytes` with `error: 'too-large'`; a ready-made part (dictation) is `'done'` at once |
+| `remove` / `clear` | `(id) => void` / `() => void` | also revoke the image thumbnails' object URLs |
+| `toParts` | `() => Promise<ContentPart[]>` | skips errored items and reads files into base64 `data` parts |
+| `accept` | `string` | the `accept` for `<input type="file">`, computed from the `accept` option |
+
+`document` means `application/pdf` / `text/plain` / `text/markdown` only.
+`fileToContentPart(file, { maxBytes })` is the step `toParts` uses and can be called on its own.
+
+**Why 3 MiB by default**: `DEFAULT_MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024`. Attachments are
+inlined as base64 in the JSON request body, which grows them to about 4/3 of the file; Vercel's
+function request-body limit is 4.5 MB, and a 3 MiB file encodes to about 4 MiB — just inside the
+line. The limit is **per file** (`fileToContentPart` checks each one), so several attachments
+can still add up past the platform limit; on your own server change it with `maxBytes`, and the
+server side has [`createChatHandler`'s `maxBodyBytes`](/docs/ai/providers#route-handler)
+(4 MiB by default, 413 beyond it) as the backstop.
+
+## Model and thinking level
+
+The model picker is grouped by provider and searchable, with `provider/model` as its value; the
+thinking level lists only the levels this model supports.
+
+<ComponentPreview name="ai/model-picker" align="stretch" />
+
+- `ModelPicker` is a [Combobox](/docs/components/combobox): search matches model name, id and
+  provider name; each item shows, from the `Model`'s metadata, a reasoning icon, a vision icon
+  and the context window (`128k` / `1M`). The value is `modelRef(model)`'s `provider/model`
+  string; `parseModelRef` takes it apart. Given a `byok` snapshot, the group heading of a
+  provider that needs a key but has none yet carries `data-key-missing` and a key icon;
+  `disabledProviders` disables a whole group's items.
+- `ThinkingToggle` is DeepSeek's deep-thinking pill: a [Toggle](/docs/components/toggle) that lights
+  up while on, with `data-thinking` present; switching on lands at `onLevel` (default `'high'`)
+  clamped to the model, switching off sends `'off'`; a model without reasoning renders `null`, and
+  one that cannot switch thinking off (no `'off'` level) shows it pressed and disabled. The label is
+  your children.
+- `ThinkingLevelPicker` is a [Select](/docs/components/select) whose options come from
+  `supportedThinkingLevels(model)`; **with a single level (a model without reasoning) it
+  returns `null`**, so switching to GPT-4.1 makes it disappear. The Playground pairs the two: the
+  switch is always there, the dropdown only while thinking is on and the model offers more than one
+  on-level.
+- `SearchToggle` is the same pill for web search: it lights up while on, carries `data-search`, and
+  `onValueChange` receives a boolean. It renders only when `Model.search` is true, so it appears and
+  disappears with the model — today only DeepSeek's two V4 models declare the capability. The search
+  itself runs on the provider's side; this switch only puts the answer into `forwardedProps`, and the
+  server's function form of `createChatHandler`'s `tools` decides whether to attach the built-in tool
+  (see [providers](/docs/ai/providers#provider-built-in-tools)).
+- `useModelSelection({ catalog, key, initial })` ties them together and persists them
+  (`localStorage`, key `cadenza-ai:selection` by default): `selection` / `model` / `provider`,
+  `setModel(ref)` (clamps the thinking level to what the new model supports, and drops `search` when
+  the new model has none), `setThinking(level)`, `setSearch(on)`, and `forwardedProps`, a stable
+  object for `useChat({ forwardedProps })` — sending right after switching models already uses the
+  new value, and the server reads `data.provider` / `data.model` / `data.thinking` / `data.search`.
+  The catalog is the only authority on capability: `setSearch(true)` on a model without `search` is
+  false, and both `thinking` and `search` are clamped again on read — a selection saved before a field
+  existed is missing it, and a catalog that narrows a model's levels leaves the old one stale (a value
+  no `SelectItem` carries renders `ThinkingLevelPicker`'s trigger blank). **Nothing is clamped while
+  the catalog does not know the model**, though: "no entry" and "cannot do it" are different claims,
+  and a renamed or dropped id must not erase what the user picked. The clamp applies to the value you
+  read; writes go back as they were stored, keys we do not recognise included.
+
+The seven levels from weakest to strongest: `off` / `minimal` / `low` / `medium` / `high` /
+`xhigh` / `max`.
+
+<ComponentPreview name="ai/thinking-levels" align="stretch" />
+
+`supportedThinkingLevels(model)`: no reasoning → `['off']`; reasoning → `model.thinkingLevels`,
+all seven by default. `clampThinkingLevel(model, level)`: returned as is when supported,
+otherwise the nearest supported level below; when the target is under the model's floor (Claude
+Fable 5 cannot switch thinking off, its floor is `low`) the floor is used. What each provider
+turns a level into is in [Providers → Thinking level](/docs/ai/providers#thinking-level).
+
+## Suggestions
+
+A row of prompt chips; pressing one sends it.
+
+<ComponentPreview name="ai/suggestions" align="stretch" />
+
+`Suggestions` is a `role="group"` inside a horizontal [ScrollArea](/docs/components/scroll-area);
+values come up through the root's `onValueChange(value, { reason: 'item-press' })` — Base UI
+Menu / Select style, the items carry no callback of their own. `SuggestionsItem` is
+`Button variant="outline" size="sm"`; `value` is usually the prompt itself while the visible
+label can be shorter; `data-value` mirrors it. Placed inside `TranscriptEmpty`, it leaves with
+the empty state as soon as the first message arrives.
+
+## Queueing
+
+A message sent while a run is in flight is queued by default and sent once the run settles
+successfully; `QueueList` lists them, each with a cancel.
+
+<ComponentPreview name="ai/queue" align="stretch" />
+
+```tsx
+const chat = useChat({ fetcher, queue: { whenBusy: 'queue', drain: 'fifo', maxSize: 3, onOverflow: 'drop-oldest' } })
+
+<QueueList queue={chat.queue} onCancel={id => chat.cancelQueued(id)}>
+  <p className="text-xs text-muted-foreground">Sends when the reply finishes.</p>
+</QueueList>
+```
+
+The queue is TanStack's: `useChat({ queue })` takes `'queue'` / `'drop'` / `'interrupt'`
+(shorthand for `{ whenBusy }`), a `QueueConfig` (`whenBusy` / `drain: 'fifo' | 'batch'` /
+`maxSize` / `onOverflow: 'reject' | 'drop-oldest'`), or a function deciding per send; a single
+`sendMessage(text, { whenBusy })` overrides the policy. `chat.queue` is a `QueuedMessage[]`
+(`{ id, content, createdAt }`) and `chat.cancelQueued(id)` withdraws one before it goes out;
+`stop()`, an error, `clear()` and `reload()` all flush the queue. `QueueList` draws each entry
+as an [Item](/docs/components/item) (`size="xs"`): text content as is, multimodal content with
+its text parts joined and the rest written as placeholders like `[image]`; on the right an
+`aria-label="Cancel"` icon button calling `onCancel(id, { reason: 'none' })`. `children` come
+after the rows.
+
+One pass through the demo shows the three policies apart: `queue` joins the list and waits for the
+run to end; `drop` discards silently (the promise still resolves, nothing throws); `interrupt`
+aborts the current stream and sends at once — unlike `stop()` it does **not** flush what is
+already queued, which still drains once the interrupting run settles successfully.
+
+## Drafts
+
+Leave halfway through typing and come back — the draft is still there: keep `Composer`'s value
+in `localStorage`.
+
+<ComponentPreview name="ai/draft" align="stretch" />
+
+```tsx
+const [draft, setDraft] = useStoredState(`cadenza-ai:draft:${threadId}`, '')
+
+<Composer
+  status={chat.status}
+  value={draft}
+  onValueChange={setDraft}
+  onValueCommitted={text => void chat.sendMessage(text)}
+>
+  <ComposerTextarea />
+  <ComposerToolbar><ComposerSubmit /></ComposerToolbar>
+</Composer>
+```
+
+`useStoredState(key, initial)` is a `useState` whose value round-trips through
+`localStorage[key]` as JSON: hooks sharing a key stay in sync, tabs sync through the `storage`
+event; server rendering returns `initial`, and where storage is unavailable (private mode,
+blocked site data) an in-memory copy takes over — writes never throw. `Composer` sets the value
+to the empty string after a commit, which clears the draft with it. `useModelSelection` persists
+through the same hook. Key by thread: the demo remounts the whole chat by `key` when switching,
+the freshly mounted hook reads its own key, and the draft comes back with the thread — a reload
+keeps it too.
+
+## Dictation
+
+Press to record, press again to stop; the finished recording joins the attachment strip and
+ships with the next message.
+
+<ComponentPreview name="ai/dictate" align="stretch" />
+
+`ComposerDictate` wraps TanStack's `useAudioRecorder()`: while recording, `aria-pressed` and
+`data-recording` are present; on stop, `recording.part` (an `AudioPart`) goes to
+`onRecording(part, { reason: 'imperative-action' })` — `draft.add([part])` puts it in the strip
+(`state: 'done'`) and the send path is the same as for a picked file. It needs microphone
+permission; where the browser lacks `MediaRecorder` the button is disabled
+(`recorder.isSupported`). The package does no transcription; the audio is sent to the model as
+a part, as is.
+
+## State and className
+
+`Composer`'s state mirrors `status` plus two local states, all as named attributes; the other
+parts have one or two each.
+
+| Attribute | On | Value | When |
+| --- | --- | --- | --- |
+| `data-submitted` `data-streaming` `data-error` | `composer` | empty | mirror `status`; `ready` is the absence of all three |
+| `data-dragging` | `composer` | empty | `onFiles` given and files are being dragged over the form |
+| `data-editing` | `composer` | empty | given `editing` |
+| `data-recording` | `composer-dictate` | empty | while recording (with `aria-pressed="true"`) |
+| `data-value` | `suggestions-item` | `string` | mirrors `value` |
+| `data-key-missing` | a group heading in the `model-picker` popup | empty | given `byok`, when that provider needs a key and its status is `empty` |
+| `data-state` | each Attachment in `composer-attachments` | `"idle"` \| `"uploading"` \| `"done"` \| `"error"` | mirrors `item.state`, see [Attachment](/docs/components/attachment#state-and-classname) |
+| `disabled` | `composer-submit` | — | an empty draft (empty after `trim()`, unless `allowEmpty`) or `Composer disabled`; while running it is the `type="button"` stop key instead |
+
+| `data-slot` | What it is |
+| --- | --- |
+| `composer` | the root `<form>` |
+| `composer-textarea` | `InputGroupTextarea` |
+| `composer-toolbar` | `InputGroupAddon` (`align="block-end"`) |
+| `composer-submit` | the send / stop button (`aria-label` `Send` / `Stop`) |
+| `composer-attach` | the attach button; a `hidden` `<input type="file">` precedes it |
+| `composer-attachments` | `AttachmentGroup` |
+| `composer-dictate` | the record button |
+| `suggestions` / `suggestions-item` | the `role="group"` row / one chip |
+| `queue-list` / `queue-list-item` | `ItemGroup` / one row |
+| `model-picker` | the Combobox trigger button |
+| `thinking-level-picker` | the Select trigger button |
+
+`className` is a `string` on all of these: `Composer`'s lands on the `<form>`,
+`ComposerTextarea` / `ComposerToolbar` / `ComposerSubmit` / `ComposerAttach` /
+`ComposerDictate`'s on their InputGroup parts, `ComposerAttachments`' on the `AttachmentGroup`,
+`Suggestions`' on the ScrollArea root, `QueueList`'s on the `ItemGroup`, and the two pickers'
+on their trigger buttons.
+
+## Keyboard interactions
+
+| Key | Effect |
+| --- | --- |
+| `Enter` (focus in `ComposerTextarea`) | submit, `onValueCommitted(value, { reason: 'keyboard' })`; not during an IME composition (`isComposing` / `key === 'Process'`); not on an empty draft |
+| `Shift` + `Enter` | line break |
+| `Escape` | while `editing`: `onEditCancel`; otherwise while `submitted` / `streaming`: `onStop`; else nothing |
+| `Tab` | textarea → the toolbar's buttons and pickers, in DOM order |
+| `Enter` / `Space` (focus on `ComposerDictate`) | start / stop recording |
+| inside a picker | as [Combobox](/docs/components/combobox#keyboard-interactions) / [Select](/docs/components/select#keyboard-interactions) |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks → behaviour → appearance → `className`**.
+
+### Composer
+
+The root `<form>` + `InputGroup`; holds the draft text and hands a context down (readable
+through `useComposer()`). The native `onSubmit` / `onChange` / `value` / `defaultValue` are
+removed in favour of the `details`-carrying versions below.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `status` | `ChatClientState` | — | `chat.status`; decides send / stop and the `data-*` |
+| `onValueCommitted` | `(value: string, details: GenericEventDetails<'keyboard' \| 'none'>) => void` | — | Enter or the form's submit; the draft is cleared afterwards. Not called while `disabled` or on a blank draft |
+| `children` | `ReactNode` | — | attachment strip, textarea, toolbar |
+| `defaultValue` | `string` | `''` | the initial draft |
+| `value` | `string` | — | the controlled draft |
+| `onValueChange` | `(value, details: ChangeEventDetails<'input-change' \| 'none'>) => void` | — | typing is `'input-change'`, the clear after a commit is `'none'`; `details.cancel()` vetoes |
+| `onStop` | `(details: GenericEventDetails<'escape-key' \| 'none'>) => void` | — | Escape or the stop key while `submitted` / `streaming` |
+| `onEditCancel` | `(details: GenericEventDetails<'escape-key'>) => void` | — | Escape while `editing`; takes precedence over `onStop` |
+| `onFiles` | `(files: File[], details: GenericEventDetails<'drag' \| 'input-paste'>) => void` | — | files dropped on the form or pasted into it; nothing is intercepted without it |
+| `editing` | `boolean` | `false` | edit-and-resend mode, writes `data-editing` |
+| `allowEmpty` | `boolean` | `false` | let an empty draft be committed — turn it on while the attachments strip carries the content; the send button follows |
+| `disabled` | `boolean` | `false` | disables the textarea, attach, dictate and submit together |
+| `className` | `string` | — | lands on the `<form>` |
+| rest | `ComponentProps<'form'>` minus the four native names above | — | forwarded to the `<form>` |
+
+`ComposerState`: `{ submitted, streaming, error, dragging, editing }`.
+
+### ComposerTextarea
+
+`InputGroupTextarea` with `rows={1}`, growing with its content (`field-sizing-content`) up to
+`max-block-48`. `value` / `onChange` are taken over by the context; takes the remaining
+[InputGroupTextarea](/docs/components/input-group#props) props, and your own `onChange` /
+`onKeyDown` run first — after `preventDefault()` the part does nothing more.
+
+### ComposerToolbar
+
+`InputGroupAddon align="block-end"`; takes every [InputGroupAddon](/docs/components/input-group#props) prop.
+
+### ComposerSubmit
+
+While idle a `type="submit"` send key (`aria-label="Send"`, disabled on an empty draft); while
+`submitted` / `streaming` a `type="button"` stop key (`aria-label="Stop"`, calling `onStop`);
+`size="icon-sm"`. Takes every [Button](/docs/components/button#props) prop; `children` replaces
+the default icon.
+
+### ComposerAttach
+
+`InputGroupButton size="icon-xs"` (`aria-label="Attach"`) plus a hidden `<input type="file">`;
+the input is cleared after each pick, so the same file can be chosen again. Takes every
+[InputGroupButton](/docs/components/input-group#props) prop, plus:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onFiles` | `(files: File[], details: GenericEventDetails<'input-change'>) => void` | — | the chosen files |
+| `accept` | `string` | — | forwarded to the `<input>`; usually `draft.accept` |
+| `multiple` | `boolean` | `true` | — |
+
+### ComposerAttachments
+
+The pending-attachments strip: one `Attachment size="sm"` per item inside an `AttachmentGroup`; renders nothing while `items` is empty.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `items` | `readonly DraftAttachment[]` | — | `draft.items` |
+| `onRemove` | `(id: string, details: GenericEventDetails<'none'>) => void` | — | the `aria-label="Remove"` button on each item |
+| `className` | `string` | — | lands on the `AttachmentGroup` |
+
+### ComposerDictate
+
+`InputGroupButton size="icon-xs"` (`aria-label="Dictate"`); press to start, press again to
+stop; disabled where recording is unsupported. Takes every
+[InputGroupButton](/docs/components/input-group#props) prop, plus:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onRecording` | `(part: AudioPart, details: GenericEventDetails<'imperative-action'>) => void` | — | the recording's part after stop |
+
+### Suggestions
+
+The horizontally scrolling chip row, `role="group"`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onValueChange` | `(value: string, details: ChangeEventDetails<'item-press'>) => void` | — | the pressed chip's `value` |
+| `children` | `ReactNode` | — | some `SuggestionsItem`s |
+| `className` | `string` | — | lands on the ScrollArea root |
+
+### SuggestionsItem
+
+`Button variant="outline" size="sm"`; takes every [Button](/docs/components/button#props) prop
+except `value`, plus:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `value` | `string` | — | handed to the root's `onValueChange`; written as `data-value` |
+
+### QueueList
+
+The list of queued messages, an `ItemGroup`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `queue` | `readonly QueuedMessage[]` | — | `chat.queue` |
+| `onCancel` | `(id: string, details: GenericEventDetails<'none'>) => void` | — | each row's cancel button; usually `chat.cancelQueued` |
+| `children` | `ReactNode` | — | a heading or hint after the rows |
+| `className` | `string` | — | lands on the `ItemGroup` |
+
+### ModelPicker
+
+The provider-grouped, searchable model Combobox; the value is `provider/model`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `catalog` | `Catalog` | — | usually `defaultCatalog` |
+| `onValueChange` | `(ref: string, details: ComboboxChangeEventDetails) => void` | — | the Combobox's own details, `item-press` / `none` in practice |
+| `defaultValue` | `string` | — | — |
+| `value` | `string` | — | controlled |
+| `byok` | `ByokSnapshot` | — | needed for `data-key-missing` |
+| `disabledProviders` | `readonly string[]` | — | these providers' items are disabled |
+| `className` | `string` | — | lands on the trigger button |
+
+### ThinkingToggle
+
+The deep-thinking switch; returns `null` for a model without reasoning.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onValueChange` | `(level: ThinkingLevel, details: ToggleChangeEventDetails) => void` | — | the Toggle's own details; the clamped `onLevel` when switching on, `'off'` when switching off |
+| `children` | `ReactNode` | — | the label (DeepSeek's reads 深度思考) |
+| `model` | `Model` | — | decides rendering and the clamp; absent means no reasoning |
+| `onLevel` | `ThinkingLevel` | `'high'` | the level switching on lands at, clamped to the model; a clamp that falls to `'off'` takes the model's strongest level |
+| `defaultValue` | `ThinkingLevel` | `'off'` | — |
+| `value` | `ThinkingLevel` | — | controlled |
+| `className` | `string` | — | lands on the Toggle |
+
+### SearchToggle
+
+The web-search switch; returns `null` unless `model.search` is true.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onValueChange` | `(on: boolean, details: ToggleChangeEventDetails) => void` | — | the Toggle's own details |
+| `children` | `ReactNode` | — | the label (DeepSeek's reads 联网搜索) |
+| `model` | `Model` | — | decides whether it renders; absent counts as unsupported |
+| `defaultValue` | `boolean` | `false` | — |
+| `value` | `boolean` | — | controlled |
+| `className` | `string` | — | lands on the Toggle |
+
+### ThinkingLevelPicker
+
+The Select of the model's supported thinking levels; returns `null` when there is nothing to choose.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onValueChange` | `(level: ThinkingLevel, details: SelectChangeEventDetails) => void` | — | the Select's own details |
+| `model` | `Model` | — | decides the levels; absent means no reasoning |
+| `defaultValue` | `ThinkingLevel` | — | — |
+| `value` | `ThinkingLevel` | — | controlled |
+| `className` | `string` | — | lands on the trigger button |
+
+The types are exported alongside: `ComposerProps` / `ComposerState` / `ComposerSubmitReason` /
+`ComposerChangeEventDetails` / `ComposerTextareaProps` / `ComposerToolbarProps` / `ComposerSubmitProps` /
+`ComposerAttachProps` / `ComposerAttachmentsProps` / `ComposerDictateProps` / `SuggestionsProps` /
+`SuggestionsItemProps` / `SuggestionsChangeEventDetails` / `QueueListProps` / `ModelPickerProps` /
+`ModelPickerChangeEventDetails` / `ThinkingLevelPickerProps` / `ThinkingLevelPickerChangeEventDetails` /
+`ThinkingToggleProps` / `ThinkingToggleChangeEventDetails` / `SearchToggleProps` /
+`SearchToggleChangeEventDetails`;
+on the hook side: `AttachmentDraft` / `DraftAttachment` / `AttachmentKind` / `AttachmentState` /
+`UseAttachmentDraftOptions` / `ModelSelection` / `UseModelSelectionOptions` / `UseModelSelectionReturn`,
+along with `DEFAULT_MAX_ATTACHMENT_BYTES`, `attachmentKindOf`, `fileToContentPart` and `useComposer`.

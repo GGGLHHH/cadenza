@@ -9,8 +9,8 @@ import {
   MessageScrollerViewport,
   useMessageScrollerScrollable,
 } from '@gedatou/cadenza-ui'
+import { ResettableDemo } from '../lib/resettable'
 import { MessageRow } from './message-row'
-import { ResettableDemo } from './resettable'
 import { useFakeChat } from './transcript'
 
 // autoScroll follows a streamed reply only while the reader is still at the

@@ -1,0 +1,122 @@
+'use client'
+// `TokenUsage` lives on the `@tanstack/ai` root only (type-only import, no server code pulled in).
+import type { TokenUsage } from '@tanstack/ai'
+import type { UIMessage } from '@tanstack/ai-client'
+import type { StreamChunk } from '@tanstack/ai/client'
+import { EventType, fromSpecTokenUsage } from '@tanstack/ai/client'
+import { useCallback, useMemo, useRef, useState } from 'react'
+
+function add(a: number | undefined, b: number | undefined): number | undefined {
+  return a === undefined && b === undefined ? undefined : (a ?? 0) + (b ?? 0)
+}
+
+type NumericDetails = Record<string, number | undefined>
+
+/**
+ * Sum the keys both sides actually carry, rather than a hand-written list.
+ *
+ * Naming the fields dropped every other one: `PromptTokensDetails` also holds
+ * `audioTokens` / `imageTokens` / `videoTokens` / `textTokens` /
+ * `documentTokens`, and a two-run sum silently threw the modality breakdown
+ * away — present on a single run, gone the moment a second one landed.
+ */
+function addDetails<T extends object>(a: T | undefined, b: T | undefined): T | undefined {
+  if (a === undefined && b === undefined)
+    return undefined
+  // The detail interfaces are all-optional numbers but declare no index
+  // signature, so walking their keys needs the wider view of them.
+  const left = a as NumericDetails | undefined
+  const right = b as NumericDetails | undefined
+  const out: NumericDetails = {}
+  for (const key of new Set([...Object.keys(left ?? {}), ...Object.keys(right ?? {})]))
+    out[key] = add(left?.[key], right?.[key])
+  return out as T
+}
+
+/** Field-wise sum, including the nested detail breakdowns and the provider's own cost. */
+export function addTokenUsage(a: TokenUsage | undefined, b: TokenUsage): TokenUsage {
+  if (!a)
+    return b
+  const promptTokensDetails = addDetails(a.promptTokensDetails, b.promptTokensDetails)
+  const completionTokensDetails = addDetails(a.completionTokensDetails, b.completionTokensDetails)
+  // What the provider itself billed, when it says. Summed for the same reason
+  // the tokens are: a session's figure is the sum of its runs.
+  const cost = add(a.cost, b.cost)
+  return {
+    promptTokens: a.promptTokens + b.promptTokens,
+    completionTokens: a.completionTokens + b.completionTokens,
+    totalTokens: a.totalTokens + b.totalTokens,
+    ...(cost !== undefined ? { cost } : {}),
+    ...(promptTokensDetails ? { promptTokensDetails } : {}),
+    ...(completionTokensDetails ? { completionTokensDetails } : {}),
+  }
+}
+
+export interface UsageTracker {
+  /** Wire to `useChat({ onChunk })`. */
+  onChunk: (chunk: StreamChunk) => void
+  /** Wire to `useChat({ onFinish })`; assigns the run's usage to the finished message. */
+  onFinish: (message: UIMessage) => void
+  total: TokenUsage
+  lastRun: TokenUsage | undefined
+  byMessage: ReadonlyMap<string, TokenUsage>
+  reset: () => void
+}
+
+const ZERO: TokenUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+
+type RunFinished = Extract<StreamChunk, { type: typeof EventType.RUN_FINISHED }>
+
+function usageOf(chunk: RunFinished): TokenUsage | undefined {
+  const usage = chunk.usage
+  if (usage === undefined)
+    return undefined
+  if (Array.isArray(usage))
+    return fromSpecTokenUsage(usage, chunk.metadata?.tanstack?.usage)
+  return usage
+}
+
+/**
+ * Sums every `RUN_FINISHED` of a run (tool loops finish once per iteration)
+ * and books the sum against the assistant message that closes the run.
+ */
+export function useUsageTracker(): UsageTracker {
+  const pendingRef = useRef(new Map<string, TokenUsage>())
+  const [state, setState] = useState<{ total: TokenUsage, lastRun: TokenUsage | undefined, byMessage: Map<string, TokenUsage> }>(() => ({ total: ZERO, lastRun: undefined, byMessage: new Map() }))
+
+  const onChunk = useCallback((chunk: StreamChunk): void => {
+    if (chunk.type !== EventType.RUN_FINISHED)
+      return
+    const usage = usageOf(chunk)
+    if (!usage)
+      return
+    pendingRef.current.set(chunk.runId, addTokenUsage(pendingRef.current.get(chunk.runId), usage))
+  }, [])
+
+  const onFinish = useCallback((message: UIMessage): void => {
+    // One run, not the whole map. Summing everything booked a queued or sibling
+    // run's tokens onto this message and left that run's own message with
+    // nothing. `onFinish` carries no runId, so pair them by order: a Map keeps
+    // insertion order, runs finish in order, and messages close in that order
+    // too — the oldest pending run is the one this message closes.
+    const runId = pendingRef.current.keys().next().value
+    const run = runId === undefined ? undefined : pendingRef.current.get(runId)
+    if (runId !== undefined)
+      pendingRef.current.delete(runId)
+    if (!run)
+      return
+    const booked = run
+    setState((s) => {
+      const byMessage = new Map(s.byMessage)
+      byMessage.set(message.id, booked)
+      return { total: addTokenUsage(s.total, booked), lastRun: booked, byMessage }
+    })
+  }, [])
+
+  const reset = useCallback((): void => {
+    pendingRef.current.clear()
+    setState({ total: ZERO, lastRun: undefined, byMessage: new Map() })
+  }, [])
+
+  return useMemo(() => ({ onChunk, onFinish, reset, ...state }), [onChunk, onFinish, reset, state])
+}

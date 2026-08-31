@@ -1,0 +1,543 @@
+---
+title: Conversation
+description: Build a conversation with the @gedatou/cadenza-ai facade and the Transcript / Composer families — TanStack AI's API as-is, with the wiring and rendering conventions as package defaults
+---
+
+<ComponentPreview name="ai/basic" align="stretch" />
+
+This guide builds a complete conversation on [TanStack AI](https://tanstack.com/ai) — without
+installing it directly. Install `@gedatou/cadenza-ai` instead: a facade that re-exports
+TanStack AI's whole React surface and turns the conversation conventions into defaults —
+how message parts render, how the composer submits, how threads are indexed, how keys are
+obtained — so none of that glue is yours to write. The controls come from this library's
+[Message](/docs/components/message), [Bubble](/docs/components/bubble),
+[MessageScroller](/docs/components/message-scroller) and [InputGroup](/docs/components/input-group).
+
+Every demo in this section works **without a key**: they replay a pre-written event stream in
+the browser through the [scripted transport](/docs/ai/scripted), down the same client pipeline
+a real provider uses. To talk to a real model, go to the [Playground](/docs/ai/playground).
+
+## Usage
+
+```bash
+pnpm add @gedatou/cadenza-ai
+```
+
+The package re-exports all of `@tanstack/ai-react`; install this one and import everything
+from a single entry:
+
+```tsx
+import {
+  Composer,
+  ComposerSubmit,
+  ComposerTextarea,
+  ComposerToolbar,
+  Transcript,
+  TranscriptMessage,
+  TranscriptProvider,
+  useChat,
+} from '@gedatou/cadenza-ai'
+import { scripted, text } from '@gedatou/cadenza-ai/mock'
+```
+
+```tsx
+function Chat(): ReactElement {
+  const [fetcher] = useState(() => scripted(() => [text('Interval after La Mer.')]))
+  const chat = useChat({ fetcher })
+
+  return (
+    <TranscriptProvider status={chat.status} interrupts={chat.interrupts}>
+      <Transcript>
+        {chat.messages.map(message => (
+          <TranscriptMessage key={message.id} message={message} />
+        ))}
+      </Transcript>
+      <Composer status={chat.status} onValueCommitted={text => void chat.sendMessage(text)} onStop={() => chat.stop()}>
+        <ComposerTextarea placeholder="Ask about the programme…" />
+        <ComposerToolbar>
+          <ComposerSubmit />
+        </ComposerToolbar>
+      </Composer>
+    </TranscriptProvider>
+  )
+}
+```
+
+Styling goes through this library's Tailwind channel; add one import and one source to your
+global css (streamdown's Markdown styles and KaTeX both live in `@gedatou/cadenza-ai/styles.css`):
+
+```css
+@import '@gedatou/cadenza-ui/styles.css';
+@import '@gedatou/cadenza-ai/styles.css';
+@source '../node_modules/streamdown/dist/*.js';
+```
+
+## Approach
+
+A conversation is four kinds of thing, each with one home:
+
+- **State belongs to `useChat`.** Messages, run status, interrupts, queue, errors — all held
+  by TanStack AI's hook; the facade keeps no copy. `TranscriptProvider` only hands `status` /
+  `interrupts` down to every part.
+- **Rendering belongs to the part registry.** A message is a list of `part`s (text,
+  reasoning, tool call, attachment …); `TranscriptParts` dispatches on `part.type` to the
+  built-in parts. To replace one, register it by name in
+  [`PartRenderersProvider`](/docs/ai/parts#tool-renderers) — the Transcript stays as it is.
+- **Transport belongs to `fetcher` / `connection`.** Demos use `scripted()` (wrapped site-wide as `mockFetcher`: simulated SSE, character by character), a real service
+  uses `fetchServerSentEvents('/api/ai/chat')`; to `useChat` they are the same shape.
+- **Conventions belong to the facade**: thread index, model selection, usage tracking,
+  edit-and-resend, attachment drafts, BYOK helpers — pure functions and hooks that depend
+  only on `useChat`'s return value. Skip any of them and the first three still hold.
+
+## Anatomy
+
+The full component tree of the demo at the top:
+
+```text
+TranscriptProvider            hands down status / interrupts / addToolApprovalResponse
+├─ Transcript                 the MessageScroller frame: follow, anchor, keep the reader's place
+│  ├─ TranscriptEmpty         while messages is empty
+│  ├─ TranscriptMessage       one row: Message + Bubble, data-role / data-streaming
+│  │  ├─ TranscriptParts      dispatch on part.type: Markdown / Reasoning / ToolCallCard / MediaPart …
+│  │  └─ TranscriptActions    the toolbar, lifted into MessageFooter, hidden while streaming
+│  │     └─ TranscriptAction  one icon button
+│  ├─ TranscriptPending       between submitted and the first chunk
+│  └─ TranscriptError         role="alert", data-code mirrors the error code
+└─ Composer                   a <form> around an InputGroup
+   ├─ ComposerTextarea        Enter submits, Shift+Enter breaks a line, IME is left alone, Escape stops or cancels an edit
+   └─ ComposerToolbar         attach / dictate / model / submit
+      └─ ComposerSubmit       send while idle, stop while running
+```
+
+Each part does one job: `Transcript` scrolls, `TranscriptMessage` aligns a row and draws its
+bubble, `TranscriptParts` decides what a message contains, `Composer` handles one submission.
+Composed parts ship **no default copy** — what the empty, pending and error states and the
+toolbar say is yours; the built-in parts (reasoning, tool cards) keep theirs in
+[`PartLabels`](/docs/ai/parts#default-copy), overridable in one place.
+
+## Conversation
+
+Building the conversation at the top from scratch takes four steps.
+
+### Connect
+
+First decide where messages come from. During development and in docs, use the scripted
+transport — a function returning a list of steps, each translated into AG-UI events and
+replayed as a stream:
+
+```tsx
+import { reasoning, respond, scripted, text, tool } from '@gedatou/cadenza-ai/mock'
+
+const fetcher = scripted(respond([
+  [/plan/i, [
+    reasoning('Loudest work last; harps move once.'),
+    tool('get_time', { tz: 'Europe/Paris' }, { output: { iso: '2026-10-14T19:30:00+02:00' } }),
+    text('Ravel opens; La Mer follows; interval after La Mer.'),
+  ]],
+]))
+const chat = useChat({ fetcher })
+```
+
+To talk to a real service, swap that one line — `/api/ai/chat` comes from
+[`createChatHandler`](/docs/ai/providers#route-handler):
+
+```tsx
+const chat = useChat({ connection: fetchServerSentEvents('/api/ai/chat') })
+```
+
+Create the `fetcher` inside `useState(() => scripted(...))` so it lives with the component;
+every other `useChat` option (`tools`, `persistence`, `forwardedProps`, `onChunk` …) is
+TanStack AI's, unchanged.
+
+### Render messages
+
+`chat.messages` is a `UIMessage[]`, one row each:
+
+```tsx
+<TranscriptProvider status={chat.status} interrupts={chat.interrupts} addToolApprovalResponse={chat.addToolApprovalResponse}>
+  <Transcript>
+    {chat.messages.length === 0 && <TranscriptEmpty>Try: “Plan the programme.”</TranscriptEmpty>}
+    {chat.messages.map(message => (
+      <TranscriptMessage key={message.id} message={message} streaming={chat.status === 'streaming' && message === last}>
+        <TranscriptParts message={message} />
+      </TranscriptMessage>
+    ))}
+    {chat.status === 'submitted' && <TranscriptPending>Thinking…</TranscriptPending>}
+    {chat.error && <TranscriptError error={chat.error}>{chat.error.message}</TranscriptError>}
+  </Transcript>
+</TranscriptProvider>
+```
+
+Without children, `TranscriptMessage` renders `<TranscriptParts message={message} />` by
+itself; spelling it out is what makes room for an [actions toolbar](#message-actions) next to
+it. `streaming` is yours to pass: the row being written into is the last one, and only that
+row needs to know it is streaming (Markdown's lenient parsing and the reasoning shimmer hang
+off it).
+
+### Input
+
+`Composer` is a `<form>`; submission goes through `onValueCommitted(value, details)` —
+`details.reason` says whether it was `'keyboard'` (Enter) or `'none'` (form submit), and the
+draft is cleared afterwards:
+
+```tsx
+<Composer
+  status={chat.status}
+  onValueCommitted={text => void chat.sendMessage(text)}
+  onStop={() => chat.stop()}
+>
+  <ComposerTextarea placeholder="Ask about the programme…" />
+  <ComposerToolbar>
+    <ComposerSubmit />
+  </ComposerToolbar>
+</Composer>
+```
+
+`status` is the key wire: while `submitted` / `streaming`, `ComposerSubmit` becomes a stop
+button and Escape goes to `onStop`; on an empty draft the send button is disabled.
+Attachments, model selection, suggestions and queueing are in [Composer](/docs/ai/composer).
+
+### Finish
+
+Put the three pieces into one component inside a container of definite height (`Transcript`
+is a `MessageScroller` underneath, which fills its parent — so the parent needs a height):
+
+<ComponentSource name="ai/basic" />
+
+## Streaming
+
+A streamed reply lands character by character in the last row (every demo on this site
+simulates SSE the same way — one character every 12 ms, see
+[Scripted Transport](/docs/ai/scripted#approach)); `Transcript` follows while the reader is
+at the end and lets go when they scroll up. While a run is in flight the send button turns
+into stop.
+
+<ComponentPreview name="ai/streaming" align="stretch" />
+
+After stopping, `chat.status` returns to `'ready'`; the text received so far stays and it is
+not an error. Everything about following (anchoring, `data-scrollable`, jumps) is inherited
+from [MessageScroller](/docs/components/message-scroller): `Transcript` forwards
+`MessageScrollerViewport`'s props as they are, with `autoScroll` on and
+`defaultScrollPosition` `'end'` by default.
+
+**Only the block axis scrolls.** Base UI's ScrollArea puts an inline
+`min-width: fit-content` on its content wrapper, so by default the area is as wide as its widest
+content and scrolls sideways. A conversation must not behave that way — one long URL in a code
+fence would drag the whole column past the viewport and stretch every sibling with it, which reads
+as "some component is too wide". `Transcript` zeroes it, so the column is always the viewport's
+width and a wide block (a table, a code fence — `Markdown` already gives those
+`overflow-x: auto`) scrolls inside its own box.
+
+## Markdown
+
+Text parts are rendered by [streamdown](https://streamdown.ai): GFM tables, highlighted code
+blocks with copy, KaTeX, CJK line breaking, and lenient parsing of Markdown that is still
+being streamed.
+
+<ComponentPreview name="ai/markdown" align="stretch" />
+
+With `streaming` on, the `Markdown` part uses streamdown's `streaming` mode and enables
+`parseIncompleteMarkdown`, so half a table or an unclosed code fence renders early. Links
+always get `target="_blank" rel="noreferrer"`. streamdown's own UI strings (the copy button
+and friends) go through its `translations`, forwarded from `Markdown`'s prop of the same name.
+
+## Empty, pending and error states
+
+All three state parts are composed parts — they provide position and semantics; the words
+are yours.
+
+<ComponentPreview name="ai/states" align="stretch" />
+
+- `TranscriptEmpty` lands on [Empty](/docs/components/empty), usually with a set of
+  [Suggestions](/docs/ai/composer#suggestions).
+- `TranscriptPending` is a `role="status"` [Marker](/docs/components/marker), shown after
+  `submitted` and before the first chunk.
+- `TranscriptError` is `role="alert"`; `data-code` mirrors the `code` on the error object
+  (`error('Rate limited', '429')` in a script becomes `data-code="429"`); retry with
+  `chat.reload()`. A stop by the user produces no error.
+
+## Message actions
+
+Each row's toolbar goes in `TranscriptActions` — it renders its own `MessageFooter`, and
+`TranscriptMessage` lifts it out of the bubble to the end of the row; while streaming the
+whole toolbar is `data-hidden`.
+
+<ComponentPreview name="ai/actions" align="stretch" />
+
+Copy, regenerate, clear and edit-and-resend rely only on `useChat`'s return value and the facade's pure functions: copy
+uses `messageText(message)`, regenerate `chat.reload()`, clear `chat.clear()`, and
+edit-and-resend `editAndResend(chat, messageId, text)` — it stops the run, drops the edited
+user message and everything after it, then sends the new text (v1 is linear: no branch tree).
+While editing, `Composer` receives `editing`, and Escape goes to `onEditCancel` instead of stop.
+
+Feedback and read-aloud share the same toolbar, and the package ships neither a store nor a voice
+API for them: thumbs up / down are two `TranscriptAction`s with `aria-pressed`, and where the verdict
+lives is the host's call — the demo keeps it in `localStorage` by message id through
+`useStoredState('docs-feedback', {})`, and pressing the same one again clears it; read-aloud is
+the browser's own `speechSynthesis.speak(new SpeechSynthesisUtterance(messageText(message)))`,
+with the button disabled where `speechSynthesis` does not exist.
+
+## Usage and cost
+
+`useUsageTracker()` plugs into `useChat`'s `onChunk` / `onFinish`, sums the token counts of
+every `RUN_FINISHED` in a run (a tool loop finishes once per iteration) and books them
+against the assistant message that closes the run.
+
+<ComponentPreview name="ai/usage" align="stretch" />
+
+Cost comes from the catalog's prices: `estimateCost(model, usage)` returns dollars, with
+prompt tokens priced in three tiers: cache hits at `cacheRead`, cache writes at `cacheWrite`
+(1.25× input on Anthropic), the rest at `input`. Both cache prices fall back to `input`, and a
+model without prices yields `undefined`.
+
+`ContextUsage` in the toolbar folds both into one part: `usage.promptTokens / model.contextWindow`
+drawn as a [Progress](/docs/components/progress) bar, next to the prompt-token count and the unit the
+caller supplies (children); the whole thing is a [Tooltip](/docs/components/tooltip) trigger whose
+detail lists prompt / completion / cached / total and `estimateCost`'s dollars. A model without
+`contextWindow` shows the number alone; the ratio is mirrored as `data-ratio` (two decimals).
+The detail's row labels default to English and `labels` overrides them — the same route as
+`ByokKeyDialog`.
+
+### Ratio metrics
+
+`usageMetrics(usage, model)` is a pure function that derives every ratio one `TokenUsage`
+holds: `cacheHitRate` / `cacheWriteRate` (of `promptTokens`), `outputRatio` (answer per
+prompt), `reasoningShare` (thinking per answer), `contextRatio` (the same figure as the bar),
+`cacheSavings` (dollars the cache read saved against full price), plus `promptModalities` /
+`completionModalities` — the non-zero slices per modality, largest first.
+
+**An unknown denominator yields `undefined`, not 0.** A cache hit rate with no prompt tokens
+is not zero, it is unanswerable; likewise a model with no `cacheRead` means the cache is not
+discounted, not that it saved nothing. The UI reads that as "leave this tile out" rather than
+printing a 0% that would be misread. `model` is needed only by `contextRatio` and
+`cacheSavings`.
+
+`ContextUsage`'s tooltip already carries four of them. For a fuller display there is
+`UsageStats`: a grid of one tile per metric, a thin Progress under the rates, and the slices
+listed inside the modality tile — again, **a tile whose number is unknown does not appear**.
+
+<ComponentPreview name="ai/usage-stats" align="stretch" />
+
+It renders **one** `usage`. Which one is the caller's to decide — `useUsageTracker` hands over
+all three grains, and the `[Session | Last run | Last message]` switch in the demo above is a
+few lines of Tabs the caller writes, which keeps that wording and those variants where they
+belong (the `AlertDialogClose` precedent). Row labels go through `labels` the same way.
+
+Two channels carry the data, worth knowing: `cachedTokens` and `reasoningTokens` are
+first-class AG-UI spec fields and travel directly; `cacheWriteTokens` and the modality
+breakdown have no spec slot, so they ride `toSpecTokenUsage`'s leftover, hang on
+`metadata.tanstack.usage` and are rebuilt by `fromSpecTokenUsage`. The scripted transport's
+`usage(u, details)` second argument travels that same road, so the demo above exercises the
+channel rather than bypassing it.
+
+## Local persistence
+
+`useChat({ persistence, threadId })` is TanStack AI's interface and `indexedDBPersistence()`
+its bundled adapter; reload the page and the conversation is still there.
+
+<ComponentPreview name="ai/persistence" align="stretch" />
+
+The index over many conversations (list, titles, grouping by day) is a separate concern —
+see [Threads](/docs/ai/threads).
+
+## Multiple tabs
+
+The same `threadId` open in a second tab (or on another device) works through server-side
+persistence, not a broadcast: on mount, `useChat({ persistence: true, threadId })` fetches the
+transcript and `activeRun` through `hydrate`, and if a run is still generating it replays it
+from the log through `joinRun` and keeps receiving — provided the route has `durability` on,
+see [Threads › Resuming a dropped stream](/docs/ai/threads#resuming-a-dropped-stream). None
+of this needs `live`.
+
+`useChat({ live: true })` is a different thing: `client.subscribe()` on mount and
+`unsubscribe()` on unmount, so the connection's subscription loop exists independently of any
+request. With a `connect` adapter such as `fetchServerSentEvents`, that queue is filled only by
+this tab's own requests — `live` brings nothing from other tabs; it is meant for `subscribe` +
+`send` adapters such as `webSocket()`, where the server pushes into the socket and every
+subscriber receives the same run, and where `connectionStatus` / `isSubscribed` mean
+something. This library ships no WebSocket route; all of these are re-exported only.
+
+## State and className
+
+Every part carries `data-slot` on its outermost element, and state is expressed as named
+attributes: a boolean state is present as an empty-valued attribute while it holds, so a
+variant like `data-streaming:` matches it; descriptive state is value-typed.
+
+| Attribute | On | Value | When |
+| --- | --- | --- | --- |
+| `data-role` | `transcript-message` | `"user"` \| `"assistant"` \| `"system"` … | mirrors `message.role` |
+| `data-streaming` | `transcript-message` | empty | the row given `streaming` |
+| `data-hidden` | `transcript-actions` | empty | while `status === 'streaming'`; style with `data-hidden:invisible` |
+| `data-code` | `transcript-error` | `string` | mirrors `code` on the error object when present |
+| `data-scrollable` `data-autoscrolling` | the `transcript` viewport | see MessageScroller | inherited from [MessageScroller](/docs/components/message-scroller#state-and-classname) |
+| `data-submitted` `data-streaming` `data-error` `data-dragging` `data-editing` | `composer` | empty | mirror `status` / a drag in progress / edit mode; `ready` is the absence of the first three |
+
+| `data-slot` | What it is |
+| --- | --- |
+| `transcript` | the scrolling frame (`MessageScroller`'s root) |
+| `transcript-message` | one row (`MessageScrollerItem`) |
+| `transcript-parts` | a message's parts container |
+| `transcript-actions` / `transcript-action` | the toolbar / one of its buttons |
+| `transcript-empty` / `transcript-pending` / `transcript-error` | the three state parts |
+| `markdown` / `reasoning` / `tool-call-card` / `tool-call-group` / `approval-actions` / `media-part` / `sources` / `structured-output` | built-in parts, see [Message Parts](/docs/ai/parts#state-and-classname) |
+| `composer` / `composer-textarea` / `composer-toolbar` / `composer-submit` | the input area, see [Composer](/docs/ai/composer#state-and-classname) |
+
+`className` is a `string` on all of these — they land on plain DOM or on this library's
+composed parts, with no Base UI state function to pass. `Transcript`'s `className` lands on
+the scrolling frame; to reach the viewport, use the forwarded viewport props.
+
+## Keyboard interactions
+
+| Key | Effect |
+| --- | --- |
+| `Enter` (focus in `ComposerTextarea`) | submit, `onValueCommitted(value, { reason: 'keyboard' })`; not while an IME composition is in progress |
+| `Shift` + `Enter` | line break |
+| `Escape` | while running: `onStop`; while editing: `onEditCancel`; otherwise nothing |
+| `Tab` / `↑` `↓` `PageUp` `PageDown` `Home` `End` | when the transcript overflows, the viewport is focusable and scrolls; keyboard scrolling releases following — as in [MessageScroller](/docs/components/message-scroller#keyboard-interactions) |
+
+## Exported types
+
+Besides re-exporting all of `@tanstack/ai-react` (`useChat`, `UIMessage`, `UseChatReturn`,
+`fetchServerSentEvents`, `indexedDBPersistence`, `useByok`, `useAudioRecorder` …), the root
+entry adds:
+
+```tsx
+// catalog
+import type { Catalog, Model, ModelCost, Provider, ThinkingLevel } from '@gedatou/cadenza-ai'
+import { clampThinkingLevel, createCatalog, defaultCatalog, estimateCost, modelRef, parseModelRef, providers, supportedThinkingLevels, THINKING_LEVELS } from '@gedatou/cadenza-ai'
+
+// runtime
+import type { AnyToolApprovalInterrupt, AttachmentDraft, DraftAttachment, EditableChat, ModelSelection, PartLabels, PartRenderers, Source, ThreadIndex, ThreadMeta, ToolRenderer, ToolRendererProps, UsageTracker } from '@gedatou/cadenza-ai'
+import { createByok, createThreadIndex, definePartRenderers, editAndResend, fileToContentPart, groupThreadsByDay, isThinkingComplete, messagesToMarkdown, messageText, PartRenderersProvider, sourcesOf, threadPersistence, threadTitleFrom, useAttachmentDraft, useModelSelection, usePartRenderers, useServerCoverage, useStoredState, useThreadIndex, useUsageTracker } from '@gedatou/cadenza-ai'
+
+// views
+import type { ContextUsageLabels, ContextUsageProps, ContextUsageState, TranscriptActionProps, TranscriptActionsProps, TranscriptEmptyProps, TranscriptErrorProps, TranscriptInterrupt, TranscriptMessageProps, TranscriptMessageState, TranscriptPartsProps, TranscriptPendingProps, TranscriptProps, TranscriptProviderProps } from '@gedatou/cadenza-ai'
+import { ContextUsage, DEFAULT_CONTEXT_USAGE_LABELS } from '@gedatou/cadenza-ai'
+```
+
+- `TranscriptInterrupt` is the element type `TranscriptProvider.interrupts` accepts: the union
+  of `ChatInterrupt` and `AnyToolApprovalInterrupt`. `useChat().interrupts` is typed per tool
+  set and passes straight in.
+- Server and provider types live in their own sub-entries, see
+  [Providers](/docs/ai/providers#exported-types); the scripted transport's types are in
+  [Scripted Transport](/docs/ai/scripted#api).
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks → behaviour → appearance → `className`**.
+
+### TranscriptProvider
+
+Hands `useChat`'s run state to every Transcript part. Renders no DOM; without it the
+Transcript parts throw `cadenza-ai: TranscriptContext is missing…`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `status` | `ChatClientState` | — | `chat.status` |
+| `interrupts` | `readonly TranscriptInterrupt[]` | `[]` | `chat.interrupts`; approval cards find their own interrupt here by `toolCallId` |
+| `addToolApprovalResponse` | `(input: { id, approved }) => void \| Promise<void>` | — | how an `approval-requested` part without a live interrupt (restored history, say) answers |
+| `children` | `ReactNode` | — | — |
+
+### Transcript
+
+The scrolling frame: `MessageScrollerProvider` + `MessageScroller` + this library's viewport
++ the content container. Place it in a layout of definite height.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | — | a run of `TranscriptMessage`s and state parts |
+| `autoScroll` | `boolean` | `true` | follow new content while the reader is at the end |
+| `defaultScrollPosition` | `'start' \| 'end' \| 'last-anchor'` | `'end'` | where the first non-empty render rests |
+| `anchorTurns` | `boolean` | `true` | pin the sent user message to the top of the viewport and let the reply fill the space below (the ChatGPT turn anchor); only the **latest** user row is an anchor — with older rows anchored too, the scroller jumps to the oldest one the moment a reply arrives. `false` is the classic follow-the-end |
+| `previousPeek` | `number` | the scroller's `80` | how much of the previous row stays visible above a pinned message, in px; `0` pins it flush to the top (ChatGPT); the docs' `ChatShell` uses `0` |
+| `after` | `ReactNode` | — | rendered beside the viewport, inside the frame and outside the `role="log"` — the place for `MessageScrollerButton`, the jump-to-latest control that shows whenever the reader is above the end |
+| `className` | `string` | — | lands on the scrolling frame |
+| rest | `MessageScrollerViewportProps` minus `className` / `children` | — | forwarded to the viewport (`scrollbars`, `preserveScrollOnPrepend` …) |
+
+### TranscriptMessage
+
+One row. `memo`ised, so while streaming only the last row re-renders.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `message` | `UIMessage` | — | — |
+| `streaming` | `boolean` | `false` | this row is being written into; writes `data-streaming` and reaches the Markdown / reasoning parts |
+| `align` | `'start' \| 'end'` | `'end'` for user rows, `'start'` otherwise | `Message`'s alignment |
+| `children` | `ReactNode` | `<TranscriptParts message={message} />` | bubble content; a `TranscriptActions` among them is lifted to the end of the row |
+| `className` | `string` | — | lands on `MessageScrollerItem` |
+
+`TranscriptMessageState`: `{ role, streaming }`.
+
+### TranscriptParts
+
+Dispatches on `part.type`: text → `Markdown`, `thinking` → `Reasoning`, `tool-call` → the
+registered renderer or `ToolCallCard` (several in a row fold into `ToolCallGroup`), media →
+`MediaPart`, `structured-output` → `StructuredOutput`; `sourcesOf(message)` is appended as
+`Sources`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `message` | `UIMessage` | — | — |
+| `className` | `string` | — | lands on the parts container |
+
+### TranscriptActions
+
+`role="toolbar"` with its own `MessageFooter`; `data-hidden` while streaming.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | — | some `TranscriptAction`s |
+| `className` | `string` | — | lands on the toolbar |
+
+### TranscriptAction
+
+`Button variant="ghost" size="icon-xs"`. Takes every [Button](/docs/components/button#props) prop.
+
+### TranscriptEmpty
+
+[Empty](/docs/components/empty) re-exported with `data-slot="transcript-empty"`; takes `EmptyProps`.
+
+### TranscriptPending
+
+A `role="status"` Marker whose content carries `shimmer`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | — | the words |
+| `className` | `string` | — | lands on the Marker |
+
+### TranscriptError
+
+`role="alert"`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `error` | `Error` | — | a `code` on it is written as `data-code` |
+| `children` | `ReactNode` | — | the words |
+| `className` | `string` | — | lands on the root |
+
+### ContextUsage
+
+Context fill: `Progress` + the number + a `Tooltip` detail; the whole thing is the trigger (a real `<button>`).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `usage` | `TokenUsage` | — | usually `useUsageTracker().total` |
+| `model` | `Model` | — | supplies `contextWindow` (the bar) and `cost` (the price row); without it only the number shows |
+| `labels` | `Partial<ContextUsageLabels>` | English | the detail's row labels: `prompt` / `completion` / `cached` / `total` / `cost` |
+| `children` | `ReactNode` | — | the unit after the prompt-token count ("tokens"); the part ships none |
+| `className` | `string` | — | lands on the trigger |
+
+```tsx
+<ContextUsage model={model} usage={tracker.total}>tokens</ContextUsage>
+```
+
+`data-ratio` is `promptTokens / contextWindow` to two decimals, absent when the model has no
+`contextWindow`; `data-slot`: `context-usage` (the trigger) / `context-usage-tokens` (the number) /
+`context-usage-details` (the detail `<dl>`).
+
+14 types are exported alongside: `TranscriptProviderProps` / `TranscriptProps` /
+`TranscriptMessageProps` / `TranscriptMessageState` / `TranscriptPartsProps` /
+`TranscriptActionsProps` / `TranscriptActionProps` / `TranscriptEmptyProps` /
+`TranscriptPendingProps` / `TranscriptErrorProps` / `TranscriptInterrupt` / `ContextUsageProps` /
+`ContextUsageState` / `ContextUsageLabels`.

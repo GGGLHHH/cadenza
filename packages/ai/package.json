@@ -1,0 +1,114 @@
+{
+  "name": "@gedatou/cadenza-ai",
+  "type": "module",
+  "version": "0.7.0",
+  "description": "Thin TanStack AI facade — provider-agnostic chat runtime, conventions and conversation views built on cadenza-ui",
+  "license": "MIT",
+  "homepage": "https://cadenza-ui-docs.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GGGLHHH/cadenza.git",
+    "directory": "packages/ai"
+  },
+  "bugs": "https://github.com/GGGLHHH/cadenza/issues",
+  "keywords": [
+    "react",
+    "tanstack-ai",
+    "chat",
+    "llm",
+    "byok"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./server": "./dist/server/index.mjs",
+    "./mock": "./dist/mock/index.mjs",
+    "./providers/*": "./dist/providers/*.mjs",
+    "./styles.css": "./styles.css",
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.mts",
+  "files": [
+    "README.md",
+    "dist",
+    "styles.css"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc",
+    "prepack": "pnpm run build"
+  },
+  "peerDependencies": {
+    "@gedatou/cadenza-ui": "workspace:^",
+    "@tanstack/ai-anthropic": "*",
+    "@tanstack/ai-bedrock": "*",
+    "@tanstack/ai-gemini": "*",
+    "@tanstack/ai-grok": "*",
+    "@tanstack/ai-groq": "*",
+    "@tanstack/ai-llmgateway": "*",
+    "@tanstack/ai-mistral": "*",
+    "@tanstack/ai-ollama": "*",
+    "@tanstack/ai-openai": "*",
+    "@tanstack/ai-openrouter": "*",
+    "@tanstack/ai-persistence": "*",
+    "@tanstack/ai-vercel-gateway": "*",
+    "@tanstack/ai-vertex": "*",
+    "react": ">=19",
+    "react-dom": ">=19",
+    "tailwindcss": ">=4"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/ai-anthropic": { "optional": true },
+    "@tanstack/ai-bedrock": { "optional": true },
+    "@tanstack/ai-gemini": { "optional": true },
+    "@tanstack/ai-grok": { "optional": true },
+    "@tanstack/ai-groq": { "optional": true },
+    "@tanstack/ai-llmgateway": { "optional": true },
+    "@tanstack/ai-mistral": { "optional": true },
+    "@tanstack/ai-ollama": { "optional": true },
+    "@tanstack/ai-openai": { "optional": true },
+    "@tanstack/ai-openrouter": { "optional": true },
+    "@tanstack/ai-persistence": { "optional": true },
+    "@tanstack/ai-vercel-gateway": { "optional": true },
+    "@tanstack/ai-vertex": { "optional": true }
+  },
+  "dependencies": {
+    "@gedatou/cadenza-utils": "workspace:*",
+    "@streamdown/cjk": "catalog:ui",
+    "@streamdown/code": "catalog:ui",
+    "@streamdown/math": "catalog:ui",
+    "@tabler/icons-react": "catalog:ui",
+    "@tanstack/ai": "catalog:ui",
+    "@tanstack/ai-client": "catalog:ui",
+    "@tanstack/ai-react": "catalog:ui",
+    "katex": "catalog:ui",
+    "streamdown": "catalog:ui"
+  },
+  "devDependencies": {
+    "@gedatou/cadenza-ui": "workspace:*",
+    "@tanstack/ai-anthropic": "catalog:ui",
+    "@tanstack/ai-bedrock": "catalog:ui",
+    "@tanstack/ai-gemini": "catalog:ui",
+    "@tanstack/ai-grok": "catalog:ui",
+    "@tanstack/ai-groq": "catalog:ui",
+    "@tanstack/ai-llmgateway": "catalog:ui",
+    "@tanstack/ai-mistral": "catalog:ui",
+    "@tanstack/ai-ollama": "catalog:ui",
+    "@tanstack/ai-openai": "catalog:ui",
+    "@tanstack/ai-openrouter": "catalog:ui",
+    "@tanstack/ai-persistence": "catalog:ui",
+    "@tanstack/ai-vercel-gateway": "catalog:ui",
+    "@tanstack/ai-vertex": "catalog:ui",
+    "@testing-library/react": "catalog:testing",
+    "@testing-library/user-event": "catalog:testing",
+    "@types/node": "catalog:types",
+    "react": "catalog:react",
+    "react-dom": "catalog:react",
+    "tsdown": "catalog:cli",
+    "typescript": "catalog:cli"
+  }
+}

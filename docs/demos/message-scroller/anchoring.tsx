@@ -10,8 +10,8 @@ import {
   MessageScrollerViewport,
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
+import { ResettableDemo } from '../lib/resettable'
 import { MessageRow } from './message-row'
-import { ResettableDemo } from './resettable'
 import { useFakeChat } from './transcript'
 
 // scrollAnchor is what the viewport lifts to the top when a new turn

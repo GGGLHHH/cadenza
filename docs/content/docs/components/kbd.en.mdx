@@ -1,0 +1,134 @@
+---
+title: Kbd
+description: A key chip for displaying keyboard input — a real <kbd> element that inverts on its own inside a Tooltip
+---
+
+<ComponentPreview name="kbd/basic" />
+
+One key chip: `bg-muted` ground, fixed height, small sans label, pointer events
+off — it is only there to be looked at. Underneath is a real `<kbd>` element,
+not a Base UI part — no state at all, `className` only takes a string, and the
+remaining native `kbd` attributes (`ref` included) are passed through as-is.
+
+It is the one part every shortcut hint is made of: next to a
+[Button](/en/docs/components/button) label, inside a
+[Tooltip](/en/docs/components/tooltip) popup, in an
+[InputGroup](/en/docs/components/input-group) addon — drop it in and it lines
+up, no hand-written `<kbd>` styles needed.
+
+## Usage
+
+```tsx
+import { Kbd, KbdGroup } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Kbd>Ctrl</Kbd>
+```
+
+## Composition
+
+A single key is a bare `Kbd`; a chord of keys is wrapped in `KbdGroup`:
+
+```text
+Kbd
+KbdGroup
+├── Kbd
+└── Kbd
+```
+
+## Group
+
+`KbdGroup` lays the keys of one shortcut out on a line with a fixed gap:
+
+<ComponentPreview name="kbd/group" />
+
+`KbdGroup` itself renders as a `<kbd>` (not a `div`), so the whole chord reads
+semantically as one keyboard input. It only handles layout (`inline-flex` +
+`gap-1`) — no border, no background.
+
+## Button
+
+Put a `Kbd` inside a [Button](/en/docs/components/button) and the key lines up
+after the label:
+
+<ComponentPreview name="kbd/button" />
+
+The key carries `pointer-events-none`, so the click lands on the button — the
+chip never intercepts it.
+
+## Tooltip
+
+Inside a [Tooltip](/en/docs/components/tooltip) popup the key inverts its
+colours by itself, no prop involved:
+
+<ComponentPreview name="kbd/tooltip" />
+
+The hook for the inversion is the popup's `data-slot="tooltip-content"`: the
+`Kbd` styles carry an `in-data-[slot=tooltip-content]:` variant that swaps to a
+translucent `bg-background/20` and `text-background` on the dark popup. This is
+why `TooltipPopup` keeps the slot name shadcn wrote, `tooltip-content` (the part
+was renamed to Popup, the slot was not) — that contract exists for this.
+
+## InputGroup
+
+Inside an [InputGroup](/en/docs/components/input-group) addon it makes the
+shortcut hint in a search box's corner:
+
+<ComponentPreview name="kbd/input-group" />
+
+`InputGroupAddon` handles the alignment and strips the extra margins, `Kbd`
+handles the chip itself; each side does its half, and the long string of
+hand-written `<kbd>` classes in the addon is gone.
+
+## State and className
+
+A plain DOM family: no Base UI state underneath, and no hand-attached state
+attributes either.
+
+| Attribute | Effect |
+| --- | --- |
+| an ancestor with `data-slot="tooltip-content"` | the key inverts (`bg-background/20` + `text-background`, `bg-background/10` in dark mode) — driven by `Kbd`'s own `in-data-[…]` variant, see [Tooltip](#tooltip) |
+
+`data-slot`: `kbd` on `Kbd`, `kbd-group` on `KbdGroup`; use them as selectors
+when targeting uniformly by container from outside.
+
+`className` takes a string on both parts — it lands on a plain `<kbd>`, not a
+Base UI slot, so there is no `(state) => string` form to speak of. An svg
+dropped into `Kbd` without a `size-*` class is collapsed to `size-3`.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+### Kbd
+
+One key.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class. Underneath is a plain `<kbd>`, string only |
+| rest | native `kbd` attributes | — | passed through (`ref` included) |
+
+```tsx
+<Kbd>Ctrl</Kbd>
+```
+
+### KbdGroup
+
+The container for a chord of keys, rendered as a `<kbd>`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `className` | `string` | — | class. String only |
+| rest | native `kbd` attributes | — | passed through (`ref` included). The vendored source types its props as a `div`'s; the seam casts them to the `<kbd>` it actually renders, runtime unchanged |
+
+```tsx
+<KbdGroup>
+  <Kbd>Ctrl</Kbd>
+  <Kbd>B</Kbd>
+</KbdGroup>
+```
+
+2 types are exported as well: `KbdProps` / `KbdGroupProps`.

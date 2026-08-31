@@ -1,0 +1,5 @@
+{
+  "title": "AI Chat",
+  "defaultOpen": true,
+  "pages": ["conversation", "parts", "composer", "threads", "providers", "scripted", "playground"]
+}

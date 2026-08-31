@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    // tsdown.config.ts reads node:fs and src/server reads process.env; under
+    // pnpm's isolated layout ambient @types discovery does not reach node's.
+    "types": ["node"]
+  },
+  "include": ["src", "test", "tsdown.config.ts"]
+}

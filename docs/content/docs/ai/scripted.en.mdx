@@ -1,0 +1,238 @@
+---
+title: Scripted Transport
+description: Replay an event stream in the browser with the step DSL from @gedatou/cadenza-ai/mock — no key, no network, the same client pipeline a real route feeds
+---
+
+<ComponentPreview name="ai/scripted-basic" align="stretch" />
+
+`scripted()` turns a function that returns a list of steps into the `ChatFetcher` that
+`useChat({ fetcher })` accepts. Each step becomes AG-UI events handed to the client at a set
+pace, so the Transcript, the parts, approvals and usage tracking see exactly what
+`/api/ai/chat` would send. Every demo in this section runs on it, and so do the package's tests.
+
+## Usage
+
+```tsx
+import { useChat } from '@gedatou/cadenza-ai'
+import { reasoning, scripted, text, tool, usage } from '@gedatou/cadenza-ai/mock'
+```
+
+```tsx
+const [fetcher] = useState(() => scripted(() => [
+  reasoning('Loudest work last; harps move once.'),
+  tool('get_time', { tz: 'Europe/Paris' }, { output: { iso: '2026-10-14T19:30:00+02:00' } }),
+  text('Ravel opens; La Mer follows; interval after La Mer.'),
+  usage({ inputTokens: 412, outputTokens: 96 }),
+]))
+const chat = useChat({ fetcher })
+```
+
+`./mock` is a separate sub-entry that depends only on `@tanstack/ai/client` — no provider
+adapter reaches the browser bundle. Create the `fetcher` inside `useState(() => scripted(...))`
+so it lives with the component (the `turn` counter hangs off that instance).
+
+## Approach
+
+- **The fetcher shape.** TanStack AI's `useChat` takes a `connection` or a `fetcher`; a
+  `ChatFetcher` is `(input, { signal, headers }) => Response | AsyncIterable<StreamChunk>`.
+  `scripted()` returns exactly that signature, so to `useChat` it sits on the same layer as
+  `fetchServerSentEvents('/api/ai/chat')` — swap one line to reach a real service.
+- **An event-level DSL.** Steps are plain data (`{ kind: 'text', content }`); `scripted()`
+  translates them into AG-UI events: `TEXT_MESSAGE_START / CONTENT / END`, `REASONING_*`,
+  `TOOL_CALL_START / ARGS / END / RESULT`, `CUSTOM`, `RUN_FINISHED`. It imitates the wire
+  protocol, not the UI: the seven `ToolCallPart.state`s, the binding metadata of an approval
+  interrupt and `RUN_FINISHED.usage` are all shaped the way the engine shapes them.
+- **The same client pipeline.** The chunks match a real route's and go through the same stream
+  processor; `onChunk` / `onFinish` /
+  [`useUsageTracker`](/docs/ai/conversation#usage-and-cost) /
+  [`PartRenderersProvider`](/docs/ai/parts#tool-renderers) never learn there is a mock
+  underneath. What a demo proves still holds once a real model is attached.
+- **What it does not imitate.** No model runs and no server tool executes (`output` is what
+  you wrote); `approval` / `client` tools stop at an interrupt and the next turn's script reads
+  `ctx.resume` to decide what follows; `./mock` has only the fetcher shape — anything that needs
+  server-side `hydrate` or persistence reconstruction uses a real route.
+
+Every demo on this site shares one fixed pattern — `mockFetcher` in `docs/demos/ai/mock.ts`:
+`sse: true` (a real `text/event-stream` answer, parsed by the client's SSE parser),
+`chunk: 'char'` (text and reasoning arrive one character at a time), `pace: 12` (12 ms per
+character) and `argsChunk: 4` (tool arguments in four-character pieces). Demos swap the
+script, never the rhythm; the streaming you see is the shape production has.
+
+```tsx
+import { scripted } from '@gedatou/cadenza-ai/mock'
+
+export const MOCK = { sse: true, chunk: 'char', pace: 12, argsChunk: 4 } as const
+
+export function mockFetcher(script: Script, options: ScriptedOptions = {}): ChatFetcher {
+  return scripted(script, { ...MOCK, ...options })
+}
+```
+
+## Steps
+
+Every constructor once — the demo at the top is this script.
+
+<ComponentSource name="ai/scripted-basic" />
+
+| Constructor | Events emitted | Notes |
+| --- | --- | --- |
+| `text(content, { chunk?, pace? })` | `TEXT_MESSAGE_START` (first one) + `TEXT_MESSAGE_CONTENT` × n | several `text` steps in one run share one assistant message; `TEXT_MESSAGE_END` is added when the run ends |
+| `reasoning(content, { chunk?, pace?, signature? })` | `STEP_STARTED` + `REASONING_START / MESSAGE_START / MESSAGE_CONTENT × n / MESSAGE_END / END` | one step id per block, so two in a row land in two `ThinkingPart`s; `signature` is attached via `STEP_FINISHED` |
+| `tool(name, input, { output?, error?, argsChunk?, approval?, client?, providerExecuted?, metadata?, toolCallId? })` | `TOOL_CALL_START / ARGS / END`, then `TOOL_CALL_RESULT` | `argsChunk` slices the argument JSON; `error` gives the result `state: 'output-error'`; `approval` / `client` send no result and the run ends on an interrupt; `providerExecuted` is written into `metadata` |
+| `tool.result(toolCallId, output, { error? })` | `TOOL_CALL_RESULT` | completes a call the previous run left on an interrupt |
+| `custom(name, value)` | `CUSTOM` | received by `useChat({ onCustomEvent })` |
+| `structured(object, { chunk? })` | `CUSTOM structured-output.start` → text slices (8 characters by default) → `CUSTOM structured-output.complete` | the same sequence the engine emits for `outputSchema`; the JSON travels on the text channel |
+| `usage({ inputTokens, outputTokens, reasoningTokens?, cachedInputTokens? })` | attached to `RUN_FINISHED.usage` | `totalTokens = inputTokens + outputTokens` |
+| `error(message, code?)` | `RUN_ERROR`, then stops | later steps do not run; `code` becomes `TranscriptError`'s `data-code` |
+| `sleep(ms)` | none | waits; `stop()` ends the wait at once |
+| `finish({ finishReason? })` | `RUN_FINISHED.metadata.tanstack.finishReason` | default `'stop'`; always `'tool_calls'` when there are interrupts |
+
+Two knobs set the rhythm: `pace` is the delay between slices in milliseconds (default 24;
+`'instant'` skips the timers) and `chunk` is how content is sliced (default `'word'`; `'char'`
+or a character count). Both can be overridden per step in the second argument of `text` /
+`reasoning`. `stop()` fires the `signal`; the script halts at the current slice and emits no
+`RUN_FINISHED` — the client treats that as a normal stop and `status` returns to `'ready'`.
+
+## Multiple turns
+
+A script receives a `ScriptContext`: the last user message, the merged `data`, which turn this
+is, and the resolutions of the previous run's interrupts. Four helpers cover the usual ways to
+branch.
+
+<ComponentPreview name="ai/scripted-routing" align="stretch" />
+
+- `respond(rules, fallback?)`: picks the first rule that matches `lastUserText` — a `RegExp`
+  via `test`, a string via `includes`, a function receives the whole `ctx`; no match goes to
+  `fallback` (default `echo()`).
+- `sequence(turns)`: turn n answers with `turns[n]`; past the end the last entry repeats.
+- `echo({ chunk?, pace? })`: repeats the last user message, listing attachment MIME types and
+  `data.model` when present — the [attachments](/docs/ai/composer) and
+  [model selection](/docs/ai/composer) demos use it to prove the data
+  actually arrived.
+- `approvalOf(ctx, toolCallId)` / `clientResultOf(ctx, toolCallId)`: read the previous run's
+  interrupt resolutions. A tool with `approval: true` yields `{ approved, editedArgs?, payload? }`
+  on the second turn; a tool with `client: true` yields the browser-side output.
+
+For an approval to go through, the client has to register a tool of the same name whose
+`inputSchema` matches the permissive schema the script uses (the client binds a
+`tool-approval` interrupt by schema hash):
+
+```tsx
+import { approvalOf, scripted, sequence, text, tool } from '@gedatou/cadenza-ai/mock'
+import { toolDefinition, useChat } from '@gedatou/cadenza-ai'
+
+const move = toolDefinition({ name: 'move', description: 'Move the meeting', inputSchema: { type: 'object', additionalProperties: true }, needsApproval: true })
+
+const fetcher = scripted(sequence([
+  [tool('move', { day: 'Fri' }, { approval: true })],
+  ctx => (approvalOf(ctx, 'call-1')?.approved
+    ? [tool.result('call-1', { moved: true }), text('Moved.')]
+    : [text('Left alone.')]),
+]), { toolCallId: () => 'call-1' })
+const chat = useChat({ fetcher, tools: [move] })
+```
+
+A script may also return a `Response` directly; the client handles it like a real one.
+`byokMissing('openai')` builds the very 401 the route returns when a key is missing: the client
+reads `byok_missing`, calls `byok.request('openai', 'missing')`, and the
+[ByokKeyDialog](/docs/ai/providers) opens.
+
+## Testing
+
+The same fetcher plugs straight into a `ChatClient`, with no React and no DOM — that is how
+`packages/ai/test/scripted.test.ts` runs:
+
+```ts
+import { ChatClient } from '@tanstack/ai-client'
+import { expect, it } from 'vitest'
+import { reasoning, scripted, text, tool, usage } from '@gedatou/cadenza-ai/mock'
+
+function settle(client: ChatClient): Promise<void> {
+  return new Promise((resolve) => {
+    const tick = (): void => (client.getIsLoading() ? setTimeout(tick, 5) : resolve())
+    tick()
+  })
+}
+
+it('streams text, reasoning and a tool call into parts', async () => {
+  const fetcher = scripted(() => [
+    reasoning('Think.'),
+    tool('get_time', { tz: 'UTC' }, { output: { iso: '2026-08-28' } }),
+    text('Done.'),
+    usage({ inputTokens: 12, outputTokens: 3 }),
+  ], { pace: 'instant' })
+  const client = new ChatClient({ fetcher })
+  client.attach()
+  await client.sendMessage('hi')
+  await settle(client)
+  const types = client.getMessages().at(-1)!.parts.map(p => p.type)
+  expect(types).toContain('thinking')
+  expect(types).toContain('tool-call')
+  expect(types).toContain('text')
+  expect(client.getStatus()).toBe('ready')
+})
+```
+
+`pace: 'instant'` removes the timers; the stream is processed only after `attach()`; `settle`
+polls `getIsLoading()` until the run ends. Drive an approval with
+`client.getInterruptState().interrupts[0].resolveInterrupt(true)`; stop with `client.stop()`.
+
+## API
+
+The complete exports of `@gedatou/cadenza-ai/mock`.
+
+### Transport and scripts
+
+| Export | Description |
+| --- | --- |
+| `scripted(script, options?)` | turns a `Script` into a `ChatFetcher`; `turn` increments on every call; a `Response` returned by the script is handed to the client as-is |
+| `sequence(turns)` | a `Script`: turn n answers with `turns[n]` (`Step[]` or `Script`); past the end the last entry repeats |
+| `respond(rules, fallback?)` | a `Script`: the first rule matching `lastUserText`; `fallback` defaults to `echo()` |
+| `echo(options?)` | a `Script`: repeats the last user message + `Attachments: …` + `Model: …`; `options` are `text`'s `chunk` / `pace` |
+| `byokMissing(provider)` | a 401 `Response` with body `{ error: { type: 'byok_missing', provider, message } }` |
+| `approvalOf(ctx, toolCallId)` | the previous run's decision for an `approval: true` tool, `ApprovalDecision \| undefined` |
+| `clientResultOf(ctx, toolCallId)` | the previous run's browser-side output for a `client: true` tool |
+
+### Step constructors
+
+| Export | `Step` returned |
+| --- | --- |
+| `text(content, o?)` | `{ kind: 'text', content, chunk?, pace? }` |
+| `reasoning(content, o?)` | `{ kind: 'reasoning', content, chunk?, pace?, signature? }` |
+| `tool(name, input, o?)` | `{ kind: 'tool', name, input, output?, error?, argsChunk?, approval?, client?, providerExecuted?, metadata?, toolCallId? }` |
+| `tool.result(toolCallId, output, o?)` | `{ kind: 'tool-result', toolCallId, output, error? }` |
+| `custom(name, value)` | `{ kind: 'custom', name, value }` |
+| `structured(object, o?)` | `{ kind: 'structured', object, chunk? }` |
+| `usage(u)` | `{ kind: 'usage', usage: { inputTokens, outputTokens, reasoningTokens?, cachedInputTokens? } }` |
+| `error(message, code?)` | `{ kind: 'error', message, code? }` |
+| `sleep(ms)` | `{ kind: 'sleep', ms }` |
+| `finish(o?)` | `{ kind: 'finish', finishReason?: 'stop' \| 'length' \| 'content_filter' \| 'tool_calls' }` |
+
+### ScriptContext
+
+The single argument of a `Script`: `(ctx: ScriptContext) => Step[] | Iterable<Step> | AsyncIterable<Step> | Promise<Step[]> | Response`.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `messages` | `UIMessage[]` | every message the client sent |
+| `lastUser` | `UIMessage \| undefined` | the last user message |
+| `lastUserText` | `string` | its text parts joined; empty when there is none |
+| `data` | `Record<string, unknown>` | `forwardedProps` merged with this `sendMessage`'s body |
+| `threadId` / `runId` | `string` | this run's identity |
+| `parentRunId` | `string \| undefined` | the previous run's `runId` when resuming from an interrupt |
+| `resume` | `RunAgentResumeItem[] \| undefined` | resolutions of the previous run's interrupts; read with `approvalOf` / `clientResultOf` |
+| `turn` | `number` | how many times this fetcher instance was called before, starting at 0 |
+| `signal` | `AbortSignal` | fires on `stop()` |
+
+### ScriptedOptions
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `pace` | `number \| 'instant'` | `24` | milliseconds between slices; `'instant'` skips the timers |
+| `chunk` | `'word' \| 'char' \| number` | `'word'` | default slicing for `text` / `reasoning` |
+| `argsChunk` | `number` | whole | default slicing of tool arguments (characters per `TOOL_CALL_ARGS`); a `tool` step's own `argsChunk` wins |
+| `sse` | `boolean` | `false` | answer as a `text/event-stream` `Response` (one `data:` line per chunk), so the client runs its real SSE parser — the same path `/api/ai/chat` takes |
+| `messageId` | `() => string` | the engine's id generator | the id of this run's assistant message |
+| `toolCallId` | `() => string` | the engine's id generator | used by tool calls without an explicit `toolCallId`; pins ids in tests |
+
+6 types are exported alongside: `Step` / `Script` / `ScriptContext` / `ScriptedOptions` / `RespondRule` / `ApprovalDecision`.

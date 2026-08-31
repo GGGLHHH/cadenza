@@ -1,0 +1,201 @@
+---
+title: Playground
+description: Talk to a real model with your own API key — the same Transcript / Composer, with the transport swapped for /api/ai/chat
+---
+
+The Playground is a full-screen app: threads on the left, the conversation on the right, the whole viewport below the header.
+
+[**Open the Playground →**](/playground)
+
+Every other demo in this section replays a [script](/docs/ai/scripted); this page talks to a
+real model. The site holds no provider key of its own: the key you paste is encrypted with this
+device's passkey and kept in the browser's IndexedDB (`createByok({ persistent: true })`), and travels
+with every request in an `x-byok-<provider>` header, which `/api/ai/chat` uses to build the adapter for
+that one request. After a reload the keyring is locked: the first send opens the dialog to Unlock
+(one Touch ID / PIN tap), and unlocking resumes the send. Where the browser has no passkeys the keyring
+falls back to memory — the dialog says so — and a reload drops it.
+
+## Usage
+
+Sending without a key is fine: the message stays in the transcript with a "Missing … API key" row beneath it, the key dialog opens
+with focus in **that provider's** input; type the key and press `Enter` (or Confirm) to save and close, and as the dialog closes the
+Playground sends the message again (`onOpenChange` on close calls `chat.reload()`). Dictation works the same way: a recording refused
+for a missing OpenAI key is transcribed once the key is in. The error row also carries Retry.
+
+**Pin / Follow** at the bottom of the sidebar switches how the transcript scrolls: Pin is what ChatGPT does — the sent message pins to the top and the reply unfolds below; Follow is the classic follow-the-end. The choice lives in `localStorage`.
+
+Three steps: paste a key → pick a model → send. Sending without a key also works — the route
+answers 401, the dialog opens by itself to ask for one, and you send again after saving. The
+OpenRouter row also offers "Sign in with OpenRouter": a [PKCE](/docs/ai/providers#keys) round
+trip to openrouter.ai that fills the key in on return — it needs an OpenRouter account, which
+this site cannot verify for you.
+
+To reproduce this page on your own site, the client swaps only two things — the transport and
+the keys:
+
+```tsx
+import { ByokKeyDialog, createByok, defaultCatalog, fetchServerSentEvents, useChat, useModelSelection, useServerCoverage } from '@gedatou/cadenza-ai'
+```
+
+```tsx
+const [byok] = useState(() => createByok({ catalog: defaultCatalog }))
+const { coverage } = useServerCoverage(byok)
+const sel = useModelSelection()
+const chat = useChat({
+  connection: fetchServerSentEvents('/api/ai/chat'),
+  forwardedProps: sel.forwardedProps,
+  byok,
+  byokProvider: () => sel.selection.provider,
+})
+
+<ByokKeyDialog byok={byok} catalog={defaultCatalog} coverage={coverage} />
+```
+
+The server side is the `docs/app/api/ai/chat/route.ts` shown under
+[Route handler](/docs/ai/providers#route-handler). `createByok()` defaults to `memoryStorage()` —
+keys live in memory only; `persistent: true` switches to `passkeyStorage()`, unlocked with
+WebAuthn and kept across reloads. Before sending, the client calls `byok.prepare(provider)` and
+writes that provider's key into the request header; `byokProvider` decides which provider that
+is, falling back to the `provider` field of the body.
+
+### Dictation
+
+The leftmost control in the composer toolbar is `ComposerDictate`: press to record, press
+again to stop; the recording goes to `/api/ai/transcription` as a data URL and the transcript is
+**appended** to the draft (whatever you already typed is kept). Transcription runs on OpenAI —
+`byokProvider: () => 'openai'` — so it needs an OpenAI key; the button is disabled while a
+transcription is in flight, and an error bar shows above the textarea when it fails. The page
+owns the draft through `ChatShell`'s `value` / `onValueChange` channel; transcription only writes
+into it:
+
+```tsx
+const [draft, setDraft] = useState('')
+const transcription = useTranscription({
+  connection: fetchServerSentEvents('/api/ai/transcription'),
+  byok,
+  byokProvider: () => 'openai',
+  onResult: r => setDraft(d => (d === '' ? r.text : `${d} ${r.text}`)),
+})
+
+<ComposerDictate
+  disabled={transcription.isLoading}
+  onRecording={part => void transcription.generate({ audio: `data:${part.source.mimeType};base64,${part.source.value}` })}
+/>
+```
+
+### Controls that follow the model
+
+The toolbar is `ComposerDictate → ModelPicker → ThinkingToggle → ThinkingLevelPicker → SearchToggle → keys`,
+and the last three appear and disappear with the selected model's capabilities:
+
+- **DeepThink** (`ThinkingToggle`): not rendered for a model without reasoning; switching on lands at
+  `'high'` clamped to the model.
+- **The level dropdown** (`ThinkingLevelPicker`): only while thinking is on and the model offers more
+  than one on-level (both DeepSeek models do).
+- **Search** (`SearchToggle`): rendered only when `Model.search` is true — today DeepSeek's two V4
+  models. Turning it on makes `forwardedProps.search` true, which is what lets `/api/ai/chat` attach
+  `deepseekWebSearch()` to that run's `tools`; while it is off the tool is never sent. The switch is
+  persisted with the rest of the selection under `docs-playground:selection`, and is cleared when you
+  move to a model without the capability.
+
+The search runs on DeepSeek's side, billed to the user's own key; nothing runs here — but every round
+shows up in the reply as a `web_search` tool card whose input is the action it recorded. What is
+still missing is the url citations — see [providers](/docs/ai/providers#provider-built-in-tools).
+
+### Auto titles
+
+The ChatGPT rule: a new thread is listed as **New chat** (the `ThreadList` `untitled` label — the
+library ships no default copy, the page supplies it), and `threadPersistence(index, base, { title: false })`
+turns off the derived "first 40 characters of the first message" title. When the **first assistant
+reply** finishes (`useChat({ onFinish })`), that question and answer go to `/api/ai/title`, and
+**the model this thread talks to** (same BYOK header, thinking off) names it: at most 6 words, in
+the user's language, no quotes, no trailing punctuation — `index.rename(threadId, title)`. Once
+only; a thread renamed by hand is left alone; only a failed request falls back to the derived title.
+
+```tsx
+const summary = useSummarize({
+  connection: fetchServerSentEvents('/api/ai/title'),
+  byok,
+  byokProvider: () => sel.selection.provider,
+  onResult: r => index.rename(threadId, r.summary.trim()),
+  onError: () => index.rename(threadId, threadTitleFrom(messages)),
+})
+```
+
+## Approach
+
+- **Pure BYOK is a choice.** `getByokKey` prefers the header and falls back to env, so whether
+  the server holds a key is only a matter of setting an environment variable at deploy time.
+  This site sets none: a request without a key gets a 401
+  `{ error: { type: 'byok_missing', provider } }`, the client calls
+  `byok.request(provider, 'missing')`, and `ByokKeyDialog` opens with that provider's input
+  focused. Cost, rate limits and model access all follow your key; the site adds no proxy quota.
+- **`useServerCoverage` tells the client what the server has.** It `GET`s `/api/ai/catalog`
+  once, receives `providers` (the catalog's plain data) and `coverage` (whether each provider has
+  a server key: always `true` for `keyRequired: false`, otherwise whatever env says), then calls
+  `byok.setServerCoverage(coverage)` so `prepare()` stops asking for keys the server holds; the
+  same `coverage` goes to the dialog, which marks those rows with "Server key". In a pure-BYOK
+  deployment all four are `false`.
+- **`maxDuration` bounds how long one reply can stream.** The route exports
+  `maxDuration = 300`: a streamed reply is capped by the serverless function's duration limit;
+  tune it to your Vercel plan.
+
+## Limits
+
+- **Four providers.** The route wires `openai` / `anthropic` / `gemini` / `openrouter` (the only
+  presets under `@gedatou/cadenza-ai/providers/*` today); the remaining catalog providers are
+  visible in the [model catalog](/docs/ai/providers) but cannot be selected here.
+- **3 MiB per attachment.** `DEFAULT_MAX_ATTACHMENT_BYTES` is the safe line for base64 inside a
+  JSON body; the route's `maxBodyBytes` defaults to 4 MiB and answers 413 beyond it.
+- **Duration follows the plan.** Vercel Hobby 60 s, Pro 300 s; a long reasoning reply may be
+  cut at the limit — `TranscriptError` reports it, and a retry is all it takes.
+- **Zero cost to the site.** With no server key, no request can be billed to the site; what is
+  billed to your key shows up as an estimate in the
+  [Usage and cost](/docs/ai/conversation#usage-and-cost) parts.
+- **Tools.** The route registers one server tool, `get_time`; tools declared on the client are
+  merged in through `mergeAgentTools`, the same mechanism as the
+  [client tools](/docs/ai/parts) demo.
+
+## API
+
+The four routes and three client exports this page uses. The adapter is passed in by the route (`createOpenaiTranscription` / `createOpenaiSummarize`); the library's server entry imports no adapter package.
+
+### Routes
+
+| Route | Method | Description |
+| --- | --- | --- |
+| `/api/ai/chat` | `POST` | `createChatHandler({ providers, defaultModel, systemPrompts, tools })`: size guard → parse → `pickSelection` (trusts only `provider` / `model` / `thinking` on `forwardedProps`) → `onSelect` → BYOK key → adapter → thinking → `chat()` → SSE |
+| `/api/ai/chat` | `GET` | serves only with `persistence` (`?threadId=`) or `durability` (`?runId=` / `last-event-id`) configured; otherwise 404 |
+| `/api/ai/catalog` | `GET` | `createCatalogHandler(presets)`: `{ providers, coverage, generatedAt }` |
+| `/api/ai/transcription` | `POST` | `createTranscriptionHandler({ adapter, byok, defaultModel })`: size guard (8 MiB by default) → `generationParamsFromRequest('transcription')` → `forwardedProps.model` ?? `defaultModel` → BYOK key → `generateTranscription({ stream: true })` → SSE, with the result in a `generation:result` event |
+| `/api/ai/summarize` | `POST` | `createSummarizeHandler({ adapter, byok, defaultModel })`: the same lifecycle; the body carries `{ data: { text, style, maxLength, focus } }` → `summarize({ stream: true })` → SSE |
+| `/api/ai/title` | `POST` | `createTitleHandler({ providers, defaultModel, maxWords?, prompt? })`: the same envelope, but the preset comes from `forwardedProps` — the thread's own model, thinking off — with a ChatGPT-style instruction; `cleanTitle` strips quotes / fences / trailing punctuation, and the reply is still summarize-shaped SSE, so the client keeps `useSummarize` |
+
+The full option table of the route lives in [Providers](/docs/ai/providers#route-handler).
+
+### createByok
+
+`createByok(options?): ByokClient` — `defineByok()` with the house defaults, ready for `useChat({ byok })`.
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `persistent` | `boolean` | `false` | `true` uses `passkeyStorage()` (passkey unlock, kept across reloads); otherwise `memoryStorage()` |
+| `catalog` | `Catalog` | — | when given, providers with `keyRequired: false` are marked server-covered up front |
+
+### useServerCoverage
+
+`useServerCoverage(byok, url?): ServerCoverage` — `url` defaults to `'/api/ai/catalog'`; fetched
+once on mount, and on success `byok.setServerCoverage()` is called.
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `coverage` | `Record<string, boolean> \| undefined` | whether each provider has a server key; `undefined` until the request completes |
+| `providers` | `readonly Provider[] \| undefined` | which providers the server wires (plain data) |
+| `error` | `Error \| undefined` | a non-2xx answer or a network error; `cadenza-ai: <url> answered <status>` |
+
+### fetchServerSentEvents
+
+`fetchServerSentEvents(url, options?)` is TanStack AI's connection adapter, re-exported as-is
+from the root entry: it returns a `ResumableConnectConnectionAdapter` for `useChat({ connection })`.
+`url` may be a function, and `options` a function or an async function (per-request headers);
+the BYOK header is merged in by `ChatClient` on every `send`, so you never write it yourself.

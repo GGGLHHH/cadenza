@@ -1,0 +1,121 @@
+---
+title: Kbd
+description: 展示键盘输入的按键芯片 —— 真 <kbd> 元素，进 Tooltip 自动反色
+---
+
+<ComponentPreview name="kbd/basic" />
+
+一枚按键芯片：`bg-muted` 底、固定高度、无衬线小字，指针事件关闭，只负责被看。
+底下是真 `<kbd>` 元素，不是 Base UI 部件 —— 没有任何 state，`className` 只收字符串，
+其余原生 `kbd` 属性（含 `ref`）原样透传。
+
+它是快捷键提示的那颗零件：[Button](/docs/components/button) 标签旁、
+[Tooltip](/docs/components/tooltip) 弹层里、[InputGroup](/docs/components/input-group)
+的 addon 中，放进去就对齐，不用再手写 `<kbd>` 样式。
+
+## 使用
+
+```tsx
+import { Kbd, KbdGroup } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Kbd>Ctrl</Kbd>
+```
+
+## 组成
+
+单键直接用 `Kbd`；一组按键（一个和弦）用 `KbdGroup` 包起来：
+
+```text
+Kbd
+KbdGroup
+├── Kbd
+└── Kbd
+```
+
+## 分组
+
+`KbdGroup` 把同一个快捷键的几枚按键排成一行，间距固定：
+
+<ComponentPreview name="kbd/group" />
+
+`KbdGroup` 本身也渲染成 `<kbd>`（不是 `div`），整个和弦在语义上就是一次键盘输入。
+它只管排布（`inline-flex` + `gap-1`），不画边框、不加背景。
+
+## Button
+
+把 `Kbd` 放进 [Button](/docs/components/button)，按键跟在标签后面一起排：
+
+<ComponentPreview name="kbd/button" />
+
+按键上 `pointer-events-none`，点击落在按钮上，芯片不会截走事件。
+
+## Tooltip
+
+放进 [Tooltip](/docs/components/tooltip) 的弹层，按键自己反色，不用传任何 prop：
+
+<ComponentPreview name="kbd/tooltip" />
+
+反色的钩子是弹层的 `data-slot="tooltip-content"`：`Kbd` 的样式带
+`in-data-[slot=tooltip-content]:` 变体，在暗底弹层里换成半透明的 `bg-background/20`
+和 `text-background`。所以 `TooltipPopup` 的 slot 名保留了 shadcn 写的
+`tooltip-content`（部件改名叫 Popup，slot 不改），这条契约就是为它留的。
+
+## InputGroup
+
+放进 [InputGroup](/docs/components/input-group) 的 addon，做搜索框角落的快捷键提示：
+
+<ComponentPreview name="kbd/input-group" />
+
+`InputGroupAddon` 负责对齐和收掉多余外边距，`Kbd` 负责芯片本身；两边各管一半，
+不用像以前那样在 addon 里手写一整串 `<kbd>` 类名。
+
+## 状态与 className
+
+纯 DOM 家族，底下没有 Base UI state，也没有任何手动挂的状态属性。
+
+| 属性 | 效果 |
+| --- | --- |
+| 祖先带 `data-slot="tooltip-content"` | 按键反色（`bg-background/20` + `text-background`，暗色模式 `bg-background/10`）—— 由 `Kbd` 自己的 `in-data-[…]` 变体驱动，见 [Tooltip](#tooltip) |
+
+`data-slot`：`Kbd` 是 `kbd`，`KbdGroup` 是 `kbd-group`，需要从外部按容器统一定位时当选择器用。
+
+`className` 两个部件都只收字符串 —— 落点是普通 `<kbd>`，不是 Base UI 槽位，
+没有 `(state) => string` 的形态可言。图标放进 `Kbd` 时不带 `size-*` 的 svg 会被收成
+`size-3`。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### Kbd
+
+一枚按键。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名。底下是纯 `<kbd>`，只收字符串 |
+| 其余 | 原生 `kbd` 属性 | — | 透传（含 `ref`） |
+
+```tsx
+<Kbd>Ctrl</Kbd>
+```
+
+### KbdGroup
+
+一组按键的容器，渲染成 `<kbd>`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名。只收字符串 |
+| 其余 | 原生 `kbd` 属性 | — | 透传（含 `ref`）。vendored 源码把它的 props 标成 `div` 的，封装层用 cast 改成它实际渲染的 `<kbd>`，运行时不变 |
+
+```tsx
+<KbdGroup>
+  <Kbd>Ctrl</Kbd>
+  <Kbd>B</Kbd>
+</KbdGroup>
+```
+
+2 个类型一并导出：`KbdProps` / `KbdGroupProps`。

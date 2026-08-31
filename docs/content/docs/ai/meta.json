@@ -1,0 +1,5 @@
+{
+  "title": "AI 会话",
+  "defaultOpen": true,
+  "pages": ["conversation", "parts", "composer", "threads", "providers", "scripted", "playground"]
+}

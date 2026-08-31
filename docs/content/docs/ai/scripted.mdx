@@ -1,0 +1,224 @@
+---
+title: 脚本化传输
+description: 用 @gedatou/cadenza-ai/mock 的步骤 DSL 在浏览器里回放一段事件流 —— 不要密钥、不走网络，与真实 route 共用同一条客户端管线
+---
+
+<ComponentPreview name="ai/scripted-basic" align="stretch" />
+
+`scripted()` 把一个「返回步骤列表的函数」变成 `useChat({ fetcher })` 收的 `ChatFetcher`。
+每一步翻成 AG-UI 事件、按节奏交给客户端，所以 Transcript、部件、审批、用量统计看到的
+与 `/api/ai/chat` 回来的一模一样。本分区的 demo 全部用它，包的单测也用它。
+
+## 使用
+
+```tsx
+import { useChat } from '@gedatou/cadenza-ai'
+import { reasoning, scripted, text, tool, usage } from '@gedatou/cadenza-ai/mock'
+```
+
+```tsx
+const [fetcher] = useState(() => scripted(() => [
+  reasoning('Loudest work last; harps move once.'),
+  tool('get_time', { tz: 'Europe/Paris' }, { output: { iso: '2026-10-14T19:30:00+02:00' } }),
+  text('Ravel opens; La Mer follows; interval after La Mer.'),
+  usage({ inputTokens: 412, outputTokens: 96 }),
+]))
+const chat = useChat({ fetcher })
+```
+
+`./mock` 是独立子入口，只依赖 `@tanstack/ai/client`——进浏览器包不会带上任何 provider adapter。
+`fetcher` 放在 `useState(() => scripted(...))` 里，让它随组件生命周期存在（`turn` 计数挂在这个实例上）。
+
+## 思路
+
+- **fetcher 形态**。TanStack AI 的 `useChat` 收 `connection` 或 `fetcher`；`ChatFetcher` 是
+  `(input, { signal, headers }) => Response | AsyncIterable<StreamChunk>`。`scripted()` 返回的就是
+  这个签名，与 `fetchServerSentEvents('/api/ai/chat')` 对 `useChat` 是同一层——换一行就切到真实服务。
+- **事件级 DSL**。步骤是纯数据（`{ kind: 'text', content }`），`scripted()` 内部把它翻成
+  AG-UI 事件：`TEXT_MESSAGE_START / CONTENT / END`、`REASONING_*`、`TOOL_CALL_START / ARGS / END / RESULT`、
+  `CUSTOM`、`RUN_FINISHED`。它模拟的是线路协议，不是 UI：`ToolCallPart.state` 的七态、审批中断的
+  绑定元数据、`RUN_FINISHED.usage` 都按引擎的形状造。
+- **同一条客户端管线**。chunk 与真实 route 的一样，走同一个 stream processor；`onChunk` /
+  `onFinish` / [`useUsageTracker`](/docs/ai/conversation#用量与费用) /
+  [`PartRenderersProvider`](/docs/ai/parts#工具渲染器) 都不知道底下是 mock。demo 里证明的东西，
+  接上真模型后同样成立。
+- **不模拟的**。不跑模型、不执行服务端工具（`output` 是你写死的）；`approval` / `client` 类工具
+  停在中断上，由下一轮脚本读 `ctx.resume` 决定后续；`./mock` 只有 fetcher 形态——需要服务端
+  `hydrate` 或持久化重建的场景用真 route。
+
+本站所有 demo 共用一份固定模式——`docs/demos/ai/mock.ts` 里的 `mockFetcher`：
+`sse: true`（真的以 `text/event-stream` 作答，客户端跑它的 SSE 解析器），`chunk: 'char'`
+（文本与推理逐字到达），`pace: 12`（每字 12 ms），`argsChunk: 4`（工具参数每 4 个字符一片）。
+每个 demo 只换脚本，不换节奏；你看到的流式形态就是生产环境的形态。
+
+```tsx
+import { scripted } from '@gedatou/cadenza-ai/mock'
+
+export const MOCK = { sse: true, chunk: 'char', pace: 12, argsChunk: 4 } as const
+
+export function mockFetcher(script: Script, options: ScriptedOptions = {}): ChatFetcher {
+  return scripted(script, { ...MOCK, ...options })
+}
+```
+
+## 步骤
+
+每个构造器各来一次——页顶的 demo 就是这份脚本。
+
+<ComponentSource name="ai/scripted-basic" />
+
+| 构造器 | 发出的事件 | 说明 |
+| --- | --- | --- |
+| `text(content, { chunk?, pace? })` | `TEXT_MESSAGE_START`（首个）+ `TEXT_MESSAGE_CONTENT` × n | 同一轮里多个 `text` 共享一条 assistant 消息；`TEXT_MESSAGE_END` 在整轮结束时补 |
+| `reasoning(content, { chunk?, pace?, signature? })` | `STEP_STARTED` + `REASONING_START / MESSAGE_START / MESSAGE_CONTENT × n / MESSAGE_END / END` | 每个块独立 step id，连续两个落成两个 `ThinkingPart`；`signature` 经 `STEP_FINISHED` 附上 |
+| `tool(name, input, { output?, error?, argsChunk?, approval?, client?, providerExecuted?, metadata?, toolCallId? })` | `TOOL_CALL_START / ARGS / END`，随后 `TOOL_CALL_RESULT` | `argsChunk` 把参数 JSON 分片；`error` 让结果带 `state: 'output-error'`；`approval` / `client` 不发结果，本轮收在中断上；`providerExecuted` 写进 `metadata` |
+| `tool.result(toolCallId, output, { error? })` | `TOOL_CALL_RESULT` | 给上一轮停在中断上的调用补结果 |
+| `custom(name, value)` | `CUSTOM` | `useChat({ onCustomEvent })` 收到 |
+| `structured(object, { chunk? })` | `CUSTOM structured-output.start` → 文本分片（默认 8 字符）→ `CUSTOM structured-output.complete` | 与引擎 `outputSchema` 的序列一致，JSON 走文本通道 |
+| `usage({ inputTokens, outputTokens, reasoningTokens?, cachedInputTokens? })` | 挂到 `RUN_FINISHED.usage` | `totalTokens = inputTokens + outputTokens` |
+| `error(message, code?)` | `RUN_ERROR`，随后停止 | 之后的步骤不再执行；`code` 成为 `TranscriptError` 的 `data-code` |
+| `sleep(ms)` | 无 | 等待；`stop()` 立即结束等待 |
+| `finish({ finishReason? })` | `RUN_FINISHED.metadata.tanstack.finishReason` | 默认 `'stop'`；有中断时恒为 `'tool_calls'` |
+
+节奏由两个开关决定：`pace` 是每个分片之间的毫秒数（默认 24，`'instant'` 跳过计时器），
+`chunk` 是切片方式（默认 `'word'`；`'char'` 或一个字符数）。两者都能在 `text` / `reasoning`
+的第二个参数上按步覆盖。`stop()` 触发 `signal`，脚本从当前分片处停下，不再发 `RUN_FINISHED`——
+客户端把它当作正常停止，`status` 回到 `'ready'`。
+
+## 多轮
+
+脚本收到一个 `ScriptContext`：最后一条用户消息、合并后的 `data`、这是第几轮、上一轮中断的
+决议。四个助手覆盖常见的分支方式。
+
+<ComponentPreview name="ai/scripted-routing" align="stretch" />
+
+- `respond(rules, fallback?)`：按 `lastUserText` 挑第一条命中的规则——`RegExp` 用 `test`，
+  字符串用 `includes`，函数收整个 `ctx`；都不命中走 `fallback`（默认 `echo()`）。
+- `sequence(turns)`：第 n 轮回 `turns[n]`，过了末尾一直回最后一项。
+- `echo({ chunk?, pace? })`：复述最后一条用户消息，附上附件的 MIME 类型与 `data.model`
+  （有的话）——[附件](/docs/ai/composer#附件)、[模型选择](/docs/ai/composer#模型与思考强度)
+  的 demo 用它证明东西确实送到了。
+- `approvalOf(ctx, toolCallId)` / `clientResultOf(ctx, toolCallId)`：读上一轮中断的决议。
+  `approval: true` 的工具第二轮拿到 `{ approved, editedArgs?, payload? }`；`client: true` 的工具
+  拿到浏览器端的输出。
+
+审批要跑通，客户端得注册同名工具，且 `inputSchema` 与脚本使用的宽松 schema 一致
+（客户端按 schema 哈希绑定 `tool-approval` 中断）：
+
+```tsx
+import { approvalOf, scripted, sequence, text, tool } from '@gedatou/cadenza-ai/mock'
+import { toolDefinition, useChat } from '@gedatou/cadenza-ai'
+
+const move = toolDefinition({ name: 'move', description: 'Move the meeting', inputSchema: { type: 'object', additionalProperties: true }, needsApproval: true })
+
+const fetcher = scripted(sequence([
+  [tool('move', { day: 'Fri' }, { approval: true })],
+  ctx => (approvalOf(ctx, 'call-1')?.approved
+    ? [tool.result('call-1', { moved: true }), text('Moved.')]
+    : [text('Left alone.')]),
+]), { toolCallId: () => 'call-1' })
+const chat = useChat({ fetcher, tools: [move] })
+```
+
+脚本也可以直接返回一个 `Response`，客户端按真实响应处理。`byokMissing('openai')` 造的就是
+route 在缺 key 时返回的那个 401：客户端读出 `byok_missing`，调 `byok.request('openai', 'missing')`，
+[ByokKeyDialog](/docs/ai/providers) 随之打开。
+
+## 测试
+
+同一个 fetcher 可以直接接在 `ChatClient` 上，不需要 React 与 DOM——`packages/ai/test/scripted.test.ts`
+就是这样跑的：
+
+```ts
+import { ChatClient } from '@tanstack/ai-client'
+import { expect, it } from 'vitest'
+import { reasoning, scripted, text, tool, usage } from '@gedatou/cadenza-ai/mock'
+
+function settle(client: ChatClient): Promise<void> {
+  return new Promise((resolve) => {
+    const tick = (): void => (client.getIsLoading() ? setTimeout(tick, 5) : resolve())
+    tick()
+  })
+}
+
+it('streams text, reasoning and a tool call into parts', async () => {
+  const fetcher = scripted(() => [
+    reasoning('Think.'),
+    tool('get_time', { tz: 'UTC' }, { output: { iso: '2026-08-28' } }),
+    text('Done.'),
+    usage({ inputTokens: 12, outputTokens: 3 }),
+  ], { pace: 'instant' })
+  const client = new ChatClient({ fetcher })
+  client.attach()
+  await client.sendMessage('hi')
+  await settle(client)
+  const types = client.getMessages().at(-1)!.parts.map(p => p.type)
+  expect(types).toContain('thinking')
+  expect(types).toContain('tool-call')
+  expect(types).toContain('text')
+  expect(client.getStatus()).toBe('ready')
+})
+```
+
+`pace: 'instant'` 去掉计时器；`attach()` 之后才会处理流；`settle` 轮询 `getIsLoading()` 等一轮结束。
+审批用 `client.getInterruptState().interrupts[0].resolveInterrupt(true)` 推进；停止用 `client.stop()`。
+
+## API
+
+`@gedatou/cadenza-ai/mock` 的完整导出。
+
+### 传输与脚本
+
+| 导出 | 说明 |
+| --- | --- |
+| `scripted(script, options?)` | 把 `Script` 变成 `ChatFetcher`；每次调用 `turn` 加一；脚本返回 `Response` 时原样交给客户端 |
+| `sequence(turns)` | `Script`：第 n 轮回 `turns[n]`（`Step[]` 或 `Script`），过末尾重复最后一项 |
+| `respond(rules, fallback?)` | `Script`：第一条命中 `lastUserText` 的规则；`fallback` 默认 `echo()` |
+| `echo(options?)` | `Script`：复述最后一条用户消息 + `Attachments: …` + `Model: …`；`options` 是 `text` 的 `chunk` / `pace` |
+| `byokMissing(provider)` | 401 `Response`，body `{ error: { type: 'byok_missing', provider, message } }` |
+| `approvalOf(ctx, toolCallId)` | 上一轮 `approval: true` 工具的决议 `ApprovalDecision \| undefined` |
+| `clientResultOf(ctx, toolCallId)` | 上一轮 `client: true` 工具的浏览器端输出 |
+
+### 步骤构造器
+
+| 导出 | 返回的 `Step` |
+| --- | --- |
+| `text(content, o?)` | `{ kind: 'text', content, chunk?, pace? }` |
+| `reasoning(content, o?)` | `{ kind: 'reasoning', content, chunk?, pace?, signature? }` |
+| `tool(name, input, o?)` | `{ kind: 'tool', name, input, output?, error?, argsChunk?, approval?, client?, providerExecuted?, metadata?, toolCallId? }` |
+| `tool.result(toolCallId, output, o?)` | `{ kind: 'tool-result', toolCallId, output, error? }` |
+| `custom(name, value)` | `{ kind: 'custom', name, value }` |
+| `structured(object, o?)` | `{ kind: 'structured', object, chunk? }` |
+| `usage(u)` | `{ kind: 'usage', usage: { inputTokens, outputTokens, reasoningTokens?, cachedInputTokens? } }` |
+| `error(message, code?)` | `{ kind: 'error', message, code? }` |
+| `sleep(ms)` | `{ kind: 'sleep', ms }` |
+| `finish(o?)` | `{ kind: 'finish', finishReason?: 'stop' \| 'length' \| 'content_filter' \| 'tool_calls' }` |
+
+### ScriptContext
+
+`Script` 的唯一参数：`(ctx: ScriptContext) => Step[] | Iterable<Step> | AsyncIterable<Step> | Promise<Step[]> | Response`。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `messages` | `UIMessage[]` | 客户端送来的全部消息 |
+| `lastUser` | `UIMessage \| undefined` | 最后一条 user 消息 |
+| `lastUserText` | `string` | 它的文本部件拼接；没有则空串 |
+| `data` | `Record<string, unknown>` | `forwardedProps` 与本次 `sendMessage` body 的合并 |
+| `threadId` / `runId` | `string` | 本轮身份 |
+| `parentRunId` | `string \| undefined` | 从中断恢复时是上一轮的 `runId` |
+| `resume` | `RunAgentResumeItem[] \| undefined` | 上一轮中断的决议；用 `approvalOf` / `clientResultOf` 读 |
+| `turn` | `number` | 这个 fetcher 实例此前被调用的次数，从 0 起 |
+| `signal` | `AbortSignal` | `stop()` 时触发 |
+
+### ScriptedOptions
+
+| 选项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `pace` | `number \| 'instant'` | `24` | 分片之间的毫秒数；`'instant'` 跳过计时器 |
+| `chunk` | `'word' \| 'char' \| number` | `'word'` | `text` / `reasoning` 的默认切片 |
+| `argsChunk` | `number` | 整段 | 工具参数的默认切片（每个 `TOOL_CALL_ARGS` 的字符数）；`tool` 步骤自己的 `argsChunk` 优先 |
+| `sse` | `boolean` | `false` | 以 `text/event-stream` 的 `Response`（每个 chunk 一行 `data:`）作答，客户端走真实的 SSE 解析器——与 `/api/ai/chat` 同一条路 |
+| `messageId` | `() => string` | 引擎的 id 生成器 | 本轮 assistant 消息的 id |
+| `toolCallId` | `() => string` | 引擎的 id 生成器 | 未显式给 `toolCallId` 的工具调用用它；测试里用来写死 id |
+
+6 个类型一并导出：`Step` / `Script` / `ScriptContext` / `ScriptedOptions` / `RespondRule` / `ApprovalDecision`。

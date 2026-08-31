@@ -1,0 +1,497 @@
+---
+title: 会话
+description: 用 @gedatou/cadenza-ai 门面 + Transcript / Composer 家族搭会话 —— API 与 TanStack AI 一致，接线与渲染惯例是包默认
+---
+
+<ComponentPreview name="ai/basic" align="stretch" />
+
+本指南讲如何用 [TanStack AI](https://tanstack.com/ai) 搭一个完整的会话——但不直接装它，
+而是装 `@gedatou/cadenza-ai`：一层门面，全量转发 TanStack AI 的 React 面，另外把会话惯例
+做成默认——消息部件怎么渲染、输入区怎么提交、线程怎么索引、密钥怎么拿，都不再需要手写胶水。
+控件来自本库的 [Message](/docs/components/message)、[Bubble](/docs/components/bubble)、
+[MessageScroller](/docs/components/message-scroller) 与 [InputGroup](/docs/components/input-group)。
+
+本分区的 demo 全部**不需要密钥**：它们用 [脚本化传输](/docs/ai/scripted) 在浏览器里回放
+一段事先写好的事件流，与真实 provider 走同一条客户端管线。要接真模型，去
+[试玩](/docs/ai/playground)。
+
+## 使用
+
+```bash
+pnpm add @gedatou/cadenza-ai
+```
+
+包内全量转发 `@tanstack/ai-react`，只装这一个，所有 API 从同一入口 import：
+
+```tsx
+import {
+  Composer,
+  ComposerSubmit,
+  ComposerTextarea,
+  ComposerToolbar,
+  Transcript,
+  TranscriptMessage,
+  TranscriptProvider,
+  useChat,
+} from '@gedatou/cadenza-ai'
+import { scripted, text } from '@gedatou/cadenza-ai/mock'
+```
+
+```tsx
+function Chat(): ReactElement {
+  const [fetcher] = useState(() => scripted(() => [text('Interval after La Mer.')]))
+  const chat = useChat({ fetcher })
+
+  return (
+    <TranscriptProvider status={chat.status} interrupts={chat.interrupts}>
+      <Transcript>
+        {chat.messages.map(message => (
+          <TranscriptMessage key={message.id} message={message} />
+        ))}
+      </Transcript>
+      <Composer status={chat.status} onValueCommitted={text => void chat.sendMessage(text)} onStop={() => chat.stop()}>
+        <ComposerTextarea placeholder="Ask about the programme…" />
+        <ComposerToolbar>
+          <ComposerSubmit />
+        </ComposerToolbar>
+      </Composer>
+    </TranscriptProvider>
+  )
+}
+```
+
+样式走本库的 Tailwind 通道，在全局 css 里再加一个 import 和一个扫描源（streamdown 的
+Markdown 样式与 KaTeX 都在 `@gedatou/cadenza-ai/styles.css` 里）：
+
+```css
+@import '@gedatou/cadenza-ui/styles.css';
+@import '@gedatou/cadenza-ai/styles.css';
+@source '../node_modules/streamdown/dist/*.js';
+```
+
+## 思路
+
+会话有四种东西，各归各处：
+
+- **状态归 `useChat`**。消息、运行状态、中断、队列、错误——全部由 TanStack AI 的 hook 持有，
+  门面不复制一份。`TranscriptProvider` 只是把 `status` / `interrupts` 送到下面每个部件。
+- **渲染归部件注册表**。一条消息是若干 `part`（文本、推理、工具调用、附件……），
+  `TranscriptParts` 按 `part.type` 分发给内置部件；要换掉某一种，
+  在 [`PartRenderersProvider`](/docs/ai/parts#工具渲染器) 里按名注册，不用改 Transcript。
+- **传输归 `fetcher` / `connection`**。demo 用 `scripted()`（本站统一包成 `mockFetcher`：模拟 SSE、逐字），真实服务用
+  `fetchServerSentEvents('/api/ai/chat')`，两者对 `useChat` 是同一个形状。
+- **惯例归门面**：线程索引、模型选择、用量统计、编辑重发、附件草稿、BYOK 便捷——都是
+  只依赖 `useChat` 返回值的纯函数与 hook，用不用都不影响前三条。
+
+## 解剖
+
+页顶那个 demo 的完整组件树：
+
+```text
+TranscriptProvider            status / interrupts / addToolApprovalResponse 下发
+├─ Transcript                 MessageScroller 外壳：滚动跟随、锚定、保持阅读位置
+│  ├─ TranscriptEmpty         messages 为空时
+│  ├─ TranscriptMessage       一行：Message + Bubble，data-role / data-streaming
+│  │  ├─ TranscriptParts      按 part.type 分发：Markdown / Reasoning / ToolCallCard / MediaPart …
+│  │  └─ TranscriptActions    被提到 MessageFooter 的工具栏，流式中隐藏
+│  │     └─ TranscriptAction  一个图标按钮
+│  ├─ TranscriptPending       submitted 与首个 chunk 之间
+│  └─ TranscriptError         role="alert"，data-code 镜像错误码
+└─ Composer                   <form> 包一个 InputGroup
+   ├─ ComposerTextarea        Enter 提交、Shift+Enter 换行、IME 不误触、Escape 停止或取消编辑
+   └─ ComposerToolbar         附件 / 听写 / 模型 / 提交
+      └─ ComposerSubmit       空闲时发送，运行中变成停止
+```
+
+每个部件只负责一件事：`Transcript` 管滚动，`TranscriptMessage` 管一行的对齐与气泡，
+`TranscriptParts` 管一条消息里有什么，`Composer` 管一次提交。组合部件都**没有默认文案**——
+空态、待定态、错误态、动作栏里写什么，由你决定；内置部件（推理、工具卡）的文案集中在
+[`PartLabels`](/docs/ai/parts#默认文案)，一处覆盖。
+
+## 会话
+
+从零搭出页顶那个会话，一共四步。
+
+### 连接
+
+先决定消息从哪来。开发与文档阶段用脚本化传输——一个返回步骤列表的函数，
+每一步翻成 AG-UI 事件流式回放：
+
+```tsx
+import { reasoning, respond, scripted, text, tool } from '@gedatou/cadenza-ai/mock'
+
+const fetcher = scripted(respond([
+  [/plan/i, [
+    reasoning('Loudest work last; harps move once.'),
+    tool('get_time', { tz: 'Europe/Paris' }, { output: { iso: '2026-10-14T19:30:00+02:00' } }),
+    text('Ravel opens; La Mer follows; interval after La Mer.'),
+  ]],
+]))
+const chat = useChat({ fetcher })
+```
+
+接真实服务时只换这一行——`/api/ai/chat` 由 [`createChatHandler`](/docs/ai/providers#route-handler) 提供：
+
+```tsx
+const chat = useChat({ connection: fetchServerSentEvents('/api/ai/chat') })
+```
+
+`fetcher` 在 `useState(() => scripted(...))` 里创建，让它随组件生命周期存在；
+`useChat` 的其余 options（`tools`、`persistence`、`forwardedProps`、`onChunk` …）与 TanStack AI 一字不差。
+
+### 渲染消息
+
+`chat.messages` 是 `UIMessage[]`，每条一行：
+
+```tsx
+<TranscriptProvider status={chat.status} interrupts={chat.interrupts} addToolApprovalResponse={chat.addToolApprovalResponse}>
+  <Transcript>
+    {chat.messages.length === 0 && <TranscriptEmpty>Try: “Plan the programme.”</TranscriptEmpty>}
+    {chat.messages.map(message => (
+      <TranscriptMessage key={message.id} message={message} streaming={chat.status === 'streaming' && message === last}>
+        <TranscriptParts message={message} />
+      </TranscriptMessage>
+    ))}
+    {chat.status === 'submitted' && <TranscriptPending>Thinking…</TranscriptPending>}
+    {chat.error && <TranscriptError error={chat.error}>{chat.error.message}</TranscriptError>}
+  </Transcript>
+</TranscriptProvider>
+```
+
+`TranscriptMessage` 没有 children 时默认渲染 `<TranscriptParts message={message} />`；
+写出来是为了在它旁边放 [动作栏](#消息动作)。`streaming` 由你传：正在被写入的是最后一行，
+只有那一行需要知道自己在流式中（Markdown 的容错解析、推理块的闪烁都挂在它上）。
+
+### 输入
+
+`Composer` 是一个 `<form>`，提交走 `onValueCommitted(value, details)`——`details.reason`
+告诉你是 `'keyboard'`（Enter）还是 `'none'`（表单提交），提交后草稿自动清空：
+
+```tsx
+<Composer
+  status={chat.status}
+  onValueCommitted={text => void chat.sendMessage(text)}
+  onStop={() => chat.stop()}
+>
+  <ComposerTextarea placeholder="Ask about the programme…" />
+  <ComposerToolbar>
+    <ComposerSubmit />
+  </ComposerToolbar>
+</Composer>
+```
+
+`status` 是接线的关键：`submitted` / `streaming` 时 `ComposerSubmit` 变成停止按钮，
+Escape 走 `onStop`；空草稿时发送按钮禁用。附件、模型选择、建议、排队见 [输入区](/docs/ai/composer)。
+
+### 完成
+
+把上面三段放进一个组件，外面包一层高度确定的容器（`Transcript` 底下是
+`MessageScroller`，它填满父元素，所以父元素得有高度）：
+
+<ComponentSource name="ai/basic" />
+
+## 流式
+
+流式回复逐字落进最后一行（本站 demo 统一模拟 SSE、逐字、12 ms 一字，见
+[脚本化传输](/docs/ai/scripted#思路)），`Transcript` 在读者位于末端时跟随，读者上滚就松手；
+运行中发送按钮变成停止。
+
+<ComponentPreview name="ai/streaming" align="stretch" />
+
+停止后 `chat.status` 回到 `'ready'`，已收到的文本保留，不算错误。滚动跟随的细节
+（锚定、`data-scrollable`、跳转）全部继承自 [MessageScroller](/docs/components/message-scroller)：
+`Transcript` 把 `MessageScrollerViewport` 的 props 原样透传，`autoScroll` 默认打开、
+`defaultScrollPosition` 默认 `'end'`。
+
+**只有纵向会滚。** Base UI 的 ScrollArea 给内容包装层加了行内 `min-width: fit-content`，
+默认行为是「内容多宽，整块就多宽，横着滚」。对话不能这样——代码块里一行长 URL
+就会把整列拖出视口，所有兄弟节点跟着变宽，看上去像是「某个部件超宽了」。`Transcript`
+把它清零，于是列宽恒等于视口，宽的块（表格、代码围栏，`Markdown` 本来就给了它们
+`overflow-x: auto`）在自己的盒子里横向滚动。
+
+## Markdown
+
+文本部件交给 [streamdown](https://streamdown.ai) 渲染：GFM 表格、代码块高亮与复制、
+KaTeX、CJK 断行，以及流式中未闭合的 Markdown 的容错解析。
+
+<ComponentPreview name="ai/markdown" align="stretch" />
+
+`Markdown` 部件的 `streaming` 打开时用 streamdown 的 `streaming` 模式并开启
+`parseIncompleteMarkdown`，所以半个表格、没闭合的代码围栏都能先渲染出来。
+链接一律 `target="_blank" rel="noreferrer"`。streamdown 自己的 UI 文案（复制按钮等）
+走它的 `translations`，从 `Markdown` 的同名 prop 透传。
+
+## 空态、加载态与错误态
+
+三个状态部件都是组合部件——它们只提供位置与语义，文案由你写。
+
+<ComponentPreview name="ai/states" align="stretch" />
+
+- `TranscriptEmpty` 落在 [Empty](/docs/components/empty) 上，通常配一组
+  [Suggestions](/docs/ai/composer#建议)。
+- `TranscriptPending` 是 `role="status"` 的 [Marker](/docs/components/marker)，
+  `submitted` 之后、第一个 chunk 之前出现。
+- `TranscriptError` 是 `role="alert"`，`data-code` 镜像错误对象上的 `code`
+  （脚本里 `error('Rate limited', '429')` 就是 `data-code="429"`）；重试调 `chat.reload()`。
+  用户主动停止不产生错误。
+
+## 消息动作
+
+每行的工具栏放在 `TranscriptActions` 里——它自己渲染 `MessageFooter`，
+`TranscriptMessage` 会把它从气泡里提到行尾；流式中整条工具栏 `data-hidden`。
+
+<ComponentPreview name="ai/actions" align="stretch" />
+
+复制、重生成、清空、编辑重发只靠 `useChat` 的返回值与门面的纯函数：复制用 `messageText(message)`，
+重生成用 `chat.reload()`，清空用 `chat.clear()`，编辑重发用
+`editAndResend(chat, messageId, text)`——它停掉运行、截掉被编辑的那条用户消息及其后所有内容，
+再把新文本发出去（v1 是线性的：没有分支树）。编辑态下 `Composer` 收到 `editing`，
+Escape 走 `onEditCancel` 而不是停止。
+
+反馈与朗读也在同一条工具栏里，包内不提供存储与语音接口：👍 / 👎 是两个带 `aria-pressed` 的 `TranscriptAction`，
+判定存在哪里归宿主——demo 用 `useStoredState('docs-feedback', {})` 按消息 id 放进 `localStorage`，同一个键再按一次取消；
+朗读是浏览器自带的 `speechSynthesis.speak(new SpeechSynthesisUtterance(messageText(message)))`，
+没有 `speechSynthesis` 的环境下按钮禁用。
+
+## 用量与费用
+
+`useUsageTracker()` 接到 `useChat` 的 `onChunk` / `onFinish` 上，按运行累加
+每一次 `RUN_FINISHED` 的 token 数（工具循环一轮一次），归到收尾的那条 assistant 消息。
+
+<ComponentPreview name="ai/usage" align="stretch" />
+
+费用由目录里的价格算：`estimateCost(model, usage)` 返回美元。提示 token 分三档：命中缓存的按
+`cacheRead`，写入缓存的按 `cacheWrite`（Anthropic 是 input 的 1.25×），其余按 `input`；两个缓存价
+缺省都回落到 `input`，模型没有价格时返回 `undefined`。
+
+工具栏里的 `ContextUsage` 把这两件事收成一个部件：`usage.promptTokens / model.contextWindow`
+画成一条 [Progress](/docs/components/progress)，旁边是 prompt token 数和调用方给的单位（children），
+整块是一个 [Tooltip](/docs/components/tooltip) 的触发器，明细是 prompt / completion / cached / total
+与 `estimateCost` 的美元。模型没有 `contextWindow` 就只显示数字；比例镜像成 `data-ratio`（两位小数）。
+明细的行标签是英文默认，`labels` 可覆盖——与 `ByokKeyDialog` 同一条路。
+
+### 比例指标
+
+`usageMetrics(usage, model)` 是纯函数，把一份 `TokenUsage` 里读得出的比例一次算齐：
+`cacheHitRate` / `cacheWriteRate`（占 `promptTokens`）、`outputRatio`（回答比提示）、
+`reasoningShare`（思考占回答）、`contextRatio`（同上面那根条）、`cacheSavings`（缓存读比原价
+省下的美元），外加 `promptModalities` / `completionModalities`——按模态的非零切片，从大到小。
+
+**分母未知时是 `undefined`，不是 0。** 「没有提示 token 时的缓存命中率」不是零，是无从谈起；
+同理，模型没给 `cacheRead` 意味着缓存不打折，而不是省了 0。界面据此决定「不显示这一格」，
+而不是显示一个会被误读的 0%。`model` 只有 `contextRatio` 和 `cacheSavings` 需要。
+
+`ContextUsage` 的 tooltip 里已经带上了其中四项。要更铺开的呈现用 `UsageStats`：一格一个指标的
+网格，比率型的配一条细 Progress，按模态的那格把切片列出来；同样是**这一格算不出来就不出现**。
+
+<ComponentPreview name="ai/usage-stats" align="stretch" />
+
+它只渲染**一份** `usage`。渲染哪一份是调用方的事——`useUsageTracker` 三个粒度都给了，
+上面 demo 里那个 `[Session | Last run | Last message]` 切换器是调用方自己写的几行 Tabs，
+这样文案和 variant 留在它们该在的地方（同 `AlertDialogClose` 的判例）。行标签同样走 `labels`。
+
+数据通道有两条，值得知道：`cachedTokens` 与 `reasoningTokens` 是 AG-UI spec 的一等字段直通；
+`cacheWriteTokens` 与模态拆分没有 spec 位置，走 `toSpecTokenUsage` 的 leftover，挂在
+`metadata.tanstack.usage` 上由 `fromSpecTokenUsage` 还原。脚本化传输的 `usage(u, details)`
+第二个参数走的就是后面这条，所以上面的 demo 确实在验证这条通道，而不是绕过它。
+
+## 本地持久化
+
+`useChat({ persistence, threadId })` 是 TanStack AI 的接口，`indexedDBPersistence()`
+是它自带的适配器；刷新页面对话还在。
+
+<ComponentPreview name="ai/persistence" align="stretch" />
+
+多个会话的索引（列表、标题、按天分组）是另一件事，见 [会话列表](/docs/ai/threads)。
+
+## 多标签页
+
+同一个 `threadId` 开在第二个 tab（或另一台设备）里，靠的是服务端持久化，不是广播：
+`useChat({ persistence: true, threadId })` 挂载时经 `hydrate` 取回正文与 `activeRun`，
+有正在生成的 run 就用 `joinRun` 从日志回放并接着收——前提是路由开了 `durability`，
+见[会话列表 › 断线续流](/docs/ai/threads#断线续流)。这一步不需要 `live`。
+
+`useChat({ live: true })` 是另一件事：挂载即 `client.subscribe()`、卸载即 `unsubscribe()`，
+让连接的订阅循环独立于请求存在。对 `fetchServerSentEvents` 这类 `connect` 适配器，
+订阅队列只由本 tab 自己的请求填充，`live` 不会带来别的 tab 的消息；它对应的是
+`webSocket()` 这类 `subscribe` + `send` 适配器——服务端往 socket 推，每个订阅者都收到同一次 run，
+`connectionStatus` / `isSubscribed` 也只在这时有意义。本库不做 WebSocket 路由，这些都只转发。
+
+## 状态与 className
+
+每个部件的最外层都带 `data-slot`，状态用名称型属性表达：布尔状态在场时属性存在、值为空串，
+用 `data-streaming:` 这样的变体即可命中；描述型状态是值型。
+
+| 属性 | 出现在 | 值 | 出现时机 |
+| --- | --- | --- | --- |
+| `data-role` | `transcript-message` | `"user"` \| `"assistant"` \| `"system"` … | 镜像 `message.role` |
+| `data-streaming` | `transcript-message` | 空串 | 传了 `streaming` 的那一行 |
+| `data-hidden` | `transcript-actions` | 空串 | `status === 'streaming'` 时；样式上 `data-hidden:invisible` |
+| `data-code` | `transcript-error` | `string` | 错误对象带 `code` 时镜像它 |
+| `data-scrollable` `data-autoscrolling` | `transcript` 的视口 | 见 MessageScroller | 继承自 [MessageScroller](/docs/components/message-scroller#状态与-classname) |
+| `data-submitted` `data-streaming` `data-error` `data-dragging` `data-editing` | `composer` | 空串 | 镜像 `status` / 拖放中 / 编辑态；`ready` 是前三者都不在场 |
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `transcript` | 滚动外壳（`MessageScroller` 的根） |
+| `transcript-message` | 一行（`MessageScrollerItem`） |
+| `transcript-parts` | 一条消息的部件容器 |
+| `transcript-actions` / `transcript-action` | 工具栏 / 其中一个按钮 |
+| `transcript-empty` / `transcript-pending` / `transcript-error` | 三个状态部件 |
+| `markdown` / `reasoning` / `tool-call-card` / `tool-call-group` / `approval-actions` / `media-part` / `sources` / `structured-output` | 内置部件，见 [消息部件](/docs/ai/parts#状态与-classname) |
+| `composer` / `composer-textarea` / `composer-toolbar` / `composer-submit` | 输入区，见 [输入区](/docs/ai/composer#状态与-classname) |
+
+`className` 在这些部件上都是 `string`——它们落在纯 DOM 或本库的组合部件上，没有 Base UI
+的状态函数可传。`Transcript` 的 `className` 落在滚动外壳上；要改视口，用透传的 viewport props。
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| `Enter`（焦点在 `ComposerTextarea`） | 提交，`onValueCommitted(value, { reason: 'keyboard' })`；输入法组合中不触发 |
+| `Shift` + `Enter` | 换行 |
+| `Escape` | 运行中：`onStop`；编辑态：`onEditCancel`；否则无事 |
+| `Tab` / `↑` `↓` `PageUp` `PageDown` `Home` `End` | 记录溢出时视口可聚焦并滚动，键盘滚动释放跟随——同 [MessageScroller](/docs/components/message-scroller#键盘交互) |
+
+## 导出的类型
+
+root 入口除转发 `@tanstack/ai-react` 的全部导出（`useChat`、`UIMessage`、`UseChatReturn`、
+`fetchServerSentEvents`、`indexedDBPersistence`、`useByok`、`useAudioRecorder` …）外，新增：
+
+```tsx
+// 目录
+import type { Catalog, Model, ModelCost, Provider, ThinkingLevel } from '@gedatou/cadenza-ai'
+import { clampThinkingLevel, createCatalog, defaultCatalog, estimateCost, modelRef, parseModelRef, providers, supportedThinkingLevels, THINKING_LEVELS } from '@gedatou/cadenza-ai'
+
+// 运行时
+import type { AnyToolApprovalInterrupt, AttachmentDraft, DraftAttachment, EditableChat, ModelSelection, PartLabels, PartRenderers, Source, ThreadIndex, ThreadMeta, ToolRenderer, ToolRendererProps, UsageTracker } from '@gedatou/cadenza-ai'
+import { createByok, createThreadIndex, definePartRenderers, editAndResend, fileToContentPart, groupThreadsByDay, isThinkingComplete, messagesToMarkdown, messageText, PartRenderersProvider, sourcesOf, threadPersistence, threadTitleFrom, useAttachmentDraft, useModelSelection, usePartRenderers, useServerCoverage, useStoredState, useThreadIndex, useUsageTracker } from '@gedatou/cadenza-ai'
+
+// 视图
+import type { ContextUsageLabels, ContextUsageProps, ContextUsageState, TranscriptActionProps, TranscriptActionsProps, TranscriptEmptyProps, TranscriptErrorProps, TranscriptInterrupt, TranscriptMessageProps, TranscriptMessageState, TranscriptPartsProps, TranscriptPendingProps, TranscriptProps, TranscriptProviderProps } from '@gedatou/cadenza-ai'
+import { ContextUsage, DEFAULT_CONTEXT_USAGE_LABELS } from '@gedatou/cadenza-ai'
+```
+
+- `TranscriptInterrupt` 是 `TranscriptProvider.interrupts` 收的元素类型：`ChatInterrupt`
+  与 `AnyToolApprovalInterrupt` 的联合。`useChat().interrupts` 按工具集分别定型，
+  直接传进来即可。
+- 服务端与 provider 的类型在各自子入口，见 [接入提供者](/docs/ai/providers#导出的类型)；
+  脚本化传输的类型见 [脚本化传输](/docs/ai/scripted#api)。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### TranscriptProvider
+
+把 `useChat` 的运行状态下发给所有 Transcript 部件。自身不渲染 DOM；缺了它，
+`Transcript` 系列部件抛 `cadenza-ai: TranscriptContext is missing…`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `status` | `ChatClientState` | — | `chat.status` |
+| `interrupts` | `readonly TranscriptInterrupt[]` | `[]` | `chat.interrupts`；审批卡片按 `toolCallId` 从这里找到自己的中断 |
+| `addToolApprovalResponse` | `(input: { id, approved }) => void \| Promise<void>` | — | 没有活中断的 `approval-requested` 部件（例如恢复的历史）用它回应 |
+| `children` | `ReactNode` | — | — |
+
+### Transcript
+
+滚动外壳：`MessageScrollerProvider` + `MessageScroller` + 本库视口 + 内容容器。
+放在高度确定的布局里。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | — | 一串 `TranscriptMessage` 与状态部件 |
+| `autoScroll` | `boolean` | `true` | 读者在末端时跟随新内容 |
+| `defaultScrollPosition` | `'start' \| 'end' \| 'last-anchor'` | `'end'` | 首次非空渲染的位置 |
+| `anchorTurns` | `boolean` | `true` | 发送后把这条 user 消息钉到视口顶部、回复在下方留白里展开（ChatGPT 式轮次锚定）；只有**最新一条** user 行是锚点——老的 user 行若也是锚点，滚动器会在回复到达时跳去最早那条。`false` = 经典跟底：视口留在末端跟着回复走 |
+| `previousPeek` | `number` | 滚动器默认 `80` | 钉顶时上一行露出的像素；`0` = 贴顶（ChatGPT 的样子），docs 的 `ChatShell` 用 `0` |
+| `after` | `ReactNode` | — | 渲染在视口旁、框架之内、`role="log"` 之外——放 `MessageScrollerButton`（读者不在末端时出现的「回到最新」按钮） |
+| `className` | `string` | — | 落在滚动外壳上 |
+| 其余 | `MessageScrollerViewportProps` 去掉 `className` / `children` | — | 透传给视口（`scrollbars`、`preserveScrollOnPrepend` …） |
+
+### TranscriptMessage
+
+一行。`memo` 过，所以流式时只有最后一行重渲染。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `message` | `UIMessage` | — | — |
+| `streaming` | `boolean` | `false` | 这一行正在被写入；写 `data-streaming`，并传给 Markdown / 推理部件 |
+| `align` | `'start' \| 'end'` | user 行 `'end'`，其余 `'start'` | `Message` 的对齐 |
+| `children` | `ReactNode` | `<TranscriptParts message={message} />` | 气泡内容；其中的 `TranscriptActions` 会被提到行尾 |
+| `className` | `string` | — | 落在 `MessageScrollerItem` 上 |
+
+`TranscriptMessageState`：`{ role, streaming }`。
+
+### TranscriptParts
+
+按 `part.type` 分发：文本 → `Markdown`，`thinking` → `Reasoning`，`tool-call` →
+注册表命中的渲染器或 `ToolCallCard`（连续多个折成 `ToolCallGroup`），媒体 → `MediaPart`，
+`structured-output` → `StructuredOutput`；末尾附上 `sourcesOf(message)` 的 `Sources`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `message` | `UIMessage` | — | — |
+| `className` | `string` | — | 落在部件容器上 |
+
+### TranscriptActions
+
+`role="toolbar"`，自带 `MessageFooter`；流式中 `data-hidden`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | — | 若干 `TranscriptAction` |
+| `className` | `string` | — | 落在工具栏上 |
+
+### TranscriptAction
+
+`Button variant="ghost" size="icon-xs"`。收 [Button](/docs/components/button#props) 的全部 props。
+
+### TranscriptEmpty
+
+[Empty](/docs/components/empty) 的转出，加 `data-slot="transcript-empty"`；收 `EmptyProps`。
+
+### TranscriptPending
+
+`role="status"` 的 Marker，内容带 `shimmer`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | — | 文案 |
+| `className` | `string` | — | 落在 Marker 上 |
+
+### TranscriptError
+
+`role="alert"`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `error` | `Error` | — | 带 `code` 时写成 `data-code` |
+| `children` | `ReactNode` | — | 文案 |
+| `className` | `string` | — | 落在根上 |
+
+### ContextUsage
+
+上下文占用：`Progress` + 数字 + `Tooltip` 明细，整块是触发器（真 `<button>`）。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `usage` | `TokenUsage` | — | 通常是 `useUsageTracker().total` |
+| `model` | `Model` | — | 出 `contextWindow`（进度条）与 `cost`（费用行）；缺省只显示数字 |
+| `labels` | `Partial<ContextUsageLabels>` | 英文 | 明细的行标签：`prompt` / `completion` / `cached` / `total` / `cost` |
+| `children` | `ReactNode` | — | 跟在 prompt token 数后面的单位（「tokens」），部件不带 |
+| `className` | `string` | — | 落在触发器上 |
+
+```tsx
+<ContextUsage model={model} usage={tracker.total}>tokens</ContextUsage>
+```
+
+`data-ratio` 是 `promptTokens / contextWindow` 保留两位小数，模型没有 `contextWindow` 时缺席；
+`data-slot`：`context-usage`（触发器）/ `context-usage-tokens`（数字）/ `context-usage-details`（明细 `<dl>`）。
+
+14 个类型一并导出：`TranscriptProviderProps` / `TranscriptProps` / `TranscriptMessageProps` /
+`TranscriptMessageState` / `TranscriptPartsProps` / `TranscriptActionsProps` /
+`TranscriptActionProps` / `TranscriptEmptyProps` / `TranscriptPendingProps` /
+`TranscriptErrorProps` / `TranscriptInterrupt` / `ContextUsageProps` / `ContextUsageState` /
+`ContextUsageLabels`。

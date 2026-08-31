@@ -1,0 +1,110 @@
+---
+title: Badge
+description: A small status pill — six variants mirrored as data-variant, and render turns it into a link
+---
+
+<ComponentPreview name="badge/basic" />
+
+An `h-5` rounded pill that lands on a `<span>` by default. Underneath is Base
+UI's `useRender`, so passing `render` swaps it for an `<a>` or any element,
+and the pill classes and `data-slot` follow along. Six variants
+(`default / secondary / destructive / outline / ghost / link`) are routed
+through `cva`; the chosen one is mirrored as `data-variant`.
+
+`className` only takes a string: the vendored layer feeds it into `cva`, where
+a function form is dropped silently, so the type closes that path (same as
+[Button](/en/docs/components/button)). To style by state, select on
+`data-variant`.
+
+## Usage
+
+```tsx
+import { Badge } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Badge variant="outline">Beta</Badge>
+```
+
+## Variants
+
+`variant` changes the look; all six in a row:
+
+<ComponentPreview name="badge/variants" />
+
+`ghost` and `link` have no background until hovered — good for inline tags;
+`destructive` is a tinted red with red text, not solid red, reserved for
+"something is wrong" rather than "this will delete".
+
+## Icon
+
+Put the icon in children and mark it `data-icon="inline-start"` (leading) or
+`data-icon="inline-end"` (trailing):
+
+<ComponentPreview name="badge/icon" />
+
+`data-icon` is not decoration, it is a layout hook: when the pill sees an icon
+on one side it pulls that side's padding from `px-2` in to `1.5`, so the pill
+does not end up loose on one side and tight on the other. Svgs are forced to
+`size-3`; no need to size them yourself.
+
+## Spinner
+
+[Spinner](/en/docs/components/spinner) rides the same hook:
+
+<ComponentPreview name="badge/spinner" />
+
+Remember to pass `aria-hidden` as well — the spinner carries `role="status"`,
+and inside a pill it is only a mark; "syncing" is said by the badge text. The
+line between the two injection modes is on the spinner page under
+[Accessibility](/en/docs/components/spinner#accessibility).
+
+## Link
+
+Pass an `<a>` to `render` and the pill is a link:
+
+<ComponentPreview name="badge/link" />
+
+The `[a]:hover:*` rules in each variant light up only when the element really
+is an `<a>` — a `<span>` pill has no hover feedback, deliberately: something
+that cannot be clicked should not hint that it can.
+
+## Custom Colors
+
+The variant only sets the shape; the colour can be replaced wholesale:
+
+<ComponentPreview name="badge/colors" />
+
+Write utilities like `bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-200`
+straight into `className`; `cn` goes through tailwind-merge, so same-family
+`bg-*` / `text-*` replace the variant's own without any `!`.
+
+## State and className
+
+Underneath is a single element straight out of `useRender`, with no Base UI
+state object; the attributes are set by hand:
+
+| Attribute | Effect |
+| --- | --- |
+| `data-variant` | the current `variant` (`"default"` … `"link"`); use it as a selector when targeting by variant from outside |
+| `data-icon` (on a child) | `"inline-start"` / `"inline-end"`; the pill tightens that side's padding accordingly, see [Icon](#icon) |
+
+The root carries `data-slot="badge"`. Interaction states (hover /
+focus-visible) use CSS pseudo-classes; there are no data attributes for them.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `variant` | `'default' \| 'secondary' \| 'destructive' \| 'outline' \| 'ghost' \| 'link'` | `'default'` | the look, mirrored as `data-variant` |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | Base UI element replacement, see [Link](#link) |
+| `children` | `ReactNode` | — | content; mark icons / Spinner with `data-icon` |
+| `className` | `string` | — | class. **String only** — the vendored layer feeds it into `cva`, where a function is dropped silently |
+| rest | native `span` attributes | — | passed through (`ref` included) |
+
+`badgeVariants` is exported on its own as well — call it directly to dress
+another element as a pill: `badgeVariants({ variant: 'outline', className: '...' })`.
+The `BadgeProps` / `BadgeVariant` types are exported as well.

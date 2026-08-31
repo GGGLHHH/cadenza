@@ -1,9 +1,14 @@
 @import 'tailwindcss';
 @import '@gedatou/cadenza-ui/styles.css';
+@import '@gedatou/cadenza-ai/styles.css';
 
 /* 发布版 styles.css 只扫描 ./dist(消费者视角);仓库内直接读源码,
    免等 tsdown 重建 */
 @source '../../packages/ui/src';
+@source '../../packages/ai/src';
+/* streamdown 的运行时类名在它自己的产物里;cadenza-ai 的 styles.css 只扫自己的 dist。
+   pnpm 只把 streamdown 链到 docs/node_modules,不在仓库根 */
+@source '../node_modules/streamdown/dist/*.js';
 
 /* ---- shadcn docs 站的补充 tokens(cadenza styles.css 之外的部分) ---- */
 

@@ -1,0 +1,351 @@
+---
+title: Item
+description: 一行内容 —— 媒体、标题与描述、动作区，可整行变链接，可成组成列表
+---
+
+<ComponentPreview name="item/basic" />
+
+`Item` 是一个 flex 容器，装下「一行内容」的全部零件：`ItemMedia` 放图标或图片，
+`ItemContent` 里是 `ItemTitle` 与 `ItemDescription`，`ItemActions` 在尾端放按钮，
+`ItemHeader` / `ItemFooter` 各占满一整行。`ItemGroup` 把多行叠成一个
+`role="list"`，`ItemSeparator` 在行间画线。
+
+它是 vendored shadcn 的原样转出：`Item` 走 Base UI 的 `useRender`，`render`
+能把整行换成 `<a>` 或 `<button>`，悬停与聚焦样式跟着落到真元素上；两个外观维度
+`variant` / `size` 都镜像成 `data-variant` / `data-size`。它也是
+`@gedatou/cadenza-ai` 里 `ThreadList` 的行原语。
+
+## 使用
+
+```tsx
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Item>
+  <ItemMedia variant="icon">
+    <IconMessage />
+  </ItemMedia>
+  <ItemContent>
+    <ItemTitle>Title</ItemTitle>
+    <ItemDescription>Description</ItemDescription>
+  </ItemContent>
+  <ItemActions>
+    <Button>Action</Button>
+  </ItemActions>
+</Item>
+```
+
+## 组成
+
+```text
+ItemGroup
+├── Item
+│   ├── ItemHeader
+│   ├── ItemMedia
+│   ├── ItemContent
+│   │   ├── ItemTitle
+│   │   └── ItemDescription
+│   ├── ItemActions
+│   └── ItemFooter
+├── ItemSeparator
+└── Item
+```
+
+`Item` 是 `flex-wrap` 的：`ItemHeader` / `ItemFooter` 是 `basis-full`，所以它们
+自然折成独占的一行，其余部件排在中间那行。哪个部件不写就不渲染，没有开关。
+
+## 变体
+
+`variant` 换表面：`default` 无边框，`outline` 画边框，`muted` 铺一层浅底。
+
+<ComponentPreview name="item/variant" />
+
+三档都镜像成 `data-variant`。作为链接或按钮渲染时（见[链接](#链接)），悬停
+底色由 `[a]:hover:bg-muted` 给，与 `muted` 变体的静态底色是两回事。
+
+## 尺寸
+
+`size` 调密度：`default`、`sm`、`xs`。
+
+<ComponentPreview name="item/size" />
+
+`xs` 还会把 `ItemContent` 的行距收成 0、`ItemDescription` 降到 `text-xs`，
+`ItemMedia variant="image"` 的图片随之缩到 24px；放进
+[DropdownMenu](/docs/components/dropdown-menu) 弹层里时 `xs` 的内边距归零，
+让菜单项自己管间距。`ItemGroup` 也读它：组里出现 `sm` / `xs` 行时组的间距一起收紧。
+
+## 图标
+
+`ItemMedia variant="icon"` 把裸 svg 定成 `size-4`；带自己 `size-*` 类的 svg 不动。
+
+<ComponentPreview name="item/icon" />
+
+`ItemMedia` 在行里有描述时会 `self-start` 并下移半格，让图标与标题基线对齐，
+而不是与两行文字的中线对齐。
+
+## 图片
+
+`ItemMedia variant="image"` 把 `<img>` 裁成圆角方块，`object-cover` 填满。
+
+<ComponentPreview name="item/image" />
+
+方块随行的 `size` 走：`default` 40px、`sm` 32px、`xs` 24px。母版里的 `avatar`
+变体本库没有 —— `Avatar` 尚未提升，需要头像就把它当 `image` 用。
+
+## 分组
+
+`ItemGroup` 把行叠成列表，`ItemSeparator` 在行间画线。
+
+<ComponentPreview name="item/group" />
+
+`ItemGroup` 是 `role="list"`，但 `Item` 默认是 `<div>` —— 要完整的列表语义，
+给每个 `Item` 传 `render={<li />}` 或 `role="listitem"`。`ItemSeparator` 是
+Base UI `Separator`（`role="separator"`），不算列表项。
+
+## 页眉
+
+`ItemHeader` 占满一整行，放在内容上方。
+
+<ComponentPreview name="item/header" />
+
+`ItemHeader` 与 `ItemFooter` 同形：`basis-full` + `justify-between`，一头一尾各放
+一样东西刚好；只放一张横幅时它自己就是整行。
+
+## 链接
+
+`render` 把整行渲染成链接，悬停与聚焦态落在 `<a>` 上。
+
+<ComponentPreview name="item/link" />
+
+```tsx
+<Item render={<a href="/dashboard" />}>
+  <ItemMedia variant="icon">
+    <IconHome />
+  </ItemMedia>
+  <ItemContent>
+    <ItemTitle>Dashboard</ItemTitle>
+    <ItemDescription>Overview of your account and activity.</ItemDescription>
+  </ItemContent>
+</Item>
+```
+
+`render` 是 Base UI `useRender` 的通道：传元素则合并 props 到那个元素，传函数
+`(props, state) => ReactElement` 则自己拼。`focus-visible` 的环与 `[a]:hover`
+底色都写在 `Item` 的类里，所以换成 `<a>` / `<button>` 后不用另补样式。
+
+## 下拉菜单
+
+`ItemActions` 里放一个 [DropdownMenu](/docs/components/dropdown-menu)，触发器
+通过 `render` 借 `Button` 的壳。
+
+<ComponentPreview name="item/dropdown" />
+
+## 什么时候用 Item
+
+`Item` 与 [Field](/docs/components/field) 都是「一行东西」，分界看行里装的是什么：
+
+| 行里是 | 用 |
+| --- | --- |
+| 表单控件（输入框、复选框、单选、下拉）以及它的标签、描述、错误 | [Field](/docs/components/field) —— 它接 `htmlFor` / `aria-describedby` / 校验态 |
+| 内容 —— 标题、描述、媒体、动作按钮 | `Item` |
+| 一份文件 / 附件的卡片 | [Attachment](/docs/components/attachment)，它带上传状态与移除 |
+
+## 状态与 className
+
+纯 DOM 家族：底下没有 Base UI state，两个维度是 cva 变体，值型镜像到 DOM：
+
+| 属性 | 出现在 | 值 |
+| --- | --- | --- |
+| `data-variant` | Item | `"default"` / `"outline"` / `"muted"` |
+| `data-size` | Item | `"default"` / `"sm"` / `"xs"` |
+| `data-variant` | ItemMedia | `"default"` / `"icon"` / `"image"` |
+
+交互态 hover / focus-visible 走 CSS 伪类，不写 data 属性。`className` 一律是
+`string`（cva 路由 / 纯 div），唯一例外是 `ItemSeparator` —— 它落在 Base UI
+`Separator` 槽位，保留 `className={(state) => …}` 函数形态。
+
+`data-slot` 与公开部件名一一对应：
+
+| 部件 | `data-slot` |
+| --- | --- |
+| Item | `item` |
+| ItemGroup | `item-group` |
+| ItemSeparator | `item-separator` |
+| ItemMedia | `item-media` |
+| ItemContent | `item-content` |
+| ItemTitle | `item-title` |
+| ItemDescription | `item-description` |
+| ItemActions | `item-actions` |
+| ItemHeader | `item-header` |
+| ItemFooter | `item-footer` |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### Item
+
+行的根。走 `useRender`，默认 `<div>`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 换宿主元素（`<a>` / `<button>` / `<li>`），见[链接](#链接) |
+| `variant` | `'default' \| 'outline' \| 'muted'` | `'default'` | 表面，镜像 `data-variant` |
+| `size` | `'default' \| 'sm' \| 'xs'` | `'default'` | 密度，镜像 `data-size` |
+| `className` | `string` | — | 类名。cva 路由，只收字符串 |
+| 其余 | 原生 `div` 属性（含 `ref`） | — | 透传；`render` 指向别的元素时合并到那个元素上 |
+
+```tsx
+<Item variant="outline" size="sm" render={<a href="/t/1" />}>…</Item>
+```
+
+### ItemGroup
+
+`role="list"` 的纵向容器；组里有 `sm` / `xs` 行时收紧间距。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名（纯 div） |
+| 其余 | 原生 `div` 属性（含 `ref`） | — | 透传 |
+
+```tsx
+<ItemGroup>
+  <Item render={<li />} />
+  <Item render={<li />} />
+</ItemGroup>
+```
+
+### ItemSeparator
+
+行间分隔线。Base UI `Separator`，`orientation` 固定 `horizontal`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string \| (state) => string` | — | 类名。落在 Base UI 槽位，函数形态可用 |
+| 其余 | Base UI `Separator` 的 props（元素原生属性 + ref） | — | 透传 |
+
+```tsx
+<ItemGroup>
+  <Item />
+  <ItemSeparator />
+  <Item />
+</ItemGroup>
+```
+
+### ItemMedia
+
+媒体槽：图标或图片。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `variant` | `'default' \| 'icon' \| 'image'` | `'default'` | 镜像 `data-variant`；`icon` 定 svg 尺寸，`image` 裁成方块 |
+| `className` | `string` | — | 类名（cva 路由） |
+| 其余 | 原生 `div` 属性（含 `ref`） | — | 透传 |
+
+```tsx
+<ItemMedia variant="image">
+  <img src="…" alt="…" />
+</ItemMedia>
+```
+
+### ItemContent
+
+标题与描述的纵向容器，`flex-1` 占满剩余宽度；连着写两个时第二个不再伸展。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名（纯 div） |
+| 其余 | 原生 `div` 属性（含 `ref`） | — | 透传 |
+
+```tsx
+<ItemContent>
+  <ItemTitle>Title</ItemTitle>
+  <ItemDescription>Description</ItemDescription>
+</ItemContent>
+```
+
+### ItemTitle
+
+标题，单行截断（`line-clamp-1`），内部是 `flex` 可并排放徽标。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名（纯 div） |
+| 其余 | 原生 `div` 属性（含 `ref`） | — | 透传 |
+
+```tsx
+<ItemTitle>Item Title</ItemTitle>
+```
+
+### ItemDescription
+
+描述，真 `<p>`，两行截断，内部 `<a>` 自带下划线。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名（纯 p） |
+| 其余 | 原生 `p` 属性（含 `ref`） | — | 透传 |
+
+```tsx
+<ItemDescription>Item description</ItemDescription>
+```
+
+### ItemActions
+
+尾端动作区，水平 `flex` + `gap-2`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名（纯 div） |
+| 其余 | 原生 `div` 属性（含 `ref`） | — | 透传 |
+
+```tsx
+<ItemActions>
+  <Button>Action</Button>
+</ItemActions>
+```
+
+### ItemHeader
+
+占满整行的页眉，`justify-between`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名（纯 div） |
+| 其余 | 原生 `div` 属性（含 `ref`） | — | 透传 |
+
+```tsx
+<Item>
+  <ItemHeader>Header</ItemHeader>
+  <ItemContent>…</ItemContent>
+</Item>
+```
+
+### ItemFooter
+
+占满整行的页脚，与 `ItemHeader` 同形。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `className` | `string` | — | 类名（纯 div） |
+| 其余 | 原生 `div` 属性（含 `ref`） | — | 透传 |
+
+```tsx
+<Item>
+  <ItemContent>…</ItemContent>
+  <ItemFooter>Footer</ItemFooter>
+</Item>
+```
+
+13 个类型一并导出：`ItemProps` / `ItemVariant` / `ItemSize` / `ItemGroupProps` /
+`ItemSeparatorProps` / `ItemMediaProps` / `ItemMediaVariant` / `ItemContentProps` /
+`ItemTitleProps` / `ItemDescriptionProps` / `ItemActionsProps` / `ItemHeaderProps` /
+`ItemFooterProps`。

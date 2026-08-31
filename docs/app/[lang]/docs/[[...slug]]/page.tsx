@@ -155,9 +155,9 @@ export default async function Page(props: {
         </div>
       </div>
       <div className="
-        sticky inset-bs-[calc(var(--header-height)+1px)] z-30 ms-auto hidden
-        flex-col gap-4 overflow-hidden pbe-8
-        block-[calc(100svh-var(--header-height)-2rem)] inline-64
+        sticky inset-bs-(--header-height) z-30 ms-auto hidden flex-col gap-4
+        overflow-hidden pbe-8 block-[calc(100svh-var(--header-height)-2rem)]
+        inline-64
         xl:flex
       "
       >

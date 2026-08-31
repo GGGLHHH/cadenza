@@ -7,8 +7,8 @@ import {
   MessageScrollerViewport,
   useMessageScrollerScrollable,
 } from '@gedatou/cadenza-ui'
+import { ResettableDemo } from '../lib/resettable'
 import { MessageRow } from './message-row'
-import { ResettableDemo } from './resettable'
 import { TRANSCRIPT } from './transcript'
 
 // Which edges still have room, in JavaScript. Scroll the transcript and

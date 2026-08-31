@@ -1,0 +1,194 @@
+---
+title: Tooltip
+description: A popup that explains an element on hover or keyboard focus — Base UI's Tooltip, with the content part named TooltipPopup
+---
+
+<ComponentPreview name="tooltip/basic" />
+
+Base UI's Tooltip in the base-nova skin. The seam changes one thing: shadcn's
+`TooltipContent` is really Base UI's `Portal → Positioner → Popup` (plus the
+arrow) folded into one part, and this library's public surface follows Base
+UI's flat naming, so it is **`TooltipPopup`** — the same rule that turned
+`DialogContent` into `DialogPopup` in [Dialog](/en/docs/components/dialog).
+The four positioning props (`side` / `sideOffset` / `align` / `alignOffset`)
+stay on the popup; for more placement control compose
+`@base-ui/react/tooltip` directly.
+
+What the rename does not touch is `data-slot`: the popup is still
+`tooltip-content`. [Kbd](/en/docs/components/kbd)'s styles key on
+`in-data-[slot=tooltip-content]` to invert inside a tooltip, and the
+primitives are byte-pinned — the slot name is a contract we keep.
+
+## Usage
+
+```tsx
+import { Tooltip, TooltipPopup, TooltipTrigger } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Tooltip>
+  <TooltipTrigger render={<Button variant="outline" />}>Hover</TooltipTrigger>
+  <TooltipPopup>Add to library</TooltipPopup>
+</Tooltip>
+```
+
+## Composition
+
+```text
+Tooltip
+├── TooltipTrigger
+└── TooltipPopup
+```
+
+`TooltipProvider` is the optional fourth part: wrap a group of tooltips in it
+to share one open delay (the vendored default is `delay={0}`, so grouped
+tooltips open instantly). Without it every trigger times itself — Base UI's
+default is 600 ms; a trigger's own `delay` wins either way.
+
+## Side
+
+`side` picks which edge of the trigger the popup sits on; the arrow follows.
+
+<ComponentPreview name="tooltip/sides" />
+
+`side` takes six values: `'top' | 'bottom' | 'left' | 'right' | 'inline-start' | 'inline-end'`,
+the last two resolved against writing direction. Three fine-tuning knobs go
+with it: `sideOffset` (distance from the trigger, default `4`), `align`
+(`'start' | 'center' | 'end'`, default `'center'`) and `alignOffset`
+(default `0`). When space runs out Base UI flips automatically; the final
+placement lands on `data-side` (see [States and className](#states-and-classname)).
+
+## With Keyboard Shortcut
+
+Drop a [Kbd](/en/docs/components/kbd) into the popup and it inverts its
+colours on its own.
+
+<ComponentPreview name="tooltip/keyboard" />
+
+No prop is involved: Kbd's styles hook onto the popup's `tooltip-content`
+slot, which is exactly why the seam leaves `data-slot` alone.
+
+## Disabled Button
+
+A disabled button emits no pointer events, so to give it a tooltip use a
+`span` as the trigger.
+
+<ComponentPreview name="tooltip/disabled" />
+
+`render={<span className="inline-flex" />}` swaps the trigger for a span and
+the button goes in as children; the span receives the hover and the button
+stays disabled.
+
+## State and className
+
+`className` is two-shaped on both `TooltipTrigger` and `TooltipPopup`: a
+string, or a `(state) => string` function. The left column is the `data-*`
+attribute on the DOM, usable directly as a Tailwind variant
+(`data-open:animate-in`); the right column is the same state's name inside a
+function `className`.
+
+| Part | `data-*` | When | Name in function `className` |
+| --- | --- | --- | --- |
+| popup | `data-open` / `data-closed` | open / closed | `open` |
+| popup | `data-side="top"` … | final placement (after any flip) | `side` |
+| popup | `data-align="center"` … | final alignment | `align` |
+| popup | `data-instant="delay" \| "focus" \| "dismiss"` | this open/close skips transitions (grouped hand-off, keyboard focus, click dismiss) | `instant` |
+| popup | `data-starting-style` / `data-ending-style` | first frame of entry / exit in progress | `transitionStatus` |
+| trigger | `data-popup-open` | the tooltip it opened is open (note: not `data-open`) | `open` |
+
+hover / focus are CSS pseudo-classes, not data attributes.
+
+For targeting from outside, use `data-slot`:
+
+| `data-slot` | What it is |
+| --- | --- |
+| `tooltip-provider` | the shared-delay Provider (renders no element; the attribute lands on context) |
+| `tooltip-trigger` | the trigger |
+| `tooltip-content` | the popup itself (`TooltipPopup`; the name keeps Kbd's styling contract) |
+
+## Keyboard Interaction
+
+| Key | Effect |
+| --- | --- |
+| `Tab` onto the trigger | opens immediately (no `delay`) |
+| `Esc` | closes |
+| leaving the trigger (blur / pointer out) | closes |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → `className`**.
+
+### Tooltip
+
+The root; renders no element, owns the open state.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultOpen` | `boolean` | `false` | uncontrolled initial state |
+| `open` | `boolean` | — | controlled open state |
+| `onOpenChange` | `(open, details: TooltipChangeEventDetails) => void` | — | open/close callback; `details.reason` is `'trigger-hover' \| 'trigger-focus' \| 'trigger-press' \| 'outside-press' \| 'escape-key' \| 'disabled' \| 'imperative-action' \| 'none'`, `details.cancel()` vetoes the change |
+| `onOpenChangeComplete` | `(open) => void` | — | called after the open/close animation finishes |
+| `disabled` | `boolean` | `false` | the whole tooltip stops opening |
+| `disableHoverablePopup` | `boolean` | `false` | moving the pointer into the popup no longer keeps it open |
+| `trackCursorAxis` | `'none' \| 'x' \| 'y' \| 'both'` | `'none'` | axis on which the popup follows the cursor |
+| `actionsRef` | `RefObject<{ unmount, close }>` | — | imperative handle |
+| rest | Base UI `Tooltip.Root` props (`handle` / `triggerId` / `defaultTriggerId`) | — | passed through |
+
+```tsx
+<Tooltip onOpenChange={(open, details) => details.reason === 'trigger-focus' && details.cancel()}>
+```
+
+### TooltipTrigger
+
+Renders a `<button>`; swap the element with `render`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `delay` | `number` | `600` (the Provider's `delay` inside one) | hover-to-open delay (ms) |
+| `closeDelay` | `number` | `0` | leave-to-close delay (ms) |
+| `closeOnClick` | `boolean` | `true` | clicking the trigger closes |
+| `disabled` | `boolean` | `false` | this trigger stops opening the popup (does not set the element's `disabled` attribute) |
+| `render` | `ReactElement \| (props, state: TooltipTriggerState) => ReactElement` | — | replaces the rendered element |
+| `className` | `string \| (state: TooltipTriggerState) => string` | — | lands on Base UI's Trigger slot; the function form works |
+| rest | Base UI `Tooltip.Trigger` props (native `button` attributes + `ref`) | — | passed through |
+
+```tsx
+<TooltipTrigger render={<Button variant="outline" />} delay={200}>Hover</TooltipTrigger>
+```
+
+### TooltipPopup
+
+The popup itself; renders the Portal, Positioner, Popup and arrow internally.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `side` | `'top' \| 'bottom' \| 'left' \| 'right' \| 'inline-start' \| 'inline-end'` | `'top'` | which edge to sit on |
+| `sideOffset` | `number` | `4` | distance from the trigger |
+| `align` | `'start' \| 'center' \| 'end'` | `'center'` | alignment along the edge |
+| `alignOffset` | `number` | `0` | alignment offset |
+| `className` | `string \| (state: TooltipPopupState) => string` | — | lands on Base UI's Popup slot; the function form works |
+| rest | Base UI `Tooltip.Popup` props (native `div` attributes + `ref`) | — | passed through |
+
+```tsx
+<TooltipPopup side="right" className={({ open }) => (open ? 'opacity-100' : 'opacity-0')}>Tip</TooltipPopup>
+```
+
+### TooltipProvider
+
+Optional; shares delays across a group of tooltips.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `delay` | `number` | `0` | open delay for the group (vendored overrides Base UI's default to 0) |
+| `closeDelay` | `number` | — | close delay for the group |
+| `timeout` | `number` | `400` | window after one tooltip closes in which the next opens instantly |
+| `children` | `ReactNode` | — | — |
+
+```tsx
+<TooltipProvider delay={300}>{children}</TooltipProvider>
+```
+
+7 types are exported alongside: `TooltipProps` / `TooltipChangeEventDetails` /
+`TooltipTriggerProps` / `TooltipTriggerState` / `TooltipPopupProps` /
+`TooltipPopupState` / `TooltipProviderProps`.

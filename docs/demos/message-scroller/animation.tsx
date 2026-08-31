@@ -11,8 +11,8 @@ import {
 } from '@gedatou/cadenza-ui'
 import { motion, useReducedMotion } from 'motion/react'
 import { useState } from 'react'
+import { ResettableDemo } from '../lib/resettable'
 import { MessageRow } from './message-row'
-import { ResettableDemo } from './resettable'
 import { TRANSCRIPT, useFakeChat } from './transcript'
 
 // A motion version of the row, with messageId and scrollAnchor still on it —

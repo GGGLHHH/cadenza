@@ -10,8 +10,8 @@ import {
   Slider,
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
+import { ResettableDemo } from '../lib/resettable'
 import { MessageRow } from './message-row'
-import { ResettableDemo } from './resettable'
 import { SHORT_REPLIES, useFakeChat } from './transcript'
 
 // scrollPreviousItemPeek is how much of the previous turn stays visible above

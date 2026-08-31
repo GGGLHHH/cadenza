@@ -10,8 +10,8 @@ import {
   MessageScrollerViewport,
 } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
+import { ResettableDemo } from '../lib/resettable'
 import { MessageRow } from './message-row'
-import { ResettableDemo } from './resettable'
 import { TRANSCRIPT } from './transcript'
 
 const POSITIONS: MessageScrollerDefaultScrollPosition[] = ['start', 'end', 'last-anchor']

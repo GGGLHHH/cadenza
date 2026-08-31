@@ -5,9 +5,14 @@ const dictionaries = {
   zh: {
     header: {
       docs: '文档',
+      playground: '试玩',
       components: '组件',
       switchToEnglish: 'Switch to English',
       switchToChinese: '切换到中文',
+    },
+    playground: {
+      title: '试玩',
+      description: '用你自己的 API key 和真实模型对话——左边线程，右边会话',
     },
     search: {
       placeholder: '搜索文档...',
@@ -70,9 +75,14 @@ const dictionaries = {
   en: {
     header: {
       docs: 'Docs',
+      playground: 'Playground',
       components: 'Components',
       switchToEnglish: 'Switch to English',
       switchToChinese: '切换到中文',
+    },
+    playground: {
+      title: 'Playground',
+      description: 'Talk to a real model with your own API key — threads on the left, the conversation on the right',
     },
     search: {
       placeholder: 'Search docs...',
