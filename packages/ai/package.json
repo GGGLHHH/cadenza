@@ -1,7 +1,7 @@
 {
   "name": "@gedatou/cadenza-ai",
   "type": "module",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Thin TanStack AI facade — provider-agnostic chat runtime, conventions and conversation views built on cadenza-ui",
   "license": "MIT",
   "homepage": "https://cadenza-ui-docs.vercel.app",
