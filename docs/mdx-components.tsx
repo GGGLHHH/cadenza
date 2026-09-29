@@ -5,6 +5,7 @@ import { ComponentPreview } from '@/components/component-preview'
 import { ComponentSource } from '@/components/component-source'
 import { CopyButton } from '@/components/copy-button'
 import { ThemePreviewGrid } from '@/components/theme-preview-grid'
+import { headingId } from '@/lib/heading-id'
 import { cn } from '@/lib/utils'
 
 function getNodeText(node: ReactNode): string {
@@ -20,15 +21,9 @@ function getNodeText(node: ReactNode): string {
   return ''
 }
 
-// 编译期(rehype)没给 id 时的兜底,与 TOC 的 slug 规则保持一致
+// 编译期(rehype)没给 id 时的兜底,规则在 lib/heading-id.ts 与检索索引共用
 function getHeadingId(children: ReactNode): string | undefined {
-  const id = getNodeText(children)
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/['?]/g, '')
-    .toLowerCase()
-
-  return id === '' ? undefined : id
+  return headingId(getNodeText(children))
 }
 
 function HeadingAnchor({
@@ -65,11 +60,11 @@ function HeadingAnchor({
 
 function heading(Tag: 'h1' | 'h2' | 'h3' | 'h4') {
   return function Heading({ children, id, ...props }: ComponentProps<'h2'>): ReactElement {
-    const headingId = id ?? getHeadingId(children)
+    const anchorId = id ?? getHeadingId(children)
 
     return (
-      <Tag id={headingId} {...props}>
-        <HeadingAnchor id={headingId}>{children}</HeadingAnchor>
+      <Tag id={anchorId} {...props}>
+        <HeadingAnchor id={anchorId}>{children}</HeadingAnchor>
       </Tag>
     )
   }

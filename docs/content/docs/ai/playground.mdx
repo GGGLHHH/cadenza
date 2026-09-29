@@ -106,6 +106,25 @@ const summary = useSummarize({
 })
 ```
 
+### 组件检索
+
+助手多了一个服务端工具 `search_components`：问「哪个组件 / 部件 / prop 能做 X」时，它先去
+组件文档里做一次语义检索，再带着命中的小节和链接回答。索引在 Upstash Vector
+（Vercel Marketplace 的 Native 集成）里，建索引时选的是 Upstash 托管的 `text-embedding-3-small`（经 Vercel 建索引只有它和「不选」两个选项），所以
+入库和查询都直接传文本，本站不需要任何 embedding 模型的 key。服务端唯一持有的凭据是
+集成注入的 `UPSTASH_VECTOR_REST_URL` / `UPSTASH_VECTOR_REST_TOKEN`；没有它们，工具不注册。
+
+索引由 `docs/scripts/index-components.ts` 生成：读 `content/docs/components/*.mdx`，按 H2
+切块（超长的再按 H3 切）；再把每个 demo 的源码整块入库，挂在展示它的那一页那一节的锚点上（靠
+页面里的 `<ComponentPreview name>` 反查），所以「给我看 X 的示例源码」也能命中；再把 `packages/ui/src` 的库源码按空行分块入库，链接指向 GitHub 上对应的行；中英文各一个 namespace；`vercel.json` 的 buildCommand 在
+`next build` 之后跑它，只有 production 构建会写索引，preview 与 CI 跳过。本地重建：
+
+```bash
+cd docs && vercel env pull              # 拿到集成注入的两个变量
+pnpm --filter docs index:components --dry-run   # 只切块、报数量
+pnpm --filter docs index:components
+```
+
 ## 思路
 
 - **纯 BYOK 是选出来的。** `getByokKey` 头优先、env 兜底，所以配不配服务端 key 只是部署时
@@ -131,7 +150,8 @@ const summary = useSummarize({
   `TranscriptError` 会报出来，重试即可。
 - **本站零费用。** 没有服务端 key，就没有任何请求能记到本站头上；记到你 key 头上的费用
   可以在 [用量与费用](/docs/ai/conversation#用量与费用) 的部件里看到估算。
-- **工具。** route 注册了一个服务端工具 `get_time`；客户端声明的工具经 `mergeAgentTools`
+- **工具。** route 注册了两个服务端工具：`get_time` 与 `search_components`（后者只在有
+  Upstash 凭据时注册，见 [组件检索](#组件检索)）；客户端声明的工具经 `mergeAgentTools`
   合并，与 [客户端工具](/docs/ai/parts#客户端工具) 的 demo 同一套机制。
 
 ## API

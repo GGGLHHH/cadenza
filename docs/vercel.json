@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "pnpm --filter \"@gedatou/*\" run build && next build"
+  "buildCommand": "pnpm --filter \"@gedatou/*\" run build && next build && pnpm run index:components"
 }

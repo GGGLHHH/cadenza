@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "postinstall": "fumadocs-mdx",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "index:components": "tsx scripts/index-components.ts"
   },
   "dependencies": {
     "@gedatou/cadenza-ai": "workspace:*",
@@ -29,6 +30,7 @@
     "@tanstack/ai-persistence": "catalog:ui",
     "@tanstack/ai-vercel-gateway": "catalog:ui",
     "@tanstack/ai-vertex": "catalog:ui",
+    "@upstash/vector": "catalog:docs",
     "clsx": "catalog:ui",
     "date-fns": "catalog:ui",
     "fumadocs-core": "catalog:docs",
@@ -52,6 +54,7 @@
     "@types/react": "catalog:types",
     "@types/react-dom": "catalog:types",
     "tailwindcss": "catalog:ui",
+    "tsx": "catalog:cli",
     "typescript": "catalog:cli"
   }
 }

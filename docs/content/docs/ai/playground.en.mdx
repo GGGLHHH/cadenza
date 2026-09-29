@@ -122,6 +122,30 @@ const summary = useSummarize({
 })
 ```
 
+### Component search
+
+The assistant gets one more server tool, `search_components`: asked which component, part or
+prop does X, it first runs a semantic search over the component docs, then answers with the
+matching sections and their links. The index lives in Upstash Vector (a Vercel Marketplace
+Native integration), created with the Upstash-hosted `text-embedding-3-small` model (the only
+built-in choice when the index is created through Vercel), so indexing and querying both send plain text and this site needs no embedding-model key. The only server-side
+credential is the pair the integration injects, `UPSTASH_VECTOR_REST_URL` /
+`UPSTASH_VECTOR_REST_TOKEN`; without them the tool is not registered.
+
+`docs/scripts/index-components.ts` builds the index: it reads `content/docs/components/*.mdx`,
+chunks by H2 (long sections again by H3), then files the source of every demo under the page and
+section that show it (found through the page's `<ComponentPreview name>`), so "show me the source
+of the X demo" lands too; then slices the library source under `packages/ui/src` by blank line, each
+linked to its lines on GitHub; one namespace per language; `vercel.json` runs it
+after `next build`. Only production builds write the index; previews and CI skip it. To rebuild
+locally:
+
+```bash
+cd docs && vercel env pull              # the two variables the integration injected
+pnpm --filter docs index:components --dry-run   # chunk and count only
+pnpm --filter docs index:components
+```
+
 ## Approach
 
 - **Pure BYOK is a choice.** `getByokKey` prefers the header and falls back to env, so whether
@@ -152,8 +176,9 @@ const summary = useSummarize({
 - **Zero cost to the site.** With no server key, no request can be billed to the site; what is
   billed to your key shows up as an estimate in the
   [Usage and cost](/docs/ai/conversation#usage-and-cost) parts.
-- **Tools.** The route registers one server tool, `get_time`; tools declared on the client are
-  merged in through `mergeAgentTools`, the same mechanism as the
+- **Tools.** The route registers two server tools, `get_time` and `search_components` (the
+  latter only when the Upstash credentials are present, see [Component search](#component-search));
+  tools declared on the client are merged in through `mergeAgentTools`, the same mechanism as the
   [client tools](/docs/ai/parts) demo.
 
 ## API
