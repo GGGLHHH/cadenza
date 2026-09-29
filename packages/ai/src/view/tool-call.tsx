@@ -6,9 +6,9 @@ import type { AnyToolApprovalInterrupt } from '../runtime/renderers'
 import { cn, Collapsible, CollapsiblePanel, CollapsibleTrigger, createChangeEventDetails, dataAttr, Spinner } from '@gedatou/cadenza-ui'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck, IconClock, IconX } from '@tabler/icons-react'
-import { parsePartialJSON } from '@tanstack/ai/client'
 import { Children, useEffect, useEffectEvent, useRef } from 'react'
 import { usePartRenderers } from '../runtime/renderers'
+import { parseToolJson } from '../runtime/tool-json'
 import { Markdown } from './markdown'
 
 /** `trigger-press` from the user, `none` for programmatic changes. */
@@ -49,18 +49,6 @@ export interface ToolCallCardState {
   approvalResponded: boolean
   complete: boolean
   error: boolean
-}
-
-// Failure is expected (arguments still streaming): the raw text is the fallback.
-function parseJson(value: unknown): unknown {
-  if (typeof value !== 'string')
-    return value
-  try {
-    return parsePartialJSON(value) ?? value
-  }
-  catch {
-    return value
-  }
 }
 
 function jsonBlock(value: unknown): string {
@@ -106,7 +94,7 @@ export function ToolCallCard({ part, result, interrupt: _interrupt, streaming = 
         : state.approvalResponded
           ? (part.approval?.approved === false ? labels.toolDenied : labels.toolApproved)
           : part.state === 'input-complete' ? labels.toolRunning : labels.toolPending
-  const input = part.input ?? (part.arguments === '' ? undefined : parseJson(part.arguments))
+  const input = part.input ?? (part.arguments === '' ? undefined : parseToolJson(part.arguments))
   const output: unknown = part.output ?? result?.content
   const error = result?.error
 
@@ -178,7 +166,7 @@ export function ToolCallCard({ part, result, interrupt: _interrupt, streaming = 
       <CollapsiblePanel keepMounted>
         <div className="flex flex-col gap-2 border-bs px-3 py-2">
           {input !== undefined && <Markdown content={jsonBlock(input)} streaming={state.pending && streaming} />}
-          {output !== undefined && <Markdown content={jsonBlock(parseJson(output))} />}
+          {output !== undefined && <Markdown content={jsonBlock(parseToolJson(output))} />}
           {error !== undefined && (
             <p
               data-slot="tool-call-error"

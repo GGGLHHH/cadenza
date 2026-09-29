@@ -37,6 +37,19 @@ export const DEFAULT_USAGE_STATS_LABELS: UsageStatsLabels = {
   modality: { text: 'Text', image: 'Image', audio: 'Audio', video: 'Video', document: 'Document' },
 }
 
+/** `DEFAULT_USAGE_STATS_LABELS` in Chinese. */
+export const ZH_USAGE_STATS_LABELS: UsageStatsLabels = {
+  cacheHit: '缓存命中',
+  cacheWrite: '缓存写入',
+  outputRatio: '输出 / 输入',
+  reasoningShare: '推理占比',
+  contextUsed: '上下文占用',
+  cacheSaved: '缓存节省',
+  promptModalities: '输入模态',
+  completionModalities: '输出模态',
+  modality: { text: '文本', image: '图片', audio: '音频', video: '视频', document: '文档' },
+}
+
 export interface UsageStatsProps {
   usage: TokenUsage
   /** Supplies `contextWindow` (context used) and `cost` (saved by cache); without it those two tiles stay away. */

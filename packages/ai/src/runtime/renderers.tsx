@@ -38,6 +38,23 @@ export const DEFAULT_PART_LABELS: PartLabels = {
   sources: count => `${count} sources`,
 }
 
+/** `DEFAULT_PART_LABELS` in Chinese: `<PartRenderersProvider labels={ZH_PART_LABELS}>`. */
+export const ZH_PART_LABELS: PartLabels = {
+  thinking: '思考中…',
+  thought: '思考了 ',
+  toolPending: '准备中',
+  toolRunning: '执行中',
+  toolApprovalRequested: '等待确认',
+  toolApproved: '已同意',
+  toolDenied: '已拒绝',
+  toolDone: '完成',
+  toolFailed: '失败',
+  toolGroup: count => `调用了 ${count} 个工具`,
+  approve: '同意',
+  deny: '拒绝',
+  sources: count => `${count} 个来源`,
+}
+
 /**
  * The approval interrupt as the views see it, for whichever tool set the chat
  * was created with. `useChat().interrupts` is typed per tool and

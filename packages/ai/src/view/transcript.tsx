@@ -323,6 +323,8 @@ export function TranscriptParts({ message, className }: TranscriptPartsProps): R
     return out
   }
 
+  const ownsCard = (part: ToolCallPart): boolean => renderers.toolCall?.[part.name] !== undefined
+
   const nodes: ReactNode[] = []
   let index = 0
   while (index <= lastIndex) {
@@ -330,9 +332,13 @@ export function TranscriptParts({ message, className }: TranscriptPartsProps): R
     if (part.type === 'tool-call') {
       // A provider-executed call is not ours to fold: nothing here ran it, so
       // "Ran N tools" would be untrue, and a fold would hide the only trace the
-      // reader has that the model went and searched. They lay out flat, one row
-      // each, and never join a group.
-      if (providerExecuted(part)) {
+      // reader has that the model went and searched. A call whose tool has its
+      // own renderer (`renderers.toolCall[name]`) is not a log line either: the
+      // caller built that card to be read — a booking, a summary, an alert —
+      // and "Ran 3 tools" would hide it behind a click. Both lay out flat, one
+      // row each, and never join a group; the fallback `default` renderer still
+      // folds like the built-in card.
+      if (providerExecuted(part) || ownsCard(part)) {
         nodes.push(<div key={part.id}>{renderTool(part, index)}</div>)
         let next = index + 1
         while (next <= lastIndex && message.parts[next].type === 'tool-result')
@@ -347,7 +353,7 @@ export function TranscriptParts({ message, className }: TranscriptPartsProps): R
       while (cursor <= lastIndex) {
         const next = message.parts[cursor]
         if (next.type === 'tool-call') {
-          if (providerExecuted(next))
+          if (providerExecuted(next) || ownsCard(next))
             break
           run.push([next, cursor])
         }

@@ -65,27 +65,34 @@ describe('transcript', () => {
     expect(container.querySelector('[data-slot=transcript-message]')?.hasAttribute('data-streaming')).toBe(true)
   })
 
-  it('uses a registered tool renderer and groups consecutive tool calls', async () => {
-    const two = {
+  it('lays a call with its own renderer out flat, and folds only the built-in cards', async () => {
+    const parts = (names: string[]): UIMessage => ({
       id: 'a2',
       role: 'assistant',
-      parts: [
-        { type: 'tool-call', id: 'x', name: 'a', arguments: '{}', state: 'complete' },
-        { type: 'tool-result', toolCallId: 'x', content: '1' },
-        { type: 'tool-call', id: 'y', name: 'b', arguments: '{}', state: 'complete' },
-      ],
-    } as UIMessage
-    const { container } = render(
+      parts: names.flatMap((name, i) => [
+        { type: 'tool-call', id: `c${i}`, name, arguments: '{}', state: 'complete' },
+        { type: 'tool-result', toolCallId: `c${i}`, content: '1' },
+      ]),
+    }) as UIMessage
+    const show = (message: UIMessage, toolCall: Parameters<typeof PartRenderersProvider>[0]['renderers']): HTMLElement => render(
       <TranscriptProvider status="ready">
-        <PartRenderersProvider renderers={{ toolCall: { a: () => <i data-testid="custom">A</i> } }}>
-          <Transcript><TranscriptMessage message={two} /></Transcript>
+        <PartRenderersProvider renderers={toolCall}>
+          <Transcript><TranscriptMessage message={message} /></Transcript>
         </PartRenderersProvider>
       </TranscriptProvider>,
-    )
-    expect(container.querySelector('[data-slot=tool-call-group]')?.getAttribute('data-count')).toBe('2')
-    // the group folds by default; the panel mounts on open
+    ).container
+
+    // A named renderer is a card the caller built to be read: never folded, and it
+    // breaks the run, so the lone built-in card after it does not group either.
+    const own = show(parts(['book', 'b']), { toolCall: { book: () => <i data-testid="booking">booked</i> } })
+    expect(own.querySelector('[data-slot=tool-call-group]')).toBeNull()
+    expect(screen.getByTestId('booking').textContent).toBe('booked')
+
+    // The `default` fallback stands in for the built-in card, so a run of it still folds.
+    const fallback = show(parts(['a', 'b']), { toolCall: { default: () => <i data-testid="fallback">f</i> } })
+    expect(fallback.querySelector('[data-slot=tool-call-group]')?.getAttribute('data-count')).toBe('2')
     await userEvent.click(screen.getByText('Ran 2 tools'))
-    expect(screen.getByTestId('custom')).toBeTruthy()
+    expect(screen.getAllByTestId('fallback')).toHaveLength(2)
   })
 
   it('transcriptError exposes the code', () => {

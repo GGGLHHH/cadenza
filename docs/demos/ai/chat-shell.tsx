@@ -15,6 +15,7 @@ import {
   TranscriptParts,
   TranscriptPending,
   TranscriptProvider,
+  useMessageKeys,
 } from '@gedatou/cadenza-ai'
 import { Button, cn, Kbd, MessageScrollerButton } from '@gedatou/cadenza-ui'
 
@@ -84,6 +85,7 @@ export function ChatShell({
   className = 'block-120',
 }: ChatShellProps): ReactElement {
   const last = chat.messages.at(-1)
+  const keyOf = useMessageKeys(chat.messages)
   return (
     <TranscriptProvider status={chat.status} interrupts={chat.interrupts} addToolApprovalResponse={chat.addToolApprovalResponse}>
       <div className={cn('flex flex-col rounded-xl border', className)}>
@@ -92,7 +94,7 @@ export function ChatShell({
         <Transcript anchorTurns={anchorTurns} previousPeek={0} after={<MessageScrollerButton />}>
           {chat.messages.length === 0 && empty !== undefined && <TranscriptEmpty>{empty}</TranscriptEmpty>}
           {chat.messages.map(message => (
-            <TranscriptMessage key={message.id} message={message} streaming={chat.status === 'streaming' && message === last}>
+            <TranscriptMessage key={keyOf(message)} message={message} streaming={chat.status === 'streaming' && message === last}>
               <TranscriptParts message={message} />
               {message.role === 'assistant' && renderActions !== undefined && (
                 <TranscriptActions>{renderActions(message)}</TranscriptActions>

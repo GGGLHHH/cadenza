@@ -31,6 +31,19 @@ export const DEFAULT_CONTEXT_USAGE_LABELS: ContextUsageLabels = {
   cacheSaved: 'Saved by cache',
 }
 
+/** `DEFAULT_CONTEXT_USAGE_LABELS` in Chinese. */
+export const ZH_CONTEXT_USAGE_LABELS: ContextUsageLabels = {
+  prompt: '输入',
+  completion: '输出',
+  cached: '缓存',
+  total: '合计',
+  cost: '费用',
+  cacheHit: '缓存命中',
+  outputRatio: '输出 / 输入',
+  reasoningShare: '推理占比',
+  cacheSaved: '缓存节省',
+}
+
 export interface ContextUsageProps {
   /** Supplies `contextWindow` (the bar) and `cost` (the price row); without it only the numbers show. */
   model?: Model

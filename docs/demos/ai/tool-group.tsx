@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Transcript, TranscriptEmpty, TranscriptMessage, TranscriptPending, TranscriptProvider, useChat } from '@gedatou/cadenza-ai'
+import { Transcript, TranscriptEmpty, TranscriptMessage, TranscriptPending, TranscriptProvider, useChat, useMessageKeys } from '@gedatou/cadenza-ai'
 import { text, tool } from '@gedatou/cadenza-ai/mock'
 import { Button, Marker } from '@gedatou/cadenza-ui'
 import { useState } from 'react'
@@ -21,6 +21,7 @@ function Body(): ReactElement {
   ]))
   const chat = useChat({ fetcher, tools: [getTime] })
   const last = chat.messages.at(-1)
+  const keyOf = useMessageKeys(chat.messages)
   return (
     <div className="flex flex-col gap-2">
       <Button
@@ -39,7 +40,7 @@ function Body(): ReactElement {
               ? <TranscriptEmpty>Press Send: three time-zone lookups arrive as one group.</TranscriptEmpty>
               : <Marker variant="separator">Today</Marker>}
             {chat.messages.map(message => (
-              <TranscriptMessage key={message.id} message={message} streaming={chat.status === 'streaming' && message === last} />
+              <TranscriptMessage key={keyOf(message)} message={message} streaming={chat.status === 'streaming' && message === last} />
             ))}
             {chat.status === 'submitted' && <TranscriptPending>Thinking…</TranscriptPending>}
           </Transcript>

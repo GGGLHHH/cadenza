@@ -33,6 +33,18 @@ export const DEFAULT_BYOK_KEY_DIALOG_LABELS: ByokKeyDialogLabels = {
   serverKey: 'Server key',
 }
 
+/** `DEFAULT_BYOK_KEY_DIALOG_LABELS` in Chinese. */
+export const ZH_BYOK_KEY_DIALOG_LABELS: ByokKeyDialogLabels = {
+  title: 'API 密钥',
+  description: '密钥只保存在本浏览器,每次请求通过请求头发送。',
+  save: '保存',
+  clear: '清除',
+  confirm: '确认',
+  unlock: '解锁',
+  close: '关闭',
+  serverKey: '服务端已配置密钥',
+}
+
 interface ByokKeyDialogContextValue {
   byok: ByokClient
   catalog: Catalog

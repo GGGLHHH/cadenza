@@ -116,8 +116,8 @@ Collapsible, with `details.reason` being `'trigger-press'` or `'none'`.
 
 ## Tool renderers
 
-Give one tool its own card by name and let the rest fall back to the default; override the copy
-in the same Provider.
+Give one tool its own card by name and let the rest fall back to the default; a card of your own
+never folds into a tool group.
 
 <ComponentPreview name="ai/tool-renderers" align="stretch" />
 
@@ -132,16 +132,18 @@ tool name, with `default` catching the tools not named; each renderer receives `
 | `interrupt` | `AnyToolApprovalInterrupt \| undefined` | the live interrupt while the call waits for approval: `originalArgs` / `status` / `resolveInterrupt` |
 | `streaming` | `boolean` | the run is streaming and this is the message's last part |
 
-`part.input` is `undefined` until the arguments have finished streaming; a custom card falls
-back to `parsePartialJSON(part.arguments)` like the default one does (the root entry re-exports
-it). The other keys — `text`, `thinking`, `toolResult`, `image` / `audio` / `video` / `document`,
+A custom card reads its arguments with `toolInput(part)`: `part.input` once the arguments are
+complete, the partial JSON of `arguments` while they stream, `{}` before anything parses.
+Top-level `null`s are dropped — models write `null` for an optional argument they mean to omit,
+and a destructuring default only applies to `undefined`. The generic takes your argument shape:
+`const { tz } = toolInput<{ tz: string }>(part)`. A call whose tool has a renderer registered by
+name **never joins a [group](#groups)**; it lays out flat, one row each. The other keys — `text`, `thinking`, `toolResult`, `image` / `audio` / `video` / `document`,
 `structuredOutput`, `uiResource` — each receive their own part (plus `message` for `text` and
 media, `complete` for `thinking`, `streaming` for `text`). `definePartRenderers()` is an identity
 function with a type check, so a registry can be declared outside a component.
 
-Two merge rules: **`labels` merge with the parent** (write only the keys you change);
-**`renderers` replace wholesale** — a nested Provider that passes `renderers` no longer sees the
-parent's. `usePartRenderers()` returns `{ renderers, labels }`; a custom part reads the current
+Both halves **merge with the parent**: `labels` take only the keys you change; `renderers`
+likewise, with `toolCall` merged one level deeper by tool name. `usePartRenderers()` returns `{ renderers, labels }`; a custom part reads the current
 copy from it.
 
 ## Approval
@@ -207,6 +209,14 @@ Several consecutive tool calls fold into one group behind a single trigger.
 When `TranscriptParts` meets a run of consecutive `tool-call`s (interleaved `tool-result`s do
 not break it), it wraps them in one `ToolCallGroup` whose trigger says `labels.toolGroup(n)`
 (`Ran 3 tools` by default).
+
+Two kinds of call never join a group; they lay out flat, one row each, and break the run:
+
+- **Provider-executed calls** (DeepSeek's web search, say): nothing here ran them, so "Ran N
+  tools" would be untrue, and a fold would hide the only trace that the model went and searched.
+- **Calls whose tool has its own renderer** (`renderers.toolCall[name]`): you built that card to
+  be read — a booking, a summary, an alert — and folding it into "Ran 3 tools" puts it behind a
+  click. The `default` fallback stands in for the built-in card and still folds.
 
 The panels of `ToolCallCard`, `ToolCallGroup` and `Reasoning` all carry `keepMounted` — a
 correctness requirement, not an optimisation. Base UI measures the panel's `scrollHeight` the
@@ -325,7 +335,13 @@ structured output.
 
 Every visible string of the built-in parts lives in `PartLabels`, overridden per key through
 `PartRenderersProvider labels={…}` and merged with the parent; `DEFAULT_PART_LABELS` is exported
-from the root entry too.
+from the root entry too. For a Chinese UI pass `ZH_PART_LABELS`:
+
+```tsx
+<PartRenderersProvider labels={ZH_PART_LABELS}>…</PartRenderersProvider>
+```
+
+`UsageStats`, `ContextUsage` and `ByokKeyDialog` each ship a `ZH_*_LABELS` next to their `DEFAULT_*_LABELS`.
 
 | Key | Default | Appears in |
 | --- | --- | --- |
@@ -513,4 +529,4 @@ The view types are exported alongside: `MarkdownProps` / `ReasoningProps` / `Rea
 `ApprovalDenyProps` / `MediaPartProps` / `SourcesProps` / `SourcesChangeEventDetails` / `StructuredOutputProps`;
 on the registry side: `PartLabels` / `PartRenderers` / `PartRenderersProviderProps` / `PartRenderersContextValue` /
 `ToolRenderer` / `ToolRendererProps` / `AnyToolApprovalInterrupt` / `Source`, along with
-`DEFAULT_PART_LABELS`, `definePartRenderers`, `usePartRenderers`, `isThinkingComplete`, `sourcesOf` and `parsePartialJSON`.
+`DEFAULT_PART_LABELS`, `ZH_PART_LABELS`, `definePartRenderers`, `usePartRenderers`, `isThinkingComplete`, `sourcesOf`, `toolInput` and `parsePartialJSON`.

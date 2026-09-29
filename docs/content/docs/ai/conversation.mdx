@@ -141,14 +141,16 @@ const chat = useChat({ connection: fetchServerSentEvents('/api/ai/chat') })
 
 ### 渲染消息
 
-`chat.messages` 是 `UIMessage[]`，每条一行：
+`chat.messages` 是 `UIMessage[]`，每条一行；key 用 `useMessageKeys` 给的，不用 `message.id`：
 
 ```tsx
+const keyOf = useMessageKeys(chat.messages)
+
 <TranscriptProvider status={chat.status} interrupts={chat.interrupts} addToolApprovalResponse={chat.addToolApprovalResponse}>
   <Transcript>
     {chat.messages.length === 0 && <TranscriptEmpty>Try: “Plan the programme.”</TranscriptEmpty>}
     {chat.messages.map(message => (
-      <TranscriptMessage key={message.id} message={message} streaming={chat.status === 'streaming' && message === last}>
+      <TranscriptMessage key={keyOf(message)} message={message} streaming={chat.status === 'streaming' && message === last}>
         <TranscriptParts message={message} />
       </TranscriptMessage>
     ))}
@@ -157,6 +159,10 @@ const chat = useChat({ connection: fetchServerSentEvents('/api/ai/chat') })
   </Transcript>
 </TranscriptProvider>
 ```
+
+TanStack 会在流式途中给助手消息**改名**：客户端先放一条临时 id 的消息接住推理和工具调用，
+第一个 `TEXT_MESSAGE_START` 到达时换成服务端的 `messageId`。按 `message.id` 做 key，这一行会在那一刻
+整行重挂——推理块从头计时（永远显示 1 秒），也忘了完成时要折叠。`useMessageKeys` 认出原位改名，沿用旧 key。
 
 `TranscriptMessage` 没有 children 时默认渲染 `<TranscriptParts message={message} />`；
 写出来是为了在它旁边放 [动作栏](#消息动作)。`streaming` 由你传：正在被写入的是最后一行，
@@ -365,7 +371,7 @@ import { clampThinkingLevel, createCatalog, defaultCatalog, estimateCost, modelR
 
 // 运行时
 import type { AnyToolApprovalInterrupt, AttachmentDraft, DraftAttachment, EditableChat, ModelSelection, PartLabels, PartRenderers, Source, ThreadIndex, ThreadMeta, ToolRenderer, ToolRendererProps, UsageTracker } from '@gedatou/cadenza-ai'
-import { createByok, createThreadIndex, definePartRenderers, editAndResend, fileToContentPart, groupThreadsByDay, isThinkingComplete, messagesToMarkdown, messageText, PartRenderersProvider, sourcesOf, threadPersistence, threadTitleFrom, useAttachmentDraft, useModelSelection, usePartRenderers, useServerCoverage, useStoredState, useThreadIndex, useUsageTracker } from '@gedatou/cadenza-ai'
+import { createByok, createThreadIndex, definePartRenderers, editAndResend, fileToContentPart, groupThreadsByDay, isThinkingComplete, messagesToMarkdown, messageText, PartRenderersProvider, sourcesOf, threadPersistence, threadTitleFrom, useAttachmentDraft, useModelSelection, usePartRenderers, useServerCoverage, useStoredState, useMessageKeys, useThreadIndex, useUsageTracker } from '@gedatou/cadenza-ai'
 
 // 视图
 import type { ContextUsageLabels, ContextUsageProps, ContextUsageState, TranscriptActionProps, TranscriptActionsProps, TranscriptEmptyProps, TranscriptErrorProps, TranscriptInterrupt, TranscriptMessageProps, TranscriptMessageState, TranscriptPartsProps, TranscriptPendingProps, TranscriptProps, TranscriptProviderProps } from '@gedatou/cadenza-ai'

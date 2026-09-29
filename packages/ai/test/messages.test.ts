@@ -1,6 +1,7 @@
 import type { UIMessage } from '@tanstack/ai-client'
+import type { ToolCallPart } from '@tanstack/ai/client'
 import { describe, expect, it, vi } from 'vitest'
-import { editAndResend, isThinkingComplete, messagesToMarkdown, messageText, sourcesOf } from '../src/runtime/messages'
+import { editAndResend, isThinkingComplete, messagesToMarkdown, messageText, sourcesOf, toolInput } from '../src/runtime/messages'
 
 function msg(id: string, role: 'user' | 'assistant', parts: unknown[]): UIMessage {
   return { id, role, parts } as UIMessage
@@ -48,5 +49,16 @@ describe('message helpers', () => {
       { type: 'tool-call', id: 'c3', name: 'web_search', arguments: '{}', state: 'complete', output: [{ url: 'https://c' }] },
     ])
     expect(sourcesOf(m).map(s => s.url)).toEqual(['https://a', 'https://b'])
+  })
+
+  it('toolInput reads the complete input, the partial JSON while streaming, and drops nulls', () => {
+    const call = (fields: object): ToolCallPart => ({ type: 'tool-call', id: 'c', name: 'x', arguments: '', state: 'input-streaming', ...fields })
+    expect(toolInput(call({ input: { city: 'Paris', unit: null } }))).toEqual({ city: 'Paris' })
+    expect(toolInput(call({ arguments: '{"city":"Par' }))).toEqual({ city: 'Par' })
+    expect(toolInput(call({}))).toEqual({})
+    expect(toolInput(call({ arguments: '"not an object"' }))).toEqual({})
+    // typed for the caller's schema; a default in the destructuring now applies to the dropped null
+    const { city, unit = 'C' } = toolInput<{ city: string, unit: string }>(call({ input: { city: 'Oslo', unit: null } }))
+    expect([city, unit]).toEqual(['Oslo', 'C'])
   })
 })

@@ -154,11 +154,13 @@ TanStack AI's, unchanged.
 `chat.messages` is a `UIMessage[]`, one row each:
 
 ```tsx
+const keyOf = useMessageKeys(chat.messages)
+
 <TranscriptProvider status={chat.status} interrupts={chat.interrupts} addToolApprovalResponse={chat.addToolApprovalResponse}>
   <Transcript>
     {chat.messages.length === 0 && <TranscriptEmpty>Try: “Plan the programme.”</TranscriptEmpty>}
     {chat.messages.map(message => (
-      <TranscriptMessage key={message.id} message={message} streaming={chat.status === 'streaming' && message === last}>
+      <TranscriptMessage key={keyOf(message)} message={message} streaming={chat.status === 'streaming' && message === last}>
         <TranscriptParts message={message} />
       </TranscriptMessage>
     ))}
@@ -167,6 +169,12 @@ TanStack AI's, unchanged.
   </Transcript>
 </TranscriptProvider>
 ```
+
+Key rows with `useMessageKeys`, not `message.id`: TanStack **renames** the assistant message
+mid-stream — a placeholder with a client id catches the reasoning and tool calls, and the first
+`TEXT_MESSAGE_START` swaps in the server's `messageId`. Keyed by `message.id`, the row remounts
+at that moment: the reasoning block restarts its timer (it always reads 1 second) and forgets to
+fold once complete. `useMessageKeys` recognises the in-place rename and keeps the old key.
 
 Without children, `TranscriptMessage` renders `<TranscriptParts message={message} />` by
 itself; spelling it out is what makes room for an [actions toolbar](#message-actions) next to
@@ -408,7 +416,7 @@ import { clampThinkingLevel, createCatalog, defaultCatalog, estimateCost, modelR
 
 // runtime
 import type { AnyToolApprovalInterrupt, AttachmentDraft, DraftAttachment, EditableChat, ModelSelection, PartLabels, PartRenderers, Source, ThreadIndex, ThreadMeta, ToolRenderer, ToolRendererProps, UsageTracker } from '@gedatou/cadenza-ai'
-import { createByok, createThreadIndex, definePartRenderers, editAndResend, fileToContentPart, groupThreadsByDay, isThinkingComplete, messagesToMarkdown, messageText, PartRenderersProvider, sourcesOf, threadPersistence, threadTitleFrom, useAttachmentDraft, useModelSelection, usePartRenderers, useServerCoverage, useStoredState, useThreadIndex, useUsageTracker } from '@gedatou/cadenza-ai'
+import { createByok, createThreadIndex, definePartRenderers, editAndResend, fileToContentPart, groupThreadsByDay, isThinkingComplete, messagesToMarkdown, messageText, PartRenderersProvider, sourcesOf, threadPersistence, threadTitleFrom, useAttachmentDraft, useModelSelection, usePartRenderers, useServerCoverage, useStoredState, useMessageKeys, useThreadIndex, useUsageTracker } from '@gedatou/cadenza-ai'
 
 // views
 import type { ContextUsageLabels, ContextUsageProps, ContextUsageState, TranscriptActionProps, TranscriptActionsProps, TranscriptEmptyProps, TranscriptErrorProps, TranscriptInterrupt, TranscriptMessageProps, TranscriptMessageState, TranscriptPartsProps, TranscriptPendingProps, TranscriptProps, TranscriptProviderProps } from '@gedatou/cadenza-ai'

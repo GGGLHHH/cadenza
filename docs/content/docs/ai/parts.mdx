@@ -111,7 +111,7 @@ TranscriptParts               按 part.type 分发；注册表命中的类型用
 
 ## 工具渲染器
 
-按工具名给某个工具一张自己的卡片，其余回退到默认；文案在同一个 Provider 里覆盖。
+按工具名给某个工具一张自己的卡片，其余回退到默认；自己的卡片不折进工具组。
 
 <ComponentPreview name="ai/tool-renderers" align="stretch" />
 
@@ -127,13 +127,14 @@ TranscriptParts               按 part.type 分发；注册表命中的类型用
 | `interrupt` | `AnyToolApprovalInterrupt \| undefined` | 等待审批时的活中断，`originalArgs` / `status` / `resolveInterrupt` |
 | `streaming` | `boolean` | 运行在流式中且这是消息的最后一个 part |
 
-`part.input` 在参数流完之前是 `undefined`，自定义卡片要像默认卡片一样拿 `parsePartialJSON(part.arguments)`
-兜底（root 入口转出了它）。其他键——`text`、`thinking`、`toolResult`、`image` / `audio` / `video` / `document`、
+自定义卡片用 `toolInput(part)` 读参数：参数流完取 `part.input`，流式途中取 `arguments` 的残缺 JSON，
+什么都还解析不出时是 `{}`；顶层的 `null` 当作没给——模型常把想省略的可选参数写成 `null`，而解构默认值
+只对 `undefined` 生效。泛型收你的参数形状：`const { tz } = toolInput<{ tz: string }>(part)`。
+按工具名注册了渲染器的调用**不参与[分组](#分组)**，一条一行平铺。其他键——`text`、`thinking`、`toolResult`、`image` / `audio` / `video` / `document`、
 `structuredOutput`、`uiResource`——各收自己的 part（以及 `text` / 媒体的 `message`、`thinking` 的 `complete`、
 `text` 的 `streaming`）。`definePartRenderers()` 只是带类型检查的恒等函数，让注册表可以写在组件外面。
 
-两条合并规则：**`labels` 与上层合并**（只写要改的键），**`renderers` 整份替换**——嵌套的 Provider
-传了 `renderers` 就不再看上层的。`usePartRenderers()` 返回 `{ renderers, labels }`，
+两条合并规则都是**与上层合并**：`labels` 只写要改的键；`renderers` 同样，`toolCall` 再按工具名合并一层。`usePartRenderers()` 返回 `{ renderers, labels }`，
 自定义部件用它取当前文案。
 
 ## 审批
@@ -191,6 +192,13 @@ await chat.addToolResult({ toolCallId, tool: 'get_viewport', output: { width: 12
 
 `TranscriptParts` 扫到连续的 `tool-call`（中间夹着的 `tool-result` 不打断）时，把它们塞进一个
 `ToolCallGroup`，触发器文案是 `labels.toolGroup(n)`（默认 `Ran 3 tools`）。
+
+两种调用不进组，一条一行平铺，并且会打断当前的连续段：
+
+- **provider 执行的调用**（如 DeepSeek 的联网搜索）：不是这里跑的，「Ran N tools」不属实，折起来还会藏掉
+  模型去搜过的唯一痕迹。
+- **按工具名注册了渲染器的调用**（`renderers.toolCall[name]`）：那张卡是你做来给人看的——预约、摘要、提醒——
+  折进「Ran 3 tools」就要多点一下才看得到。`default` 兜底渲染器替代的是内置卡片，照样折叠。
 
 `ToolCallCard`、`ToolCallGroup` 与 `Reasoning` 的面板都带 `keepMounted`——这不是性能优化，是正确性
 所需。Base UI 在面板被揭开的**那一瞬**量它的 `scrollHeight` 并把高度钉住，过渡结束才交回 `auto`；
@@ -296,7 +304,13 @@ const chat = useChat({
 ## 默认文案
 
 内置部件的全部可见字符串在 `PartLabels` 里，通过 `PartRenderersProvider labels={…}` 按键覆盖，
-与上层合并；`DEFAULT_PART_LABELS` 也从 root 入口导出。
+与上层合并；`DEFAULT_PART_LABELS` 也从 root 入口导出。中文界面直接用 `ZH_PART_LABELS`：
+
+```tsx
+<PartRenderersProvider labels={ZH_PART_LABELS}>…</PartRenderersProvider>
+```
+
+`UsageStats`、`ContextUsage`、`ByokKeyDialog` 的文案同样各有一份 `ZH_*_LABELS`，与 `DEFAULT_*_LABELS` 并列导出。
 
 | 键 | 默认 | 出现在 |
 | --- | --- | --- |
@@ -480,4 +494,4 @@ const chat = useChat({
 `MediaPartProps` / `SourcesProps` / `SourcesChangeEventDetails` / `StructuredOutputProps`；
 注册表一侧：`PartLabels` / `PartRenderers` / `PartRenderersProviderProps` / `PartRenderersContextValue` /
 `ToolRenderer` / `ToolRendererProps` / `AnyToolApprovalInterrupt` / `Source`，
-以及 `DEFAULT_PART_LABELS`、`definePartRenderers`、`usePartRenderers`、`isThinkingComplete`、`sourcesOf`、`parsePartialJSON`。
+以及 `DEFAULT_PART_LABELS`、`ZH_PART_LABELS`、`definePartRenderers`、`usePartRenderers`、`isThinkingComplete`、`sourcesOf`、`toolInput`、`parsePartialJSON`。

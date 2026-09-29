@@ -1,5 +1,6 @@
 import type { ChatClientState, MultimodalContent, UIMessage } from '@tanstack/ai-client'
-import type { ThinkingPart } from '@tanstack/ai/client'
+import type { ThinkingPart, ToolCallPart } from '@tanstack/ai/client'
+import { parseToolJson } from './tool-json'
 
 /** The message's text parts, joined by blank lines; tool calls and media are skipped. */
 export function messageText(message: UIMessage): string {
@@ -63,6 +64,20 @@ export function isThinkingComplete(message: UIMessage, partIndex: number, status
   if (part?.signature !== undefined)
     return true
   return message.parts.slice(partIndex + 1).some(p => p.type === 'text' || p.type === 'tool-call')
+}
+
+/**
+ * The input of a tool call for a custom renderer: `part.input` once the
+ * arguments are complete, the partial JSON while they stream, `{}` before
+ * anything parses. Top-level `null`s are dropped — models write `null` for an
+ * optional argument they mean to omit, and a destructuring default only
+ * applies to `undefined`.
+ */
+export function toolInput<T extends object = Record<string, unknown>>(part: ToolCallPart): Partial<T> {
+  const value = part.input ?? (part.arguments === '' ? undefined : parseToolJson(part.arguments))
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    return {}
+  return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== null)) as Partial<T>
 }
 
 export interface Source {
