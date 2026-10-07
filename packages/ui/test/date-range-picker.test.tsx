@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DateRangePicker,
   DateRangePickerCancel,
@@ -11,6 +11,11 @@ import {
 
 const AUG_10 = new Date(2026, 7, 10)
 const AUG_20 = new Date(2026, 7, 20)
+// "Today" is pinned into August 2026: an empty field's calendar opens on the
+// current month, and the tests that start empty pick their days in the first
+// (August) grid. A day no assertion uses, so the "today" marker collides with
+// nothing.
+const TODAY = new Date(2026, 7, 3, 12)
 
 function getInputs(): [HTMLInputElement, HTMLInputElement] {
   const inputs = screen.getAllByRole<HTMLInputElement>('textbox')
@@ -32,6 +37,17 @@ async function clickDay(day: string): Promise<void> {
 }
 
 describe('date-range-picker', () => {
+  // Only Date is faked: timers stay real for user-event and Base UI's own
+  // scheduling.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(TODAY)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('renders two inputs and shows a formatted range', () => {
     render(<DateRangePicker aria-label="日期范围" value={{ from: AUG_10, to: AUG_20 }} />)
     const [start, end] = getInputs()

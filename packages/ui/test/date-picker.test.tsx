@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DatePicker,
   DatePickerCancel,
@@ -15,6 +15,10 @@ import { Field, FieldLabel } from '../src/components/field'
 // Fixed dates keep the calendar's grid deterministic: August 2026 starts on a
 // Saturday, and none of the asserted days collide with outside days.
 const AUG_16 = new Date(2026, 7, 16)
+// "Today" is pinned into the same month: an empty field's calendar opens on
+// the current month, and the tests that start empty still name August days.
+// A day no assertion uses, so the "today" marker collides with nothing.
+const TODAY = new Date(2026, 7, 3, 12)
 
 function getInput(): HTMLInputElement {
   return screen.getByRole<HTMLInputElement>('textbox')
@@ -32,6 +36,17 @@ async function clickDay(day: string): Promise<void> {
 }
 
 describe('date-picker', () => {
+  // Only Date is faked: timers stay real for user-event and Base UI's own
+  // scheduling.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(TODAY)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('renders the default composition: an editable input plus a calendar trigger button', () => {
     render(<DatePicker aria-label="日期" placeholder="选择日期" />)
     const input = getInput()
