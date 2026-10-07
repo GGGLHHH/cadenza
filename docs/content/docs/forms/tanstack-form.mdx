@@ -329,6 +329,33 @@ Checkbox / Switch 本体。组标题（`FieldLegend`）由「组控件是 `Field
 - `name` 归根：原生提交时两个同名隐藏 input（起、止各一），
   `FormData.getAll` 一次拿到两端。
 
+### TimePicker
+
+与 DatePicker 同型：值原生是 `Date | null`（其中只有时刻有意义），受控走
+`value` / `onValueChange`，键入非法文本不落值。
+
+<ComponentPreview name="tanstack-form/time-picker" align="stretch" />
+
+- 必填同样写 `z.date().nullable().refine(value => value !== null, '必填文案')`。
+- `id` / `name` 写在根上；`aria-invalid` / `aria-describedby` / `onBlur`
+  组合到 `TimePickerInput` 上。
+- `name` 归根：原生提交时隐藏 input 序列化 `HH:mm`；TanStack 表单存的是
+  `Date` 对象，后端要 `HH:mm` 字符串就在提交时 `format(value, 'HH:mm')`。
+- 范围与步长（`min` / `max` / `minuteStep`）写在控件上：选不到也键不进，
+  schema 不必再写一遍。
+
+### DateTimePicker
+
+同一套接线：值是 `Date | null`，`aria-invalid` / `aria-describedby` /
+`onBlur` 组合到 `DateTimePickerInput` 上。
+
+<ComponentPreview name="tanstack-form/date-time-picker" align="stretch" />
+
+- `name` 归根：原生提交时隐藏 input 序列化 `yyyy-MM-ddTHH:mm`
+  （`datetime-local` 的线格式）。
+- 「不晚于现在」这类边界交给控件的 `max`：越界的日期与时间点不了、键不进，
+  点选越界会落在边界上——schema 只管必填。
+
 ### Checkbox
 
 勾选列表是 `mode="array"` 的数组字段，`pushValue` / `removeValue` 是 TanStack Form

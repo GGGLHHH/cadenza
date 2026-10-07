@@ -1,0 +1,341 @@
+---
+title: TimePicker
+description: A typeable time input + hour/minute column popup — typing takes effect at once, picking commits
+---
+
+<ComponentPreview name="time-picker/basic" />
+
+The complete time-selection control. At its centre is a real `<input>`: type
+"09:30" and the moment it parses it takes effect; or press the clock button (or
+ArrowDown) to open the popup and pick from the hour and minute columns. Base UI
+has no time component — this behaviour is carried over from
+[DatePicker](/en/docs/components/date-picker): the input shell, popup, confirm
+mode and form serialisation are all the same machinery, with the panel swapped
+for the equally exported [`TimeColumns`](#standalone-timecolumns).
+
+One deliberate difference from DatePicker: **picking does not close the
+popup**. A day is a complete date, so DatePicker closes the moment you click;
+an hour is not a complete time, and "close once the last column is clicked"
+goes wrong as soon as the user clicks the minutes first. So every pick commits
+immediately, and only Esc, Enter, an outside click or tabbing away closes the
+popup — the native `<input type="time">` popup works the same way.
+
+The value is `Date | null`, of which only the time of day matters: edits keep
+the existing value's date, and with no value they land on today. This matches
+the shape Base UI's internal temporal layer gives time values (a date-library
+object or `null`).
+
+## Usage
+
+```tsx
+import { TimePicker } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<TimePicker aria-label="Time" placeholder="Pick a time" />
+```
+
+Omit children and the full default composition is there. Labelling goes
+through the ordinary channel: the root `id` is forwarded to the inner input,
+so `FieldLabel htmlFor` connects directly; without a visible label, pass
+`aria-label` and the default composition hands it to the input.
+
+## Anatomy
+
+Writing children replaces the input side (input, clear, clock button); the
+popup is present by default and only steps aside once you compose a
+`TimePickerPopup`. Marker parts must be direct children of the root, or
+wrapped in a Fragment.
+
+```text
+TimePicker
+├─ InputGroup
+│  ├─ TimePickerInput
+│  ├─ TimePickerClear
+│  └─ TimePickerTrigger
+└─ TimePickerPopup
+   ├─ TimeColumns (default)
+   └─ TimePickerFooter (optional; composing it enters confirm mode)
+```
+
+## Format and seconds
+
+`format` is a date-fns token string that governs both display and parsing,
+defaulting to `HH:mm`. Include seconds (`s`) in the format and a seconds
+column appears — what is displayed and what can be picked are decided by one
+and the same switch.
+
+<ComponentPreview name="time-picker/seconds" />
+
+The value is normalised to the format's smallest unit: with no seconds
+displayed, seconds are zeroed. It is the same idea as DatePicker normalising
+to midnight — two values that display the same must be equal. Form
+serialisation does not follow `format`: the hidden input is always `HH:mm`
+(`HH:mm:ss` with seconds), the wire format of the native `<input type="time">`
+(see [Form](#form)).
+
+Localised tokens (`p`, `pp`) play no part in deciding whether there is a
+seconds column; when you need one, spell the format out in full.
+
+`format` is a strict match. To accept several spellings leniently (say `0930`,
+`9.30`), use `inputToValue` to swap the parsing side only: only the **time of
+day** of the parse result is taken, and the date stays the existing value's;
+display still goes through `format`, formatted uniformly after blur.
+
+## Minute step
+
+`minuteStep` makes the minute column list only multiples of the step; typing a
+time off the step is rejected just the same — what cannot be picked cannot be
+typed either.
+
+<ComponentPreview name="time-picker/step" />
+
+## Time range
+
+`min` / `max` bound the time of day (only the time is compared; the date is
+ignored): options outside the range are disabled, and typing them is rejected
+just the same.
+
+<ComponentPreview name="time-picker/min-max" />
+
+If a picked hour pushes the current minute out of range, the minute slides to
+the first allowed value in that hour — the panel never produces a value it has
+itself marked disabled.
+
+## Custom columns
+
+`TimePickerPopup`'s function children receive fully wired column props; spread
+them into your own `<TimeColumns>` and layer configuration on top. The most
+common is `labels`: the columns' accessible names default to English (Hours /
+Minutes / Seconds); the library puts no text of any language into the DOM, so
+translation goes through here.
+
+<ComponentPreview name="time-picker/custom-columns" />
+
+## Standalone TimeColumns
+
+`TimeColumns` works on its own too: hour, minute (and second) scrolling
+columns side by side, placed straight on the page. It is to TimePicker what
+`Calendar` is to DatePicker.
+
+<ComponentPreview name="time-picker/columns" />
+
+Each column is a Base UI `RadioGroup`: a column takes a single Tab stop,
+landing on the selected item; arrow keys move the selection along with focus
+(native radio-group behaviour, and also that of Chrome's native time popup);
+screen readers announce "10 of 24". The selected item rests at the top of its
+column: it is scrolled into place on open; after that the column only scrolls
+again when the selected item leaves view (say, a new time was typed), and the
+option you just clicked stays put under the pointer.
+
+The column is itself the scroll container, with no `ScrollArea` around it: the
+latter's viewport turns itself into a Tab stop as soon as it overflows, and
+the columns always overflow — every column would cost an extra Tab.
+
+## Confirm mode
+
+Compose a `TimePickerFooter` into the popup and picking and typing switch from
+"commit immediately" to "stage": the input previews the staged value live, and
+only `TimePickerClose` (or Enter) commits and closes — the reason is
+`close-press`; `TimePickerCancel`, Esc and outside clicks all discard the
+stage.
+
+<ComponentPreview name="time-picker/footer" />
+
+The Footer is a pure layout shell: action parts, text and variants are all
+composed by the caller, and the library ships no default text in any language.
+The three action parts map one-to-one onto
+[DatePicker's confirm mode](/en/docs/components/date-picker#confirm-mode):
+`TimePickerFooterClear` stages `null` without closing, `TimePickerCancel`
+closes and discards the stage, `TimePickerClose` commits and closes.
+
+## Controlled
+
+`value` / `defaultValue` / `onValueChange(value, details)` — the controlled
+empty value is `null`; `details.reason` tells the sources apart (typing
+`input-change`, picking `item-press`, clearing `clear-press` /
+`input-clear`), and `details.cancel()` rejects the change. Popup open state is
+a parallel set: `open` / `defaultOpen` / `onOpenChange(open, details)`.
+
+<ComponentPreview name="time-picker/controlled" />
+
+## Form
+
+With a `name`, a permanent hidden input is rendered: the empty value
+serialises to `''`, a value to `HH:mm` (`HH:mm:ss` with seconds), regardless
+of the display format. The hidden input is invisible to native constraint
+validation, so required checks belong in the form layer; the visual asterisk
+goes to `FieldLabel required`. For binding with TanStack Form see the
+[form guide](/en/docs/forms/tanstack-form#timepicker).
+
+<ComponentPreview name="time-picker/form" />
+
+## Disabled
+
+`disabled` disables the whole control (the hidden input is `disabled` along
+with it and stays out of submission). `readOnly` only locks editing: the
+default composition removes the clear and clock buttons, for the same reason
+as in [DatePicker](/en/docs/components/date-picker#disabled) — `InputGroup`
+dims itself for any disabled descendant, and a leftover disabled button would
+make a read-only field look like a disabled one.
+
+## When to use TimePicker
+
+Use it to pick only a time of day (shift slots, opening hours); to pick a date
+and time together use [DateTimePicker](/en/docs/components/date-time-picker);
+for a date alone use [DatePicker](/en/docs/components/date-picker). When you
+want the hour and minute columns without the input, use
+[`TimeColumns`](#standalone-timecolumns) directly.
+
+## State and className
+
+The root is a plain `<div>`, so `className` is just a string; state is read
+from data attributes on the root.
+
+| Attribute | When present |
+| --- | --- |
+| `data-empty` | the input is empty |
+| `data-open` | popup is open |
+| `data-disabled` | `disabled` |
+| `data-readonly` | `readOnly` |
+
+Each option in a column is a Base UI `Radio`, carrying its own
+`data-checked` / `data-unchecked` / `data-disabled`.
+
+| data-slot | What it is |
+| --- | --- |
+| `time-picker` | root |
+| `time-picker-trigger` / `-addon` | clock button and its addon |
+| `time-picker-clear` / `-addon` | clear button and its addon |
+| `time-picker-popup` | popup |
+| `time-picker-footer` | the confirm-mode action row |
+| `time-picker-footer-clear` / `time-picker-cancel` / `time-picker-close` | the three action buttons |
+| `time-columns` | `TimeColumns` root |
+| `time-columns-column` | one column (radiogroup) |
+| `time-columns-item` | one option (radio) |
+
+`TimePickerInput` deliberately carries no data-slot of its own:
+`InputGroupInput`'s `data-slot="input-group-control"` is the contract
+`InputGroup` uses to paint the focus ring — override it and the whole frame
+stops lighting up.
+
+## Keyboard interactions
+
+| Key | Effect |
+| --- | --- |
+| <kbd>ArrowDown</kbd> | opens the popup from the input |
+| <kbd>Tab</kbd> | with the popup open, moves from the input into the hour column, then the minute column — one stop per column, landing on the selected item |
+| <kbd>ArrowUp</kbd> / <kbd>ArrowDown</kbd> in a column | moves and selects (commits immediately; stages in confirm mode) |
+| <kbd>Escape</kbd> | closes the popup and returns focus to the input (the event does not bubble to an outer dialog) |
+| <kbd>Enter</kbd> | on the input, settles the current input; with the popup open it also closes without submitting the form (in confirm mode this is the confirm) |
+
+The clear and clock buttons both sit outside the Tab order — the keyboard
+path is the input: clearing the text clears the value, ArrowDown opens the
+popup.
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → className**.
+
+### TimePicker
+
+The root. Without children it renders the full default composition; with a
+`name` it renders a permanent hidden input outside the popup.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `Date \| null` | — | uncontrolled initial value |
+| `value` | `Date \| null` | — | controlled value; `null` is the controlled empty value; only the time of day matters |
+| `onValueChange` | `(value, details) => void` | — | every committed change; `details.cancel()` rejects it |
+| `defaultOpen` | `boolean` | `false` | initial popup open state |
+| `open` | `boolean` | — | controlled popup |
+| `onOpenChange` | `(open, details) => void` | — | popup open/close; `details.cancel()` keeps it as is |
+| `onOpenChangeComplete` | `(open) => void` | — | after the open/close animation completes |
+| `actionsRef` | Base UI Popover actions | — | imperative `unmount` / `close` |
+| `format` | `string` | `'HH:mm'` | display and parsing format (date-fns tokens); containing `s` adds the seconds column |
+| `locale` | date-fns `Locale` | — | formatting and parsing |
+| `inputToValue` | `(text) => Date \| null` | strict parse by `format` | overrides the parsing side; only the result's time of day is taken; `null` = not a time yet |
+| `min` | `Date` | — | earliest time of day (date ignored); typing an earlier time is rejected too |
+| `max` | `Date` | — | latest time of day (date ignored); typing a later time is rejected too |
+| `minuteStep` | `number` | `1` | minute step; typing off the step is rejected too |
+| `name` | `string` | — | when present, renders the hidden input (`HH:mm` / `HH:mm:ss`) |
+| `disabled` | `boolean` | `false` | disables the control |
+| `readOnly` | `boolean` | `false` | read-only; the default composition removes both buttons |
+| `clearable` | `boolean` | `true` | master switch for clearing; `false` disables even an explicitly composed one |
+| `modal` | Base UI's `modal` | `false` | pinned to false: an inline control never locks the page |
+| `placeholder` | `string` | — | placeholder of the default composition's input |
+| `id` | `string` | — | forwarded to the input; `FieldLabel htmlFor` connects directly |
+| `aria-label` | `string` | — | accessible name of the default composition's input |
+| `children` | `ReactNode \| (state & { defaultChildren }) => ReactNode` | — | replaces the input side |
+| rest | `ComponentProps<'div'>` | — | passed through to the root |
+
+### TimePickerInput
+
+The real `<input>`; it reads text and wiring from context and composes
+anywhere inside the `InputGroup`. Shows the raw draft while focused, the
+formatted value when blurred. Takes `ComponentProps<typeof InputGroupInput>`.
+
+### TimePickerTrigger
+
+The clock button (with its own `InputGroupAddon`); clicking toggles the
+popup. Defaults to a clock icon + an English `aria-label` (Open time picker),
+`tabIndex={-1}`. Takes `ComponentProps<typeof InputGroupButton>`.
+
+### TimePickerClear
+
+The clear button (with its own addon), hidden via the root's `data-empty` when
+there is no value; not rendered at all when `clearable` is `false`. Defaults
+to a ✕ icon + an English `aria-label` (Clear time), `tabIndex={-1}`. Takes
+`ComponentProps<typeof InputGroupButton>`.
+
+### TimePickerPopup
+
+Portal → Positioner → Popup in one, anchored to the root's box. The four
+positioning props (`align` / `alignOffset` / `side` / `sideOffset`) go to the
+Positioner, the rest to the Popup; `initialFocus` / `finalFocus` are pinned by
+the seam. Plain children render **below** the default columns (where the
+Footer goes); function children take `TimePickerColumnsProps` and replace the
+columns (see [Custom columns](#custom-columns)).
+
+### TimePickerFooter
+
+The action row below the columns, a pure layout shell; composing it enters
+[confirm mode](#confirm-mode). Takes `ComponentProps<'div'>`.
+
+### TimePickerFooterClear / TimePickerCancel / TimePickerClose
+
+The three action buttons of confirm mode; all take
+`ComponentProps<typeof Button>` (text is children, variant is yours):
+`FooterClear` stages `null` without closing, `Cancel` closes discarding the
+stage, `Close` commits the stage (`close-press`) and closes.
+
+### TimeColumns
+
+Hour, minute (and second) scrolling columns side by side, usable on their own.
+The root is a plain `<div>`, `block-56` tall by default; change it with
+`className`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `Date \| null` | — | uncontrolled initial value |
+| `value` | `Date \| null` | — | controlled value; `null` selects no item; only the time of day is read |
+| `onValueChange` | `(value, details) => void` | — | every pick: the existing value's date (today when there is none) + the picked time; `details.cancel()` rejects it |
+| `granularity` | `'minute' \| 'second'` | `'minute'` | `'second'` adds the seconds column |
+| `minuteStep` | `number` | `1` | the minute column lists only multiples of the step |
+| `min` | `Date` | — | earliest time of day (date ignored); options before it are disabled |
+| `max` | `Date` | — | latest time of day (date ignored); options after it are disabled |
+| `disabled` | `boolean` | `false` | disables all columns |
+| `labels` | `Partial<TimeColumnsLabels>` | English | the columns' accessible names (`hours` / `minutes` / `seconds`) |
+| `className` | `string` | — | lands on the root `<div>` |
+| rest | `ComponentProps<'div'>` | — | passed through to the root |
+
+The 20 types are exported as well: `TimePickerProps` / `TimePickerState` /
+`TimePickerInputProps` / `TimePickerTriggerProps` / `TimePickerClearProps` /
+`TimePickerPopupProps` / `TimePickerFooterProps` /
+`TimePickerFooterClearProps` / `TimePickerCancelProps` /
+`TimePickerCloseProps` / `TimePickerColumnsProps` /
+`TimePickerChangeEventReason` / `TimePickerChangeEventDetails` /
+`TimePickerOpenChangeEventReason` / `TimePickerOpenChangeEventDetails` /
+`TimeColumnsProps` / `TimeColumnsLabels` / `TimeColumnsChangeEventReason` /
+`TimeColumnsChangeEventDetails` / `TimeGranularity`.

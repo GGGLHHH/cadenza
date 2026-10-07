@@ -385,6 +385,37 @@ form; completeness is the refine's job.
 - `name` belongs to the root: on native submission two hidden inputs share the
   name (one per end), and `FormData.getAll` fetches both at once.
 
+### TimePicker
+
+Same shape as DatePicker: the value is natively `Date | null` (only its time of
+day matters), controlled via `value` / `onValueChange`; typing invalid text
+never lands a value.
+
+<ComponentPreview name="tanstack-form/time-picker" align="stretch" />
+
+- Required is expressed the same way:
+  `z.date().nullable().refine(value => value !== null, 'required message')`.
+- `id` / `name` go on the root; compose `aria-invalid` / `aria-describedby` /
+  `onBlur` onto `TimePickerInput`.
+- `name` belongs to the root: on native submission a hidden input serialises
+  `HH:mm`. The TanStack form stores the `Date` object — if the backend wants an
+  `HH:mm` string, `format(value, 'HH:mm')` on submit.
+- Bounds and steps (`min` / `max` / `minuteStep`) live on the control: what
+  cannot be picked cannot be typed either, so the schema need not repeat them.
+
+### DateTimePicker
+
+The same wiring: the value is `Date | null`; compose `aria-invalid` /
+`aria-describedby` / `onBlur` onto `DateTimePickerInput`.
+
+<ComponentPreview name="tanstack-form/date-time-picker" align="stretch" />
+
+- `name` belongs to the root: on native submission a hidden input serialises
+  `yyyy-MM-ddTHH:mm` (`datetime-local`'s wire format).
+- Leave bounds such as "no later than now" to the control's `max`: days and
+  times past it can be neither picked nor typed, and a pick that would cross it
+  lands on it — the schema only says "required".
+
 ### Checkbox
 
 A checkbox list is an array field with `mode="array"`; `pushValue` /

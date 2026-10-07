@@ -1,0 +1,297 @@
+---
+title: TimePicker
+description: 可键入的时间输入框 + 时分列弹层——打字即生效，点选即提交
+---
+
+<ComponentPreview name="time-picker/basic" />
+
+时间选择的完整控件。中间是真 `<input>`：直接键入「09:30」解析成功就立即
+生效；也可以点时钟按钮（或按 ArrowDown）打开弹层，在时、分两列里点选。
+Base UI 没有时间组件，这套行为照搬 [DatePicker](/docs/components/date-picker)
+——输入壳、弹层、确认模式、表单序列化都是同一套机制，面板换成同样导出的
+[`TimeColumns`](#单独使用-timecolumns)。
+
+和 DatePicker 有一处刻意不同：**点选不关闭弹层**。一天就是一个完整日期，
+DatePicker 点了就关；一个小时却不是完整的时间，而「点完最后一列就关」在
+用户先点分钟时就会出错。所以每次点选即时提交，Esc、Enter、点击外部或 Tab
+离开才关闭——原生 `<input type="time">` 的弹层也是这样。
+
+值是 `Date | null`，其中只有时刻有意义：编辑保留原值的日期，没有值时落在
+今天。这与 Base UI 内部 temporal 层给时间值定的形状一致（日期库的对象或
+`null`）。
+
+## 使用
+
+```tsx
+import { TimePicker } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<TimePicker aria-label="时间" placeholder="选择时间" />
+```
+
+不写 children 就有完整默认组合。标签走普通通道：根上的 `id` 转发给内层输入框，
+`FieldLabel htmlFor` 直连；没有可见标签时传 `aria-label`，默认组合会转交给
+输入框。
+
+## 组成
+
+写了 children 就替换输入侧（输入框、清除、时钟按钮）；弹层默认在场，组合了
+`TimePickerPopup` 才让位。标记部件必须是根的直接子节点或裹在 Fragment 里。
+
+```text
+TimePicker
+├─ InputGroup
+│  ├─ TimePickerInput
+│  ├─ TimePickerClear
+│  └─ TimePickerTrigger
+└─ TimePickerPopup
+   ├─ TimeColumns（默认）
+   └─ TimePickerFooter（可选，组合即进入确认模式）
+```
+
+## 格式与秒
+
+`format` 是 date-fns token，同时管显示与解析，默认 `HH:mm`。格式里带秒
+（`s`）就多出秒列——显示什么和能选什么由同一个开关决定。
+
+<ComponentPreview name="time-picker/seconds" />
+
+值按格式的最小单位归一：不显示秒时秒被清零。这是 DatePicker 归一到当天零点
+的同一思路——显示相同的两个值必须相等。表单序列化不跟随 `format`：hidden
+input 始终是 `HH:mm`（有秒时 `HH:mm:ss`），即原生 `<input type="time">`
+的线格式（见[表单](#表单)）。
+
+本地化 token（`p`、`pp`）不参与「有没有秒列」的判断，需要秒列时把格式写全。
+
+`format` 是严格匹配。要宽容收多种写法（比如 `0930`、`9.30`），用
+`inputToValue` 只换解析侧：只取解析结果的**时刻**，日期仍是原值的；显示仍走
+`format`，失焦后统一格式化。
+
+## 分钟步长
+
+`minuteStep` 让分钟列只列出步长的倍数；键入不在步长上的时间同样被拒——选不到
+的就键不进。
+
+<ComponentPreview name="time-picker/step" />
+
+## 时间范围
+
+`min` / `max` 限定一天中的时刻（只比较时刻，日期忽略）：范围外的选项禁用，
+键入同样被拒。
+
+<ComponentPreview name="time-picker/min-max" />
+
+点选的小时若让当前分钟越界，分钟会滑到该小时里第一个允许的值——面板永远不会
+产出一个它自己标成禁用的值。
+
+## 自定义列
+
+`TimePickerPopup` 的函数 children 拿到接好线的列 props，spread 进自己的
+`<TimeColumns>` 再往上叠配置。最常用的是 `labels`：列的无障碍名默认是英文
+（Hours / Minutes / Seconds），库不往 DOM 塞任何语言的文案，翻译走这里。
+
+<ComponentPreview name="time-picker/custom-columns" />
+
+## 单独使用 TimeColumns
+
+`TimeColumns` 也能单独用：时、分（、秒）并排的滚动列，直接放在页面里。它之于
+TimePicker，就像 `Calendar` 之于 DatePicker。
+
+<ComponentPreview name="time-picker/columns" />
+
+每一列是一个 Base UI `RadioGroup`：一列只占一个 Tab 停靠点，停在选中项上；
+方向键随焦点移动选中（原生单选组的行为，也是 Chrome 原生时间弹层的行为）；
+读屏会报「10 of 24」。选中项停在列顶：打开时滚过去；之后只有选中项滚出视野
+（比如键入了新时间）才再滚，刚点中的选项留在指针下不动。
+
+列本身就是滚动容器，没有套 `ScrollArea`：后者的 viewport 一旦溢出就会把自己
+变成一个 Tab 停靠点，而列总是溢出的——每列会多花一个 Tab。
+
+## 确认模式
+
+往弹层里组合 `TimePickerFooter`，点选和键入就从「即时提交」变成「暂存」：
+输入框实时预览暂存值，`TimePickerClose`（或 Enter）才提交并关闭——reason
+是 `close-press`；`TimePickerCancel`、Esc、点击外部都丢弃暂存。
+
+<ComponentPreview name="time-picker/footer" />
+
+Footer 是纯布局壳：动作部件、文案、variant 都由使用方组合，库不带任何语言的
+默认文案。三个动作部件与 [DatePicker 的确认模式](/docs/components/date-picker#确认模式)
+一一对应：`TimePickerFooterClear` 暂存 `null` 不关闭，`TimePickerCancel`
+关闭并丢弃暂存，`TimePickerClose` 提交并关闭。
+
+## 受控
+
+`value` / `defaultValue` / `onValueChange(value, details)`——受控空值是
+`null`；`details.reason` 区分来源（键入 `input-change`、点选 `item-press`、
+清除 `clear-press` / `input-clear`），`details.cancel()` 拒绝这次变更。
+弹层开合是并列的一套：`open` / `defaultOpen` / `onOpenChange(open, details)`。
+
+<ComponentPreview name="time-picker/controlled" />
+
+## 表单
+
+有 `name` 就渲染一个常驻 hidden input：空值序列化成 `''`、有值是 `HH:mm`
+（有秒时 `HH:mm:ss`），与显示格式无关。hidden input 对原生约束校验不可见，
+必填校验放表单层做；视觉星号交给 `FieldLabel required`。与 TanStack Form 的绑定见
+[表单指南](/docs/forms/tanstack-form#timepicker)。
+
+<ComponentPreview name="time-picker/form" />
+
+## 禁用
+
+`disabled` 禁整个控件（hidden input 一并 `disabled`，不参与提交）。
+`readOnly` 只锁编辑：默认组合会摘掉清除与时钟按钮，理由同
+[DatePicker](/docs/components/date-picker#禁用)——`InputGroup` 会为任何
+disabled 后代整体变暗，留一个禁用按钮会让只读字段看起来像禁用字段。
+
+## 什么时候用 TimePicker
+
+只选一天中的时刻（排班时段、营业时间）用它；日期和时间一起选用
+[DateTimePicker](/docs/components/date-time-picker)；只选日期用
+[DatePicker](/docs/components/date-picker)。只要时分列不要输入框时直接用
+[`TimeColumns`](#单独使用-timecolumns)。
+
+## 状态与 className
+
+根是普通 `<div>`，`className` 就是字符串；状态从根上的 data 属性读。
+
+| 属性 | 出现时机 |
+| --- | --- |
+| `data-empty` | 输入框里没有内容 |
+| `data-open` | 弹层开着 |
+| `data-disabled` | `disabled` |
+| `data-readonly` | `readOnly` |
+
+列里的每个选项是 Base UI `Radio`，自带 `data-checked` / `data-unchecked` /
+`data-disabled`。
+
+| data-slot | 是什么 |
+| --- | --- |
+| `time-picker` | 根 |
+| `time-picker-trigger` / `-addon` | 时钟按钮及其 addon |
+| `time-picker-clear` / `-addon` | 清除按钮及其 addon |
+| `time-picker-popup` | 弹层 |
+| `time-picker-footer` | 确认模式的动作行 |
+| `time-picker-footer-clear` / `time-picker-cancel` / `time-picker-close` | 三个动作按钮 |
+| `time-columns` | `TimeColumns` 根 |
+| `time-columns-column` | 一列（radiogroup） |
+| `time-columns-item` | 一个选项（radio） |
+
+`TimePickerInput` 刻意不带自己的 data-slot：`InputGroupInput` 的
+`data-slot="input-group-control"` 是 `InputGroup` 画焦点环的契约，覆盖它
+整个组框就不亮环了。
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| <kbd>ArrowDown</kbd> | 在输入框上打开弹层 |
+| <kbd>Tab</kbd> | 弹层开着时从输入框进入时列，再进分列——每列一个停靠点，停在选中项 |
+| 列内 <kbd>ArrowUp</kbd> / <kbd>ArrowDown</kbd> | 移动并选中（即时提交；确认模式下暂存） |
+| <kbd>Escape</kbd> | 关闭弹层，焦点回到输入框（事件不冒泡给外层 dialog） |
+| <kbd>Enter</kbd> | 在输入框上结算当前输入；弹层开着时同时关闭且不提交表单（确认模式下就是「确定」） |
+
+清除按钮与时钟按钮都在 Tab 序之外——键盘路径是输入框：清空文本即清值，
+ArrowDown 即开弹层。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### TimePicker
+
+根。不写 children 渲染完整默认组合；有 `name` 时在弹层外渲染常驻 hidden input。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultValue` | `Date \| null` | — | 非受控初始值 |
+| `value` | `Date \| null` | — | 受控值；`null` 是受控空值；只有时刻有意义 |
+| `onValueChange` | `(value, details) => void` | — | 每次提交变更；`details.cancel()` 拒绝 |
+| `defaultOpen` | `boolean` | `false` | 弹层初始开合 |
+| `open` | `boolean` | — | 受控弹层 |
+| `onOpenChange` | `(open, details) => void` | — | 弹层开合；`details.cancel()` 保持原样 |
+| `onOpenChangeComplete` | `(open) => void` | — | 开合动画完成后 |
+| `actionsRef` | Base UI Popover 的 actions | — | 命令式 `unmount` / `close` |
+| `format` | `string` | `'HH:mm'` | 显示与解析格式（date-fns token）；含 `s` 即有秒列 |
+| `locale` | date-fns `Locale` | — | 格式化与解析 |
+| `inputToValue` | `(text) => Date \| null` | 按 `format` 严格解析 | 覆盖解析侧；只取结果的时刻；`null` = 还不是时间 |
+| `min` | `Date` | — | 最早时刻（日期忽略）；键入同样被拒 |
+| `max` | `Date` | — | 最晚时刻（日期忽略）；键入同样被拒 |
+| `minuteStep` | `number` | `1` | 分钟步长；键入同样被拒 |
+| `name` | `string` | — | 有则渲染 hidden input（`HH:mm` / `HH:mm:ss`） |
+| `disabled` | `boolean` | `false` | 禁用 |
+| `readOnly` | `boolean` | `false` | 只读；默认组合摘掉两个按钮 |
+| `clearable` | `boolean` | `true` | 清除总开关；`false` 连显式组合的也关 |
+| `modal` | Base UI 的 `modal` | `false` | 钉为 false：行内控件不锁页面 |
+| `placeholder` | `string` | — | 默认组合输入框的占位 |
+| `id` | `string` | — | 转发给输入框，`FieldLabel htmlFor` 直连 |
+| `aria-label` | `string` | — | 默认组合输入框的无障碍名 |
+| `children` | `ReactNode \| (state & { defaultChildren }) => ReactNode` | — | 替换输入侧 |
+| 其余 | `ComponentProps<'div'>` | — | 透传到根 |
+
+### TimePickerInput
+
+真 `<input>`，从 context 读文本与接线，组合进 `InputGroup` 任意位置。聚焦时
+显示原始草稿，失焦显示格式化值。收 `ComponentProps<typeof InputGroupInput>`。
+
+### TimePickerTrigger
+
+时钟按钮（含自己的 `InputGroupAddon`），点击开合弹层。默认时钟图标 + 英文
+`aria-label`（Open time picker），`tabIndex={-1}`。收
+`ComponentProps<typeof InputGroupButton>`。
+
+### TimePickerClear
+
+清除按钮（含自己的 addon），空值时靠根的 `data-empty` 隐藏；`clearable` 为
+`false` 时整个不渲染。默认 ✕ 图标 + 英文 `aria-label`（Clear time），
+`tabIndex={-1}`。收 `ComponentProps<typeof InputGroupButton>`。
+
+### TimePickerPopup
+
+Portal → Positioner → Popup 一体，锚定在根的盒子上。定位四件（`align` /
+`alignOffset` / `side` / `sideOffset`）给 Positioner，其余给 Popup；
+`initialFocus` / `finalFocus` 由封装层钉死。普通 children 渲染在默认列
+**下方**（放 Footer 的位置）；函数 children 收 `TimePickerColumnsProps`
+替换列（见[自定义列](#自定义列)）。
+
+### TimePickerFooter
+
+列下方的动作行，纯布局壳，组合即进入[确认模式](#确认模式)。收
+`ComponentProps<'div'>`。
+
+### TimePickerFooterClear / TimePickerCancel / TimePickerClose
+
+确认模式的三个动作按钮，都收 `ComponentProps<typeof Button>`（文案是
+children，variant 自定）：`FooterClear` 暂存 `null` 不关闭、`Cancel`
+丢弃暂存关闭、`Close` 提交暂存（`close-press`）关闭。
+
+### TimeColumns
+
+时、分（、秒）并排的滚动列，可单独使用。根是普通 `<div>`，默认高
+`block-56`，用 `className` 改。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultValue` | `Date \| null` | — | 非受控初始值 |
+| `value` | `Date \| null` | — | 受控值；`null` 不选中任何项；只读时刻 |
+| `onValueChange` | `(value, details) => void` | — | 每次点选：原值的日期（无值时今天）+ 选中的时刻；`details.cancel()` 拒绝 |
+| `granularity` | `'minute' \| 'second'` | `'minute'` | `'second'` 加秒列 |
+| `minuteStep` | `number` | `1` | 分钟列只列出步长的倍数 |
+| `min` | `Date` | — | 最早时刻（日期忽略），之前的选项禁用 |
+| `max` | `Date` | — | 最晚时刻（日期忽略），之后的选项禁用 |
+| `disabled` | `boolean` | `false` | 禁用全部列 |
+| `labels` | `Partial<TimeColumnsLabels>` | 英文 | 列的无障碍名（`hours` / `minutes` / `seconds`） |
+| `className` | `string` | — | 落在根 `<div>` 上 |
+| 其余 | `ComponentProps<'div'>` | — | 透传到根 |
+
+20 个类型一并导出：`TimePickerProps` / `TimePickerState` /
+`TimePickerInputProps` / `TimePickerTriggerProps` / `TimePickerClearProps` /
+`TimePickerPopupProps` / `TimePickerFooterProps` /
+`TimePickerFooterClearProps` / `TimePickerCancelProps` /
+`TimePickerCloseProps` / `TimePickerColumnsProps` /
+`TimePickerChangeEventReason` / `TimePickerChangeEventDetails` /
+`TimePickerOpenChangeEventReason` / `TimePickerOpenChangeEventDetails` /
+`TimeColumnsProps` / `TimeColumnsLabels` / `TimeColumnsChangeEventReason` /
+`TimeColumnsChangeEventDetails` / `TimeGranularity`。

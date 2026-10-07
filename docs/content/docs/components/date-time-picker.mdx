@@ -1,0 +1,257 @@
+---
+title: DateTimePicker
+description: 可键入的日期时间输入框 + 日历与时分列并排的弹层
+---
+
+<ComponentPreview name="date-time-picker/basic" />
+
+日期和时间一起选的完整控件。中间是真 `<input>`：直接键入
+「2026-08-16 09:30」解析成功就立即生效；也可以打开弹层，左边日历点日期、
+右边时分列点时间。输入壳、弹层、确认模式、表单序列化与
+[DatePicker](/docs/components/date-picker) 是同一套机制；面板是同样导出的
+`Calendar` 加 [`TimeColumns`](/docs/components/time-picker#单独使用-timecolumns)。
+
+**点日期保留时间，点时间保留日期**；还没有值时，点日期从零点开始，点时间落在
+今天。与 [TimePicker](/docs/components/time-picker) 一样，**点选不关闭弹层**
+——单有一天或单有一个小时都不是完整的日期时间。每次点选即时提交，Esc、Enter、
+点击外部或 Tab 离开才关闭。
+
+## 使用
+
+```tsx
+import { DateTimePicker } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<DateTimePicker aria-label="就诊时间" placeholder="选择日期时间" />
+```
+
+不写 children 就有完整默认组合。标签走普通通道：根上的 `id` 转发给内层输入框，
+`FieldLabel htmlFor` 直连；没有可见标签时传 `aria-label`。
+
+## 组成
+
+写了 children 就替换输入侧（输入框、清除、选择按钮）；弹层默认在场，组合了
+`DateTimePickerPopup` 才让位。标记部件必须是根的直接子节点或裹在 Fragment 里。
+
+```text
+DateTimePicker
+├─ InputGroup
+│  ├─ DateTimePickerInput
+│  ├─ DateTimePickerClear
+│  └─ DateTimePickerTrigger
+└─ DateTimePickerPopup
+   ├─ Calendar + TimeColumns（默认，并排）
+   └─ DateTimePickerFooter（可选，组合即进入确认模式）
+```
+
+## 格式与本地化
+
+`format` 是 date-fns token，同时管显示与解析，默认 `yyyy-MM-dd HH:mm`；
+格式里带秒（`s`）就多出秒列。`locale` 一并喂给格式化、解析和日历。值按格式的
+最小单位归一（不显示秒时秒被清零）。
+
+表单序列化不跟随 `format`——hidden input 始终是 `yyyy-MM-ddTHH:mm`（有秒时
+`…:ss`），即原生 `<input type="datetime-local">` 的线格式（见[表单](#表单)）。
+注意 token 大小写：月份是 `MM`、分钟是 `mm`。
+
+`format` 是严格匹配；要宽容收多种写法时，用 `inputToValue` 只换解析侧，
+显示仍走 `format`。返回 `null` 表示「还不是日期时间」（草稿保留，失焦回退）。
+
+## 禁用日期与时间范围
+
+`min` / `max` 是**时刻**（含日期）：范围外的日期在日历里禁用；落在边界那天时，
+时分列再禁用越过边界的时间。键入范围外的值同样被拒。下面是「不晚于现在」：
+
+<ComponentPreview name="date-time-picker/min-max" />
+
+点选若会越界，就落在边界上（按分钟步长取整）——比如值是某天 20:00，`max` 是
+今天 14:23，点今天就得到今天 14:23，而不是一个字段自己会拒收的值。还没有值时
+时分列不禁用任何项，第一次点选越界同样被拉回边界。
+
+`disabledDates` 与 DatePicker 相同：react-day-picker 的 matcher（单日、区间、
+`before` / `after`、星期、函数都行），日历里点不了，落在这些日子上的键入同样
+被拒。`minuteStep` 与 [TimePicker](/docs/components/time-picker#分钟步长)
+相同：分钟列只列出步长的倍数，键入不在步长上的同样被拒。
+
+## 自定义面板
+
+`DateTimePickerPopup` 的函数 children 拿到两份接好线的 props——`calendar`
+和 `columns`——分别 spread 进自己的 `<Calendar>` 和 `<TimeColumns>`，再往上
+叠配置（日历的年份范围、无障碍文案，列的 `labels`）。函数 children 会替换整个
+面板，排布也由你决定：
+
+```tsx
+<DateTimePickerPopup>
+  {({ calendar, columns }) => (
+    <div className="flex">
+      <Calendar {...calendar} startMonth={new Date(2020, 0)} />
+      <TimeColumns {...columns} className="border-s" labels={{ hours: '时', minutes: '分' }} />
+    </div>
+  )}
+</DateTimePickerPopup>
+```
+
+默认面板让时分列与日历恰好等高（日历高度随当月周数变化）；自己排布时
+`TimeColumns` 用它的默认高度，需要等高就照抄默认面板的做法：外层用 grid，
+`TimeColumns` 写 `block-0 min-block-full`。
+
+## 确认模式
+
+往弹层里组合 `DateTimePickerFooter`，点日期、点时间和键入就从「即时提交」变成
+「暂存」：输入框实时预览暂存值，`DateTimePickerClose`（或 Enter）一次提交并
+关闭——reason 是 `close-press`；`DateTimePickerCancel`、Esc、点击外部都丢弃
+暂存。
+
+<ComponentPreview name="date-time-picker/footer" />
+
+Footer 是纯布局壳：动作部件、文案、variant 都由使用方组合。三个动作部件与
+[DatePicker 的确认模式](/docs/components/date-picker#确认模式)一一对应。
+
+## 受控
+
+`value` / `defaultValue` / `onValueChange(value, details)`——受控空值是
+`null`；`details.reason` 区分来源（键入 `input-change`、点日期或点时间
+`item-press`、清除 `clear-press` / `input-clear`），`details.cancel()`
+拒绝这次变更。弹层开合是并列的一套：`open` / `defaultOpen` /
+`onOpenChange(open, details)`。
+
+<ComponentPreview name="date-time-picker/controlled" />
+
+## 表单
+
+有 `name` 就渲染一个常驻 hidden input：空值序列化成 `''`、有值是
+`yyyy-MM-ddTHH:mm`，与显示格式无关。hidden input 对原生约束校验不可见，
+必填校验放表单层做；视觉星号交给 `FieldLabel required`。与 TanStack Form 的绑定见
+[表单指南](/docs/forms/tanstack-form#datetimepicker)。
+
+<ComponentPreview name="date-time-picker/form" />
+
+## 禁用
+
+`disabled` 禁整个控件（hidden input 一并 `disabled`，不参与提交）。
+`readOnly` 只锁编辑：默认组合摘掉清除与选择按钮，理由同
+[DatePicker](/docs/components/date-picker#禁用)。
+
+## 什么时候用 DateTimePicker
+
+日期和时间要一起选（就诊时间、截止时刻）用它；只选日期用
+[DatePicker](/docs/components/date-picker)；只选一天中的时刻用
+[TimePicker](/docs/components/time-picker)；选一段日期区间用
+[DateRangePicker](/docs/components/date-range-picker)。
+
+## 状态与 className
+
+根是普通 `<div>`，`className` 就是字符串；状态从根上的 data 属性读。
+
+| 属性 | 出现时机 |
+| --- | --- |
+| `data-empty` | 输入框里没有内容 |
+| `data-open` | 弹层开着 |
+| `data-disabled` | `disabled` |
+| `data-readonly` | `readOnly` |
+
+| data-slot | 是什么 |
+| --- | --- |
+| `date-time-picker` | 根 |
+| `date-time-picker-trigger` / `-addon` | 选择按钮及其 addon |
+| `date-time-picker-clear` / `-addon` | 清除按钮及其 addon |
+| `date-time-picker-popup` | 弹层 |
+| `date-time-picker-footer` | 确认模式的动作行 |
+| `date-time-picker-footer-clear` / `date-time-picker-cancel` / `date-time-picker-close` | 三个动作按钮 |
+
+面板内的 `calendar`、`time-columns` 系列 data-slot 见各自页面。
+`DateTimePickerInput` 刻意不带自己的 data-slot，理由同 `DatePickerInput`。
+
+## 键盘交互
+
+| 按键 | 效果 |
+| --- | --- |
+| <kbd>ArrowDown</kbd> | 在输入框上打开弹层 |
+| <kbd>Tab</kbd> | 弹层开着时从输入框进入日历，再进时列、分列 |
+| 日历内方向键 | react-day-picker 自带的日期漫游，Enter / Space 选中 |
+| 列内 <kbd>ArrowUp</kbd> / <kbd>ArrowDown</kbd> | 移动并选中 |
+| <kbd>Escape</kbd> | 关闭弹层，焦点回到输入框（事件不冒泡给外层 dialog） |
+| <kbd>Enter</kbd> | 在输入框上结算当前输入；弹层开着时同时关闭且不提交表单（确认模式下就是「确定」） |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### DateTimePicker
+
+根。不写 children 渲染完整默认组合；有 `name` 时在弹层外渲染常驻 hidden input。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultValue` | `Date \| null` | — | 非受控初始值 |
+| `value` | `Date \| null` | — | 受控值；`null` 是受控空值 |
+| `onValueChange` | `(value, details) => void` | — | 每次提交变更；`details.cancel()` 拒绝 |
+| `defaultOpen` | `boolean` | `false` | 弹层初始开合 |
+| `open` | `boolean` | — | 受控弹层 |
+| `onOpenChange` | `(open, details) => void` | — | 弹层开合；`details.cancel()` 保持原样 |
+| `onOpenChangeComplete` | `(open) => void` | — | 开合动画完成后 |
+| `actionsRef` | Base UI Popover 的 actions | — | 命令式 `unmount` / `close` |
+| `format` | `string` | `'yyyy-MM-dd HH:mm'` | 显示与解析格式（date-fns token）；含 `s` 即有秒列 |
+| `locale` | date-fns `Locale` | — | 格式化、解析与日历文案 |
+| `inputToValue` | `(text) => Date \| null` | 按 `format` 严格解析 | 覆盖解析侧；`null` = 还不是日期时间 |
+| `disabledDates` | `Matcher \| Matcher[]` | — | 禁选日期；落在这些日子上的键入同样被拒 |
+| `min` | `Date` | — | 最早时刻；更早的日期与时间禁用，越界点选落在边界上 |
+| `max` | `Date` | — | 最晚时刻；更晚的日期与时间禁用，越界点选落在边界上 |
+| `minuteStep` | `number` | `1` | 分钟步长；键入同样被拒 |
+| `name` | `string` | — | 有则渲染 hidden input（`yyyy-MM-ddTHH:mm`） |
+| `disabled` | `boolean` | `false` | 禁用 |
+| `readOnly` | `boolean` | `false` | 只读；默认组合摘掉两个按钮 |
+| `clearable` | `boolean` | `true` | 清除总开关；`false` 连显式组合的也关 |
+| `modal` | Base UI 的 `modal` | `false` | 钉为 false：行内控件不锁页面 |
+| `placeholder` | `string` | — | 默认组合输入框的占位 |
+| `id` | `string` | — | 转发给输入框，`FieldLabel htmlFor` 直连 |
+| `aria-label` | `string` | — | 默认组合输入框的无障碍名 |
+| `children` | `ReactNode \| (state & { defaultChildren }) => ReactNode` | — | 替换输入侧 |
+| 其余 | `ComponentProps<'div'>` | — | 透传到根 |
+
+### DateTimePickerInput
+
+真 `<input>`，从 context 读文本与接线，组合进 `InputGroup` 任意位置。聚焦时
+显示原始草稿，失焦显示格式化值。收 `ComponentProps<typeof InputGroupInput>`。
+
+### DateTimePickerTrigger
+
+选择按钮（含自己的 `InputGroupAddon`），点击开合弹层。默认日历时钟图标 +
+英文 `aria-label`（Open date and time picker），`tabIndex={-1}`。收
+`ComponentProps<typeof InputGroupButton>`。
+
+### DateTimePickerClear
+
+清除按钮（含自己的 addon），空值时靠根的 `data-empty` 隐藏；`clearable` 为
+`false` 时整个不渲染。默认 ✕ 图标 + 英文 `aria-label`（Clear date and
+time），`tabIndex={-1}`。收 `ComponentProps<typeof InputGroupButton>`。
+
+### DateTimePickerPopup
+
+Portal → Positioner → Popup 一体，锚定在根的盒子上。定位四件（`align` /
+`alignOffset` / `side` / `sideOffset`）给 Positioner，其余给 Popup；
+`initialFocus` / `finalFocus` 由封装层钉死。普通 children 渲染在默认面板
+**下方**（放 Footer 的位置）；函数 children 收 `DateTimePickerPanelProps`
+（`{ calendar, columns }`）替换面板（见[自定义面板](#自定义面板)）。
+
+### DateTimePickerFooter
+
+面板下方的动作行，纯布局壳，组合即进入[确认模式](#确认模式)。收
+`ComponentProps<'div'>`。
+
+### DateTimePickerFooterClear / DateTimePickerCancel / DateTimePickerClose
+
+确认模式的三个动作按钮，都收 `ComponentProps<typeof Button>`（文案是
+children，variant 自定）：`FooterClear` 暂存 `null` 不关闭、`Cancel`
+丢弃暂存关闭、`Close` 提交暂存（`close-press`）关闭。
+
+17 个类型一并导出：`DateTimePickerProps` / `DateTimePickerState` /
+`DateTimePickerInputProps` / `DateTimePickerTriggerProps` /
+`DateTimePickerClearProps` / `DateTimePickerPopupProps` /
+`DateTimePickerFooterProps` / `DateTimePickerFooterClearProps` /
+`DateTimePickerCancelProps` / `DateTimePickerCloseProps` /
+`DateTimePickerCalendarProps` / `DateTimePickerColumnsProps` /
+`DateTimePickerPanelProps` / `DateTimePickerChangeEventReason` /
+`DateTimePickerChangeEventDetails` / `DateTimePickerOpenChangeEventReason` /
+`DateTimePickerOpenChangeEventDetails`。

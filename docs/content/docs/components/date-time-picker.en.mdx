@@ -1,0 +1,298 @@
+---
+title: DateTimePicker
+description: A typeable date-time input + a popup with the calendar and hour/minute columns side by side
+---
+
+<ComponentPreview name="date-time-picker/basic" />
+
+The complete control for picking a date and a time together. At its centre is
+a real `<input>`: type "2026-08-16 09:30" and the moment it parses it takes
+effect; or open the popup and pick a date in the calendar on the left and a
+time in the hour and minute columns on the right. The input shell, popup,
+confirm mode and form serialisation are the same machinery as
+[DatePicker](/en/docs/components/date-picker); the panel is the equally
+exported `Calendar` plus
+[`TimeColumns`](/en/docs/components/time-picker#standalone-timecolumns).
+
+**Picking a date keeps the time, picking a time keeps the date**; with no
+value yet, picking a date starts at midnight and picking a time lands on
+today. As with [TimePicker](/en/docs/components/time-picker), **picking does
+not close the popup** — a day alone or an hour alone is not a complete
+date-time. Every pick commits immediately, and only Esc, Enter, an outside
+click or tabbing away closes the popup.
+
+## Usage
+
+```tsx
+import { DateTimePicker } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<DateTimePicker aria-label="Appointment time" placeholder="Pick a date and time" />
+```
+
+Omit children and the full default composition is there. Labelling goes
+through the ordinary channel: the root `id` is forwarded to the inner input,
+so `FieldLabel htmlFor` connects directly; without a visible label, pass
+`aria-label`.
+
+## Anatomy
+
+Writing children replaces the input side (input, clear, picker button); the
+popup is present by default and only steps aside once you compose a
+`DateTimePickerPopup`. Marker parts must be direct children of the root, or
+wrapped in a Fragment.
+
+```text
+DateTimePicker
+├─ InputGroup
+│  ├─ DateTimePickerInput
+│  ├─ DateTimePickerClear
+│  └─ DateTimePickerTrigger
+└─ DateTimePickerPopup
+   ├─ Calendar + TimeColumns (default, side by side)
+   └─ DateTimePickerFooter (optional; composing it enters confirm mode)
+```
+
+## Format and localisation
+
+`format` is a date-fns token string that governs both display and parsing,
+defaulting to `yyyy-MM-dd HH:mm`; include seconds (`s`) in the format and a
+seconds column appears. `locale` is fed to formatting, parsing and the
+calendar alike. The value is normalised to the format's smallest unit (with no
+seconds displayed, seconds are zeroed).
+
+Form serialisation does not follow `format` — the hidden input is always
+`yyyy-MM-ddTHH:mm` (`…:ss` with seconds), the wire format of the native
+`<input type="datetime-local">` (see [Form](#form)). Mind the token case:
+months are `MM`, minutes are `mm`.
+
+`format` is a strict match; to accept several spellings leniently, use
+`inputToValue` to swap the parsing side only, while display still goes through
+`format`. Returning `null` means "not a date-time yet" (the draft is kept,
+blur falls back).
+
+## Disabled dates and time range
+
+`min` / `max` are **points in time** (date included): dates outside the range
+are disabled in the calendar; on a boundary day, the hour and minute columns
+additionally disable the times past the boundary. Typing a value outside the
+range is rejected just the same. Below is "no later than now":
+
+<ComponentPreview name="date-time-picker/min-max" />
+
+A pick that would cross a bound lands on the bound instead (rounded to the
+minute step) — say the value is 20:00 on some day and `max` is 14:23 today:
+picking today gives 14:23 today, not a value the field itself would reject.
+With no value yet, the hour and minute columns disable nothing, and a first
+pick that crosses a bound is pulled back to it just the same.
+
+`disabledDates` is the same as in DatePicker: react-day-picker matchers
+(single days, ranges, `before` / `after`, days of the week, functions all
+work), unclickable in the calendar, and typing that lands on those days is
+rejected just the same. `minuteStep` is the same as in
+[TimePicker](/en/docs/components/time-picker#minute-step): the minute column
+lists only multiples of the step, and typing off the step is rejected just the
+same.
+
+## Custom panel
+
+`DateTimePickerPopup`'s function children receive two sets of fully wired
+props — `calendar` and `columns` — to spread into your own `<Calendar>` and
+`<TimeColumns>` respectively, layering configuration on top (the calendar's
+year range and accessible text, the columns' `labels`). Function children
+replace the whole panel, so the layout is yours to decide too:
+
+```tsx
+<DateTimePickerPopup>
+  {({ calendar, columns }) => (
+    <div className="flex">
+      <Calendar {...calendar} startMonth={new Date(2020, 0)} />
+      <TimeColumns {...columns} className="border-s" labels={{ hours: '时', minutes: '分' }} />
+    </div>
+  )}
+</DateTimePickerPopup>
+```
+
+The default panel makes the hour and minute columns exactly as tall as the
+calendar (whose height varies with the number of weeks in the month); in your
+own layout `TimeColumns` uses its default height — to match heights, copy what
+the default panel does: a grid on the outside, and `block-0 min-block-full` on
+`TimeColumns`.
+
+## Confirm mode
+
+Compose a `DateTimePickerFooter` into the popup and picking a date, picking a
+time and typing all switch from "commit immediately" to "stage": the input
+previews the staged value live, and only `DateTimePickerClose` (or Enter)
+commits it in one go and closes — the reason is `close-press`;
+`DateTimePickerCancel`, Esc and outside clicks all discard the stage.
+
+<ComponentPreview name="date-time-picker/footer" />
+
+The Footer is a pure layout shell: action parts, text and variants are all
+composed by the caller. The three action parts map one-to-one onto
+[DatePicker's confirm mode](/en/docs/components/date-picker#confirm-mode).
+
+## Controlled
+
+`value` / `defaultValue` / `onValueChange(value, details)` — the controlled
+empty value is `null`; `details.reason` tells the sources apart (typing
+`input-change`, picking a date or a time `item-press`, clearing
+`clear-press` / `input-clear`), and `details.cancel()` rejects the change.
+Popup open state is a parallel set: `open` / `defaultOpen` /
+`onOpenChange(open, details)`.
+
+<ComponentPreview name="date-time-picker/controlled" />
+
+## Form
+
+With a `name`, a permanent hidden input is rendered: the empty value
+serialises to `''`, a value to `yyyy-MM-ddTHH:mm`, regardless of the display
+format. The hidden input is invisible to native constraint validation, so
+required checks belong in the form layer; the visual asterisk goes to
+`FieldLabel required`. For binding with TanStack Form see the
+[form guide](/en/docs/forms/tanstack-form#datetimepicker).
+
+<ComponentPreview name="date-time-picker/form" />
+
+## Disabled
+
+`disabled` disables the whole control (the hidden input is `disabled` along
+with it and stays out of submission). `readOnly` only locks editing: the
+default composition removes the clear and picker buttons, for the same reason
+as in [DatePicker](/en/docs/components/date-picker#disabled).
+
+## When to use DateTimePicker
+
+Use it when a date and a time are picked together (appointment times,
+deadlines); for a date alone use [DatePicker](/en/docs/components/date-picker);
+for only a time of day use [TimePicker](/en/docs/components/time-picker); for
+a date range use [DateRangePicker](/en/docs/components/date-range-picker).
+
+## State and className
+
+The root is a plain `<div>`, so `className` is just a string; state is read
+from data attributes on the root.
+
+| Attribute | When present |
+| --- | --- |
+| `data-empty` | the input is empty |
+| `data-open` | popup is open |
+| `data-disabled` | `disabled` |
+| `data-readonly` | `readOnly` |
+
+| data-slot | What it is |
+| --- | --- |
+| `date-time-picker` | root |
+| `date-time-picker-trigger` / `-addon` | picker button and its addon |
+| `date-time-picker-clear` / `-addon` | clear button and its addon |
+| `date-time-picker-popup` | popup |
+| `date-time-picker-footer` | the confirm-mode action row |
+| `date-time-picker-footer-clear` / `date-time-picker-cancel` / `date-time-picker-close` | the three action buttons |
+
+For the `calendar` and `time-columns` data-slots inside the panel, see their
+own pages. `DateTimePickerInput` deliberately carries no data-slot of its own,
+for the same reason as `DatePickerInput`.
+
+## Keyboard interactions
+
+| Key | Effect |
+| --- | --- |
+| <kbd>ArrowDown</kbd> | opens the popup from the input |
+| <kbd>Tab</kbd> | with the popup open, moves from the input into the calendar, then the hour and minute columns |
+| Arrow keys in the calendar | react-day-picker's own date roaming; Enter / Space selects |
+| <kbd>ArrowUp</kbd> / <kbd>ArrowDown</kbd> in a column | moves and selects |
+| <kbd>Escape</kbd> | closes the popup and returns focus to the input (the event does not bubble to an outer dialog) |
+| <kbd>Enter</kbd> | on the input, settles the current input; with the popup open it also closes without submitting the form (in confirm mode this is the confirm) |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value →
+callbacks → behaviour switches → appearance → className**.
+
+### DateTimePicker
+
+The root. Without children it renders the full default composition; with a
+`name` it renders a permanent hidden input outside the popup.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultValue` | `Date \| null` | — | uncontrolled initial value |
+| `value` | `Date \| null` | — | controlled value; `null` is the controlled empty value |
+| `onValueChange` | `(value, details) => void` | — | every committed change; `details.cancel()` rejects it |
+| `defaultOpen` | `boolean` | `false` | initial popup open state |
+| `open` | `boolean` | — | controlled popup |
+| `onOpenChange` | `(open, details) => void` | — | popup open/close; `details.cancel()` keeps it as is |
+| `onOpenChangeComplete` | `(open) => void` | — | after the open/close animation completes |
+| `actionsRef` | Base UI Popover actions | — | imperative `unmount` / `close` |
+| `format` | `string` | `'yyyy-MM-dd HH:mm'` | display and parsing format (date-fns tokens); containing `s` adds the seconds column |
+| `locale` | date-fns `Locale` | — | formatting, parsing and calendar text |
+| `inputToValue` | `(text) => Date \| null` | strict parse by `format` | overrides the parsing side; `null` = not a date-time yet |
+| `disabledDates` | `Matcher \| Matcher[]` | — | dates barred from selection; typing that lands on them is rejected too |
+| `min` | `Date` | — | earliest point in time; earlier dates and times are disabled, out-of-range picks land on the bound |
+| `max` | `Date` | — | latest point in time; later dates and times are disabled, out-of-range picks land on the bound |
+| `minuteStep` | `number` | `1` | minute step; typing off the step is rejected too |
+| `name` | `string` | — | when present, renders the hidden input (`yyyy-MM-ddTHH:mm`) |
+| `disabled` | `boolean` | `false` | disables the control |
+| `readOnly` | `boolean` | `false` | read-only; the default composition removes both buttons |
+| `clearable` | `boolean` | `true` | master switch for clearing; `false` disables even an explicitly composed one |
+| `modal` | Base UI's `modal` | `false` | pinned to false: an inline control never locks the page |
+| `placeholder` | `string` | — | placeholder of the default composition's input |
+| `id` | `string` | — | forwarded to the input; `FieldLabel htmlFor` connects directly |
+| `aria-label` | `string` | — | accessible name of the default composition's input |
+| `children` | `ReactNode \| (state & { defaultChildren }) => ReactNode` | — | replaces the input side |
+| rest | `ComponentProps<'div'>` | — | passed through to the root |
+
+### DateTimePickerInput
+
+The real `<input>`; it reads text and wiring from context and composes
+anywhere inside the `InputGroup`. Shows the raw draft while focused, the
+formatted value when blurred. Takes `ComponentProps<typeof InputGroupInput>`.
+
+### DateTimePickerTrigger
+
+The picker button (with its own `InputGroupAddon`); clicking toggles the
+popup. Defaults to a calendar-clock icon + an English `aria-label` (Open date
+and time picker), `tabIndex={-1}`. Takes
+`ComponentProps<typeof InputGroupButton>`.
+
+### DateTimePickerClear
+
+The clear button (with its own addon), hidden via the root's `data-empty` when
+there is no value; not rendered at all when `clearable` is `false`. Defaults
+to a ✕ icon + an English `aria-label` (Clear date and time), `tabIndex={-1}`.
+Takes `ComponentProps<typeof InputGroupButton>`.
+
+### DateTimePickerPopup
+
+Portal → Positioner → Popup in one, anchored to the root's box. The four
+positioning props (`align` / `alignOffset` / `side` / `sideOffset`) go to the
+Positioner, the rest to the Popup; `initialFocus` / `finalFocus` are pinned by
+the seam. Plain children render **below** the default panel (where the Footer
+goes); function children take `DateTimePickerPanelProps`
+(`{ calendar, columns }`) and replace the panel (see
+[Custom panel](#custom-panel)).
+
+### DateTimePickerFooter
+
+The action row below the panel, a pure layout shell; composing it enters
+[confirm mode](#confirm-mode). Takes `ComponentProps<'div'>`.
+
+### DateTimePickerFooterClear / DateTimePickerCancel / DateTimePickerClose
+
+The three action buttons of confirm mode; all take
+`ComponentProps<typeof Button>` (text is children, variant is yours):
+`FooterClear` stages `null` without closing, `Cancel` closes discarding the
+stage, `Close` commits the stage (`close-press`) and closes.
+
+The 17 types are exported as well: `DateTimePickerProps` /
+`DateTimePickerState` / `DateTimePickerInputProps` /
+`DateTimePickerTriggerProps` / `DateTimePickerClearProps` /
+`DateTimePickerPopupProps` / `DateTimePickerFooterProps` /
+`DateTimePickerFooterClearProps` / `DateTimePickerCancelProps` /
+`DateTimePickerCloseProps` / `DateTimePickerCalendarProps` /
+`DateTimePickerColumnsProps` / `DateTimePickerPanelProps` /
+`DateTimePickerChangeEventReason` / `DateTimePickerChangeEventDetails` /
+`DateTimePickerOpenChangeEventReason` /
+`DateTimePickerOpenChangeEventDetails`.
