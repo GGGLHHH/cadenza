@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "upstash-vector-js": {
+      "source": "upstash/skills",
+      "sourceType": "github",
+      "skillPath": "skills/upstash-vector-js/SKILL.md",
+      "computedHash": "6766c88b6161a3518e02633acae98da7b3a7fb8a731a248d0805886e035542bd"
+    }
+  }
+}
