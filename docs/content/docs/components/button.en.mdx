@@ -184,6 +184,21 @@ passes `role={undefined}` on the render element to take it off (the render
 element's props win the merge), so what you get here is "link semantics +
 the full disabled contract", no either-or.
 
+**Router links go through `render`.** `href` means a full page load; for
+client-side navigation in a single-page app, pass the router's link component
+as `render`, with `to` and the other route props on it — it computes the `href`
+itself:
+
+```tsx
+<LinkButton render={<Link to="/exports/new" />} variant="outline">New export</LinkButton>
+```
+
+The seam still does `nativeButton={false}` and strips the `role`, so there is no
+hand-written `<Button nativeButton={false} render={<Link role={undefined} />}>`.
+Disabled, the inert `<a>` without an `href` renders whether or not `render` is
+passed — a router link would keep the `href` it computes, openable from the
+context menu.
+
 If it really should read as a button (an `<a>` that never navigates, only
 triggers an action), pass it back yourself: your `role="button"` comes
 later and overrides the seam's move.

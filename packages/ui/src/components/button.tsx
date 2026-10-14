@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
+import { cloneElement } from 'react'
 import { cn, dataAttr } from '#lib/utils'
 import { Button as ButtonPrimitive } from '#primitives/button'
 import { LoadingOverlay } from './loading-overlay'
@@ -136,6 +137,13 @@ export type LinkButtonProps = Omit<ComponentProps<'a'>, 'className'>
   & {
     /** Renders the link inert: no `href`, not focusable, not activatable. */
     disabled?: boolean
+    /**
+     * The anchor to render instead of a plain `<a>` — a router's link
+     * (`<Link to="/x" />`), which owns its own `href` and client-side
+     * navigation. Disabled, the plain inert `<a>` is rendered regardless: a
+     * router link would still carry the `href` it computes.
+     */
+    render?: ReactElement<Record<string, unknown>>
   }
 
 /**
@@ -150,7 +158,8 @@ export type LinkButtonProps = Omit<ComponentProps<'a'>, 'className'>
  * The variants express their disabled look as `disabled:` pseudo-class styles,
  * which an anchor can never match — hence the `data-disabled:` mirror.
  */
-export function LinkButton({ className, disabled, href, size, variant, ...props }: LinkButtonProps): ReactElement {
+export function LinkButton({ className, disabled, href, render, size, variant, ...props }: LinkButtonProps): ReactElement {
+  const anchor = disabled === true || render === undefined ? <a /> : render
   return (
     <ButtonPrimitive
       className={cn('data-disabled:opacity-50', className)}
@@ -159,8 +168,9 @@ export function LinkButton({ className, disabled, href, size, variant, ...props 
       // `role={undefined}` strips the `role="button"` Base UI writes on every
       // non-native button. This one navigates, so it has to keep announcing as
       // a link — otherwise a screen reader calls it a button and its user has
-      // no reason to expect a new page. Render-element props win the merge.
-      render={<a href={disabled === true ? undefined : href} role={undefined} {...props} />}
+      // no reason to expect a new page. Render-element props win the merge, a
+      // router link's (`render`) included.
+      render={cloneElement(anchor, { ...(disabled !== true && href !== undefined && { href }), role: undefined, ...props })}
       size={size}
       variant={variant}
     />

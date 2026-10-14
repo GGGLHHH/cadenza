@@ -147,6 +147,18 @@ DOM 里退出动画才放得完）；没用这个特性的按钮渲染裸 childr
 render 元素上传 `role={undefined}` 把它摘掉了（render 元素的 props 赢下合并），
 所以这里拿到的是「链接语义 + 完整禁用契约」，不用二选一。
 
+**路由链接用 `render`。** `href` 走的是整页跳转；单页应用要客户端导航，就把路由的链接组件
+传进 `render`，`to` 之类的路由参数写在它身上，`href` 由它自己算：
+
+```tsx
+<LinkButton render={<Link to="/exports/new" />} variant="outline">新建导出</LinkButton>
+```
+
+`nativeButton={false}` 和摘掉 `role` 照旧由封装做，不用再手写
+`<Button nativeButton={false} render={<Link role={undefined} />}>`。禁用时不管传没传
+`render`，渲染的都是那个没有 `href` 的惰性 `<a>` —— 路由链接会带着它算出来的 `href`，
+右键照样能打开。
+
 真要读作按钮（一个不导航、只触发动作的 `<a>`）就自己传回来：`role="button"`
 排在后面，会盖过封装层这一手。
 

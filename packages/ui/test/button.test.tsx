@@ -106,6 +106,27 @@ it('strips href from a disabled LinkButton and dims it — :disabled never fires
   expect(link.className).toContain('data-disabled:opacity-50')
 })
 
+// A router's link: computes its own href from `to` and navigates client-side.
+function RouterLink({ to, ...props }: { to: string } & Record<string, unknown>) {
+  return <a href={`#${to}`} data-router-link="" {...props} />
+}
+
+it('renders a router link through render, still announcing as a link', () => {
+  render(<LinkButton render={<RouterLink to="/exports/new" />} variant="outline">新建</LinkButton>)
+  const link = screen.getByRole('link', { name: '新建' })
+  expect(link.getAttribute('href')).toBe('#/exports/new')
+  expect(link.hasAttribute('data-router-link')).toBe(true)
+  expect(link.getAttribute('role')).toBeNull()
+})
+
+it('falls back to the inert <a> when a router LinkButton is disabled', () => {
+  render(<LinkButton disabled render={<RouterLink to="/exports/new" />}>新建</LinkButton>)
+  const link = screen.getByText('新建')
+  expect(link.tagName).toBe('A')
+  expect(link.hasAttribute('href')).toBe(false)
+  expect(link.hasAttribute('data-router-link')).toBe(false)
+})
+
 it('keeps href on a live LinkButton', () => {
   render(<LinkButton href="https://example.com">文档</LinkButton>)
   expect(screen.getByText('文档').getAttribute('href')).toBe('https://example.com')
