@@ -348,7 +348,8 @@ function renderDefaultOptions(items: SelectPrimitive.Root.Props<unknown, false>[
       <SelectItem key={value} value={value}>{label}</SelectItem>
     ))
   }
-  const isGrouped = items.every(entry => typeof entry === 'object' && entry !== null && 'items' in entry)
+  // Non-empty: `[].every` is true, and an empty list (data still loading) is no group.
+  const isGrouped = items.length > 0 && items.every(entry => typeof entry === 'object' && entry !== null && 'items' in entry)
   if (isGrouped && process.env.NODE_ENV !== 'production') {
     console.error(
       'cadenza-ui: grouped `items` render as a flat list in the default composition — '

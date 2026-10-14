@@ -280,6 +280,15 @@ describe('select', () => {
     error.mockRestore()
   })
 
+  it('one-liner: an empty list is no grouped list — no warning while the data loads', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(<Select aria-label="研究" items={[]} placeholder="全部研究" />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('combobox'))
+    expect(error).not.toHaveBeenCalledWith(expect.stringContaining('grouped `items`'))
+    error.mockRestore()
+  })
+
   it('one-liner: a record of value → label renders too', async () => {
     render(<Select aria-label="水果" items={{ apple: '苹果', pear: '梨' }} placeholder="选一个" />)
     const user = userEvent.setup()
