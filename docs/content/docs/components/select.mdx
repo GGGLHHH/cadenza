@@ -204,7 +204,7 @@ macOS select 的做法），关着时就是普通贴边下拉。本库把它**�
 
 <ComponentPreview name="select/pending" />
 
-触发器**保持可聚焦但弹层不再打开**（底下走 `readOnly`，表单控件现成的
+触发器**保持可聚焦但弹层不再打开**（底下走 `readOnly` 锁值、seam 拒绝打开——Base UI 1.9 起 `readOnly` 本身允许打开浏览；`readOnly` 是表单控件现成的
 「能聚焦、动不了」通道——Button 没有它才需要用 `disabled` +
 `focusableWhenDisabled` 拼装）；Spinner 站进 chevron 的位置（与清除 ✕
 同一个机位），清除让位；`aria-busy` 与 `data-pending` 由 `pending`

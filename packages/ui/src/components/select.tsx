@@ -85,7 +85,7 @@ import { Spinner } from './spinner'
  * - **Clearing is `SelectClear`** — compose it inside the trigger and an ✕
  *   stands in the chevron's spot while something is selected. See its JSDoc.
  * - **An in-flight change is `pending`** — the trigger stays focusable but
- *   the popup will not open (`readOnly` underneath), a spinner stands in the
+ *   the popup will not open (`readOnly` + a refused open), a spinner stands in the
  *   chevron's spot and the clear steps aside. The action-plane word, same as
  *   `Button` — `loading` belongs to the content plane.
  *
@@ -285,6 +285,12 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
         eventDetails.cancel()
       }
     }
+    // Since Base UI 1.9 `readOnly` locks the value, not the popup — a
+    // read-only select opens for browsing. `pending` promises it stays shut,
+    // so the open is refused here, where every opening path (press, keys,
+    // typeahead) arrives.
+    if (nextOpen && pending === true)
+      eventDetails.cancel()
     onOpenChange?.(nextOpen, eventDetails)
   }
 
