@@ -3,8 +3,10 @@
 import type { ComponentProps, ReactElement, RefObject } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
 import type { TimeConstraints, TimeGranularity } from '#lib/time'
-import { Radio as RadioPrimitive } from '@base-ui/react/radio'
-import { RadioGroup as RadioGroupPrimitive } from '@base-ui/react/radio-group'
+// animate-ui's: each cell gets its Motion press. The group is Base UI's own,
+// re-exported unchanged.
+import { Radio as RadioPrimitive } from '@animate-ui/react/primitives/base-ui/radio'
+import { RadioGroup as RadioGroupPrimitive } from '@animate-ui/react/primitives/base-ui/radio-group'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { set, startOfDay } from 'date-fns'
 import { useLayoutEffect, useRef } from 'react'
