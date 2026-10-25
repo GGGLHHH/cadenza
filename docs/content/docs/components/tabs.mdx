@@ -1,6 +1,6 @@
 ---
 title: Tabs
-description: Base UI Tabs 的封装 —— 组合式的标签页家族，行为与无障碍语义全部由 Base UI 承担，外加一块会跟着悬停与焦点滑动的指示器
+description: Base UI Tabs 的封装 —— 组合式的标签页家族，行为与无障碍语义全部由 Base UI 承担，外加 animate-ui 的滑动指示器与面板切换动画
 ---
 
 <ComponentPreview name="tabs/basic" />
@@ -25,7 +25,6 @@ import {
   TabsList,
   TabsPanel,
   TabsTab,
-  TabsViewport,
 } from '@gedatou/cadenza-ui'
 ```
 
@@ -44,8 +43,8 @@ import {
 `defaultValue` 指定初始选中（不给则选第一个**未禁用**的标签）。
 `TabsList` 的 `aria-label` 必给 —— 它是这组标签页的无障碍名。
 
-会滑动的选中标记（[`TabsIndicator`](#滑动指示器)）和面板的交叉滑动
-（[`TabsViewport`](#面板切换动画)）**默认都在场**，上面这段代码一个字都不用加。
+会滑动的选中标记（[滑动指示器](#滑动指示器)）和面板的切换动画
+（[面板切换动画](#面板切换动画)）**默认都在场**，上面这段代码一个字都不用加。
 
 ## 组成
 
@@ -53,17 +52,14 @@ import {
 
 ```text
 Tabs
-├── TabsList
-│   ├── TabsIndicator   ← 默认自动渲染
+├── TabsList            ← 自带滑动指示器
 │   ├── TabsTab
 │   └── TabsTab
-└── TabsViewport        ← 默认自动包裹
-    ├── TabsPanel
-    └── TabsPanel
+├── TabsPanel
+└── TabsPanel
 ```
 
-带 ← 的两个部件是封装层隐式渲染的：写不写都在，写了就以你写的那只为准，
-也可以显式关掉 —— 见[滑动指示器](#滑动指示器)与[面板切换动画](#面板切换动画)。
+部件都是 [animate-ui](https://animate-ui.com) 的 Base UI 版本，vendored 文件只提供类名。
 
 ## Line
 
@@ -74,57 +70,36 @@ Tabs
 
 ## 滑动指示器
 
-`TabsIndicator` 把选中标记从「每个标签各画各的」换成**一个会滑动的元素**：
-切换标签时它补间过去（200ms ease-out），而不是 A 灭 B 亮。
-
-它跟随的顺序是 **悬停 → 聚焦 → 选中**：鼠标移到别的标签上它就滑过去，
-移开再滑回真正选中的那个，所以它表达的是「你即将选中的那个」。
-中间那档「聚焦」正是它存在的理由 —— Base UI 默认手动激活，方向键只移焦点不改选中，
-指示器跟着焦点走才看得出来将要选中谁。
-
-> Base UI 自己也有 `Tabs.Indicator`，但它只跟随**已选中**的标签。这块是本库另写的，
-> 多出来的就是悬停与焦点那两档。
-
-**它默认在场**——`TabsList` 自动渲染一只,这就是本库 tabs 的长相,不用写。三态:
+`TabsList` 自带一个**会滑动的选中标记**：animate-ui 读取选中标签的盒子外观
+（背景、边框、圆角、阴影），克隆成一个元素在标签间滑动，同时让标签自己不再画选中底色。
+两个 `variant` 都支持（`default` 是滑动的胶囊，`line` 是滑动的下划线）。
+它只跟随**已选中**的标签；方向键移动焦点时，看焦点环（`focus-visible`）。
 
 ```tsx
-<TabsList aria-label="…">…</TabsList>                    // 不写:默认在场
+<TabsList aria-label="…">…</TabsList>                    // 默认:animate-ui 的滑动指示器
+<TabsList aria-label="…" indicator={false}>…</TabsList>  // 关:回到各画各的选中态
 <TabsList aria-label="…">
-  <TabsIndicator className="…" />                        // 写:完全归你,默认那只让位
+  <TabsIndicator className="…" />                        // 自己画:Base UI 原生 Indicator
   …
 </TabsList>
-<TabsList aria-label="…" indicator={false}>…</TabsList>  // 显式关:回到各画各的选中态
 ```
 
-指示器在场时标签自身不再画选中底色,两个 `variant` 都支持
-（`default` 是滑动的胶囊，`line` 是滑动的下划线）。
-`prefers-reduced-motion` 下自动降级为瞬时移动；首次渲染直接就位，不做滑入动画。
-标签宽度变化（字体加载完、角标数字变了）会自动重新测量。
+自己写的 `TabsIndicator` 就是 Base UI 的 `Tabs.Indicator`：一个无样式的 `<span>`，
+Base UI 通过 `--active-tab-left` / `--active-tab-top` / `--active-tab-width` /
+`--active-tab-height` 给它定位，外观归你；写了它，animate-ui 的自动指示器就让位。
+时间曲线用 `TabsList` 的 `transition`（Motion `Transition`）调。
 
 ## 面板切换动画
 
-**交叉滑动默认在场**——Base UI 官方
-[animated panels](https://base-ui.com/react/components/tabs#animated-panels)
-的同款参数（opacity 175ms ease、位移 350ms `cubic-bezier(0.22,1,0.36,1)`、
-±50% 行程）：旧面板向一侧滑出淡出，新面板同时从新标签所在的那一侧滑入
-（方向来自 `data-activation-direction`，纵向 tabs 是上下滑）。位移在
-`prefers-reduced-motion` 下不做，淡入淡出保留。
-
-官方示例要求手写一个 viewport 容器；这里**根组件隐式代劳**——连续的
-`TabsPanel` 直接子元素（`.map()` 数组也算）被自动收进一个 `TabsViewport`，
-面板叠进同一格 grid 单元，进出双方重叠着动、布局零跳动。三态照旧：
+**默认在场**：旧面板淡出并向一侧位移，新面板从新标签所在的那一侧淡入
+（纵向 tabs 是上下），由 animate-ui 的 Motion 驱动，系统「减弱动态效果」时只留淡入淡出。
+不需要包任何容器，`TabsPanel` 直接写在 `Tabs` 里即可。
 
 ```tsx
-<Tabs>…</Tabs>                              // 不写:默认交叉滑动
-<Tabs>
-  <TabsViewport className="…">…面板…</TabsViewport>   // 自己写 viewport:结构归你
-</Tabs>
-<Tabs viewport={false}>…</Tabs>             // 关 viewport:回退免容器的进场微滑
-<TabsPanel animated={false} …>              // 单面板关动画
+<TabsPanel value="…">…</TabsPanel>                       // 默认
+<TabsPanel value="…" transition={{ duration: 0.3 }}>…</TabsPanel>  // 调时间曲线（还有 exitTransition）
+<TabsPanel value="…" animated={false}>…</TabsPanel>      // 单面板关动画
 ```
-
-边界：藏在自定义包装组件里的面板收不进 viewport（与所有隐式部件同款的
-「直接子元素」边界），会回退到进场微滑。
 
 ## 方向
 
@@ -178,8 +153,7 @@ Tabs
 悬停、按下、焦点没有 data 属性 —— `TabsTab` 是原生 `<button>`，直接用 `hover:` /
 `active:` / `focus-visible:` 伪类，覆盖全部输入模态。
 
-`TabsIndicator` 是这条规则的例外：它是纯 span，`className` 只收字符串，也没有任何状态
-（见 [Props 里那一节](#tabsindicator)）。`children` 都是普通 ReactNode ——
+`children` 都是普通 ReactNode ——
 Base UI 没有集合 API，也没有状态 render props，按状态换内容就自己拿 `value` 判断。
 
 需要从外部定位时用 `data-slot`：
@@ -188,9 +162,8 @@ Base UI 没有集合 API，也没有状态 render props，按状态换内容就�
 | --- | --- |
 | `tabs` | 根元素 |
 | `tabs-list` | 标签条 |
-| `tabs-indicator` | 滑动指示器（封装层自渲染） |
+| `tabs-indicator` | 滑动指示器（animate-ui 自动渲染的那只，或你写的 `TabsIndicator`） |
 | `tabs-trigger` | 单个 `TabsTab`。**名字是 shadcn 源码留下的**，部件已改名，选择器没有 |
-| `tabs-viewport` | 面板舞台（封装层自渲染） |
 | `tabs-panel` | 单个 `TabsPanel`（接缝层按部件改的名，vendored 文件里写的是 `tabs-content`） |
 
 ## 键盘交互
@@ -218,7 +191,6 @@ Base UI 没有集合 API，也没有状态 render props，按状态换内容就�
 | `defaultValue` | `string \| number \| null` | 第一个未禁用的标签 | 非受控初始选中 |
 | `value` | `string \| number \| null` | — | 受控选中的标签值；`null` 表示一个都不选 |
 | `onValueChange` | `(value, eventDetails) => void` | — | 选中变化回调 |
-| `viewport` | `boolean` | `true` | 是否把连续的 `TabsPanel` 直接子元素收进 `TabsViewport`，见[面板切换动画](#面板切换动画) |
 | `orientation` | `'horizontal' \| 'vertical'` | `'horizontal'` | 排列方向，同时决定方向键的轴 |
 | `className` | `string \| (state) => string` | — | 根元素类名 |
 | 其余 | Base UI `Tabs.Root` 的 props | — | 透传 |
@@ -229,22 +201,23 @@ Base UI 没有集合 API，也没有状态 render props，按状态换内容就�
 | --- | --- | --- | --- |
 | `aria-label` | `string` | — | 这组标签页的无障碍名，**必给** |
 | `activateOnFocus` | `boolean` | `false` | 方向键是否顺带切换面板，见[键盘激活方式](#键盘激活方式) |
-| `indicator` | `boolean` | `true` | 是否自动渲染一只 `TabsIndicator`；自己写了一只时这个开关不参与，见[滑动指示器](#滑动指示器) |
+| `indicator` | `boolean` | `true` | 是否启用 animate-ui 的滑动指示器，见[滑动指示器](#滑动指示器) |
+| `transition` | Motion `Transition` | — | 指示器滑动的时间曲线 |
 | `variant` | `'default' \| 'line'` | `'default'` | 胶囊底色 / 底部指示线 |
 | `className` | `string \| (state) => string` | — | 类名 |
 | 其余 | Base UI `Tabs.List` 的 props | — | 透传 |
 
-接缝层只往上加了一个 `relative` —— `TabsIndicator` 绝对定位在它里面，需要这个定位上下文。
+接缝层只往上加了一个 `relative` —— 指示器绝对定位在它里面，需要这个定位上下文。
 
 ### TabsIndicator
 
+Base UI 的 `Tabs.Indicator`，写在 `TabsList` 里。无样式，靠 `--active-tab-*` 变量定位；
+写了它，animate-ui 的自动指示器让位。
+
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `className` | `string` | — | 类名（改颜色、圆角、过渡时长都从这里来） |
-
-写在 `TabsList` 里，位置随意 —— Base UI 的 List 原样渲染 children，所以它渲染在你
-写的地方，测量的正是它自己的父元素。它没有状态：跟随哪个标签是从 DOM 上读出来的
-（`[data-active]`、`:focus-visible`、一个指针监听），外部读不到，也不该读。
+| `className` | `string \| (state) => string` | — | 类名 |
+| 其余 | Base UI `Tabs.Indicator` 的 props | — | 透传 |
 
 ### TabsTab
 
@@ -257,16 +230,6 @@ Base UI 没有集合 API，也没有状态 render props，按状态换内容就�
 | `className` | `string \| (state) => string` | — | 类名 |
 | 其余 | Base UI `Tabs.Tab` 的 props | — | 透传 |
 
-### TabsViewport
-
-面板舞台：里面的面板叠进同一格 grid 单元。根组件默认隐式创建一个，自己写就是
-接管结构，见[面板切换动画](#面板切换动画)。
-
-| Prop | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `className` | `string` | — | 类名 |
-| 其余 | `div` 的原生属性 + `ref` | — | 透传 |
-
 ### TabsPanel
 
 | Prop | 类型 | 默认值 | 说明 |
@@ -274,9 +237,9 @@ Base UI 没有集合 API，也没有状态 render props，按状态换内容就�
 | `value` | `string \| number` | **必填** | 与对应 `TabsTab` 的 `value` 相同即自动配对 |
 | `keepMounted` | `boolean` | `false` | 未选中时也保留在 DOM（默认只渲染选中的那个） |
 | `animated` | `boolean` | `true` | 这一个面板的切换动画；关掉只影响它自己 |
+| `transition` / `exitTransition` | Motion `Transition` | — | 进场 / 离场的时间曲线 |
 | `className` | `string \| (state) => string` | — | 类名 |
 | 其余 | Base UI `Tabs.Panel` 的 props | — | 透传 |
 
 `TabsProps` / `TabsListProps` / `TabsTabProps` / `TabsPanelProps` /
-`TabsIndicatorProps` / `TabsViewportProps` 六个类型也一并导出，业务层再包一层时
-直接复用。
+`TabsIndicatorProps` 五个类型也一并导出，业务层再包一层时直接复用。

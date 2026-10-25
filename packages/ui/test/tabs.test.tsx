@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createRef } from 'react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab, TabsViewport } from '../src/components/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '../src/components/tabs'
 
 function renderDashboard(props: Omit<TabsProps, 'children'> = {}): void {
   render(
@@ -21,7 +21,7 @@ function renderDashboard(props: Omit<TabsProps, 'children'> = {}): void {
 }
 
 beforeAll(() => {
-  // TabsIndicator re-measures on resize; jsdom has no ResizeObserver.
+  // animate-ui's list and panels observe size changes; jsdom has no ResizeObserver.
   vi.stubGlobal('ResizeObserver', class {
     observe(): void {}
     unobserve(): void {}
@@ -150,89 +150,11 @@ describe('tabs', () => {
   })
 })
 
-describe('tabIndicator', () => {
-  function renderWithIndicator(): void {
-    render(
-      <Tabs defaultValue="overview">
-        <TabsList aria-label="项目仪表盘">
-          <TabsIndicator />
-          <TabsTab value="overview">概览</TabsTab>
-          <TabsTab value="analytics">分析</TabsTab>
-        </TabsList>
-        <TabsPanel value="overview">概览面板</TabsPanel>
-        <TabsPanel value="analytics">分析面板</TabsPanel>
-      </Tabs>,
-    )
-  }
-
-  it('renders inside the tablist, as a sibling of the tabs it measures', () => {
-    // Base UI's List renders its children as written, so the indicator lives
-    // where it is composed — no marker lifting, and `parentElement` is the very
-    // element it measures against.
-    renderWithIndicator()
-    const indicator = document.querySelector('[data-slot="tabs-indicator"]')
-    expect(indicator).not.toBeNull()
-    expect(indicator?.closest('[role="tablist"]')).not.toBeNull()
-  })
-
-  it('leaves the tabs and panels untouched', () => {
-    renderWithIndicator()
-    expect(screen.getAllByRole('tab')).toHaveLength(2)
-    expect(screen.getByRole('tab', { name: '概览', selected: true })).not.toBeNull()
-    expect(screen.getByRole('tabpanel').textContent).toBe('概览面板')
-  })
-
-  it('stays unplaced while the strip has no layout', () => {
-    // jsdom reports every tab as 0×0 — the same reading a strip gives before
-    // its stylesheet applies, or inside a force-mounted (hidden) panel.
-    // Placing there would spend the one un-animated placement on a bogus
-    // position, leaving the first real measurement to slide in from the corner.
-    renderWithIndicator()
-    const style = document.querySelector<HTMLElement>('[data-slot="tabs-indicator"]')?.style
-    expect(style?.opacity).toBe('0')
-    expect(style?.transform).toBe('')
-  })
-
-  it('reads the variant off the list, which is its own parent', () => {
-    render(
-      <Tabs defaultValue="a">
-        <TabsList aria-label="t" variant="line">
-          <TabsIndicator />
-          <TabsTab value="a">A</TabsTab>
-        </TabsList>
-        <TabsPanel value="a">A 面板</TabsPanel>
-      </Tabs>,
-    )
-    const list = document.querySelector('[data-slot="tabs-list"]')
-    expect(list?.getAttribute('data-variant')).toBe('line')
-    expect(document.querySelector('[data-slot="tabs-indicator"]')?.parentElement).toBe(list)
-  })
-
-  it('wears the sliding indicator by default — the house look needs no composing', () => {
-    render(
-      <Tabs defaultValue="a">
-        <TabsList aria-label="默认在场">
-          <TabsTab value="a">A</TabsTab>
-        </TabsList>
-        <TabsPanel value="a">面板</TabsPanel>
-      </Tabs>,
-    )
-    expect(document.querySelectorAll('[data-slot="tabs-indicator"]').length).toBe(1)
-  })
-
-  it('indicator={false} removes the default one', () => {
-    render(
-      <Tabs defaultValue="a">
-        <TabsList aria-label="关掉" indicator={false}>
-          <TabsTab value="a">A</TabsTab>
-        </TabsList>
-        <TabsPanel value="a">面板</TabsPanel>
-      </Tabs>,
-    )
-    expect(document.querySelector('[data-slot="tabs-indicator"]')).toBeNull()
-  })
-
-  it('an explicitly composed indicator is yours — the default one steps aside, no doubling', () => {
+describe('tabs animation (animate-ui)', () => {
+  // The sliding indicator clones the selected tab's computed box look, which
+  // jsdom never paints (no stylesheet), so the automatic one is
+  // browser-verified. What is testable here is the seam's own contract.
+  it('a composed TabsIndicator is Base UI\'s, inside the tablist, with the caller\'s class', () => {
     render(
       <Tabs defaultValue="a">
         <TabsList aria-label="自己的">
@@ -244,13 +166,14 @@ describe('tabIndicator', () => {
     )
     const indicators = document.querySelectorAll('[data-slot="tabs-indicator"]')
     expect(indicators.length).toBe(1)
+    expect(indicators[0]?.closest('[role="tablist"]')).not.toBeNull()
     expect(indicators[0]?.className).toContain('opacity-90')
   })
 
-  it('panels are gathered into an implicit viewport wearing the cross-slide by default', () => {
+  it('indicator={false} leaves the tabs and panels working', async () => {
     render(
       <Tabs defaultValue="a">
-        <TabsList aria-label="动画">
+        <TabsList aria-label="关掉" indicator={false}>
           <TabsTab value="a">A</TabsTab>
           <TabsTab value="b">B</TabsTab>
         </TabsList>
@@ -258,84 +181,25 @@ describe('tabIndicator', () => {
         <TabsPanel value="b">乙</TabsPanel>
       </Tabs>,
     )
-    const viewport = document.querySelector('[data-slot="tabs-viewport"]')
-    expect(viewport).not.toBeNull()
-    // Both panels live inside it, stacked into the same grid cell — that is
-    // what lets outgoing and incoming cross-slide without a layout jump.
-    expect(viewport?.querySelectorAll('[data-slot="tabs-panel"]').length).toBe(1) // inactive one unmounts
-    const panel = viewport?.querySelector('[data-slot="tabs-panel"]')
-    expect(panel?.className).toContain('col-start-1')
-    // Base UI's animated-panels numbers, verbatim.
-    expect(panel?.className).toContain('[transition:opacity_175ms_ease,translate_350ms_cubic-bezier(0.22,1,0.36,1)]')
-    expect(panel?.className).toContain('data-[activation-direction=right]:translate-x-1/2')
-    // The list stays outside the viewport.
-    expect(viewport?.querySelector('[data-slot="tabs-list"]')).toBeNull()
+    await userEvent.click(screen.getByRole('tab', { name: 'B' }))
+    expect(screen.getByRole('tab', { name: 'B', selected: true })).not.toBeNull()
+    expect(screen.getByRole('tabpanel').textContent).toBe('乙')
   })
 
-  it('viewport={false} falls back to the container-free enter-only micro-slide', () => {
-    render(
-      <Tabs defaultValue="a" viewport={false}>
-        <TabsList aria-label="动画">
-          <TabsTab value="a">A</TabsTab>
-        </TabsList>
-        <TabsPanel value="a">面板</TabsPanel>
-      </Tabs>,
-    )
-    expect(document.querySelector('[data-slot="tabs-viewport"]')).toBeNull()
-    const panel = document.querySelector('[data-slot="tabs-panel"]')
-    expect(panel?.className).toContain('data-[activation-direction=right]:translate-x-2')
-    // Load-bearing in the container-free mode: without it Base UI keeps the
-    // outgoing panel in flow for the transition window and two panels stack.
-    expect(panel?.className).toContain('data-ending-style:hidden')
-  })
-
-  it('a composed TabsViewport turns the gathering off — structure is the caller\'s, no nesting', () => {
-    render(
-      <Tabs defaultValue="a">
-        <TabsList aria-label="自己的">
-          <TabsTab value="a">A</TabsTab>
-        </TabsList>
-        <TabsViewport className="opacity-95">
-          <TabsPanel value="a">面板</TabsPanel>
-        </TabsViewport>
-      </Tabs>,
-    )
-    const viewports = document.querySelectorAll('[data-slot="tabs-viewport"]')
-    expect(viewports.length).toBe(1)
-    expect(viewports[0]?.className).toContain('opacity-95')
-  })
-
-  // Slot channels routinely arrive wrapped in a fragment — the house detector
-  // looks through them, a hand-rolled `child.type ===` check does not, and the
-  // gathering would wrap a second viewport around the caller's own.
-  it('yields to a composed TabsViewport inside a fragment too — never double-wraps', () => {
-    render(
-      <Tabs defaultValue="a">
-        <TabsList aria-label="片段里的">
-          <TabsTab value="a">A</TabsTab>
-        </TabsList>
-        <>
-          <TabsViewport className="opacity-95">
-            <TabsPanel value="a">面板</TabsPanel>
-          </TabsViewport>
-        </>
-      </Tabs>,
-    )
-    const viewports = document.querySelectorAll('[data-slot="tabs-viewport"]')
-    expect(viewports.length).toBe(1)
-    expect(viewports[0]?.className).toContain('opacity-95')
-  })
-
-  it('animated={false} strips the animation in either mode', () => {
+  it('animated={false} still swaps panels', async () => {
     render(
       <Tabs defaultValue="a">
         <TabsList aria-label="关动画">
           <TabsTab value="a">A</TabsTab>
+          <TabsTab value="b">B</TabsTab>
         </TabsList>
-        <TabsPanel animated={false} value="a">面板</TabsPanel>
+        <TabsPanel animated={false} value="a">甲</TabsPanel>
+        <TabsPanel animated={false} value="b">乙</TabsPanel>
       </Tabs>,
     )
-    expect(document.querySelector('[data-slot="tabs-panel"]')?.className).not.toContain('data-starting-style:opacity-0')
+    await userEvent.click(screen.getByRole('tab', { name: 'B' }))
+    expect(screen.getByRole('tabpanel').textContent).toBe('乙')
+    expect(screen.queryByText('甲')).toBeNull()
   })
 
   it('vertical: orientation reaches Base UI — aria-orientation and the arrow-key axis follow', async () => {

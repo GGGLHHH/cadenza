@@ -233,13 +233,13 @@ stays in place, covered by the frost.
 #### InfiniteSelectLoadingOverlay: customising the frost
 
 Place it in the composition channel to customise the frost above. It is a
-TabsIndicator-style **marker part** — it renders nothing where it is written
+**marker part** — it renders nothing where it is written
 (an absolutely positioned overlay cannot live in the panel's document flow);
 the List part hoists it to the list shell's position to render. `children`
 replaces the centered Spinner, `className` tunes the frost density, and
 `loading` is the base's wiring — not among its props. Effective as a direct
 child or inside a Fragment; wrapped in a custom component it cannot be found
-(the same limit as TabsIndicator). With `InfiniteCombobox`, just write it
+(the same limit as SelectPopup's SelectGroup detection). With `InfiniteCombobox`, just write it
 after the trigger:
 
 <ComponentPreview name="infinite-select/loading-custom" />
@@ -343,7 +343,7 @@ A **marker part** of the same kind as `InfiniteSelectLoadingOverlay`: written
 anywhere in the composition channel, it renders nothing in place; the List
 hoists it to the position only the List knows (the end of the scroll flow).
 Effective as a direct child or inside a Fragment; wrapped in a custom
-component it cannot be found — the same limit as TabsIndicator.
+component it cannot be found — the same limit as SelectPopup's SelectGroup detection.
 
 #### When it does not render
 

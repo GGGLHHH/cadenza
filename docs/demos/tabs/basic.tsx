@@ -5,10 +5,10 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@gedatou/cadenza-ui'
 // TabsPanel pair up automatically through the shared value.
 // Arrow-key switching and the aria-controls / aria-labelledby wiring are
 // all handled by Base UI -- nothing to write by hand.
-// The sliding selection background (TabsIndicator) is present by default:
-// it follows the pointer on hover and glides back to the selection after.
+// The sliding selection background is animate-ui's and present by default:
+// it glides to the selected tab, and the panels cross-fade as they swap.
 // Nothing to write; indicator={false} turns it off, and writing your own
-// <TabsIndicator className=…> hands it over entirely
+// <TabsIndicator className=…> (Base UI's own) hands it over entirely
 export default function BasicDemo(): ReactElement {
   return (
     <Tabs defaultValue="analytics">

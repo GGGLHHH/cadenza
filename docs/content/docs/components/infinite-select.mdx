@@ -193,11 +193,11 @@ TanStack Virtual：**任何时刻只有视口内可见的那一小段行存在�
 
 #### InfiniteSelectLoadingOverlay:定制磨砂
 
-在组合通道里放它即可定制上面那层磨砂。它是 TabsIndicator 式的**标记部件**——
+在组合通道里放它即可定制上面那层磨砂。它是**标记部件**——
 写在哪里都不渲染（绝对定位的覆盖层没法住在面板的文档流里），由 List 部件
 提升到列表壳的位置渲染；`children` 替换居中的 Spinner，`className` 调磨砂浓度，
 `loading` 是基座的接线、不在它的 props 里。直接子级或 Fragment 内有效，
-包进自定义组件会找不到（与 TabsIndicator 同一限制）。用 `InfiniteCombobox` 时
+包进自定义组件会找不到（与 SelectPopup 识别 SelectGroup 同一限制）。用 `InfiniteCombobox` 时
 写在触发器后面即可：
 
 <ComponentPreview name="infinite-select/loading-custom" />
@@ -279,7 +279,7 @@ TanStack Virtual：**任何时刻只有视口内可见的那一小段行存在�
 
 和 `InfiniteSelectLoadingOverlay` 同款的**标记部件**：写在组合通道里任意位置、
 原地不渲染，由 List 提升到只有它知道的位置（滚动流末尾）。直接子级或 Fragment
-内有效，包进自定义组件会找不到 —— 与 TabsIndicator 同一限制。
+内有效，包进自定义组件会找不到 —— 与 SelectPopup 识别 SelectGroup 同一限制。
 
 #### 何时不渲染
 

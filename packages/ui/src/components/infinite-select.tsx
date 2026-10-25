@@ -450,7 +450,7 @@ export type InfiniteSelectLoadingOverlayProps = Omit<LoadingOverlayProps, 'loadi
  * Slotted customization for the built-in loading overlay: compose it anywhere
  * in the panel's children and the List part renders your props over the list
  * region — `children` replace the centred spinner, `className` tunes the
- * frost. A marker like TabsIndicator: it renders nothing where written (an
+ * frost. A marker part: it renders nothing where written (an
  * absolute overlay cannot live in the panel's flow), and `loading` stays
  * the base's wiring. Direct child or inside a Fragment only — a custom
  * wrapper hides it.

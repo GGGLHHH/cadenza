@@ -255,13 +255,13 @@ protection:
 #### DataTableLoadingOverlay: custom frost
 
 Compose it into the slot channel to customize the frost layer above. It is a
-TabsIndicator-style **marker part** — it renders nothing wherever you write it
+**marker part** — it renders nothing wherever you write it
 (an absolutely positioned overlay cannot live in the empty area's document
 flow) and is hoisted by the card to the overlay position; `children` replaces
 the centered Spinner (brand animation or copy, either works), `className` tunes
 the frost density, and `loading` is the base's wiring, absent from its props.
 Valid as a direct child or inside a Fragment; wrapped in a custom component it
-cannot be found (the same limit as TabsIndicator):
+cannot be found (the same limit as SelectPopup's SelectGroup detection):
 
 <ComponentPreview name="data-table/loading-custom" align="stretch" />
 
