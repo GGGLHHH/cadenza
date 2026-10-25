@@ -256,7 +256,7 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
   const containerRef = useRef<HTMLSpanElement | null>(null)
   const handleOpenChange = (
     nextOpen: boolean,
-    eventDetails: SelectPrimitive.Root.ChangeEventDetails,
+    eventDetails: SelectPrimitive.Root.OpenChangeEventDetails,
   ): void => {
     // Cancelled before the caller's callback runs, not after: this corrects
     // what the event *is* — a press on our own label, or on our own lifted ✕,
