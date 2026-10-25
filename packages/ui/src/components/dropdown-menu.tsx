@@ -2,19 +2,17 @@
 
 import type { Menu as MenuPrimitive } from '@base-ui/react/menu'
 import type { ComponentProps, ReactElement, RefAttributes } from 'react'
+import { Menu as AnimatedMenu } from '@animate-ui/react/primitives/base-ui/menu'
+import { cn } from '#lib/utils'
 import {
   DropdownMenuCheckboxItem as DropdownMenuCheckboxItemPrimitive,
   DropdownMenuLabel as DropdownMenuGroupLabelPrimitive,
   DropdownMenuGroup as DropdownMenuGroupPrimitive,
   DropdownMenuItem as DropdownMenuItemPrimitive,
-  DropdownMenuContent as DropdownMenuPopupPrimitive,
   DropdownMenuRadioGroup as DropdownMenuRadioGroupPrimitive,
   DropdownMenuRadioItem as DropdownMenuRadioItemPrimitive,
-  DropdownMenu as DropdownMenuRootPrimitive,
   DropdownMenuSeparator as DropdownMenuSeparatorPrimitive,
   DropdownMenuShortcut,
-  DropdownMenuSubContent as DropdownMenuSubmenuPopupPrimitive,
-  DropdownMenuSub as DropdownMenuSubmenuPrimitive,
   DropdownMenuSubTrigger as DropdownMenuSubmenuTriggerPrimitive,
   DropdownMenuTrigger as DropdownMenuTriggerPrimitive,
 } from '#primitives/dropdown-menu'
@@ -74,13 +72,79 @@ import {
  * with `RefAttributes`.
  */
 
+// The vendored DropdownMenuContent / SubContent, rebuilt on animate-ui's
+// parts: its Portal and Popup read the open state from its own Root and
+// SubmenuRoot, which the vendored parts are not wired to. Composition and
+// classes are the vendored ones minus tw-animate; the items, labels and
+// triggers stay vendored — they only read Base UI's context, which
+// animate-ui's Root still provides.
+type MenuPopupPartProps = AnimatedMenu.Popup.Props
+  & Pick<AnimatedMenu.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>
+
+function DropdownMenuPopupPart({
+  align = 'start',
+  alignOffset = 0,
+  side = 'bottom',
+  sideOffset = 4,
+  className,
+  ...props
+}: MenuPopupPartProps): ReactElement {
+  return (
+    <AnimatedMenu.Portal>
+      <AnimatedMenu.Positioner
+        className="isolate z-50 outline-none"
+        align={align}
+        alignOffset={alignOffset}
+        side={side}
+        sideOffset={sideOffset}
+      >
+        <AnimatedMenu.Popup
+          data-slot="dropdown-menu-content"
+          className={cn(`
+            z-50 overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1
+            text-popover-foreground shadow-md ring-1 ring-foreground/10
+            outline-none inline-(--anchor-width) max-block-(--available-height)
+            min-inline-32
+            data-closed:overflow-hidden
+          `, className)}
+          {...props}
+        />
+      </AnimatedMenu.Positioner>
+    </AnimatedMenu.Portal>
+  )
+}
+
+function DropdownMenuSubmenuPopupPart({
+  align = 'start',
+  alignOffset = -3,
+  side = 'right',
+  sideOffset = 0,
+  className,
+  ...props
+}: MenuPopupPartProps): ReactElement {
+  return (
+    <DropdownMenuPopupPart
+      data-slot="dropdown-menu-sub-content"
+      className={cn(`
+        rounded-lg bg-popover p-1 text-popover-foreground shadow-lg ring-1
+        ring-foreground/10 inline-auto min-inline-24
+      `, className)}
+      align={align}
+      alignOffset={alignOffset}
+      side={side}
+      sideOffset={sideOffset}
+      {...props}
+    />
+  )
+}
+
 export type DropdownMenuProps = MenuPrimitive.Root.Props
 /** `onOpenChange`'s second argument. */
 export type DropdownMenuOpenChangeEventDetails = MenuPrimitive.Root.ChangeEventDetails
 
 export type DropdownMenuTriggerProps = MenuPrimitive.Trigger.Props & RefAttributes<HTMLButtonElement>
 export type DropdownMenuTriggerState = MenuPrimitive.Trigger.State
-export type DropdownMenuPopupProps = ComponentProps<typeof DropdownMenuPopupPrimitive> & RefAttributes<HTMLDivElement>
+export type DropdownMenuPopupProps = ComponentProps<typeof DropdownMenuPopupPart> & RefAttributes<HTMLDivElement>
 export type DropdownMenuPopupState = MenuPrimitive.Popup.State
 export type DropdownMenuGroupProps = MenuPrimitive.Group.Props & RefAttributes<HTMLDivElement>
 export type DropdownMenuGroupLabelProps = ComponentProps<typeof DropdownMenuGroupLabelPrimitive> & RefAttributes<HTMLDivElement>
@@ -96,18 +160,18 @@ export type DropdownMenuShortcutProps = ComponentProps<'span'>
 export type DropdownMenuSubmenuProps = MenuPrimitive.SubmenuRoot.Props
 export type DropdownMenuSubmenuTriggerProps = ComponentProps<typeof DropdownMenuSubmenuTriggerPrimitive> & RefAttributes<HTMLDivElement>
 export type DropdownMenuSubmenuTriggerState = MenuPrimitive.SubmenuTrigger.State
-export type DropdownMenuSubmenuPopupProps = ComponentProps<typeof DropdownMenuSubmenuPopupPrimitive> & RefAttributes<HTMLDivElement>
+export type DropdownMenuSubmenuPopupProps = ComponentProps<typeof DropdownMenuSubmenuPopupPart> & RefAttributes<HTMLDivElement>
 
 /**
  * The root. Renders no DOM of its own; the seam's one behavioural change is
  * the `modal={false}` default.
  */
 export function DropdownMenu({ modal = false, ...props }: DropdownMenuProps): ReactElement {
-  return <DropdownMenuRootPrimitive modal={modal} {...props} />
+  return <AnimatedMenu.Root data-slot="dropdown-menu" modal={modal} {...props} />
 }
 
 export const DropdownMenuTrigger = DropdownMenuTriggerPrimitive as (props: DropdownMenuTriggerProps) => ReactElement
-export const DropdownMenuPopup = DropdownMenuPopupPrimitive as (props: DropdownMenuPopupProps) => ReactElement
+export const DropdownMenuPopup = DropdownMenuPopupPart as (props: DropdownMenuPopupProps) => ReactElement
 export const DropdownMenuGroup = DropdownMenuGroupPrimitive as (props: DropdownMenuGroupProps) => ReactElement
 export const DropdownMenuGroupLabel = DropdownMenuGroupLabelPrimitive as (props: DropdownMenuGroupLabelProps) => ReactElement
 export const DropdownMenuItem = DropdownMenuItemPrimitive as (props: DropdownMenuItemProps) => ReactElement
@@ -115,8 +179,10 @@ export const DropdownMenuCheckboxItem = DropdownMenuCheckboxItemPrimitive as (pr
 export const DropdownMenuRadioGroup = DropdownMenuRadioGroupPrimitive as (props: DropdownMenuRadioGroupProps) => ReactElement
 export const DropdownMenuRadioItem = DropdownMenuRadioItemPrimitive as (props: DropdownMenuRadioItemProps) => ReactElement
 export const DropdownMenuSeparator = DropdownMenuSeparatorPrimitive as (props: DropdownMenuSeparatorProps) => ReactElement
-export const DropdownMenuSubmenu = DropdownMenuSubmenuPrimitive as (props: DropdownMenuSubmenuProps) => ReactElement
+export function DropdownMenuSubmenu(props: DropdownMenuSubmenuProps): ReactElement {
+  return <AnimatedMenu.SubmenuRoot data-slot="dropdown-menu-sub" {...props} />
+}
 export const DropdownMenuSubmenuTrigger = DropdownMenuSubmenuTriggerPrimitive as (props: DropdownMenuSubmenuTriggerProps) => ReactElement
-export const DropdownMenuSubmenuPopup = DropdownMenuSubmenuPopupPrimitive as (props: DropdownMenuSubmenuPopupProps) => ReactElement
+export const DropdownMenuSubmenuPopup = DropdownMenuSubmenuPopupPart as (props: DropdownMenuSubmenuPopupProps) => ReactElement
 
 export { DropdownMenuShortcut }

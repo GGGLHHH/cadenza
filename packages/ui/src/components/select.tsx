@@ -3,6 +3,7 @@
 import type { Select as SelectPrimitive } from '@base-ui/react/select'
 import type { ComponentProps, ReactElement, ReactNode, RefObject } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
+import { Select as AnimatedSelect } from '@animate-ui/react/primitives/base-ui/select'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconX } from '@tabler/icons-react'
 import { createContext, use, useMemo, useRef } from 'react'
@@ -14,8 +15,8 @@ import {
   SelectGroup,
   SelectItem,
   SelectLabel,
-  SelectContent as SelectPopupPrimitive,
-  Select as SelectRootPrimitive,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
   SelectSeparator,
   SelectTrigger as SelectTriggerPrimitive,
   SelectValue,
@@ -160,7 +161,8 @@ export type SelectProps<Value = string, Multiple extends boolean | undefined = f
      */
     'aria-label'?: string
   }
-export type SelectPopupProps = ComponentProps<typeof SelectPopupPrimitive>
+export type SelectPopupProps = AnimatedSelect.Popup.Props
+  & Pick<AnimatedSelect.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset' | 'alignItemWithTrigger'>
 export type SelectGroupProps = ComponentProps<typeof SelectGroup>
 export type SelectItemProps = ComponentProps<typeof SelectItem>
 export type SelectLabelProps = ComponentProps<typeof SelectLabel>
@@ -312,7 +314,7 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
 
   return (
     <SelectContext value={context}>
-      <SelectRootPrimitive<Value, Multiple>
+      <AnimatedSelect.Root<Value, Multiple>
         {...props}
         disabled={disabled}
         modal={modal}
@@ -330,7 +332,7 @@ export function Select<Value = string, Multiple extends boolean | undefined = fa
             <SelectPopup>{renderDefaultOptions(props.items)}</SelectPopup>
           </>
         )}
-      </SelectRootPrimitive>
+      </AnimatedSelect.Root>
     </SelectContext>
   )
 }
@@ -371,6 +373,17 @@ function renderDefaultOptions(items: SelectPrimitive.Root.Props<unknown, false>[
   ))
 }
 
+// The vendored SelectContent's composition and classes minus tw-animate. It
+// cannot be reused: animate-ui's Popup reads the open state from animate-ui's
+// Root, which the vendored part is not wired to. An item-aligned popup
+// (`side === 'none'`) only fades — animate-ui's own rule, standing in for the
+// vendored `data-[align-trigger=true]:animate-none`.
+const POPUP_CLASSNAME = `
+  relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36
+  overflow-x-hidden overflow-y-auto rounded-lg bg-popover text-popover-foreground
+  shadow-md ring-1 ring-foreground/10
+`
+
 /**
  * The merged popup part, with the seam's `alignItemWithTrigger={false}`
  * default.
@@ -382,12 +395,41 @@ function renderDefaultOptions(items: SelectPrimitive.Root.Props<unknown, false>[
  * `SelectEmpty` rides along — alone in the implicit group it is still an
  * `:only-child`.
  */
-export function SelectPopup({ alignItemWithTrigger = false, children, ...props }: SelectPopupProps): ReactElement {
+export function SelectPopup({
+  alignItemWithTrigger = false,
+  side = 'bottom',
+  sideOffset = 4,
+  align = 'center',
+  alignOffset = 0,
+  className,
+  children,
+  ...props
+}: SelectPopupProps): ReactElement {
   const hasGroup = findComposedPart(children, SelectGroup) !== undefined
   return (
-    <SelectPopupPrimitive alignItemWithTrigger={alignItemWithTrigger} {...props}>
-      {hasGroup ? children : <SelectGroup>{children}</SelectGroup>}
-    </SelectPopupPrimitive>
+    <AnimatedSelect.Portal>
+      <AnimatedSelect.Positioner
+        side={side}
+        sideOffset={sideOffset}
+        align={align}
+        alignOffset={alignOffset}
+        alignItemWithTrigger={alignItemWithTrigger}
+        className="isolate z-50"
+      >
+        <AnimatedSelect.Popup
+          data-slot="select-content"
+          data-align-trigger={alignItemWithTrigger}
+          className={cn(POPUP_CLASSNAME, className)}
+          {...props}
+        >
+          <SelectScrollUpButton />
+          <AnimatedSelect.List>
+            {hasGroup ? children : <SelectGroup>{children}</SelectGroup>}
+          </AnimatedSelect.List>
+          <SelectScrollDownButton />
+        </AnimatedSelect.Popup>
+      </AnimatedSelect.Positioner>
+    </AnimatedSelect.Portal>
   )
 }
 

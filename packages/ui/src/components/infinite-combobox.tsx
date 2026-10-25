@@ -5,19 +5,62 @@ import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
 import type { ControllableSelectionProps, InfiniteSelectActions, InfiniteSelectAdapterProps, InfiniteSelectChangeEventDetails, InfiniteSelectChangeEventReason, InfiniteSelectItemRenderParams, InfiniteSelectOption } from './infinite-select'
 import type { ScrollAreaScrollbars } from './scroll-area'
+import { Popover as AnimatedPopover } from '@animate-ui/react/primitives/base-ui/popover'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { useDebounceFn } from 'ahooks'
 import { Children, cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { isOwnLabelPress, LABEL_PRESS_REASONS } from '#lib/own-label-press'
 import { cn } from '#lib/utils'
-import { Popover, PopoverContent, PopoverTrigger } from '#primitives/popover'
 import {
   InfiniteSelect,
   InfiniteSelectActionsProvider,
   InfiniteSelectInputGroup,
   InfiniteSelectList,
 } from './infinite-select'
+
+// The vendored popover parts, rebuilt on animate-ui's: its Portal and Popup
+// read the open state from its own Root, which the vendored parts are not
+// wired to. Same names, so `ComponentProps<typeof PopoverContent>` (the
+// public `popoverProps` / `contentClassName` types) keeps its shape; the
+// classes are the vendored PopoverContent's minus tw-animate.
+const Popover = AnimatedPopover.Root
+
+function PopoverTrigger(props: AnimatedPopover.Trigger.Props): ReactElement {
+  return <AnimatedPopover.Trigger data-slot="popover-trigger" {...props} />
+}
+
+function PopoverContent({
+  className,
+  align = 'center',
+  alignOffset = 0,
+  side = 'bottom',
+  sideOffset = 4,
+  ...props
+}: AnimatedPopover.Popup.Props
+  & Pick<AnimatedPopover.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>): ReactElement {
+  return (
+    <AnimatedPopover.Portal>
+      <AnimatedPopover.Positioner
+        align={align}
+        alignOffset={alignOffset}
+        side={side}
+        sideOffset={sideOffset}
+        className="isolate z-50"
+      >
+        <AnimatedPopover.Popup
+          data-slot="popover-content"
+          className={cn(`
+            z-50 flex flex-col gap-2.5 rounded-lg bg-popover p-2.5 text-sm
+            text-popover-foreground shadow-md ring-1 ring-foreground/10
+            outline-hidden inline-72
+          `, className)}
+          {...props}
+        />
+      </AnimatedPopover.Positioner>
+    </AnimatedPopover.Portal>
+  )
+}
 
 /**
  * Popover wrapper for `InfiniteSelect`: Base UI's `Popover` owns open state,

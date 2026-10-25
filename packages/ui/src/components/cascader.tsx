@@ -2,7 +2,7 @@
 
 import type { ComponentProps, ReactElement, ReactNode, RefObject } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
-import { Menu as MenuPrimitive } from '@base-ui/react/menu'
+import { Menu as MenuPrimitive } from '@animate-ui/react/primitives/base-ui/menu'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck, IconChevronRight, IconSelector, IconX } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -690,20 +690,12 @@ function CascaderClearOverlay({
  * Shared by the root popup and every submenu panel. The popup does not scroll
  * itself — each panel scrolls inside its own `ScrollArea` viewport (the
  * InfiniteSelect treatment: overlay scrollbars, `scroll-fade-y`); the popup
- * only clips to its radius.
+ * only clips to its radius. No animation classes: the menu parts are
+ * animate-ui's, which drive enter/exit (and the transform origin) with Motion.
  */
 const popupClassName = `
-  origin-(--transform-origin) overflow-hidden rounded-lg bg-popover
-  text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100
-  outline-none
-  data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95
-  data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95
-  data-[side=bottom]:slide-in-from-top-2
-  data-[side=inline-end]:slide-in-from-left-2
-  data-[side=inline-start]:slide-in-from-right-2
-  data-[side=left]:slide-in-from-right-2
-  data-[side=right]:slide-in-from-left-2
-  data-[side=top]:slide-in-from-bottom-2
+  overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1
+  ring-foreground/10 outline-none
 `
 
 const itemClassName = `

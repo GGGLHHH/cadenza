@@ -1,7 +1,7 @@
 'use client'
 
 import type { ComponentProps, ReactElement } from 'react'
-import { Combobox as ComboboxPrimitive } from '@base-ui/react/combobox'
+import { Combobox as ComboboxPrimitive } from '@animate-ui/react/primitives/base-ui/combobox'
 import { IconCheck, IconChevronDown, IconX } from '@tabler/icons-react'
 import { cn, dataAttr } from '#lib/utils'
 import { Button } from './button'
@@ -265,17 +265,10 @@ export function ComboboxPopup({
         <ComboboxPrimitive.Popup
           className={cn(
             `
-              group/combobox-popup relative origin-(--transform-origin)
-              overflow-hidden rounded-lg bg-popover text-popover-foreground
-              shadow-md ring-1 ring-foreground/10 duration-100
-              inline-(--anchor-width) max-block-(--available-height)
-              max-inline-(--available-width)
-              data-[side=bottom]:slide-in-from-top-2
-              data-[side=inline-end]:slide-in-from-left-2
-              data-[side=inline-start]:slide-in-from-right-2
-              data-[side=left]:slide-in-from-right-2
-              data-[side=right]:slide-in-from-left-2
-              data-[side=top]:slide-in-from-bottom-2
+              group/combobox-popup relative overflow-hidden rounded-lg
+              bg-popover text-popover-foreground shadow-md ring-1
+              ring-foreground/10 inline-(--anchor-width)
+              max-block-(--available-height) max-inline-(--available-width)
               *:data-[slot=input-group]:m-1 *:data-[slot=input-group]:mbe-0
               *:data-[slot=input-group]:border-input/30
               *:data-[slot=input-group]:bg-input/30
@@ -283,9 +276,6 @@ export function ComboboxPopup({
               *:data-[slot=input-group]:block-8
               *:data-[slot=input-group]:focus-within:border-inherit
               *:data-[slot=input-group]:focus-within:ring-0
-              data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95
-              data-closed:animate-out data-closed:fade-out-0
-              data-closed:zoom-out-95
             `,
             className,
           )}
