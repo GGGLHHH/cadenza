@@ -304,6 +304,9 @@ importers:
       jsdom:
         specifier: catalog:testing
         version: 30.0.1
+      motion:
+        specifier: catalog:ui
+        version: 14.6.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       nano-staged:
         specifier: catalog:cli
         version: 1.0.2

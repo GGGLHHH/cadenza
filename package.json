@@ -32,6 +32,7 @@
     "eslint-plugin-react-hooks": "catalog:cli",
     "eslint-plugin-react-refresh": "catalog:cli",
     "jsdom": "catalog:testing",
+    "motion": "catalog:ui",
     "nano-staged": "catalog:cli",
     "publint": "catalog:cli",
     "simple-git-hooks": "catalog:cli",
