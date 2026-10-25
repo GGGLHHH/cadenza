@@ -23,6 +23,10 @@ pnpm add -D tailwindcss tw-animate-css
 
 `styles.css` 自带 `@source "./dist"`，Tailwind 会自动扫到组件用的类名，不用额外配置。它只提供设计 token 和组件依赖的 `*` 边框重置，不会去动你的 `body` 或字体。
 
+组件动画由 [animate-ui](https://animate-ui.com)（基于 [Motion](https://motion.dev)）驱动，作为依赖随包自动安装，
+不用另外装。animate-ui 采用 **MIT + Commons Clause** 许可：可以用在应用、网站和产品里（含商用），
+但不得原样再分发或出售它的组件本身。
+
 ## 用法
 
 ```tsx
