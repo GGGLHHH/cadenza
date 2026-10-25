@@ -101,3 +101,17 @@ if (typeof window !== 'undefined') {
     },
   })
 }
+
+// animate-ui's sliding highlights (tabs, toggle group) watch their items'
+// size; jsdom has no ResizeObserver. Inert, like the layout it would watch.
+if (typeof window !== 'undefined' && typeof window.ResizeObserver !== 'function') {
+  Object.defineProperty(window, 'ResizeObserver', {
+    writable: true,
+    configurable: true,
+    value: class {
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    },
+  })
+}

@@ -64,7 +64,7 @@ import { Progress, ProgressLabel, ProgressValue } from '@gedatou/cadenza-ui'
 ## 标签
 
 `ProgressLabel` 是这个控件的标签通道：它渲染一个带 `id` 的 `<span>`，根自动写上
-`aria-labelledby`，不走 `FieldLabel htmlFor`。`ProgressValue` 打印格式化后的值。
+`aria-labelledby`，不走 `FieldLabel htmlFor`。`ProgressValue` 打印格式化后的值，值变化时由 animate-ui 滚动计数（`aria-valuetext` 不滚动，始终是真实值）。
 
 <ComponentPreview name="progress/label" />
 
@@ -115,7 +115,7 @@ const [value, setValue] = useState(20)
 | `progress-label` | 标签 `<span>` |
 | `progress-value` | 数值 `<span>`，`ms-auto tabular-nums` |
 | `progress-track` | 轨道，`block-1 rounded-full bg-muted`，`inline-full` |
-| `progress-indicator` | 指示条，`bg-primary transition-all`，宽度由 Base UI 按 `value` 写在 `style` 上 |
+| `progress-indicator` | 指示条，`bg-primary`；宽度由 animate-ui 按 `value` 以 spring 补间（不确定态除外） |
 
 ## Props
 

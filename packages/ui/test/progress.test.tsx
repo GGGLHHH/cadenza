@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import { Progress, ProgressIndicator, ProgressLabel, ProgressTrack, ProgressValue } from '../src/components/progress'
 
@@ -25,7 +25,7 @@ it('is indeterminate on null: no aria-valuenow, data-indeterminate on the indica
   expect(container.querySelector('[data-slot=progress-indicator]')?.hasAttribute('data-indeterminate')).toBe(true)
 })
 
-it('wires the label through aria-labelledby and prints the formatted value', () => {
+it('wires the label through aria-labelledby and prints the formatted value', async () => {
   const { container } = render(
     <Progress value={25}>
       <ProgressLabel>Upload</ProgressLabel>
@@ -34,7 +34,9 @@ it('wires the label through aria-labelledby and prints the formatted value', () 
   )
   const label = container.querySelector('[data-slot=progress-label]')!
   expect(bar(container).getAttribute('aria-labelledby')).toBe(label.id)
-  expect(container.querySelector('[data-slot=progress-value]')?.textContent).toBe('25%')
+  // animate-ui counts the printed number up from the minimum, so the text
+  // settles a frame after mount; the bar's own aria-valuetext never counts.
+  await waitFor(() => expect(container.querySelector('[data-slot=progress-value]')?.textContent).toBe('25%'))
 })
 
 it('steps aside when a track is composed instead of rendering a second one', () => {

@@ -1,7 +1,7 @@
-import type { Checkbox as CheckboxPrimitive } from '@base-ui/react/checkbox'
-import type { ComponentProps, ReactElement } from 'react'
+import type { ReactElement } from 'react'
+import { Checkbox as CheckboxPrimitive } from '@animate-ui/react/primitives/base-ui/checkbox'
+import { IconCheck } from '@tabler/icons-react'
 import { cn } from '#lib/utils'
-import { Checkbox as CheckboxPrimitiveStyled } from '#primitives/checkbox'
 
 /**
  * The published Checkbox — Base UI's `Checkbox.Root` in shadcn's base-nova box.
@@ -54,7 +54,7 @@ import { Checkbox as CheckboxPrimitiveStyled } from '#primitives/checkbox'
  *
  * `DataTable`'s selection column renders this same checkbox.
  */
-export type CheckboxProps = ComponentProps<typeof CheckboxPrimitiveStyled>
+export type CheckboxProps = CheckboxPrimitive.Root.Props
 export type CheckboxState = CheckboxPrimitive.Root.State
 /** `onCheckedChange`'s second argument — `reason` is always `'none'`. */
 export type CheckboxChangeEventDetails = CheckboxPrimitive.Root.ChangeEventDetails
@@ -81,6 +81,36 @@ const MIXED = `
   data-indeterminate:before:bg-current data-indeterminate:before:content-['']
 `
 
+// The vendored box's classes. The vendored part cannot be reused: it renders
+// Base UI's own Indicator, and the tick is drawn by animate-ui's, which
+// strokes the check icon's path in with Motion.
+const BOX = `
+  peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px]
+  border border-input transition-colors outline-none
+  group-has-disabled/field:opacity-50
+  after:absolute after:-inset-x-3 after:-inset-y-2
+  focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50
+  disabled:cursor-not-allowed disabled:opacity-50
+  aria-invalid:border-destructive aria-invalid:ring-3
+  aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-primary
+  dark:bg-input/30 dark:aria-invalid:border-destructive/50
+  dark:aria-invalid:ring-destructive/40
+  data-checked:border-primary data-checked:bg-primary
+  data-checked:text-primary-foreground dark:data-checked:bg-primary
+`
+
 export function Checkbox({ className, ...props }: CheckboxProps): ReactElement {
-  return <CheckboxPrimitiveStyled className={cn(MIXED, className)} {...props} />
+  return (
+    <CheckboxPrimitive.Root data-slot="checkbox" className={cn(BOX, MIXED, className)} {...props}>
+      <CheckboxPrimitive.Indicator
+        data-slot="checkbox-indicator"
+        className="
+          grid place-content-center text-current
+          [&>svg]:block-3.5 [&>svg]:inline-3.5
+        "
+      >
+        <IconCheck />
+      </CheckboxPrimitive.Indicator>
+    </CheckboxPrimitive.Root>
+  )
 }

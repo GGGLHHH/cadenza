@@ -1,15 +1,11 @@
 'use client'
 
+import type { Progress as ProgressPrimitive } from '@base-ui/react/progress'
 import type { ReactElement } from 'react'
-import { Progress as ProgressPrimitive } from '@base-ui/react/progress'
+import { Progress as AnimatedProgress } from '@animate-ui/react/primitives/base-ui/progress'
 import { findComposedPart } from '#lib/find-part'
 import { cn } from '#lib/utils'
-import {
-  ProgressIndicator as ProgressIndicatorPrimitive,
-  ProgressLabel,
-  ProgressTrack,
-  ProgressValue,
-} from '#primitives/progress'
+import { ProgressLabel, ProgressTrack } from '#primitives/progress'
 
 export type ProgressProps = ProgressPrimitive.Root.Props
 /** `status` is `'indeterminate'` (`value` is `null`), `'progressing'` or `'complete'` (`value === max`). Every part receives it. */
@@ -51,7 +47,7 @@ export type ProgressValueProps = ProgressPrimitive.Value.Props
 export function Progress({ className, children, ...props }: ProgressProps): ReactElement {
   const composedTrack = findComposedPart(children, ProgressTrack) !== undefined
   return (
-    <ProgressPrimitive.Root
+    <AnimatedProgress.Root
       data-slot="progress"
       className={cn('flex flex-wrap gap-3', className)}
       {...props}
@@ -62,7 +58,7 @@ export function Progress({ className, children, ...props }: ProgressProps): Reac
           <ProgressIndicator />
         </ProgressTrack>
       )}
-    </ProgressPrimitive.Root>
+    </AnimatedProgress.Root>
   )
 }
 
@@ -75,9 +71,14 @@ export function Progress({ className, children, ...props }: ProgressProps): Reac
  */
 export function ProgressIndicator({ className, ...props }: ProgressIndicatorProps): ReactElement {
   return (
-    <ProgressIndicatorPrimitive
+    <AnimatedProgress.Indicator
+      data-slot="progress-indicator"
       className={cn(
+        // The vendored indicator's classes minus its `transition-all`:
+        // animate-ui springs the width toward the value with Motion. It
+        // leaves the indeterminate state alone, so that sweep stays ours.
         `
+          bg-primary block-full
           data-indeterminate:animate-progress-indeterminate
           data-indeterminate:inline-1/3
         `,
@@ -88,4 +89,15 @@ export function ProgressIndicator({ className, ...props }: ProgressIndicatorProp
   )
 }
 
-export { ProgressLabel, ProgressTrack, ProgressValue }
+/** The vendored value's classes; animate-ui counts the number up as it changes. */
+export function ProgressValue({ className, ...props }: ProgressValueProps): ReactElement {
+  return (
+    <AnimatedProgress.Value
+      data-slot="progress-value"
+      className={cn('ms-auto text-sm text-muted-foreground tabular-nums', className)}
+      {...props}
+    />
+  )
+}
+
+export { ProgressLabel, ProgressTrack }

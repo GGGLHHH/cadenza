@@ -4,8 +4,10 @@ import type { Toggle as TogglePrimitive } from '@base-ui/react/toggle'
 import type { ToggleGroup as ToggleGroupPrimitive } from '@base-ui/react/toggle-group'
 import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties, ReactElement } from 'react'
-import { Toggle as TogglePrimitiveRoot } from '@base-ui/react/toggle'
-import { ToggleGroup as ToggleGroupPrimitiveRoot } from '@base-ui/react/toggle-group'
+// animate-ui's: the group slides one highlight between pressed items,
+// and finds them by a marker only its own Toggle stamps.
+import { Toggle as TogglePrimitiveRoot } from '@animate-ui/react/primitives/base-ui/toggle'
+import { ToggleGroup as ToggleGroupPrimitiveRoot } from '@animate-ui/react/primitives/base-ui/toggle-group'
 import { createContext, use, useMemo } from 'react'
 import { cn } from '#lib/utils'
 import { toggleVariants } from '#primitives/toggle'

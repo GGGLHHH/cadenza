@@ -1,10 +1,9 @@
 import type { Radio } from '@base-ui/react/radio'
 import type { RadioGroup as RadioGroupBase } from '@base-ui/react/radio-group'
 import type { ReactElement } from 'react'
-import {
-  RadioGroupItem as RadioGroupItemPrimitive,
-  RadioGroup as RadioGroupPrimitive,
-} from '#primitives/radio-group'
+import { Radio as AnimatedRadio } from '@animate-ui/react/primitives/base-ui/radio'
+import { cn } from '#lib/utils'
+import { RadioGroup as RadioGroupPrimitive } from '#primitives/radio-group'
 
 export type RadioGroupProps<Value = string> = RadioGroupBase.Props<Value>
 export type RadioGroupState = RadioGroupBase.State
@@ -63,6 +62,36 @@ export function RadioGroup<Value = string>(props: RadioGroupProps<Value>): React
  * One choice in a `RadioGroup`. Box-only: give it an `id` and point a sibling
  * `FieldLabel` at it. `value` identifies it within the group and is required.
  */
-export function RadioGroupItem<Value = string>(props: RadioGroupItemProps<Value>): ReactElement {
-  return <RadioGroupItemPrimitive {...props} />
+// The vendored item's classes. The vendored part cannot be reused: it renders
+// Base UI's own Indicator, and the dot is animate-ui's, which pops in and out
+// with Motion.
+const ITEM = `
+  group/radio-group-item peer relative flex aspect-square size-4 shrink-0
+  rounded-full border border-input outline-none
+  after:absolute after:-inset-x-3 after:-inset-y-2
+  focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50
+  disabled:cursor-not-allowed disabled:opacity-50
+  aria-invalid:border-destructive aria-invalid:ring-3
+  aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-primary
+  dark:bg-input/30 dark:aria-invalid:border-destructive/50
+  dark:aria-invalid:ring-destructive/40
+  data-checked:border-primary data-checked:bg-primary
+  data-checked:text-primary-foreground dark:data-checked:bg-primary
+`
+
+export function RadioGroupItem<Value = string>({ className, ...props }: RadioGroupItemProps<Value>): ReactElement {
+  return (
+    <AnimatedRadio.Root<Value> data-slot="radio-group-item" className={cn(ITEM, className)} {...props}>
+      <AnimatedRadio.Indicator
+        data-slot="radio-group-indicator"
+        className="flex items-center justify-center block-4 inline-4"
+      >
+        <span className="
+          absolute inset-s-1/2 inset-bs-1/2 -translate-1/2 rounded-full
+          bg-primary-foreground block-2 inline-2
+        "
+        />
+      </AnimatedRadio.Indicator>
+    </AnimatedRadio.Root>
+  )
 }

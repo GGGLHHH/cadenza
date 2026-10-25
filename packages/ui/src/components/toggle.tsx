@@ -1,8 +1,9 @@
 import type { Toggle as TogglePrimitive } from '@base-ui/react/toggle'
 import type { VariantProps } from 'class-variance-authority'
 import type { ReactElement } from 'react'
+import { Toggle as AnimatedToggle } from '@animate-ui/react/primitives/base-ui/toggle'
 import { cn } from '#lib/utils'
-import { Toggle as TogglePrimitiveStyled, toggleVariants } from '#primitives/toggle'
+import { toggleVariants } from '#primitives/toggle'
 
 /**
  * Pressed and hovered must not look the same.
@@ -77,11 +78,21 @@ export type ToggleProps<Value extends string = string>
  * than by doing anything visible — `ToggleGroupItem` types its own from Base UI
  * and never comes through here.
  */
+// The vendored part's composition on animate-ui's Toggle, which adds a
+// Motion press (a brief scale-down). The vendored part renders Base UI's.
 export function Toggle<Value extends string = string>({
   className,
+  variant = 'default',
+  size = 'default',
   ...props
 }: ToggleProps<Value>): ReactElement {
-  return <TogglePrimitiveStyled className={cn(PRESSED_APART, className)} {...props} />
+  return (
+    <AnimatedToggle<Value>
+      data-slot="toggle"
+      className={cn(toggleVariants({ variant, size }), PRESSED_APART, className)}
+      {...props}
+    />
+  )
 }
 
 export { toggleVariants }

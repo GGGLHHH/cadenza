@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactElement } from 'react'
-import { Switch as SwitchPrimitive } from '@base-ui/react/switch'
+import { Switch as SwitchPrimitive } from '@animate-ui/react/primitives/base-ui/switch'
 import { cn, dataAttr } from '#lib/utils'
 import { Spinner } from './spinner'
 
@@ -110,10 +110,12 @@ export function Switch({
       <SwitchPrimitive.Thumb
         data-slot="switch-thumb"
         className={cn(
-          // Copied verbatim from the vendored primitive (see fork note above).
+          // Copied from the vendored primitive (see fork note above) minus its
+          // `transition-transform`: the translates only mark the two rest
+          // positions now, and animate-ui's Thumb springs between them (and
+          // stretches on press) with Motion.
           `
             pointer-events-none block rounded-full bg-background ring-0
-            transition-transform
             group-data-[size=default]/switch:block-4
             group-data-[size=default]/switch:inline-4
             group-data-[size=sm]/switch:block-3

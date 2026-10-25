@@ -71,7 +71,8 @@ stops supplying the default one:
 
 `ProgressLabel` is this control's label channel: it renders a `<span>` with an `id` and the
 root writes `aria-labelledby` for it — not `FieldLabel htmlFor`. `ProgressValue` prints the
-formatted value.
+formatted value, which animate-ui counts up as it changes (`aria-valuetext` never counts —
+it is always the real value).
 
 <ComponentPreview name="progress/label" />
 
@@ -126,7 +127,7 @@ Use `data-slot` to reach a part from outside:
 | `progress-label` | the label `<span>` |
 | `progress-value` | the value `<span>`, `ms-auto tabular-nums` |
 | `progress-track` | the track, `block-1 rounded-full bg-muted`, `inline-full` |
-| `progress-indicator` | the indicator, `bg-primary transition-all`; Base UI writes its width from `value` into `style` |
+| `progress-indicator` | the indicator, `bg-primary`; animate-ui springs its width toward `value` (except while indeterminate) |
 
 ## Props
 
