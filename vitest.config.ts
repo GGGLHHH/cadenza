@@ -10,5 +10,6 @@ export default defineConfig({
     // Testing Library only registers its auto-cleanup when afterEach is global.
     globals: true,
     include: ['packages/*/test/**/*.test.{ts,tsx}'],
+    setupFiles: ['./vitest.setup.ts'],
   },
 })

@@ -7,7 +7,7 @@ import type { ChangeEventDetails } from '#lib/change-event-details'
 import type { TimeGranularity } from '#lib/time'
 import type { DatePickerCalendarProps } from './date-picker'
 import type { TimePickerColumnsProps } from './time-picker'
-import { Popover as PopoverPrimitive } from '@base-ui/react/popover'
+import { Popover as PopoverPrimitive } from '@animate-ui/react/primitives/base-ui/popover'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { IconCalendarTime, IconX } from '@tabler/icons-react'
 import {

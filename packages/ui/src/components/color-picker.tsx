@@ -9,7 +9,7 @@ import type {
   ColorSwatchProps as RACColorSwatchProps,
 } from 'react-aria-components'
 import type { ChangeEventDetails } from '#lib/change-event-details'
-import { Popover as PopoverPrimitive } from '@base-ui/react/popover'
+import { Popover as PopoverPrimitive } from '@animate-ui/react/primitives/base-ui/popover'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { createContext, use, useMemo } from 'react'
 import {
