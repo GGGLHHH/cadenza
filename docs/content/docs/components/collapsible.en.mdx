@@ -1,15 +1,14 @@
 ---
 title: Collapsible
-description: A trigger plus an expandable panel — the height transition is the default, no animation to write yourself
+description: A trigger plus an expandable panel — the height animation is the default, nothing to write yourself
 ---
 
 <ComponentPreview name="collapsible/basic" align="start" />
 
 Expand/collapse built on Base UI. The seam adds exactly one thing: **the panel's
-height transition**. Base UI publishes the panel's measured height as
-`--collapsible-panel-height` and marks the two ends of the transition with
-`data-starting-style` / `data-ending-style`; the seam wires the three into one
-CSS transition — without it, the panel just pops open within a frame. Root and
+height animation**. The parts are [animate-ui](https://animate-ui.com)'s Base UI
+ones: Motion animates the panel's height between `0` and `auto` and clips the
+overflow while it moves — without it, the panel just pops open within a frame. Root and
 trigger carry no appearance at all: layout belongs to the caller, the trigger is
 a bare `<button>`, and dressing it up goes through `render`.
 
@@ -43,7 +42,7 @@ Three parts, all exported:
 ```text
 Collapsible                ← root: holds the open state, unstyled itself
 ├── CollapsibleTrigger     ← real <button>; aria-expanded / aria-controls wired by Base UI
-└── CollapsiblePanel       ← the expanded content; the height transition lives here
+└── CollapsiblePanel       ← the expanded content; the height animation lives here
 ```
 
 Order is free: the panel before the trigger (expanding upward) works just as
@@ -109,11 +108,10 @@ column is the same state's name in the function form.
 | root / panel | `data-ending-style` | exit animation in progress | `transitionStatus` is `'ending'` |
 
 The root and the panel receive the same state fields, `transitionStatus`
-(`'starting'` / `'ending'` / `'idle'` / `undefined`) included; the default height
-transition is made exactly by using `data-starting-style` / `data-ending-style`
-to pin both ends to `h-0`. For a horizontal collapse, swap the default
-`h-(--collapsible-panel-height)` for `w-(--collapsible-panel-width)` and
-`transition-[height]` for `transition-[width]` (`cn` merges; later wins).
+(`'starting'` / `'ending'` / `'idle'` / `undefined`) included. Motion drives the
+height animation, not those attributes; timing goes through the panel's
+`transition` / `exitTransition` (a Motion `Transition`), not `className`.
+animate-ui animates height only — a horizontal collapse is not built in.
 
 For targeting from outside, use `data-slot`:
 
@@ -177,13 +175,14 @@ The button that toggles. Renders a real `<button type="button">` by default;
 
 ### CollapsiblePanel
 
-The expanded content. Renders a `<div>`, height transition built in.
+The expanded content. Renders a `<div>`, height animation built in.
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
 | `keepMounted` | `boolean` | `false` | stays in the DOM while collapsed (with `hidden`: unfocusable, unannounced). Ignored while `hiddenUntilFound` is on |
 | `hiddenUntilFound` | `boolean` | `false` | switches to `hidden="until-found"`: the browser's built-in in-page find can hit collapsed text and auto-expand. The cost: the content is always in the DOM |
-| `className` | `string \| (state) => string` | — | merged with the default transition classes (`cn`; later wins). The function form receives `{ open, disabled, transitionStatus }` |
+| `transition` / `exitTransition` | Motion `Transition` | spring | expand / collapse curve |
+| `className` | `string \| (state) => string` | — | the function form receives `{ open, disabled, transitionStatus }` |
 | rest | Base UI `Collapsible.Panel` props (native element props + `ref`) | — | passed through |
 
 ```tsx

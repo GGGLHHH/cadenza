@@ -1,14 +1,13 @@
 ---
 title: Collapsible
-description: 一个触发器加一块可展开的面板 —— 高度过渡是默认值,不用自己写动画
+description: 一个触发器加一块可展开的面板 —— 高度动画是默认值,不用自己写
 ---
 
 <ComponentPreview name="collapsible/basic" align="start" />
 
-基于 Base UI 的展开/收起。封装层只补一件事:**面板的高度过渡**。Base UI 把面板量好的高度
-发布成 `--collapsible-panel-height`,再用 `data-starting-style` / `data-ending-style`
-标出过渡的两端,封装层把这三样接成一条 CSS transition —— 不写它,面板就是一帧之内直接
-弹开。根和触发器则不带任何外观:布局归调用方,触发器是一个裸 `<button>`,套什么样子用
+基于 Base UI 的展开/收起。封装层只补一件事:**面板的高度动画**。部件换成了
+[animate-ui](https://animate-ui.com) 的 Base UI 版本,面板由 Motion 在 `0` 与 `auto`
+之间动画高度、动画期间自己裁剪溢出 —— 不接它,面板就是一帧之内直接弹开。根和触发器则不带任何外观:布局归调用方,触发器是一个裸 `<button>`,套什么样子用
 `render`。
 
 部件名跟的是 Base UI 的词表:页内展开的内容叫 **Panel**(shadcn 那边叫
@@ -39,7 +38,7 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@gedatou/cade
 ```text
 Collapsible                ← 根:持有开合状态,自己不带样式
 ├── CollapsibleTrigger     ← 真 <button>,aria-expanded / aria-controls 由 Base UI 接线
-└── CollapsiblePanel       ← 展开的内容,高度过渡在这一层
+└── CollapsiblePanel       ← 展开的内容,高度动画在这一层
 ```
 
 顺序是自由的:面板放在触发器前面(向上展开)同样成立,`aria-controls` 认的是 id 不是位置。
@@ -94,11 +93,9 @@ DOM 上的 `data-*`,Tailwind 直接当变体写(`data-open:border-primary`);右�
 | 根 / 面板 | `data-ending-style` | 退场动画进行中 | `transitionStatus` 为 `'ending'` |
 
 根与面板的 state 是同一组字段,都含 `transitionStatus`(`'starting'` / `'ending'` /
-`'idle'` / `undefined`),默认的高度过渡就是拿 `data-starting-style` /
-`data-ending-style` 把两端压到 `h-0` 做的。
-要改成横向折叠,把默认的 `h-(--collapsible-panel-height)` 换成
-`w-(--collapsible-panel-width)`、`transition-[height]` 换成 `transition-[width]` 即可
-(`cn` 合并,后写的赢)。
+`'idle'` / `undefined`)。高度动画由 Motion 驱动,不走这两个属性;改时间曲线用面板的
+`transition` / `exitTransition`(Motion `Transition`),不是 `className`。
+animate-ui 只做高度动画,横向折叠不在默认能力里。
 
 需要从外部定位时用 `data-slot`:
 
@@ -160,13 +157,14 @@ DOM 上的 `data-*`,Tailwind 直接当变体写(`data-open:border-primary`);右�
 
 ### CollapsiblePanel
 
-展开的内容。渲染一个 `<div>`,自带高度过渡。
+展开的内容。渲染一个 `<div>`,自带高度动画。
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `keepMounted` | `boolean` | `false` | 收起时保留在 DOM 里(带 `hidden`,不可聚焦、不被朗读)。`hiddenUntilFound` 开启时此项被忽略 |
 | `hiddenUntilFound` | `boolean` | `false` | 改用 `hidden="until-found"`:浏览器自带的页内查找能命中收起的文本并自动展开。代价是内容始终在 DOM 中 |
-| `className` | `string \| (state) => string` | — | 与默认的过渡类名合并(`cn`,后写的赢)。函数形态收到 `{ open, disabled, transitionStatus }` |
+| `transition` / `exitTransition` | Motion `Transition` | spring | 展开 / 收起的时间曲线 |
+| `className` | `string \| (state) => string` | — | 函数形态收到 `{ open, disabled, transitionStatus }` |
 | 其余 | Base UI `Collapsible.Panel` 的 props(元素原生属性 + `ref`) | — | 透传 |
 
 ```tsx

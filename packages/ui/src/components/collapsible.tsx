@@ -1,8 +1,7 @@
 'use client'
 
 import type { ReactElement } from 'react'
-import { Collapsible as CollapsiblePrimitive } from '@base-ui/react/collapsible'
-import { cn } from '#lib/utils'
+import { Collapsible as CollapsiblePrimitive } from '@animate-ui/react/primitives/base-ui/collapsible'
 
 export type CollapsibleProps = CollapsiblePrimitive.Root.Props
 /** The state a function `className` / `style` / `render` receives on the root. */
@@ -31,9 +30,9 @@ export type CollapsiblePanelState = CollapsiblePrimitive.Panel.State
  * ```
  *
  * Root and trigger carry no look of their own: layout belongs to the caller and
- * the trigger is a bare `<button>` meant to be dressed with `render`. What the
- * seam adds is the panel's height transition — the vendored pass-through has
- * none, so a panel there snaps open in a single frame.
+ * the trigger is a bare `<button>` meant to be dressed with `render`. The parts
+ * are animate-ui's, whose panel animates its height with Motion — the vendored
+ * pass-through has none, so a panel there snaps open in a single frame.
  *
  * Part names follow Base UI's vocabulary rather than shadcn's: in-flow expanding
  * content is a **Panel** (shadcn ships it as `CollapsibleContent`, a Radix-era
@@ -54,25 +53,11 @@ export function CollapsibleTrigger(props: CollapsibleTriggerProps): ReactElement
   return <CollapsiblePrimitive.Trigger data-slot="collapsible-trigger" {...props} />
 }
 
-// Base UI's own transition recipe: it publishes the panel's measured height as
-// `--collapsible-panel-height` and marks the two ends of the transition with
-// `data-starting-style` / `data-ending-style`, so animating between them is
-// plain CSS — no keyframes to register, unlike the accordion primitive. The
-// height is the thing that animates, which is why `overflow-hidden` is here:
-// without it the full-height content spills out of the shrinking box instead of
-// being clipped away.
-const PANEL_CLASSNAME = `
-  h-(--collapsible-panel-height) overflow-hidden
-  transition-[height] duration-200 ease-out
-  data-ending-style:h-0
-  data-starting-style:h-0
-  motion-reduce:transition-none
-`
-
 /**
- * The panel. Wears the height transition by default; `className` refines it
- * (`cn` merges, yours wins) — swap `h-` for `w-(--collapsible-panel-width)` and
- * `transition-[width]` to collapse sideways instead.
+ * The panel. animate-ui animates its height between `0` and `auto` with Motion
+ * and clips the overflow while it moves, so the seam adds no classes of its
+ * own. Timing goes through its `transition` / `exitTransition` props, not
+ * `className`.
  *
  * Padding belongs on an element **inside** the panel, not on the panel itself:
  * the panel's height is what animates, so its own padding gets squeezed on the
@@ -82,12 +67,6 @@ const PANEL_CLASSNAME = `
  * `hiddenUntilFound` goes further — `hidden="until-found"`, which lets the
  * browser's own find-in-page reach text inside a closed panel and open it.
  */
-export function CollapsiblePanel({ className, ...props }: CollapsiblePanelProps): ReactElement {
-  return (
-    <CollapsiblePrimitive.Panel
-      className={cn(PANEL_CLASSNAME, className)}
-      data-slot="collapsible-panel"
-      {...props}
-    />
-  )
+export function CollapsiblePanel(props: CollapsiblePanelProps): ReactElement {
+  return <CollapsiblePrimitive.Panel data-slot="collapsible-panel" {...props} />
 }
