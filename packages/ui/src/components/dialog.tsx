@@ -1,9 +1,11 @@
 'use client'
 
 import type { ComponentProps, ReactElement } from 'react'
-import { Dialog as BaseDialog } from '@base-ui/react/dialog'
+import { Dialog as BaseDialog } from '@animate-ui/react/primitives/base-ui/dialog'
+// The handle is Base UI's own object — animate-ui re-exports it unchanged —
+// and taken from there so the emitted declaration can name its type.
+import { Dialog as BaseUIDialog } from '@base-ui/react/dialog'
 import { IconX } from '@tabler/icons-react'
-import { applyPointerFlip, clearPointerOrigin, recordPointerOrigin } from '#lib/pointer-origin'
 import { cn } from '#lib/utils'
 import {
   DialogClose as DialogClosePrimitive,
@@ -103,29 +105,9 @@ export type DialogTriggerProps<Payload = unknown> = BaseDialog.Trigger.Props<Pay
  *
  * Generic for the same reason the root is: `payload` is typed by the `handle`
  * it is paired with, and the vendored wrapper erased that.
- *
- * The seam's addition is bookkeeping: it records where the pointer was, so the
- * popup can scale out of that point (see `DialogPopup`).
  */
-export function DialogTrigger<Payload>({
-  onKeyDown,
-  onPointerDown,
-  ...props
-}: DialogTriggerProps<Payload>): ReactElement {
-  return (
-    <BaseDialog.Trigger
-      data-slot="dialog-trigger"
-      onPointerDown={(event) => {
-        recordPointerOrigin(event)
-        onPointerDown?.(event)
-      }}
-      onKeyDown={(event) => {
-        clearPointerOrigin()
-        onKeyDown?.(event)
-      }}
-      {...props}
-    />
-  )
+export function DialogTrigger<Payload>(props: DialogTriggerProps<Payload>): ReactElement {
+  return <BaseDialog.Trigger data-slot="dialog-trigger" {...props} />
 }
 
 export type DialogPopupProps = BaseDialog.Popup.Props & {
@@ -164,28 +146,14 @@ const VIEWPORT_CLASSNAME = `
 // The vendored backdrop's classes, inlined rather than imported: the vendored
 // component stamps `data-slot="dialog-overlay"`, and a public part named
 // Backdrop that answers to `[data-slot=dialog-overlay]` is exactly the
-// shadcn-history leak this seam exists to absorb. The animation is a transition
-// rather than the vendored `animate-in`, to match the popup below.
+// shadcn-history leak this seam exists to absorb. No animation classes here or
+// on the popup: both parts are animate-ui's, which fade and flip them in and
+// out with Motion and hold the unmount until the exit has played.
 const BACKDROP_CLASSNAME = `
-  fixed inset-0 isolate z-50 bg-black/10 transition-opacity duration-250
+  fixed inset-0 isolate z-50 bg-black/10
   supports-backdrop-filter:backdrop-blur-xs
-  data-ending-style:opacity-0
-  data-starting-style:opacity-0
 `
 
-// FLIP, not `transform-origin`. Scaling about an off-centre origin only moves
-// the element by `(1 - scale) x distance`, so it can never actually reach the
-// anchor — it just leans that way. A translate does, so the popup genuinely
-// grows out of the point that was clicked.
-//
-// This also means the entrance is a *transition* between two states rather than
-// the vendored `animate-in` keyframes: Base UI drives `data-starting-style` /
-// `data-ending-style` itself and waits for the transition (specifically the
-// opacity leg) before unmounting, so the exit plays in full.
-//
-// `--dialog-flip` is always set by the ref callback below, including the
-// no-pointer fallback, because `transform: var(--x)` with the variable absent
-// is an invalid declaration — there is no fallback syntax in the shorthand.
 // The `:has()` rules are the whole configuration story for inside-scrolling:
 // composing a `DialogBody` switches the popup from "grow as tall as the content
 // needs" to "cap at the screen and let the body scroll". No prop, no mode, and
@@ -197,17 +165,12 @@ const BACKDROP_CLASSNAME = `
 // there are, whereas a grid would need `grid-template-rows` written out and
 // would break the moment a header or footer is left off.
 const POPUP_CLASSNAME = `
-  relative m-auto grid origin-center gap-4 rounded-xl bg-popover p-4 text-sm
+  relative m-auto grid gap-4 rounded-xl bg-popover p-4 text-sm
   text-popover-foreground ring-1 ring-foreground/10 outline-none
   inline-full
-  transition-[transform,opacity] duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]
   has-[>[data-slot=dialog-body]]:flex has-[>[data-slot=dialog-body]]:max-block-full
   has-[>[data-slot=dialog-body]]:flex-col
   sm:max-inline-sm
-  data-ending-style:transform-(--dialog-flip) data-ending-style:opacity-0
-  data-starting-style:transform-(--dialog-flip) data-starting-style:opacity-0
-  motion-reduce:data-ending-style:transform-none
-  motion-reduce:data-starting-style:transform-none
 `
 
 /**
@@ -253,7 +216,6 @@ export function DialogPopup({
       />
       <BaseDialog.Viewport
         data-slot="dialog-viewport"
-        ref={applyPointerFlip}
         className={cn(VIEWPORT_CLASSNAME, viewportClassName)}
       >
         <BaseDialog.Popup
@@ -395,5 +357,5 @@ export const DialogClose = DialogClosePrimitive
  * children can be a function receiving it — which is how one dialog serves a
  * list of rows without lifting a `selectedRow` into state.
  */
-export const createDialogHandle = BaseDialog.createHandle
-export type DialogHandle<Payload = unknown> = BaseDialog.Handle<Payload>
+export const createDialogHandle = BaseUIDialog.createHandle
+export type DialogHandle<Payload = unknown> = BaseUIDialog.Handle<Payload>

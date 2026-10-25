@@ -1,8 +1,10 @@
 'use client'
 
 import type { ComponentProps, ReactElement } from 'react'
-import { Dialog as BaseDialog } from '@base-ui/react/dialog'
-import { applyPointerFlip, clearPointerOrigin, recordPointerOrigin } from '#lib/pointer-origin'
+import { Dialog as BaseDialog } from '@animate-ui/react/primitives/base-ui/dialog'
+// The handle is Base UI's own object — animate-ui re-exports it unchanged —
+// and taken from there so the emitted declaration can name its type.
+import { Dialog as BaseUIDialog } from '@base-ui/react/dialog'
 import { cn } from '#lib/utils'
 import {
   AlertDialogDescription as AlertDialogDescriptionPrimitive,
@@ -48,7 +50,7 @@ import {
  * The seam follows [[Dialog]] on every shared question — Base UI's flat part
  * names (`AlertDialogContent` → `AlertDialogPopup`, `AlertDialogOverlay` →
  * `AlertDialogBackdrop`), a `Dialog.Viewport` so long content can scroll, and
- * an entrance that grows out of the pointer.
+ * animate-ui's Motion-driven enter and exit.
  *
  * ```tsx
  * <AlertDialog>
@@ -100,31 +102,9 @@ export function AlertDialog<Payload>(props: AlertDialogProps<Payload>): ReactEle
 
 export type AlertDialogTriggerProps<Payload = unknown> = BaseDialog.Trigger.Props<Payload>
 
-/**
- * Opens it. Renders a plain `<button>`; `render={<Button />}` styles it.
- *
- * The seam's addition is the same bookkeeping [[DialogTrigger]] does — record
- * where the pointer was, so the popup can grow out of that point.
- */
-export function AlertDialogTrigger<Payload>({
-  onKeyDown,
-  onPointerDown,
-  ...props
-}: AlertDialogTriggerProps<Payload>): ReactElement {
-  return (
-    <BaseDialog.Trigger
-      data-slot="alert-dialog-trigger"
-      onPointerDown={(event) => {
-        recordPointerOrigin(event)
-        onPointerDown?.(event)
-      }}
-      onKeyDown={(event) => {
-        clearPointerOrigin()
-        onKeyDown?.(event)
-      }}
-      {...props}
-    />
-  )
+/** Opens it. Renders a plain `<button>`; `render={<Button />}` styles it. */
+export function AlertDialogTrigger<Payload>(props: AlertDialogTriggerProps<Payload>): ReactElement {
+  return <BaseDialog.Trigger data-slot="alert-dialog-trigger" {...props} />
 }
 
 /** `default` is the everyday box; `sm` is narrower and stacks its actions 50/50. */
@@ -149,10 +129,8 @@ export type AlertDialogPopupState = BaseDialog.Popup.State
 // eight of them, all errors) are scoped to `**/*.tsx`. A shared constant would
 // leave both copies unchecked; two checked copies is the better trade.
 const BACKDROP_CLASSNAME = `
-  fixed inset-0 isolate z-50 bg-black/10 transition-opacity duration-250
+  fixed inset-0 isolate z-50 bg-black/10
   supports-backdrop-filter:backdrop-blur-xs
-  data-ending-style:opacity-0
-  data-starting-style:opacity-0
 `
 
 const VIEWPORT_CLASSNAME = `
@@ -167,21 +145,16 @@ const VIEWPORT_CLASSNAME = `
 // Renaming the group to match `data-slot="alert-dialog-popup"` would silently
 // flatten all four. The group name is a vendored internal, not public API.
 //
-// Positioning, animation and the FLIP anchor are Dialog's — see that file for
-// why the popup no longer pins itself with a fixed translate, and why the
-// entrance is a transition rather than keyframes.
+// Positioning and animation are Dialog's — see that file for why the popup no
+// longer pins itself with a fixed translate, and why it carries no animation
+// classes (animate-ui's Motion drives enter and exit).
 const POPUP_CLASSNAME = `
-  group/alert-dialog-content relative m-auto grid origin-center gap-4
+  group/alert-dialog-content relative m-auto grid gap-4
   rounded-xl bg-popover p-4 text-popover-foreground ring-1 ring-foreground/10
   outline-none
   inline-full
-  transition-[transform,opacity] duration-250 ease-[cubic-bezier(0.22,1,0.36,1)]
   data-[size=default]:max-inline-xs data-[size=sm]:max-inline-xs
   data-[size=default]:sm:max-inline-sm
-  data-ending-style:transform-(--dialog-flip) data-ending-style:opacity-0
-  data-starting-style:transform-(--dialog-flip) data-starting-style:opacity-0
-  motion-reduce:data-ending-style:transform-none
-  motion-reduce:data-starting-style:transform-none
 `
 
 /**
@@ -217,7 +190,6 @@ export function AlertDialogPopup({
       />
       <BaseDialog.Viewport
         data-slot="alert-dialog-viewport"
-        ref={applyPointerFlip}
         className={cn(VIEWPORT_CLASSNAME, viewportClassName)}
       >
         <BaseDialog.Popup
@@ -302,5 +274,5 @@ export function AlertDialogClose(props: AlertDialogCloseProps): ReactElement {
  * function-children receive as `{ payload }` — one confirmation dialog can
  * serve a whole list of rows without lifting the pending row into state.
  */
-export const createAlertDialogHandle = BaseDialog.createHandle
-export type AlertDialogHandle<Payload = unknown> = BaseDialog.Handle<Payload>
+export const createAlertDialogHandle = BaseUIDialog.createHandle
+export type AlertDialogHandle<Payload = unknown> = BaseUIDialog.Handle<Payload>

@@ -12,7 +12,7 @@ description: 模态对话框 —— 传送门、遮罩、滚动视口收在一�
 （`DialogContent` → `DialogPopup`、`DialogOverlay` → `DialogBackdrop`，跟
 [Tabs](/docs/components/tabs) 同一条规矩）；补上[长内容滚动](#长内容滚动)——
 `DialogPopup` 自带滚动视口，再加个 `DialogBody` 就切成页眉页脚固定的内滚；
-以及让弹层[从指针按下的位置展开](#入场动画)。
+以及把部件换成 [animate-ui](https://animate-ui.com) 的，由 Motion 驱动[进出场动画](#动画)。
 
 ## 使用
 
@@ -289,56 +289,25 @@ const handle = createDialogHandle<Person>()
 <DialogPopup initialFocus={inputRef}>
 ```
 
-## 入场动画
+## 动画
 
-对话框**从你按下的位置**长出来，关闭时缩回同一点。不用配置，`DialogTrigger`
-自己记住了指针落点。
+Root、Portal、Backdrop、Popup 都是 [animate-ui](https://animate-ui.com) 的
+Base UI 部件：遮罩淡入淡出，弹层从上方翻入（spring），退场播完才卸载。动画由
+Motion 在 JS 里驱动，所以封装层的类里没有 `transition` / `data-starting-style`，
+覆盖时间曲线也不走 `className`，而是走 `DialogPopup` 透传给 animate-ui 的三个
+prop：
 
-做法是 FLIP：封装层在触发器的 `pointerdown` 上记下视口坐标，弹层挂载时算出
-「缩小并平移到那个点」的 transform，写成一个 CSS 变量放在滚动视口上，
-弹层继承它当作过渡的两端：
-
-```css
-/* --dialog-flip 例如 translate(-212px, -184px) scale(0.3) */
-transition: transform .25s, opacity .25s;
-
-&[data-starting-style],
-&[data-ending-style] {
-  transform: var(--dialog-flip);
-  opacity: 0;
-}
-```
-
-平移量之所以是「指针坐标减屏幕中心」而不用测量弹层：弹层是 `m-auto` 居中在铺满
-屏幕的视口里，**它自己的中心就是屏幕中心**。
-
-这里没有用 `transform-origin`，是因为它做不到。绕某点缩放只会让元素移动
-`(1 − 缩放比) × 到锚点的距离`——**永远够不到锚点**，只是朝那个方向偏一点；
-`translate` 才是精确的。同理，动画走 `transition` 而不是 keyframes：
-`data-starting-style` / `data-ending-style` 由 Base UI 自己驱动，它会等过渡
-（准确说是 opacity 那一段）结束再卸载弹层，退场才播得完整。
-
-**键盘打开退回正中**。触发器上任何 `keydown` 都会清掉记下的坐标——键盘能走到
-触发器，就说明用户的注意力早已不在上次点击的地方。此时变量退成 `scale(0.95)`，
-就是普通的原地缩放。变量任何时候都有值：`transform: var(--x)` 在变量缺席时是
-一条无效声明，简写语法里没有 fallback 可写。
-
-**代码打开沿用最后一次点击的位置**，这是有意的：受控 `open` 或 `handle` 打开的
-对话框（比如保存失败弹出的错误框），从刚点过的那个按钮飞出来，比从屏幕正中冒出来
-更说得通。
-
-想改观感就覆盖对应的类：
+| Prop | 类型 | 默认 | 说明 |
+| --- | --- | --- | --- |
+| `from` | `'top' \| 'bottom' \| 'left' \| 'right'` | `'top'` | 从哪个方向翻入 |
+| `transition` | Motion `Transition` | spring | 入场曲线 |
+| `exitTransition` | Motion `Transition` | 同 `transition` | 退场曲线 |
 
 ```tsx
-{/* 更慢 */}
-<DialogPopup className="duration-400" />
-
-{/* 不要位移，回到原地缩放 */}
-<DialogPopup className="data-starting-style:transform-none data-ending-style:transform-none" />
+<DialogPopup from="bottom" transition={{ type: 'spring', stiffness: 260, damping: 24 }} />
 ```
 
-开了系统的「减弱动态效果」时 transform 自动变成 `none`，位移和缩放一起消失，
-只留淡入淡出。
+开了系统的「减弱动态效果」时 animate-ui 去掉翻转和位移，只留淡入淡出。
 
 ## 状态与 className
 

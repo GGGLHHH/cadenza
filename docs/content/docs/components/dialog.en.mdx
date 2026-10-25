@@ -14,8 +14,8 @@ the Base UI part names (`DialogContent` → `DialogPopup`, `DialogOverlay` →
 `DialogBackdrop` — the same rule as [Tabs](/en/docs/components/tabs)); it adds
 [scrolling for long content](#scrolling-long-content) — `DialogPopup` ships its
 own scroll viewport, and adding a `DialogBody` switches to an inner scroll with
-pinned header and footer; and it makes the popup
-[expand from where the pointer went down](#entrance-animation).
+pinned header and footer; and it swaps in [animate-ui](https://animate-ui.com)'s
+parts, so Motion drives the [enter and exit](#animation).
 
 ## Usage
 
@@ -327,64 +327,27 @@ virtual keyboard stays down. Closing returns focus to the trigger.
 <DialogPopup initialFocus={inputRef}>
 ```
 
-## Entrance animation
+## Animation
 
-The dialog grows **from where you pressed** and shrinks back to the same point
-on close. Nothing to configure — `DialogTrigger` remembers the pointer's landing
-spot by itself.
+Root, Portal, Backdrop and Popup are [animate-ui](https://animate-ui.com)'s Base
+UI parts: the backdrop fades, the popup flips in from above on a spring, and it
+unmounts only after the exit has played. Motion drives this in JS, so the seam's
+classes carry no `transition` / `data-starting-style`, and timing is not
+overridden through `className` but through three props `DialogPopup` forwards to
+animate-ui:
 
-The technique is FLIP: the seam records viewport coordinates on the trigger's
-`pointerdown`; when the popup mounts, it computes the "shrink and translate to
-that point" transform, writes it as a CSS variable on the scroll viewport, and
-the popup inherits it as both ends of the transition:
-
-```css
-/* --dialog-flip e.g. translate(-212px, -184px) scale(0.3) */
-transition: transform .25s, opacity .25s;
-
-&[data-starting-style],
-&[data-ending-style] {
-  transform: var(--dialog-flip);
-  opacity: 0;
-}
-```
-
-The translation is "pointer coordinates minus screen centre" with no popup
-measurement needed: the popup is centred by `m-auto` in a viewport that fills
-the screen, so **its own centre is the screen centre**.
-
-`transform-origin` is not used here because it cannot do the job. Scaling
-around a point only moves the element by `(1 − scale) × distance to the anchor`
-— it **never reaches the anchor**, only leans that way; `translate` is exact.
-Likewise, the animation runs on `transition` rather than keyframes:
-`data-starting-style` / `data-ending-style` are driven by Base UI itself, which
-waits for the transition (the opacity leg, to be precise) to finish before
-unmounting the popup — only then does the exit play out in full.
-
-**Keyboard opening falls back to dead centre.** Any `keydown` on the trigger
-clears the recorded coordinates — if the keyboard could walk to the trigger, the
-user's attention long left the spot of the last click. The variable then
-degrades to `scale(0.95)`, a plain in-place zoom. The variable has a value at
-all times: `transform: var(--x)` is an invalid declaration when the variable is
-absent, and the shorthand syntax has no place to write a fallback.
-
-**Programmatic opening reuses the last click position**, deliberately: a dialog
-opened by controlled `open` or a `handle` (say, an error box popping up after a
-failed save) flying out of the button just pressed makes more sense than
-materialising at screen centre.
-
-To change the feel, override the corresponding classes:
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `from` | `'top' \| 'bottom' \| 'left' \| 'right'` | `'top'` | Which side it flips in from |
+| `transition` | Motion `Transition` | spring | Enter curve |
+| `exitTransition` | Motion `Transition` | same as `transition` | Exit curve |
 
 ```tsx
-{/* slower */}
-<DialogPopup className="duration-400" />
-
-{/* no translation, back to in-place zoom */}
-<DialogPopup className="data-starting-style:transform-none data-ending-style:transform-none" />
+<DialogPopup from="bottom" transition={{ type: 'spring', stiffness: 260, damping: 24 }} />
 ```
 
-With the system's reduced-motion setting on, the transform automatically becomes
-`none` — translation and scale disappear together, leaving only the fade.
+With the system's "reduce motion" setting on, animate-ui drops the flip and the
+offset and keeps only the fade.
 
 ## State and className
 

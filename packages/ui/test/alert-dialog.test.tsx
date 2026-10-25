@@ -5,7 +5,6 @@ import {
   AlertDialogClose,
   AlertDialogPopup,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '../src/components/alert-dialog'
 
 function openAlert(popupProps: Partial<Parameters<typeof AlertDialogPopup>[0]> = {}): HTMLElement {
@@ -103,41 +102,5 @@ describe('alertDialog contract', () => {
     fireEvent.click(screen.getByText('删除'))
 
     expect(onClick).toHaveBeenCalledOnce()
-  })
-})
-
-// The anchor logic lives in #lib/pointer-origin and is shared with Dialog;
-// these two cases prove AlertDialog is wired into it, not that the maths works.
-describe('alertDialogPopup pointer flip', () => {
-  function openBy(press: (trigger: HTMLElement) => void): HTMLElement {
-    cleanup()
-    const { baseElement } = render(
-      <AlertDialog>
-        <AlertDialogTrigger>打开</AlertDialogTrigger>
-        <AlertDialogPopup>
-          <AlertDialogTitle>标题</AlertDialogTitle>
-        </AlertDialogPopup>
-      </AlertDialog>,
-    )
-    const trigger = screen.getByText('打开')
-    press(trigger)
-    fireEvent.click(trigger)
-    return baseElement
-  }
-
-  it('translates to the pointer, as an offset from the screen centre', () => {
-    // jsdom's viewport is 1024x768, so the centre is (512, 384).
-    const base = openBy(trigger => fireEvent.pointerDown(trigger, { clientX: 300, clientY: 200 }))
-    const [viewport] = slot(base, 'alert-dialog-viewport')
-
-    expect(viewport.style.getPropertyValue('--dialog-flip')).toBe('translate(-212px, -184px) scale(0.3)')
-  })
-
-  it('drops a stale anchor when the trigger is pressed by keyboard', () => {
-    openBy(trigger => fireEvent.pointerDown(trigger, { clientX: 300, clientY: 200 }))
-    const base = openBy(trigger => fireEvent.keyDown(trigger, { key: 'Enter' }))
-    const [viewport] = slot(base, 'alert-dialog-viewport')
-
-    expect(viewport.style.getPropertyValue('--dialog-flip')).toBe('scale(0.95)')
   })
 })
