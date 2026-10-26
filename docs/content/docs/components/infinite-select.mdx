@@ -90,9 +90,10 @@ InfiniteCombobox
 </InfiniteCombobox>
 ```
 
-触发器可以是任何元素（库里的 `Button` 即可）—— Base UI 的 `Popover.Trigger` 把
-它变成触发按钮，弹层开合、
-焦点归还、Esc 关闭都由 Base UI 的 `Popover` 接管。`Search` 和 `List` 两个 part 由便利层
+触发器可以是任何元素（库里的 `Button` 即可）—— Base UI 的 `Combobox.Trigger` 把
+它变成触发按钮（面板自己的 `Combobox` 此时不再内联，搜索框在弹层里），弹层开合、
+焦点归还、Esc 关闭都由 Base UI 的 `Combobox` 接管。弹层是 animate-ui 的 Combobox
+弹层：各行错落滑入、高亮在行间滑动，单选点中后对勾画完才收起。`Search` 和 `List` 两个 part 由便利层
 自己渲染，**不要**再写进来（再写一个 `InfiniteSelectList` 会得到两个列表）。
 
 `children` 传函数时，整个 children 就是触发器（能拿到当前状态做摘要展示），此时没有
@@ -435,8 +436,10 @@ interface InfiniteSelectItemRenderParams<T> {
 
 **键盘/指针高亮不在参数里**：它归 Base UI 所有，渲染期间读不到。要跟着高亮换样式，
 挂行上的 `data-highlighted`（`itemClassName` 的函数形式或 Tailwind 变体都行），
-见[状态与 className](#状态与-classname)。默认的高亮底色不画在行上：它是 animate-ui 的
-Highlight，一块在行与行之间滑动的底板，`renderItem` 照样有；行上再加
+见[状态与 className](#状态与-classname)。高亮底色是一块在行间滑动的底板，`renderItem`
+照样有。`InfiniteCombobox` 里它是 animate-ui 弹层自带的：把行上 `data-highlighted`
+的底色接过去滑动，所以行上写 `data-highlighted:bg-*` 换的就是这块底板的颜色。单独
+用 `InfiniteSelect` 时没有弹层，底板换成 animate-ui 的 Highlight 效果，行上的
 `data-highlighted:bg-*` 会叠在它上面。
 
 `label` 不是纯字符串也不用补什么：这里没有客户端 typeahead，过滤全在服务端 ——
@@ -594,7 +597,7 @@ Base UI `Combobox.Item`）
 | --- | --- |
 | `↓` / `↑` | 在列表中移动（输入框保持焦点） |
 | `Enter` | 选中当前项 |
-| `Esc` | 关闭弹层（由 Base UI 的 `Popover` 接管；搜索词在下次打开时才清空） |
+| `Esc` | 关闭弹层（由 Base UI 的 `Combobox` 接管；搜索词在下次打开时才清空） |
 | 打字 | 过滤（经防抖交给数据层） |
 
 ## 导出的类型
@@ -616,7 +619,7 @@ Base UI `Combobox.Item`）
 | `InfiniteComboboxState<T>` / `InfiniteComboboxStateOptions` | `useInfiniteComboboxState` 的返回值与入参 |
 | `InfiniteComboboxChildren<T>` | children 的类型：`ReactNode` / `ReactNode[]`（首个是触发器，其余进组合通道），或接收状态的函数 |
 | `InfiniteSelectChangeEventReason` / `InfiniteSelectChangeEventDetails` | `onValueChange` 与 `useInfiniteComboboxState` 的 `onInputValueChange` 的第二参：Base UI `Combobox` 的 reason 词加上 `'none'` / `'cancel-press'`，可 `cancel()` |
-| `InfiniteComboboxOpenChangeEventReason` / `InfiniteComboboxOpenChangeEventDetails` | `onOpenChange` 的第二参：`Popover` 的 reason 词并上前一套 |
+| `InfiniteComboboxOpenChangeEventReason` / `InfiniteComboboxOpenChangeEventDetails` | `onOpenChange` 的第二参：Base UI `Combobox` 的 reason 词并上前一套 |
 
 ## Props
 
@@ -637,7 +640,7 @@ Base UI `Combobox.Item`）
 | `state` | `InfiniteComboboxState` | — | **必填**，来自 `useInfiniteComboboxState()` |
 | `list` | `InfiniteSelectAdapterProps<T>` | — | **必填**，数据适配器 |
 | `getOption` | `(item: T) => InfiniteSelectOption` | — | **必填**，提取 id / label / disabled |
-| `children` | `ReactNode` \| `ReactNode[]` \| `(state) => ReactElement` | — | **必填**。第一个 child 是触发器，其后的每个 child 进面板的组合通道；任何元素都行（Base UI 的 `Popover.Trigger` 把它接成触发按钮）；函数形式可拿到整个 `state`（含 `open`）加上 `selectedItems` / `selectedValue` / `disabled` |
+| `children` | `ReactNode` \| `ReactNode[]` \| `(state) => ReactElement` | — | **必填**。第一个 child 是触发器，其后的每个 child 进面板的组合通道；任何元素都行（Base UI 的 `Combobox.Trigger` 把它接成触发按钮）；函数形式可拿到整个 `state`（含 `open`）加上 `selectedItems` / `selectedValue` / `disabled` |
 | `selectionMode` | `'single' \| 'multiple'` | `'single'` | 判别式：决定下面三个的类型（与 DataTable 同名） |
 | `defaultValue` | `string` \| `string[]` | — | 非受控初始选择 |
 | `value` | 单选 `string \| null`；多选 `string[]` | — | 受控选择。单选清空传 `null`（`undefined` 表示非受控） |

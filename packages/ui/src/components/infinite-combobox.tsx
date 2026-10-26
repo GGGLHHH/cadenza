@@ -1,15 +1,17 @@
 'use client'
 
-import type { Popover as PopoverPrimitive } from '@base-ui/react/popover'
+import type { Combobox as ComboboxPrimitive } from '@base-ui/react/combobox'
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
+import type { InfiniteSelectHost } from '#lib/infinite-select-host'
 import type { ControllableSelectionProps, InfiniteSelectActions, InfiniteSelectAdapterProps, InfiniteSelectChangeEventDetails, InfiniteSelectChangeEventReason, InfiniteSelectItemRenderParams, InfiniteSelectOption } from './infinite-select'
 import type { ScrollAreaScrollbars } from './scroll-area'
-import { Popover as AnimatedPopover } from '@animate-ui/react/primitives/base-ui/popover'
+import { Combobox as AnimatedCombobox } from '@animate-ui/react/primitives/base-ui/combobox'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { useDebounceFn } from 'ahooks'
 import { Children, cloneElement, isValidElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
+import { InfiniteSelectHostContext } from '#lib/infinite-select-host'
 import { isOwnLabelPress, LABEL_PRESS_REASONS } from '#lib/own-label-press'
 import { cn } from '#lib/utils'
 import {
@@ -19,17 +21,10 @@ import {
   InfiniteSelectList,
 } from './infinite-select'
 
-// The vendored popover parts, rebuilt on animate-ui's: its Portal and Popup
-// read the open state from its own Root, which the vendored parts are not
-// wired to. Same names, so `ComponentProps<typeof PopoverContent>` (the
-// public `popoverProps` / `contentClassName` types) keeps its shape; the
-// classes are the vendored PopoverContent's minus tw-animate.
-const Popover = AnimatedPopover.Root
-
-function PopoverTrigger(props: AnimatedPopover.Trigger.Props): ReactElement {
-  return <AnimatedPopover.Trigger data-slot="popover-trigger" {...props} />
-}
-
+// The popup shell: animate-ui's Combobox popup (staggered rows, gliding
+// highlight, a check held through the close), positioned like the vendored
+// PopoverContent and keeping its classes. Its props are the public
+// `popoverProps` / `contentClassName` types.
 function PopoverContent({
   className,
   align = 'center',
@@ -37,18 +32,18 @@ function PopoverContent({
   side = 'bottom',
   sideOffset = 4,
   ...props
-}: AnimatedPopover.Popup.Props
-  & Pick<AnimatedPopover.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>): ReactElement {
+}: AnimatedCombobox.Popup.Props
+  & Pick<AnimatedCombobox.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>): ReactElement {
   return (
-    <AnimatedPopover.Portal>
-      <AnimatedPopover.Positioner
+    <AnimatedCombobox.Portal>
+      <AnimatedCombobox.Positioner
         align={align}
         alignOffset={alignOffset}
         side={side}
         sideOffset={sideOffset}
         className="isolate z-50"
       >
-        <AnimatedPopover.Popup
+        <AnimatedCombobox.Popup
           data-slot="popover-content"
           className={cn(`
             z-50 flex flex-col gap-2.5 rounded-lg bg-popover p-2.5 text-sm
@@ -57,25 +52,26 @@ function PopoverContent({
           `, className)}
           {...props}
         />
-      </AnimatedPopover.Positioner>
-    </AnimatedPopover.Portal>
+      </AnimatedCombobox.Positioner>
+    </AnimatedCombobox.Portal>
   )
 }
 
 /**
- * Popover wrapper for `InfiniteSelect`: Base UI's `Popover` owns open state,
- * focus restore and dismissal; this layer adds the search/query split with
+ * Popup wrapper for `InfiniteSelect`: the panel's own Base UI `Combobox` goes
+ * non-inline and owns open state, focus restore and dismissal (the search
+ * field sits inside the popup); this layer adds the search/query split with
  * debounce, and an optional commit-on-close draft mode for multi selection.
  */
 
 /**
- * Why the popover opened or closed: Base UI's Popover reasons pass through
+ * Why the popover opened or closed: Base UI's Combobox reasons pass through
  * whole, plus the panel-side reasons a close can carry (an `item-press` under
  * `closeOnSelect`, a footer `clear-press`/`close-press`/`cancel-press`) and
  * `'none'` for programmatic `setOpen`.
  */
 export type InfiniteComboboxOpenChangeEventReason
-  = PopoverPrimitive.Root.ChangeEventReason | InfiniteSelectChangeEventReason
+  = ComboboxPrimitive.Root.ChangeEventReason | InfiniteSelectChangeEventReason
 
 export type InfiniteComboboxOpenChangeEventDetails = ChangeEventDetails<InfiniteComboboxOpenChangeEventReason>
 
@@ -461,9 +457,15 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
    * for one spelling of the check across the seams.
    */
   const handleOpenChange = useCallback(
-    (next: boolean, eventDetails: PopoverPrimitive.Root.ChangeEventDetails) => {
+    (next: boolean, eventDetails: ComboboxPrimitive.Root.ChangeEventDetails) => {
       if (disabled && next)
         return
+      // Base UI closes a single combobox on pick itself — through here, so
+      // animate-ui can hold the close until the check has drawn.
+      if (!next && eventDetails.reason === 'item-press' && !closeOnSelect) {
+        eventDetails.cancel()
+        return
+      }
       if (!next && LABEL_PRESS_REASONS.has(eventDetails.reason)
         && isOwnLabelPress(eventDetails.event, triggerRef.current)) {
         eventDetails.cancel()
@@ -473,7 +475,7 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
       // cancel(), and Base UI reads the flag after this handler returns.
       state.setOpen(next, eventDetails)
     },
-    [disabled, state],
+    [closeOnSelect, disabled, state],
   )
 
   const clearSelection = useCallback((
@@ -590,7 +592,15 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     getOption,
     'className': cn('rounded-none border-0 shadow-none', selectClassName),
     'inputValue': state.inputValue,
-    'onInputValueChange': state.setInputValue,
+    // With the field inside the popup, Base UI clears it once the popup has
+    // unmounted. The search resets on the next open instead (see
+    // useInfiniteComboboxState) — taking this clear too would fire the
+    // caller's callbacks and refetch while nothing is showing.
+    'onInputValueChange': (value: string, eventDetails: InfiniteSelectChangeEventDetails) => {
+      if (eventDetails.reason === 'input-clear' && !state.open)
+        return
+      state.setInputValue(value, eventDetails)
+    },
     rowHeight,
     virtualized,
   }
@@ -609,80 +619,97 @@ export function InfiniteCombobox<T>(props: InfiniteComboboxProps<T>): ReactEleme
     </>
   )
 
+  // The trigger and popup shell, rendered by InfiniteSelect inside its own
+  // Combobox root: animate-ui's popup motion only exists under that root.
+  const host: InfiniteSelectHost = {
+    open: state.open,
+    onOpenChange: handleOpenChange,
+    modal,
+    wrap: panel => (
+      <>
+        {/* An element trigger IS the button (Base UI merges its props into the
+            caller's element); anything else — a bare string, say — becomes the
+            content of Base UI's own button instead. The ref is claimed, not
+            taken: on the `render` path Base UI merges it with whatever ref the
+            caller's element already carries, on the other it lands on Base UI's
+            own button — either way `handleOpenChange` gets the one element the
+            browser would forward a label's click to.
+
+            `role="button"`: with the search field inside the popup, Base UI
+            makes the trigger a `combobox` too, which takes its name from a
+            label only — the trigger's own text would stop naming it. The
+            field in the popup is the combobox; the trigger stays the button
+            (with `aria-haspopup="dialog"`) it always was. */}
+        {isValidElement(wiredTrigger)
+          ? <AnimatedCombobox.Trigger ref={triggerRef} data-slot="popover-trigger" disabled={disabled} render={wiredTrigger} role="button" />
+          : <AnimatedCombobox.Trigger ref={triggerRef} data-slot="popover-trigger" disabled={disabled} role="button">{wiredTrigger}</AnimatedCombobox.Trigger>}
+        {name !== undefined && (isMultiple
+          ? ((selectedValue as string[] | null | undefined) ?? []).map(id => (
+              <input key={id} name={name} type="hidden" value={id} />
+            ))
+          : (
+              <input
+                name={name}
+                type="hidden"
+                value={typeof selectedValue === 'string' ? selectedValue : ''}
+              />
+            ))}
+        <PopoverContent
+          {...popoverProps}
+          className={cn(`
+            gap-0 overflow-hidden p-0 inline-(--anchor-width) min-inline-72
+          `, contentClassName)}
+          data-slot="infinite-combobox-content"
+        >
+          {panel}
+        </PopoverContent>
+      </>
+    ),
+  }
+
   return (
-    <Popover modal={modal} open={state.open} onOpenChange={handleOpenChange}>
-      {/* An element trigger IS the button (Base UI merges its props into the
-          caller's element); anything else — a bare string, say — becomes the
-          content of Base UI's own button instead. The ref is claimed, not
-          taken: on the `render` path Base UI merges it with whatever ref the
-          caller's element already carries, on the other it lands on Base UI's
-          own button — either way `handleOpenChange` gets the one element the
-          browser would forward a label's click to. */}
-      {isValidElement(wiredTrigger)
-        ? <PopoverTrigger ref={triggerRef} disabled={disabled} render={wiredTrigger} />
-        : <PopoverTrigger ref={triggerRef} disabled={disabled}>{wiredTrigger}</PopoverTrigger>}
-      {name !== undefined && (isMultiple
-        ? ((selectedValue as string[] | null | undefined) ?? []).map(id => (
-            <input key={id} name={name} type="hidden" value={id} />
-          ))
-        : (
-            <input
-              name={name}
-              type="hidden"
-              value={typeof selectedValue === 'string' ? selectedValue : ''}
-            />
-          ))}
-      <PopoverContent
-        {...popoverProps}
-        className={cn(`
-          gap-0 overflow-hidden p-0 inline-(--anchor-width) min-inline-72
-        `, contentClassName)}
-        data-slot="infinite-combobox-content"
-      >
-        <InfiniteSelectActionsProvider value={actions}>
-          {props.selectionMode === 'multiple'
-            ? (
-                <InfiniteSelect<T>
-                  {...shared}
-                  selectionMode="multiple"
-                  value={deferredEnabled ? draftIds : ((selectedValue as string[] | null | undefined) ?? [])}
-                  onValueChange={(items, ids, eventDetails) => {
-                    if (deferredEnabled) {
-                      // Draft path: no user callback until the popover closes,
-                      // so nothing here for cancel() to reject.
-                      setDraftIds(ids)
-                      draftItemsRef.current = items
-                      draftIdsRef.current = ids
-                      hasChangedRef.current = true
-                      return
-                    }
-                    props.onValueChange?.(items, ids, eventDetails)
-                    if (eventDetails.isCanceled)
-                      return
-                    setInternalValue(ids)
-                  }}
-                >
-                  {panelChildren}
-                </InfiniteSelect>
-              )
-            : (
-                <InfiniteSelect<T>
-                  {...shared}
-                  value={(selectedValue as string | null | undefined) ?? null}
-                  onValueChange={(item, eventDetails) => {
-                    props.onValueChange?.(item, eventDetails)
-                    if (eventDetails.isCanceled)
-                      return
-                    setInternalValue(item === null ? null : getOption(item).id)
-                    if (closeOnSelect)
-                      state.setOpen(false, eventDetails)
-                  }}
-                >
-                  {panelChildren}
-                </InfiniteSelect>
-              )}
-        </InfiniteSelectActionsProvider>
-      </PopoverContent>
-    </Popover>
+    <InfiniteSelectHostContext value={host}>
+      <InfiniteSelectActionsProvider value={actions}>
+        {props.selectionMode === 'multiple'
+          ? (
+              <InfiniteSelect<T>
+                {...shared}
+                selectionMode="multiple"
+                value={deferredEnabled ? draftIds : ((selectedValue as string[] | null | undefined) ?? [])}
+                onValueChange={(items, ids, eventDetails) => {
+                  if (deferredEnabled) {
+                    // Draft path: no user callback until the popover closes,
+                    // so nothing here for cancel() to reject.
+                    setDraftIds(ids)
+                    draftItemsRef.current = items
+                    draftIdsRef.current = ids
+                    hasChangedRef.current = true
+                    return
+                  }
+                  props.onValueChange?.(items, ids, eventDetails)
+                  if (eventDetails.isCanceled)
+                    return
+                  setInternalValue(ids)
+                }}
+              >
+                {panelChildren}
+              </InfiniteSelect>
+            )
+          : (
+              <InfiniteSelect<T>
+                {...shared}
+                value={(selectedValue as string | null | undefined) ?? null}
+                onValueChange={(item, eventDetails) => {
+                  props.onValueChange?.(item, eventDetails)
+                  if (eventDetails.isCanceled)
+                    return
+                  setInternalValue(item === null ? null : getOption(item).id)
+                }}
+              >
+                {panelChildren}
+              </InfiniteSelect>
+            )}
+      </InfiniteSelectActionsProvider>
+    </InfiniteSelectHostContext>
   )
 }

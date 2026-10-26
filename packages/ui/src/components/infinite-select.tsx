@@ -14,6 +14,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { createContext, use, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
+import { InfiniteSelectHostContext } from '#lib/infinite-select-host'
 import { cn, dataAttr } from '#lib/utils'
 import { Separator } from '#primitives/separator'
 import { Button } from './button'
@@ -570,6 +571,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
   const isMultiple = selectionMode === 'multiple'
   const { selectedIds, onValueChange } = useInfiniteSelectSelection<T>(props)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const host = use(InfiniteSelectHostContext)
 
   // One loading look everywhere: `isLoading` always renders the List part's
   // frosted LoadingOverlay — over the results when a reload keeps them on
@@ -617,59 +619,76 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
     [isLoading, isError, isEmpty, onRetry],
   )
 
-  return (
-    <div
-      className={cn(
-        `
-          flex flex-col rounded-md border border-border bg-popover
-          text-popover-foreground shadow-md inline-full
-        `,
-        className,
+  const panelProps = {
+    'className': cn(
+      `
+        flex flex-col rounded-md border border-border bg-popover
+        text-popover-foreground shadow-md inline-full
+      `,
+      className,
+    ),
+    'data-empty': dataAttr(isEmpty),
+    'data-error': dataAttr(isError),
+    'data-loading': dataAttr(isLoading),
+    'data-slot': 'infinite-select',
+  }
+  const content = (
+    <HighlightedIdContext value={highlightedId}>
+      {children ?? (
+        <>
+          <InfiniteSelectInputGroup placeholder={searchPlaceholder} />
+          <InfiniteSelectList />
+        </>
       )}
-      data-empty={dataAttr(isEmpty)}
-      data-error={dataAttr(isError)}
-      data-loading={dataAttr(isLoading)}
-      data-slot="infinite-select"
-    >
-      <InfiniteSelectStateContext value={stateContextValue}>
-        <InfiniteSelectContext value={contextValue as InfiniteSelectContextValue}>
-          <AnimatedCombobox.Root
-            // `inline` + a pinned `open`: no popup of its own, the list is just
-            // part of the panel. A popover host (InfiniteCombobox) provides the
-            // overlay around the whole thing instead.
-            inline
-            open
-            // Our filtering is the server's: typing drives onInputValueChange, the
-            // caller refetches, and `items` is already the answer. Leaving Base
-            // UI's client filter on would filter the results a second time.
-            filter={null}
-            inputValue={inputValue}
-            items={items.map(item => getOption(item).id)}
-            multiple={isMultiple}
-            value={isMultiple ? selectedIds : (selectedIds[0] ?? null)}
-            virtualized={virtualized}
-            onInputValueChange={onInputValueChange}
-            onItemHighlighted={value => setHighlightedId(value ?? null)}
-            onValueChange={onValueChange}
-          >
-            <HighlightedIdContext value={highlightedId}>
-              {children ?? (
-                <>
-                  <InfiniteSelectInputGroup placeholder={searchPlaceholder} />
-                  <InfiniteSelectList />
-                </>
-              )}
-            </HighlightedIdContext>
-          </AnimatedCombobox.Root>
-        </InfiniteSelectContext>
-      </InfiniteSelectStateContext>
-      {name !== undefined && (isMultiple
-        ? selectedIds.map(id => (
-            <input key={id} name={name} type="hidden" value={id} />
-          ))
-        : <input name={name} type="hidden" value={selectedIds[0] ?? ''} />)}
-    </div>
+    </HighlightedIdContext>
   )
+  const hiddenInputs = name !== undefined && (isMultiple
+    ? selectedIds.map(id => (
+        <input key={id} name={name} type="hidden" value={id} />
+      ))
+    : <input name={name} type="hidden" value={selectedIds[0] ?? ''} />)
+
+  const root = (inner: ReactNode): ReactElement => (
+    <InfiniteSelectStateContext value={stateContextValue}>
+      <InfiniteSelectContext value={contextValue as InfiniteSelectContextValue}>
+        <AnimatedCombobox.Root
+          // Standalone: `inline` + a pinned `open`, no popup of its own — the
+          // list is just part of the panel. Under a host (InfiniteCombobox)
+          // the root is the popup's, and the host owns open state.
+          {...(host
+            ? { open: host.open, onOpenChange: host.onOpenChange, modal: host.modal }
+            : { inline: true, open: true, onItemHighlighted: (value: string | undefined) => setHighlightedId(value ?? null) })}
+          // Our filtering is the server's: typing drives onInputValueChange, the
+          // caller refetches, and `items` is already the answer. Leaving Base
+          // UI's client filter on would filter the results a second time.
+          filter={null}
+          inputValue={inputValue}
+          items={items.map(item => getOption(item).id)}
+          multiple={isMultiple}
+          value={isMultiple ? selectedIds : (selectedIds[0] ?? null)}
+          virtualized={virtualized}
+          onInputValueChange={onInputValueChange}
+          onValueChange={onValueChange}
+        >
+          {inner}
+        </AnimatedCombobox.Root>
+      </InfiniteSelectContext>
+    </InfiniteSelectStateContext>
+  )
+
+  return host
+    ? (
+        <>
+          {root(host.wrap(<div {...panelProps}>{content}</div>))}
+          {hiddenInputs}
+        </>
+      )
+    : (
+        <div {...panelProps}>
+          {root(content)}
+          {hiddenInputs}
+        </div>
+      )
 }
 
 /** The input-group part: Base UI's `Combobox.Input` plus the icon, wired by the root. */
@@ -813,94 +832,106 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
       viewportRef.current.scrollTop = 0
   }, [firstItemId])
 
-  // animate-ui's Highlight in parent mode: one surface, measured onto the row
-  // Base UI highlights and gliding between rows — virtualized ones included,
-  // since it never unmounts with them.
-  const highlightProps = {
-    mode: 'parent',
-    controlledItems: true,
-    click: false,
-    value: use(HighlightedIdContext),
-    className: 'rounded-lg bg-muted',
-  } as const
+  // The gliding highlight. In a host's popup it is animate-ui's own: the popup
+  // lifts the row's `data-highlighted` background off and glides a copy of it.
+  // Standalone there is no popup, so animate-ui's Highlight effect stands in,
+  // in parent mode: one surface, measured onto the row Base UI highlights —
+  // virtualized rows included, since it never unmounts with them.
+  const inPopup = use(InfiniteSelectHostContext) !== null
+  const highlightedId = use(HighlightedIdContext)
+  const glide = (rows: ReactNode, containerClassName: string): ReactNode => inPopup
+    ? rows
+    : (
+        <Highlight
+          className="rounded-lg bg-muted"
+          click={false}
+          containerClassName={containerClassName}
+          controlledItems
+          mode="parent"
+          value={highlightedId}
+        >
+          {rows}
+        </Highlight>
+      )
 
   const renderOption = (item: T, index: number): ReactElement => {
     const option = getOption(item)
     const isSelected = selectedIds.includes(option.id)
-    return (
-      // The highlight is not the row's background: animate-ui's Highlight
-      // glides one surface under whichever row Base UI highlights. The row is
-      // positioned so it paints above that surface.
-      <HighlightItem key={option.id} asChild value={option.id}>
-        <Combobox.Item
-          className={cn(
-            `
-              group/option relative flex cursor-default items-center gap-2
-              rounded-lg px-2 py-1.5 text-sm/5 text-popover-foreground
-              transition-colors outline-none select-none
-            `,
-            `data-selected:not-data-highlighted:bg-muted/50`,
-            `data-disabled:cursor-not-allowed data-disabled:opacity-50`,
-            itemClassName,
-          )}
-          data-slot="infinite-select-item"
-          disabled={option.disabled}
-          value={option.id}
-        >
-          {renderItem
-            ? renderItem({
-                item,
-                option,
-                index,
-                selected: isSelected,
-                disabled: option.disabled ?? false,
-                selectionMode,
-              })
-            : (
-                <>
-                  {/* State lives on the row's data-selected (Base UI writes it);
-                      the box reads it through CSS, and a custom itemClassName
-                      sees the same channel. The checks are animate-ui's item
-                      indicators: drawn in on select, erased on deselect. */}
-                  {isMultiple && (
-                    <span
-                      aria-hidden
-                      data-slot="infinite-select-checkbox"
-                      className="
-                        flex shrink-0 items-center justify-center rounded-[4px]
-                        border border-input bg-background transition-colors
-                        block-4 inline-4
-                        group-data-selected/option:border-primary
-                        group-data-selected/option:bg-primary
-                        group-data-selected/option:text-primary-foreground
-                      "
+    const row = (
+      // Positioned, so it paints above the gliding surface.
+      <AnimatedCombobox.Item
+        key={option.id}
+        className={cn(
+          `
+            group/option relative flex cursor-default items-center gap-2
+            rounded-lg px-2 py-1.5 text-sm/5 text-popover-foreground
+            transition-colors outline-none select-none
+          `,
+          inPopup && 'data-highlighted:bg-muted',
+          `data-selected:not-data-highlighted:bg-muted/50`,
+          `data-disabled:cursor-not-allowed data-disabled:opacity-50`,
+          itemClassName,
+        )}
+        data-slot="infinite-select-item"
+        disabled={option.disabled}
+        value={option.id}
+      >
+        {renderItem
+          ? renderItem({
+              item,
+              option,
+              index,
+              selected: isSelected,
+              disabled: option.disabled ?? false,
+              selectionMode,
+            })
+          : (
+              <>
+                {/* State lives on the row's data-selected (Base UI writes it);
+                    the box reads it through CSS, and a custom itemClassName
+                    sees the same channel. The checks are animate-ui's item
+                    indicators: drawn in on select, erased on deselect. */}
+                {isMultiple && (
+                  <span
+                    aria-hidden
+                    data-slot="infinite-select-checkbox"
+                    className="
+                      flex shrink-0 items-center justify-center rounded-sm
+                      border border-input bg-background transition-colors
+                      block-4 inline-4
+                      group-data-selected/option:border-primary
+                      group-data-selected/option:bg-primary
+                      group-data-selected/option:text-primary-foreground
+                    "
+                  >
+                    <AnimatedCombobox.ItemIndicator render={(
+                      <span className="flex" />
+                    )}
                     >
-                      <AnimatedCombobox.ItemIndicator render={(
-                        <span className="flex" />
-                      )}
-                      >
-                        <IconCheck className="block-3 inline-3" />
-                      </AnimatedCombobox.ItemIndicator>
-                    </span>
-                  )}
-                  <span className="flex-1 truncate min-inline-0">{option.label}</span>
-                  {!isMultiple && (
-                    <AnimatedCombobox.ItemIndicator
-                      render={(
-                        <span className="
-                          flex shrink-0 text-primary block-4 inline-4
-                        "
-                        />
-                      )}
-                    >
-                      <IconCheck className="block-4 inline-4" />
+                      <IconCheck className="block-3 inline-3" />
                     </AnimatedCombobox.ItemIndicator>
-                  )}
-                </>
-              )}
-        </Combobox.Item>
-      </HighlightItem>
+                  </span>
+                )}
+                <span className="flex-1 truncate min-inline-0">{option.label}</span>
+                {!isMultiple && (
+                  <AnimatedCombobox.ItemIndicator
+                    render={(
+                      <span className="
+                        flex shrink-0 text-primary block-4 inline-4
+                      "
+                      />
+                    )}
+                  >
+                    <IconCheck className="block-4 inline-4" />
+                  </AnimatedCombobox.ItemIndicator>
+                )}
+              </>
+            )}
+      </AnimatedCombobox.Item>
     )
+    return inPopup
+      ? row
+      : <HighlightItem key={option.id} asChild value={option.id}>{row}</HighlightItem>
   }
 
   // First page still coming: nothing exists to size the list yet, so the
@@ -941,26 +972,21 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
           {virtualized
             ? (
                 <div className="relative inline-full" style={{ height: virtualizer.getTotalSize() }}>
-                  <Highlight {...highlightProps} containerClassName="block-full">
-                    {virtualItems.map(virtualItem => (
-                      <div
-                        key={virtualItem.key}
-                        className="absolute inset-s-0 px-1 inline-full"
-                        style={{ height: virtualItem.size, transform: `translateY(${virtualItem.start}px)` }}
-                      >
-                        {renderOption(items[virtualItem.index], virtualItem.index)}
-                      </div>
-                    ))}
-                  </Highlight>
+                  {glide(virtualItems.map(virtualItem => (
+                    <div
+                      key={virtualItem.key}
+                      className="absolute inset-s-0 px-1 inline-full"
+                      style={{ height: virtualItem.size, transform: `translateY(${virtualItem.start}px)` }}
+                    >
+                      {renderOption(items[virtualItem.index], virtualItem.index)}
+                    </div>
+                  )), 'block-full')}
                 </div>
               )
-            : (
-                // The container is one more box between the list and its rows;
-                // it takes the list's gap so `listClassName` still spaces them.
-                <Highlight {...highlightProps} containerClassName="flex flex-col gap-[inherit]">
-                  {items.map((item, index) => renderOption(item, index))}
-                </Highlight>
-              )}
+            // The standalone glide's container is one more box between the
+            // list and its rows; it takes the list's gap so `listClassName`
+            // still spaces them.
+            : glide(items.map((item, index) => renderOption(item, index)), 'flex flex-col gap-[inherit]')}
         </Combobox.List>
 
         {hasNextPage
