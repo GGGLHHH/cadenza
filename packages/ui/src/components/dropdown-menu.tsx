@@ -2,18 +2,20 @@
 
 import type { Menu as MenuPrimitive } from '@base-ui/react/menu'
 import type { ComponentProps, ReactElement, RefAttributes } from 'react'
+import type {
+  DropdownMenuCheckboxItem as DropdownMenuCheckboxItemPrimitive,
+  DropdownMenuItem as DropdownMenuItemPrimitive,
+  DropdownMenuRadioItem as DropdownMenuRadioItemPrimitive,
+  DropdownMenuSubTrigger as DropdownMenuSubmenuTriggerPrimitive,
+} from '#primitives/dropdown-menu'
 import { Menu as AnimatedMenu } from '@animate-ui/react/primitives/base-ui/menu'
+import { IconCheck, IconChevronRight } from '@tabler/icons-react'
 import { cn } from '#lib/utils'
 import {
-  DropdownMenuCheckboxItem as DropdownMenuCheckboxItemPrimitive,
   DropdownMenuLabel as DropdownMenuGroupLabelPrimitive,
   DropdownMenuGroup as DropdownMenuGroupPrimitive,
-  DropdownMenuItem as DropdownMenuItemPrimitive,
-  DropdownMenuRadioGroup as DropdownMenuRadioGroupPrimitive,
-  DropdownMenuRadioItem as DropdownMenuRadioItemPrimitive,
   DropdownMenuSeparator as DropdownMenuSeparatorPrimitive,
   DropdownMenuShortcut,
-  DropdownMenuSubTrigger as DropdownMenuSubmenuTriggerPrimitive,
   DropdownMenuTrigger as DropdownMenuTriggerPrimitive,
 } from '#primitives/dropdown-menu'
 
@@ -174,15 +176,116 @@ export const DropdownMenuTrigger = DropdownMenuTriggerPrimitive as (props: Dropd
 export const DropdownMenuPopup = DropdownMenuPopupPart as (props: DropdownMenuPopupProps) => ReactElement
 export const DropdownMenuGroup = DropdownMenuGroupPrimitive as (props: DropdownMenuGroupProps) => ReactElement
 export const DropdownMenuGroupLabel = DropdownMenuGroupLabelPrimitive as (props: DropdownMenuGroupLabelProps) => ReactElement
-export const DropdownMenuItem = DropdownMenuItemPrimitive as (props: DropdownMenuItemProps) => ReactElement
-export const DropdownMenuCheckboxItem = DropdownMenuCheckboxItemPrimitive as (props: DropdownMenuCheckboxItemProps) => ReactElement
-export const DropdownMenuRadioGroup = DropdownMenuRadioGroupPrimitive as (props: DropdownMenuRadioGroupProps) => ReactElement
-export const DropdownMenuRadioItem = DropdownMenuRadioItemPrimitive as (props: DropdownMenuRadioItemProps) => ReactElement
+// The rows are the vendored ones' composition and classes on animate-ui's
+// parts: the vendored rows are Base UI's own, and animate-ui's row motion
+// lives on its parts — the highlight gliding between rows (its items), checks
+// drawing in, a radio's check gliding to the newly picked row (its radio
+// group). The highlight keys off `data-highlighted` rather than the vendored
+// `focus:`, as in `SelectItem` and `ComboboxItem`. The indicators take no
+// `render`: animate-ui animates the check given as children, and steps aside
+// for a `render`.
+
+const ROW = `
+  relative flex cursor-default items-center gap-1.5 rounded-md py-1 text-sm
+  outline-hidden select-none
+  data-highlighted:bg-accent data-highlighted:text-accent-foreground
+  data-disabled:pointer-events-none data-disabled:opacity-50
+  data-inset:ps-7
+  [&_svg]:pointer-events-none [&_svg]:shrink-0
+  [&_svg:not([class*='size-'])]:block-4 [&_svg:not([class*='size-'])]:inline-4
+`
+const CHECK_ROW = `
+  ps-1.5 pe-8 data-highlighted:**:text-accent-foreground
+`
+const INDICATOR = `
+  pointer-events-none absolute inset-e-2 flex items-center justify-center
+`
+
+export function DropdownMenuItem({ className, inset, variant = 'default', ...props }: DropdownMenuItemProps): ReactElement {
+  return (
+    <AnimatedMenu.Item
+      className={cn(
+        ROW,
+        `
+          group/dropdown-menu-item px-1.5
+          not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground
+          data-[variant=destructive]:text-destructive
+          data-[variant=destructive]:data-highlighted:bg-destructive/10
+          data-[variant=destructive]:data-highlighted:text-destructive
+          dark:data-[variant=destructive]:data-highlighted:bg-destructive/20
+          data-[variant=destructive]:*:[svg]:text-destructive
+        `,
+        className,
+      )}
+      data-inset={inset}
+      data-slot="dropdown-menu-item"
+      data-variant={variant}
+      {...props}
+    />
+  )
+}
+
+export function DropdownMenuCheckboxItem({ children, className, inset, ...props }: DropdownMenuCheckboxItemProps): ReactElement {
+  return (
+    <AnimatedMenu.CheckboxItem
+      className={cn(ROW, CHECK_ROW, className)}
+      data-inset={inset}
+      data-slot="dropdown-menu-checkbox-item"
+      {...props}
+    >
+      <AnimatedMenu.CheckboxItemIndicator className={INDICATOR} data-slot="dropdown-menu-checkbox-item-indicator">
+        <IconCheck />
+      </AnimatedMenu.CheckboxItemIndicator>
+      {children}
+    </AnimatedMenu.CheckboxItem>
+  )
+}
+
+export function DropdownMenuRadioGroup(props: DropdownMenuRadioGroupProps): ReactElement {
+  return <AnimatedMenu.RadioGroup data-slot="dropdown-menu-radio-group" {...props} />
+}
+
+export function DropdownMenuRadioItem({ children, className, inset, ...props }: DropdownMenuRadioItemProps): ReactElement {
+  return (
+    <AnimatedMenu.RadioItem
+      className={cn(ROW, CHECK_ROW, className)}
+      data-inset={inset}
+      data-slot="dropdown-menu-radio-item"
+      {...props}
+    >
+      <AnimatedMenu.RadioItemIndicator className={INDICATOR} data-slot="dropdown-menu-radio-item-indicator">
+        <IconCheck />
+      </AnimatedMenu.RadioItemIndicator>
+      {children}
+    </AnimatedMenu.RadioItem>
+  )
+}
 export const DropdownMenuSeparator = DropdownMenuSeparatorPrimitive as (props: DropdownMenuSeparatorProps) => ReactElement
 export function DropdownMenuSubmenu(props: DropdownMenuSubmenuProps): ReactElement {
   return <AnimatedMenu.SubmenuRoot data-slot="dropdown-menu-sub" {...props} />
 }
-export const DropdownMenuSubmenuTrigger = DropdownMenuSubmenuTriggerPrimitive as (props: DropdownMenuSubmenuTriggerProps) => ReactElement
+export function DropdownMenuSubmenuTrigger({ children, className, inset, ...props }: DropdownMenuSubmenuTriggerProps): ReactElement {
+  return (
+    <AnimatedMenu.SubmenuTrigger
+      className={cn(
+        ROW,
+        `
+          px-1.5
+          not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground
+          data-popup-open:bg-accent data-popup-open:text-accent-foreground
+          data-open:bg-accent data-open:text-accent-foreground
+        `,
+        className,
+      )}
+      data-inset={inset}
+      data-slot="dropdown-menu-sub-trigger"
+      {...props}
+    >
+      {children}
+      <IconChevronRight className="ms-auto" />
+    </AnimatedMenu.SubmenuTrigger>
+  )
+}
 export const DropdownMenuSubmenuPopup = DropdownMenuSubmenuPopupPart as (props: DropdownMenuSubmenuPopupProps) => ReactElement
 
 export { DropdownMenuShortcut }
