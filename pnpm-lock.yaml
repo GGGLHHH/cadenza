@@ -213,8 +213,8 @@ catalogs:
       specifier: ^8.6.0
       version: 8.6.0
     input-otp:
-      specifier: ^1.4.2
-      version: 1.4.2
+      specifier: ^1.5.0
+      version: 1.5.0
     katex:
       specifier: ^0.18.4
       version: 0.18.4
@@ -585,7 +585,7 @@ importers:
     dependencies:
       '@animate-ui/react':
         specifier: catalog:ui
-        version: 2.3.0(@base-ui/react@1.9.0(@date-fns/tz@1.5.0)(@types/react@19.2.18)(date-fns@4.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@shadcn/react@0.2.1(@types/react@19.2.18)(react@19.2.8))(input-otp@1.4.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(motion@14.6.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-aria-components@1.20.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 2.3.0(@base-ui/react@1.9.0(@date-fns/tz@1.5.0)(@types/react@19.2.18)(date-fns@4.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@shadcn/react@0.2.1(@types/react@19.2.18)(react@19.2.8))(input-otp@1.5.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(motion@14.6.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-aria-components@1.20.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@base-ui/react':
         specifier: catalog:ui
         version: 1.9.0(@date-fns/tz@1.5.0)(@types/react@19.2.18)(date-fns@4.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -615,7 +615,7 @@ importers:
         version: 4.4.0
       input-otp:
         specifier: catalog:ui
-        version: 1.4.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 1.5.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       motion:
         specifier: catalog:ui
         version: 14.6.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -4108,8 +4108,8 @@ packages:
   inline-style-parser@0.2.7:
     resolution: {integrity: sha512-Nb2ctOyNR8DqQoR0OwRG95uNWIC0C1lCgf5Naz5H6Ji72KZ8OcFZLz2P5sNgwlyoJ8Yif11oMuYs5pBQa86csA==}
 
-  input-otp@1.4.2:
-    resolution: {integrity: sha512-l3jWwYNvrEa6NTCt7BECfCm48GvwuZzkoeG3gBL2w4CHeOXW3eKFmf9UNYkNfYc3mxMrthMnxjIE07MT0zLBQA==}
+  input-otp@1.5.0:
+    resolution: {integrity: sha512-3AcfdW1sNG0FmSA5hHMBXG7jNW5CdcdKs8ln8JOmn6S2SRkoXoJx+2UwC+ZvjflfnOdHJx0SfQ9/YjlxVYLtGQ==}
     peerDependencies:
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc
       react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc
@@ -5793,7 +5793,7 @@ snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
 
-  '@animate-ui/react@2.3.0(@base-ui/react@1.9.0(@date-fns/tz@1.5.0)(@types/react@19.2.18)(date-fns@4.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@shadcn/react@0.2.1(@types/react@19.2.18)(react@19.2.8))(input-otp@1.4.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(motion@14.6.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-aria-components@1.20.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@animate-ui/react@2.3.0(@base-ui/react@1.9.0(@date-fns/tz@1.5.0)(@types/react@19.2.18)(date-fns@4.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@shadcn/react@0.2.1(@types/react@19.2.18)(react@19.2.8))(input-otp@1.5.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(motion@14.6.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-aria-components@1.20.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       motion: 14.6.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react: 19.2.8
@@ -5801,7 +5801,7 @@ snapshots:
     optionalDependencies:
       '@base-ui/react': 1.9.0(@date-fns/tz@1.5.0)(@types/react@19.2.18)(date-fns@4.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@shadcn/react': 0.2.1(@types/react@19.2.18)(react@19.2.8)
-      input-otp: 1.4.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      input-otp: 1.5.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react-aria-components: 1.20.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
 
   '@antfu/eslint-config@9.3.0(@eslint-react/eslint-plugin@5.18.3(eslint@10.8.1(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3))(@typescript-eslint/typescript-estree@8.66.0(supports-color@7.2.0)(typescript@6.0.3))(@typescript-eslint/utils@8.66.0(eslint@10.8.1(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3))(@vue/compiler-sfc@3.5.13)(eslint-plugin-react-refresh@0.5.3(eslint@10.8.1(jiti@2.7.0)(supports-color@7.2.0)))(eslint@10.8.1(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)(vitest@4.1.10(@types/node@26.2.0)(jsdom@30.0.1)(vite@8.1.5(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.11)(yaml@2.9.0)))':
@@ -9249,7 +9249,7 @@ snapshots:
 
   inline-style-parser@0.2.7: {}
 
-  input-otp@1.4.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  input-otp@1.5.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
