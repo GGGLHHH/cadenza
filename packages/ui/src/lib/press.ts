@@ -1,8 +1,8 @@
 import type { ComponentProps, ReactElement } from 'react'
 import { Button as AnimatedButton } from '@animate-ui/react/primitives/buttons/button'
 import { motionTokens } from '@animate-ui/react/utils/motion'
-import { animate, useReducedMotion } from 'motion/react'
-import { createElement, useEffect, useRef } from 'react'
+import { useReducedMotion } from 'motion/react'
+import { createElement, useRef } from 'react'
 
 /**
  * The vendored buttons' `transition-all` minus `transform`, which the press
@@ -14,24 +14,52 @@ import { createElement, useEffect, useRef } from 'react'
 export const PRESS_TRANSITION
   = 'transition-[color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,box-shadow,opacity,translate]'
 
-// How long a press is held down at the least, in ms: about what animate-ui's
+// A press shorter than this, in ms, gets the echo: about what animate-ui's
 // press spring needs to reach its depth (measured: 100ms → 0.974 of 0.97).
 const MIN_PRESS = 100
 
 /**
+ * Tap handlers that make a too-short press visible. animate-ui's presses are
+ * `whileTap`: they last exactly as long as the press, and a trackpad
+ * tap-to-click (or a keypress) releases within a frame or two, so the spring
+ * turns back before it has moved. On such a release this plays the press once
+ * through on the element's CSS `scale` — a property apart from the `transform`
+ * animate-ui writes, so the two compose instead of fighting. A longer press is
+ * animate-ui's alone.
+ *
+ * Spread onto anything that renders an animate-ui press (it reaches the Motion
+ * element through Base UI's prop forwarding); `slot` finds that element from
+ * the event, since Motion hands tap callbacks over a frame late.
+ */
+export function usePressEcho(slot: string): { onTap: (event: Event) => void, onTapCancel: (event: Event) => void, onTapStart: () => void } {
+  const pressedAtRef = useRef(0)
+  const reduce = useReducedMotion() === true
+  const onRelease = (event: Event): void => {
+    if (reduce || performance.now() - pressedAtRef.current >= MIN_PRESS)
+      return
+    const target = event.target instanceof Element ? event.target.closest(`[data-slot="${slot}"]`) : null
+    target?.animate(
+      [{ scale: '1' }, { scale: String(motionTokens.scale.press), offset: 0.35 }, { scale: '1' }],
+      { duration: 280, easing: 'ease-out' },
+    )
+  }
+  return {
+    onTap: onRelease,
+    onTapCancel: onRelease,
+    onTapStart: () => {
+      pressedAtRef.current = performance.now()
+    },
+  }
+}
+
+/**
  * animate-ui's button press around one of our buttons, through `asChild`, so
- * the button keeps its own element, `render` and props.
+ * the button keeps its own element, `render` and props — plus the echo for a
+ * too-short press (`usePressEcho`).
  *
  * Its slot writes `data-slot="button"` over the child's, so the child's own
  * slot is read back and handed in: `fallback` is the one the part writes when
  * the caller passes none. An `inert` button (disabled, pending) does not press.
- *
- * The press is animate-ui's — its scale and spring tokens — with one change:
- * it is held for at least `MIN_PRESS`. animate-ui's `whileTap` lasts exactly
- * as long as the press, and a trackpad tap-to-click releases within a frame
- * or two, so the spring turns back before it has moved. Here the release
- * waits out the rest of `MIN_PRESS`; a longer press is untouched. Tap events,
- * not pointer events, so Enter and Space press it too.
  *
  * Private: in `#lib`, never re-exported. `.ts` like the rest of `#lib`, hence
  * `createElement`.
@@ -41,43 +69,15 @@ export function Press({ children, fallback, inert = false }: {
   fallback: string
   inert?: boolean
 }): ReactElement {
-  // Typed as a button for animate-ui's prop; `LinkButton` puts an anchor here,
-  // and only `HTMLElement` is used.
-  const ref = useRef<HTMLButtonElement>(null)
-  const pressedAtRef = useRef(0)
-  const releaseRef = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const reduce = useReducedMotion() === true
-  useEffect(() => () => clearTimeout(releaseRef.current), [])
-
-  const scaleTo = (scale: number): void => {
-    if (ref.current)
-      animate(ref.current, { transform: `scale(${scale})` }, motionTokens.spring.press)
-  }
-  const onRelease = (): void => {
-    clearTimeout(releaseRef.current)
-    releaseRef.current = setTimeout(scaleTo, Math.max(0, MIN_PRESS - (performance.now() - pressedAtRef.current)), 1)
-  }
-
+  const slot = children.props['data-slot'] ?? fallback
+  const echo = usePressEcho(slot)
   // Typed apart from the call: `createElement`'s overloads reject a `data-*`
   // key in a literal, though the element takes it like any attribute.
   const props: ComponentProps<typeof AnimatedButton> & { 'data-slot': string } = {
     'asChild': true,
     children,
-    'data-slot': children.props['data-slot'] ?? fallback,
-    ref,
-    // animate-ui's own press, switched off: the handlers below replace it.
-    'whileTap': undefined,
-    ...(inert || reduce
-      ? {}
-      : {
-          onTap: onRelease,
-          onTapCancel: onRelease,
-          onTapStart: () => {
-            clearTimeout(releaseRef.current)
-            pressedAtRef.current = performance.now()
-            scaleTo(motionTokens.scale.press)
-          },
-        }),
+    'data-slot': slot,
+    ...(inert ? { tapScale: 1 } : echo),
   }
   return createElement(AnimatedButton, props)
 }

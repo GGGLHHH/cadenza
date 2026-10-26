@@ -11,6 +11,7 @@ import { useControllableState } from '@gedatou/cadenza-utils'
 import { set, startOfDay } from 'date-fns'
 import { useLayoutEffect, useRef } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
+import { usePressEcho } from '#lib/press'
 import { secondsOfDay, truncateTime } from '#lib/time'
 import { cn, dataAttr } from '#lib/utils'
 
@@ -241,6 +242,8 @@ function TimeColumn({
   onPick,
   options,
 }: TimeColumnProps): ReactElement {
+  // A too-short press (a trackpad tap) still shows; see `usePressEcho`.
+  const echo = usePressEcho('time-columns-item')
   return (
     <RadioGroupPrimitive<number | null>
       aria-label={ariaLabel}
@@ -276,10 +279,11 @@ function TimeColumn({
             dark:data-unchecked:hover:bg-muted/50
             data-disabled:opacity-50
           "
+          key={option}
           data-slot="time-columns-item"
           disabled={isOptionDisabled(option)}
-          key={option}
           value={option}
+          {...echo}
         >
           {String(option).padStart(2, '0')}
         </RadioPrimitive.Root>

@@ -2,7 +2,7 @@ import type { Toggle as TogglePrimitive } from '@base-ui/react/toggle'
 import type { VariantProps } from 'class-variance-authority'
 import type { ReactElement } from 'react'
 import { Toggle as AnimatedToggle } from '@animate-ui/react/primitives/base-ui/toggle'
-import { PRESS_TRANSITION } from '#lib/press'
+import { PRESS_TRANSITION, usePressEcho } from '#lib/press'
 import { cn } from '#lib/utils'
 import { toggleVariants } from '#primitives/toggle'
 
@@ -89,10 +89,13 @@ export function Toggle<Value extends string = string>({
   size = 'default',
   ...props
 }: ToggleProps<Value>): ReactElement {
+  // A too-short press (a trackpad tap) still shows; see `usePressEcho`.
+  const echo = usePressEcho('toggle')
   return (
     <AnimatedToggle<Value>
       data-slot="toggle"
       className={cn(toggleVariants({ variant, size }), PRESS_TRANSITION, PRESSED_APART, className)}
+      {...echo}
       {...props}
     />
   )

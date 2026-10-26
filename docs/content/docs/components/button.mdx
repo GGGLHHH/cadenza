@@ -21,8 +21,8 @@ import { Button, buttonVariants, LinkButton } from '@gedatou/cadenza-ui'
 ```
 
 按住时按钮会轻轻缩到 0.97 再弹回，这是 animate-ui 的按压弹簧，`LinkButton`、`InputGroupButton`、
-`AttachmentAction`、`MessageScrollerButton` 也一样；禁用或进行中的按钮不会缩。按压至少保持 100ms，
-所以触控板轻点、键盘回车这种一瞬间就松开的按法也看得到。它写的是 `transform`，
+`AttachmentAction`、`MessageScrollerButton` 也一样；禁用或进行中的按钮不会缩。按得太快时（触控板轻点、
+键盘回车，不到 100ms 就松开），松开那一下会补播一次完整的按压，所以也看得到；Toggle、RadioGroup 同样如此。它写的是 `transform`，
 和 shadcn 原有的按下下沉 `translate-y-px`（CSS `translate` 属性）互不覆盖。
 
 ## 光标

@@ -2,6 +2,7 @@ import type { Radio } from '@base-ui/react/radio'
 import type { RadioGroup as RadioGroupBase } from '@base-ui/react/radio-group'
 import type { ReactElement } from 'react'
 import { Radio as AnimatedRadio } from '@animate-ui/react/primitives/base-ui/radio'
+import { usePressEcho } from '#lib/press'
 import { cn } from '#lib/utils'
 import { RadioGroup as RadioGroupPrimitive } from '#primitives/radio-group'
 
@@ -80,8 +81,10 @@ const ITEM = `
 `
 
 export function RadioGroupItem<Value = string>({ className, ...props }: RadioGroupItemProps<Value>): ReactElement {
+  // A too-short press (a trackpad tap) still shows; see `usePressEcho`.
+  const echo = usePressEcho('radio-group-item')
   return (
-    <AnimatedRadio.Root<Value> data-slot="radio-group-item" className={cn(ITEM, className)} {...props}>
+    <AnimatedRadio.Root<Value> data-slot="radio-group-item" className={cn(ITEM, className)} {...echo} {...props}>
       <AnimatedRadio.Indicator
         data-slot="radio-group-indicator"
         className="flex items-center justify-center block-4 inline-4"

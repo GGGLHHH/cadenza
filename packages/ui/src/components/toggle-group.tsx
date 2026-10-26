@@ -9,7 +9,7 @@ import type { CSSProperties, ReactElement } from 'react'
 import { Toggle as TogglePrimitiveRoot } from '@animate-ui/react/primitives/base-ui/toggle'
 import { ToggleGroup as ToggleGroupPrimitiveRoot } from '@animate-ui/react/primitives/base-ui/toggle-group'
 import { createContext, use, useMemo } from 'react'
-import { PRESS_TRANSITION } from '#lib/press'
+import { PRESS_TRANSITION, usePressEcho } from '#lib/press'
 import { cn } from '#lib/utils'
 import { toggleVariants } from '#primitives/toggle'
 
@@ -142,6 +142,8 @@ export function ToggleGroupItem<Value extends string = string>({
   ...props
 }: ToggleGroupItemProps<Value>): ReactElement {
   const group = use(ToggleGroupContext)
+  // A too-short press (a trackpad tap) still shows; see `usePressEcho`.
+  const echo = usePressEcho('toggle-group-item')
   const resolvedSize = size ?? group.size ?? 'default'
   const resolvedVariant = variant ?? group.variant ?? 'default'
 
@@ -174,6 +176,7 @@ export function ToggleGroupItem<Value extends string = string>({
       data-slot="toggle-group-item"
       data-spacing={group.spacing}
       data-variant={resolvedVariant}
+      {...echo}
       {...props}
     >
       {children}
