@@ -1,0 +1,1572 @@
+{
+  "accessibility.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-accessibility.json",
+    "sha256": "c44bce0012db422b77b617900472861b60285b59f2038e0999baa88dbcd10a1e"
+  },
+  "activity.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-activity.json",
+    "sha256": "e11f4ff979f6f23b6e5d9dd3d883e0a5c2fa8a1916b26221b1347a6e8863679c"
+  },
+  "airplay.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-airplay.json",
+    "sha256": "a9b9a5364d41c5585cf5c8881035ab54151791ef887055b2352626bc9ff40cfc"
+  },
+  "alarm-clock.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-alarm-clock.json",
+    "sha256": "5e486cbfcb25991883eca0d5f2d21b97d5ceb8094402f02b3cee88b4f4599b8a"
+  },
+  "align-center-horizontal.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-align-center-horizontal.json",
+    "sha256": "58a5d95f9afc4cedd8534b4bd20a2ea242368e25bca3ba0cf7f680625531bd44"
+  },
+  "align-center-vertical.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-align-center-vertical.json",
+    "sha256": "192522bfeb6e74594048a649072d0bd80d82f315086cec1cb4551fc3fa15abdc"
+  },
+  "align-end-horizontal.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-align-end-horizontal.json",
+    "sha256": "db6ee16117fb34d4d901f7635ab8b9a7a0b5a2157d4153ed8891f00f0e3de8de"
+  },
+  "align-end-vertical.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-align-end-vertical.json",
+    "sha256": "04702dd500b64dac030f9b34cf93933c3dea66775f94995a75ef456dccb94e54"
+  },
+  "align-horizontal-distribute-center.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-align-horizontal-distribute-center.json",
+    "sha256": "ef83f92a854682434db36c4f1e577d2fdfaa18fb3c08a477f2ead366767fac88"
+  },
+  "align-start-horizontal.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-align-start-horizontal.json",
+    "sha256": "bbb7e8705cfea417a973d54d4f38481da3946266e199589660d1707299d0e387"
+  },
+  "align-start-vertical.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-align-start-vertical.json",
+    "sha256": "a216dfe2cfeadf5f8af51e2465171e92e99308a0e5b5bbcdf4af6865b2643dd1"
+  },
+  "align-vertical-distribute-center.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-align-vertical-distribute-center.json",
+    "sha256": "9131eba42b6dfd77abc106d4641e7457745200195e89db11e38ee4303e6af125"
+  },
+  "archive.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-archive.json",
+    "sha256": "559e88a145af300191d6ab4afcc0aced566848c5bc4ae8f9256db2dbf485e513"
+  },
+  "arrow-down.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-arrow-down.json",
+    "sha256": "f303e64a0bf8158f00cdc541acfe62db9b050f875ddc4381c825d6e3327d19f7"
+  },
+  "arrow-left.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-arrow-left.json",
+    "sha256": "c333c52cd5e1efaf1de7ac711c478162d9b8f9ec19608b4f32cbfcd9f9e3ff38"
+  },
+  "arrow-right.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-arrow-right.json",
+    "sha256": "b2d6b23dbbec00f1528bb952f56ede769cb6b9a417e5a028d655040cf754135b"
+  },
+  "arrow-up-down.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-arrow-up-down.json",
+    "sha256": "173b075527367bd14184d2a64c1294174028c28ec4eb89fb039088e9a890b2a8"
+  },
+  "arrow-up.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-arrow-up.json",
+    "sha256": "b722cc2d9d50d4a44a1718429b4df144fe8407a3d11c12879298f6838fa29757"
+  },
+  "audio-lines.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-audio-lines.json",
+    "sha256": "bdaf19f64e23d680d7728715c83548d50e25c30d132c94ebff8ec76c6c9e4f99"
+  },
+  "axe.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-axe.json",
+    "sha256": "623d91f3b18a8542d1a6c9305b5f841a8b3fc8cbf0771a43bf7f237091251fd6"
+  },
+  "axis-3d.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-axis-3d.json",
+    "sha256": "df39b71894a3eb012cbe7a16f9e8ce210ff653416e1bdd8dfcd0f4ed091d5832"
+  },
+  "badge-check.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-badge-check.json",
+    "sha256": "e2e5c67a0ec03f98b13f79bf71438532e76dbb1129509c5d89e42541d690d1a7"
+  },
+  "battery-charging.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-battery-charging.json",
+    "sha256": "1c38c940dd61507bc0e6d29ba9242d0aa489d073d3b33022551ce7f46e23ae7b"
+  },
+  "battery-full.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-battery-full.json",
+    "sha256": "31f4f3654fae18842916dc91190bc6c17dd23b19088d09c81fb3b69a0cdaaf7e"
+  },
+  "battery-low.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-battery-low.json",
+    "sha256": "72d1678d7b2019c712ed7aea6fe6b69c2a6d506c1a4dba466241e5ee5cbeb740"
+  },
+  "battery-medium.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-battery-medium.json",
+    "sha256": "338162ca33ec3bd4a952c36a5af31ac3f83e4153f10725b1b498eb2c0e4e3cf5"
+  },
+  "bell-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-bell-off.json",
+    "sha256": "069764d9cd01f3f070fb658b5926ef2cf2d7b49830b4df2974de2f05750e960a"
+  },
+  "bell-ring.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-bell-ring.json",
+    "sha256": "2227161d1fd7afdd8fd1498cac8105b67a2e39409226e54399591cd45ea281e5"
+  },
+  "bell.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-bell.json",
+    "sha256": "8e14375400c90f21d6daf535b81902940f23d78054bb4bdd552b7f2b45c3dd6d"
+  },
+  "between-horizontal-end.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-between-horizontal-end.json",
+    "sha256": "910336a93c9587b16666190c75c0f259ef05271393fbd5301a8fc28d66fde214"
+  },
+  "between-horizontal-start.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-between-horizontal-start.json",
+    "sha256": "dbae910edd2c00e26c45368d6d17825dd6197a0de7042ff376d5b3ce063a2f7f"
+  },
+  "between-vertical-end.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-between-vertical-end.json",
+    "sha256": "9cb5a36cda4541391e98f6dd75c7861340c03b5cd45c8b7a8bcd4323da524d56"
+  },
+  "between-vertical-start.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-between-vertical-start.json",
+    "sha256": "a55de688db0ea53ccaa77a67704271afa1e113d68c69a8c18ae9028055e479af"
+  },
+  "binary.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-binary.json",
+    "sha256": "0a639a0eb7236daf5f4175cf60ab2d97ae96a7adcd8b35c44b35070ed9fca562"
+  },
+  "blend.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-blend.json",
+    "sha256": "f29197e22e724b7e69a7c69059078ce95102311154560fa1418b2e77218d1921"
+  },
+  "blocks.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-blocks.json",
+    "sha256": "db09f6d48f4f72c6b4d4128def9ce1f043469dd43d43ff3e372f41ca68c2eb7e"
+  },
+  "bluetooth.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-bluetooth.json",
+    "sha256": "de408e2e251ad9f840b46304dc140ba3003557137f65e44ee31437ff7059eea0"
+  },
+  "book-open.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-book-open.json",
+    "sha256": "8dd2664c6b2fffa0f80d46d0c007bc5379656fd235dca1e66515c00431c2347b"
+  },
+  "book-text.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-book-text.json",
+    "sha256": "0cd75f0c03509e33568e28556ef3138a0ee237b20867a72031099d36efa0828a"
+  },
+  "bookmark-check.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-bookmark-check.json",
+    "sha256": "7686e471414b33d613560c59361b90e3766ee1759ceac395b48762d90ee907b8"
+  },
+  "bookmark-plus.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-bookmark-plus.json",
+    "sha256": "40525f101b9155a79bf5a3b7d913562a4c14d3c7583d78ceb92628c85351e2b9"
+  },
+  "bookmark.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-bookmark.json",
+    "sha256": "1fe96ba9ebf93b588497770d63a247daab25c54ac1ca43975c74cef4dc93e672"
+  },
+  "bot-message-square.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-bot-message-square.json",
+    "sha256": "a1570cb41f069efe93c2362073efab60147d566d93850ef91e8fd032357bf729"
+  },
+  "bot-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-bot-off.json",
+    "sha256": "59ca87c2be9b56dfaffed5a07331f8d5d78f9e47859248f838bfdfa75d4dcd73"
+  },
+  "bot.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-bot.json",
+    "sha256": "846352b0cf6106f5c1dcd77956b99fe3f017c4a2d6f66c537bc25cdb6ac97092"
+  },
+  "brush-cleaning.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-brush-cleaning.json",
+    "sha256": "a992ce5cf2fb2d3de5d9c187a64437afd60c49e74f1cf73d7eb90e84cf919d91"
+  },
+  "brush.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-brush.json",
+    "sha256": "9907ea6c2928aa0225345aa4b53daf69686bfad72c5bdaa97cd7237bd780b18b"
+  },
+  "calendar-check.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-calendar-check.json",
+    "sha256": "b5ba4479741374f66f9c34a18a9b0b7792b0b01aad4b61814b30ac55d25b01e4"
+  },
+  "calendar-clock.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-calendar-clock.json",
+    "sha256": "8ad2a795bf805b0c48c23723c8df6b8fe9d7ddd8cf2e098a2a686f1a7fca3293"
+  },
+  "calendar-days.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-calendar-days.json",
+    "sha256": "654b208995d565b1ee6be898af413b3cce60f57f4545f6a4b488b0474f73f6f0"
+  },
+  "calendar-plus.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-calendar-plus.json",
+    "sha256": "ffdb5d87186d0e595d8a372fcd10b377315b70cd87d7a275a5bc60b0753b1a57"
+  },
+  "calendar.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-calendar.json",
+    "sha256": "b16b01451cc9fd8c76790dbdc0df45ce3c0d3dfb18559f34af85acca81a3b290"
+  },
+  "camera.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-camera.json",
+    "sha256": "7527b5f6564fae91b15a086f8fe3594abd2269efd425b762e7b7d0edd5fbc213"
+  },
+  "cast.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cast.json",
+    "sha256": "99661cbc3e831ec0ac654345d7300b2486c4d9c2fb013684c6357bd83172feee"
+  },
+  "cctv.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cctv.json",
+    "sha256": "0985e27345925075f9a7c6c910b2d5d555df6c4bec3a1e1d9546a6f81f50d694"
+  },
+  "chart-bar-decreasing.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chart-bar-decreasing.json",
+    "sha256": "20138a2ceea9893c492956568beaa86ffdaab19481421ec282e75c8c613bd37e"
+  },
+  "chart-bar-increasing.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chart-bar-increasing.json",
+    "sha256": "3c59a36031da168437a2da814639effdf5221d061a9640ca8c5a9f2921a417e4"
+  },
+  "chart-bar.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chart-bar.json",
+    "sha256": "15dd07df3f3719243bed48649c3304f8023fbb6a734c92fcb5d06677e1e3a8c5"
+  },
+  "chart-column-decreasing.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chart-column-decreasing.json",
+    "sha256": "96ce868352c3f871e14e8207660f66225f7564f6b864d721edb2045d68de9f46"
+  },
+  "chart-column-increasing.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chart-column-increasing.json",
+    "sha256": "31b564bd9bb962af1ba8b0c2640f45904396408b2e133bffe35997e533e23277"
+  },
+  "chart-column.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chart-column.json",
+    "sha256": "bef1ebfce99e96865560e4264336b4a4f8fc11270cc1d546774345eb80b015ef"
+  },
+  "chart-line.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chart-line.json",
+    "sha256": "c6ec0a2cbbc1cf8fb3354fb9a76079f6519faa4fe4e6b60d89a048d2a895b40c"
+  },
+  "chart-no-axes-column-decreasing.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chart-no-axes-column-decreasing.json",
+    "sha256": "a44f4d28b5ec4425de9e2ad3b4c754f30e48f8319358da8096dad5cbb78fe5fd"
+  },
+  "chart-no-axes-column-increasing.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chart-no-axes-column-increasing.json",
+    "sha256": "06fb9ee0b9b0baa003440a0f9b2e84dc1660d9217832e77d320c289e6c2d5d6b"
+  },
+  "chart-no-axes-column.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chart-no-axes-column.json",
+    "sha256": "6d532aeb83012246a2a386903ecc4e75aab519c2aa7173927576fa3012ba7642"
+  },
+  "chart-scatter.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chart-scatter.json",
+    "sha256": "2d4fe6407d9c546788f6fe78da810ed3152ea08ea6d844619d9463ebe4f241f6"
+  },
+  "chart-spline.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chart-spline.json",
+    "sha256": "240e20a46af9e389467cfa8ec6ed0b4b83e1a035426e54df6d42054b37bae1f2"
+  },
+  "check-check.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-check-check.json",
+    "sha256": "5cf1e2e0f5543632ade61d051cf7e6cc0f595d3329e216af541144aba687b093"
+  },
+  "check-line.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-check-line.json",
+    "sha256": "f8ede81aaac23014ce1e8128abc436b1059bdda68312883a9a75b0d1b06b9d71"
+  },
+  "check.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-check.json",
+    "sha256": "27f08cc7a27b15d6f534fb26a5c4055de10e0ff191281aafef68b8ba4c482a36"
+  },
+  "cherry.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cherry.json",
+    "sha256": "0a531aaecdd1f27624eece1173defd3e9552b91a5f4239cc1a2f38f831eb2af5"
+  },
+  "chevron-down.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chevron-down.json",
+    "sha256": "c55d9a3495a15a150f2cf94cbefec67861514c02d4864110412ea35d758d55a3"
+  },
+  "chevron-left-right.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chevron-left-right.json",
+    "sha256": "4cf577f16ff9f2b1a68ce84c3092871b0e2516c2a4d0bef600fbc56e28db3aaf"
+  },
+  "chevron-left.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chevron-left.json",
+    "sha256": "8e83cafdde0016baf5d4940b71ea13c70a0f73ec6ce2cec49a97b9ac25573675"
+  },
+  "chevron-right.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chevron-right.json",
+    "sha256": "cfc6ded136b854cb5b9e5a2d7395a64026c873fe6da6adeea6afd8c70343d81a"
+  },
+  "chevron-up-down.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chevron-up-down.json",
+    "sha256": "9d33497a9949d8ae3f7edf40bfc35a54bdbfd80d3d1696b5c540894b34361695"
+  },
+  "chevron-up.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-chevron-up.json",
+    "sha256": "b7b30d8bcbfe71fc0af201fdc17d2d7b6789251425ae2ecd76df12a3cb4816ee"
+  },
+  "circle-alert.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-circle-alert.json",
+    "sha256": "ce0cfb9b59799f9ae4ba3fdd7238360996747dd61e4a64e7430bf02161452862"
+  },
+  "circle-check-big.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-circle-check-big.json",
+    "sha256": "2dd617002b0be1db08b5a60be52766b3591f98a1ba745ad90aa4915ae82eaee2"
+  },
+  "circle-check.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-circle-check.json",
+    "sha256": "ec8b515b43285a8cf48cc12c663089a0bad51d3d72fc74e499be859503c929d6"
+  },
+  "circle-plus.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-circle-plus.json",
+    "sha256": "f6d1da884f37fa2d5fcb497c8a4a48f2ce635700029069dc58d15e2740a29a75"
+  },
+  "circle-question-mark.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-circle-question-mark.json",
+    "sha256": "e4f938127bb2fc6a5fc497ae3e1f66f25167465f8f59b818e50cd0c192ad697a"
+  },
+  "circle-user-round.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-circle-user-round.json",
+    "sha256": "93758df5a0a4c4030bc98c73c6ba4ca526bee76309e6bf28ed211feac3c5f1cc"
+  },
+  "circle-x.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-circle-x.json",
+    "sha256": "a9113c2e2a87616d684259df7efa799537a714d111d05566414b0e079aeac5c9"
+  },
+  "circuit-board.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-circuit-board.json",
+    "sha256": "041e160eb7c31b8f88fb58c14d48af33cd4176dc0b1641754be3162252feb2e1"
+  },
+  "clapperboard.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clapperboard.json",
+    "sha256": "8211b46926673c2dca7e5206aa783f9fce05747b6d8493b30844e5318dbcaa01"
+  },
+  "clipboard-check.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clipboard-check.json",
+    "sha256": "91ee5efe64315e9188b0ac7cdbb246536aef765645f294558c203a649d317860"
+  },
+  "clipboard-list.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clipboard-list.json",
+    "sha256": "272e62177d6a38ca4a8d3bfc85c89d9d13cab45daf8db2fec29c8e7d86a3ffb5"
+  },
+  "clipboard.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clipboard.json",
+    "sha256": "8218594ec7ab7f0cf824a292fc02aa5a8daf354e6614cd87ab6546fe53e08925"
+  },
+  "clock-1.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-1.json",
+    "sha256": "2309c1d8d8051fd3057ad8ca5419277fd5af4fb275bb0540d69ae6b3e0169558"
+  },
+  "clock-10.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-10.json",
+    "sha256": "b3ce41257f2c36ab435b9ab77cc9a9baf57ffd08ebdfd2f790ee347774f95872"
+  },
+  "clock-11.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-11.json",
+    "sha256": "06edacc3bccbb6063c6edfaf9fb33c1db0109a025620cd2ab2a7cd0cde71fbfe"
+  },
+  "clock-12.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-12.json",
+    "sha256": "c0adb5bdf1901f224146009971cfaf669674c1e7a583facdd19db558e579dd6c"
+  },
+  "clock-2.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-2.json",
+    "sha256": "8a83ce866a651bf3b544e8ac46927a985d696e6bdfcc137509af7a4f99240a0a"
+  },
+  "clock-3.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-3.json",
+    "sha256": "fd3071ebee447680385bf85b0b465e0f90fcacfa7c447947c91dd37c0f8c7b2e"
+  },
+  "clock-4.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-4.json",
+    "sha256": "ea7fda900f48f1e614bf0bdfe9703a6f4dd696556a44bdf66183fc5f55c1e080"
+  },
+  "clock-5.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-5.json",
+    "sha256": "5480536191e030dbf3d04841badd14132cba554e2daf80ac7618812dd1f08199"
+  },
+  "clock-6.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-6.json",
+    "sha256": "3384c484ee2aab53961cb692cbc4000cc5bd0957dc4d2f5f4f00f3278e07c066"
+  },
+  "clock-7.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-7.json",
+    "sha256": "1a0a55ad3d087765fbe74156d413a973cd24a32e5927d7b1153036353bf72d12"
+  },
+  "clock-8.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-8.json",
+    "sha256": "cd0b4c892af3b4f9b7ea889b7521b97ceaddcd237c0b24797be7b14785390657"
+  },
+  "clock-9.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-9.json",
+    "sha256": "987739c509147dbbcb8b5c1ade78302a4cb8ca07be13671d1c4d32f99ac55381"
+  },
+  "clock-alert.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-alert.json",
+    "sha256": "8d8e578cf5b946c532ae62ee4348d4e2cc8c76d9794a0c03b0e88d3801dbd48c"
+  },
+  "clock-arrow-down.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-arrow-down.json",
+    "sha256": "2bae8451fbd2a050a48ff982c90eb79183204b8acbcba0f5a49d4a600fc526a9"
+  },
+  "clock-arrow-up.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-arrow-up.json",
+    "sha256": "9ee143c00fdff800eaf8687b3f784163dc0ca83914e2822416ad502d137c089a"
+  },
+  "clock-check.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-check.json",
+    "sha256": "7efcac1cac1b77facdb62afc8c46b567aa6a9ec2778cc0016e6755cdef559967"
+  },
+  "clock-fading.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-fading.json",
+    "sha256": "8caac63923f1287e34a64c74ba3687f695cd934ba220cc1189f11b445fc96c52"
+  },
+  "clock-plus.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock-plus.json",
+    "sha256": "5f6a35922230d6d4996f24cd96fa1f64cc7b44d09e2a3fc4026d07a50c682845"
+  },
+  "clock.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-clock.json",
+    "sha256": "65e61fc9aa4fe0409531c92bdbf82e1e937fb187e6df0e9b8f8baed5422053da"
+  },
+  "cloud-download.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cloud-download.json",
+    "sha256": "4d09ad1adb7de3bae9c883a9bc6aab3141cab3524ac1684f712832d087084ec7"
+  },
+  "cloud-drizzle.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cloud-drizzle.json",
+    "sha256": "54f0fc1ff1729e06bfe45ba7016c9ca6ea1b7153b1b7d4e96f385d88ee4d1c80"
+  },
+  "cloud-hail.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cloud-hail.json",
+    "sha256": "e735cace2f089ec4f36bdd754e7b5e9bcf9384f0da0567904237c9b17b54d8f9"
+  },
+  "cloud-lightning.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cloud-lightning.json",
+    "sha256": "32fc9c9a432951e7d1deaf4dc47b3361cac1cd0a23edec6193dbf97887bbe674"
+  },
+  "cloud-moon-rain.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cloud-moon-rain.json",
+    "sha256": "04d3a766f1a21844e62e3ee67922077b0ec9e9076a1f25de8c8709c458661737"
+  },
+  "cloud-moon.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cloud-moon.json",
+    "sha256": "b95e48a0c3f381ab9da6db7fa7e3c038c83f4c2777363e9903f89efe818fc549"
+  },
+  "cloud-rain-wind.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cloud-rain-wind.json",
+    "sha256": "c698ecabc05f4522b46fd6f4bc2e1711624695b7965e5305bdb187a52e0082cc"
+  },
+  "cloud-rain.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cloud-rain.json",
+    "sha256": "953913c717acc680a92777d115cd76386aaa8860b812d290ca16557634b3782c"
+  },
+  "cloud-snow.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cloud-snow.json",
+    "sha256": "33b921741b6733554339afbcf8f8cfbf1c4da200ebd89ed751ee72f3faa62eef"
+  },
+  "cloud-sun-rain.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cloud-sun-rain.json",
+    "sha256": "67d104027366845100af1b306ef7e381e1757eb1b6176ec4c368a289b4f53e47"
+  },
+  "cloud-sun.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cloud-sun.json",
+    "sha256": "c26f26326d40e675f267eee3f2fd08281522c4f298655bae10a491956ed5ea92"
+  },
+  "cloud-upload.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cloud-upload.json",
+    "sha256": "f64627c65ef2f014e28ddbe7590888bba9226781ffa1c9ca6db2bb56d57c623f"
+  },
+  "coffee.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-coffee.json",
+    "sha256": "012aadfff8ac06fc5f04a2771af707882a7e763ed2912a519d1821a8656de1c2"
+  },
+  "cog.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cog.json",
+    "sha256": "9798664da6a21e3727233abcaee9dc8e0ed01fce30c09246a70159632748c344"
+  },
+  "compass.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-compass.json",
+    "sha256": "2aaa26e0aa2715232880c1f00084045a1b0a2685aea845473174b35b581d4c5a"
+  },
+  "contrast.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-contrast.json",
+    "sha256": "c7d0c43cdb969785db30b3ab42fc279ca023262990ce15077cc9ef7255f846b5"
+  },
+  "copy.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-copy.json",
+    "sha256": "e928ded6e489075db9ce32c9e9d1ce91b52d6770155097770462b810183a859a"
+  },
+  "credit-card.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-credit-card.json",
+    "sha256": "f3520cd0ce7194829d6b9f1220cbaa04e203e9b5b0da845db1c21cd4422a3800"
+  },
+  "crop.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-crop.json",
+    "sha256": "7a50993e90fbe668aafb2d639bd624b0326065ef0647a76615bf8c708b573f97"
+  },
+  "cross.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-cross.json",
+    "sha256": "a0a11800620e790da640f409353c82f0dece10b263a327894ef25ec50337a9f5"
+  },
+  "crown.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-crown.json",
+    "sha256": "3feaa5a5442cd9bef8349cdce30c8728b6c69451badd5489fe5fb5869623f324"
+  },
+  "disc-3.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-disc-3.json",
+    "sha256": "c55b9fef38c083a94a5e736dd48ee942527ca01a342c660899b274987c9bc052"
+  },
+  "download.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-download.json",
+    "sha256": "ab6dbb0b99f6741bdb435a8b6ee976b330a4f527d0aff0cbeaea7d07c6206277"
+  },
+  "droplet.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-droplet.json",
+    "sha256": "34b23f8a308a4e7dbf4538f88347ee9f8caad33e500e1f1b24e517c4d314dfa1"
+  },
+  "ellipsis-vertical.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-ellipsis-vertical.json",
+    "sha256": "ee295d92b7c5164e529cae384072d282e7b1b88b79aa0e32d4a5b97ee80ca8c7"
+  },
+  "ellipsis.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-ellipsis.json",
+    "sha256": "71d9684b5c0423c68f2661f049ebd769e4a40ba9f845e54364929cace80809cb"
+  },
+  "equal-not.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-equal-not.json",
+    "sha256": "bc274cbc89d43122dcd9174ea25dc83a51b9e75f25814474bb8791f074f35556"
+  },
+  "ev-charger.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-ev-charger.json",
+    "sha256": "90e35f98ec24e662e8c6742bf1fc5ff5122c05b48401d1ade2261e5bf94f7a45"
+  },
+  "expand.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-expand.json",
+    "sha256": "7af823933df58dd82fda50459dd0b54219bd190cc3c989de39cf67bf9c65297d"
+  },
+  "external-link.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-external-link.json",
+    "sha256": "cdf6a557d882abf61b119e72e1e6edc67c7262049634749c2af31ba0ed6d1c26"
+  },
+  "eye-closed.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-eye-closed.json",
+    "sha256": "eb53e112700bc30786c9d2bb39c2d058353ef55a0d18da7ad38a9bc3bb5c51f8"
+  },
+  "eye-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-eye-off.json",
+    "sha256": "729f96ca3210a929cf6719af94e4ec631a50b92b0c2c2f14b70a85cfbd3d33e9"
+  },
+  "eye.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-eye.json",
+    "sha256": "50fb4b3a3d48a8f48be2b30f776da74125fa277fd5398630f0f673b6a3e24793"
+  },
+  "fan.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-fan.json",
+    "sha256": "d6dab76d2459a5f44378743092e864180d1fb617d9acea93edfe94d7b5cc1bee"
+  },
+  "fast-forward.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-fast-forward.json",
+    "sha256": "9f36dab7dd9d8d87861dd8480a8b39b8ad308e599dcc4bb90bf7bd9a5086be89"
+  },
+  "file-check.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-file-check.json",
+    "sha256": "c19fe7fc957e0df7c1f4dc5f9133c37438e7a2ca4e5890b86c9e09a493abb26d"
+  },
+  "file-clock.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-file-clock.json",
+    "sha256": "8d65c0efd15aacafa15ba853524fc26dd0a4d51b166f51c4358eae4b900e0ab3"
+  },
+  "file-plus.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-file-plus.json",
+    "sha256": "d20a6361095cc38166101f31302a6cef3c7125c69803d22067dc02659b262cef"
+  },
+  "file-text.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-file-text.json",
+    "sha256": "5e4649fa7875d235fe1848970684bb1d62ac3db0fc84e79c75607d56419c66d7"
+  },
+  "file-x.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-file-x.json",
+    "sha256": "73023839286e81c856054cf03ac58af027a4678de44d3b115bdad39ccca085c5"
+  },
+  "file.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-file.json",
+    "sha256": "57e467ed9e020f7fcaab7e011b785ad6bf1c4d433a8119348b599425d90cfb1d"
+  },
+  "fingerprint.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-fingerprint.json",
+    "sha256": "024ba03380d34e683611faece5e6cd06aca7a4b94408cef29f08e25b82ed5180"
+  },
+  "flag.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-flag.json",
+    "sha256": "105cf985a23bb1c7eec26b83bf2cbd75e5c565ce40862627e89badcb15324407"
+  },
+  "flame.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-flame.json",
+    "sha256": "efb1a88a8cb9369da3aa765ba9827aa91dd4c891715f6f598afa971d2596de57"
+  },
+  "folder-clock.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-folder-clock.json",
+    "sha256": "35214f8138e4d1c2b9a79c3d3d8afaa3a78c0497c42e203972b35dba83100902"
+  },
+  "folder-open.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-folder-open.json",
+    "sha256": "170110f1ac3aa8c67bc7afdf0048aafdb9f526c0bed84beec2bd0c515b32a195"
+  },
+  "folder.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-folder.json",
+    "sha256": "9f9e25872353a730a5003a154311ed2adb5a5908c611e67dbcb7fc701e2cd95c"
+  },
+  "forklift.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-forklift.json",
+    "sha256": "ac445bfa417b900cda12aa1f41a904d564058badad51f5f858d88bf690b9f123"
+  },
+  "forward.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-forward.json",
+    "sha256": "003e5d682cbf6e6f07f362db9e179930e59d457dce6b8f07ea5b22836fe599f2"
+  },
+  "frame.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-frame.json",
+    "sha256": "058cbdf66ba19c66c5faac87885df3666e8ad1648e5fe2f3c3fad276949d2f58"
+  },
+  "gallery-horizontal-end.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-gallery-horizontal-end.json",
+    "sha256": "4b62b817910494acaaadcff467e223f7984f2a036fc725da25fa497ee3b5930f"
+  },
+  "gallery-horizontal.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-gallery-horizontal.json",
+    "sha256": "16d896d5b4e7916d8ecb8053190e9cd2e39067dd85bb7fb3d9210e5537679ae3"
+  },
+  "gallery-vertical-end.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-gallery-vertical-end.json",
+    "sha256": "919e27a5db9ba3182ee5d363ae1d98e741fc6cea4b0fb02895a1dcb2d96d27a1"
+  },
+  "gallery-vertical.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-gallery-vertical.json",
+    "sha256": "9d03323f3a1e2636b504ef9c4952e5fea7a0aa5de4803d7d82294d0493da5d19"
+  },
+  "gauge.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-gauge.json",
+    "sha256": "4886a04877caf92b76d3f11b1f3a3de1038e8dd3c790a7df24d07e936d838b07"
+  },
+  "gavel.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-gavel.json",
+    "sha256": "00a27e460c6fa87efa3784643c63a340c20be702f9bb54b7361dc9fc23c3c994"
+  },
+  "ghost.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-ghost.json",
+    "sha256": "e897c5deba5d3530daa6ae7062a95a28312eecfab78695867df442fb272e8305"
+  },
+  "gift.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-gift.json",
+    "sha256": "9d834c7d39c45ecea81f03446a90cfbe9b7e26dfb8a877af301bd02373330906"
+  },
+  "globe.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-globe.json",
+    "sha256": "43b664db061ec64b7f369a955f70b98779c73920ffdad53a7ce0555ae543140c"
+  },
+  "graduation-cap.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-graduation-cap.json",
+    "sha256": "604cb4d82db217d81d86660d3ec6eb9d80c6d919c440128fe6a4cd8cdf286532"
+  },
+  "group.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-group.json",
+    "sha256": "d1683bc6c873384fd78c21452d302ec5f4f56c13e63d7fe3c3909994d9adfe35"
+  },
+  "hammer.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-hammer.json",
+    "sha256": "420eb812febb9daeb457d59abc8f32d56bfa1dfbb0dc1ecee95e95af8e8108d6"
+  },
+  "headphones.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-headphones.json",
+    "sha256": "52503938c7dcf327cd2f518fa32fc27f1e1f2b502786832edcb9165b10c99e15"
+  },
+  "heart.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-heart.json",
+    "sha256": "462505a54d507964a51d50cba66efabd445c5ebacffbff8dac3303dc6a4b621f"
+  },
+  "hourglass.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-hourglass.json",
+    "sha256": "862e5f232380bfdefe1c7c4345e897733c45fe2e61126b257cd411cc70614e18"
+  },
+  "house-wifi.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-house-wifi.json",
+    "sha256": "94b7b1d82da8b8ddecbfacc812cd39b33554f69f1fa21bce0b7f73dbd1d99355"
+  },
+  "house.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-house.json",
+    "sha256": "4f2cbea0488de8475ba7010a1999e139c82b9388c27770733db30aba1d21e7ab"
+  },
+  "image.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-image.json",
+    "sha256": "19ca75fd340ef6cecb3bea2443501aa92b02094255d2c40483fb26b29510e21d"
+  },
+  "infinity.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-infinity.json",
+    "sha256": "6c5e35eda42cf2c3453fda0cf23a3f6a1816fdab1cdc50afc5ff6065fb576fb0"
+  },
+  "info.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-info.json",
+    "sha256": "e8fdd03295cb763fb7449d90c8a2f729779933cccc52cb549cdb7b74ab9b5a48"
+  },
+  "kanban.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-kanban.json",
+    "sha256": "dce16efda1329b0cb13b13b32f8f1ae8f2f325a521daf6931f91886c35df1f60"
+  },
+  "key-round.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-key-round.json",
+    "sha256": "5c21e581eb3ac9a99127b3ff717b71b96e703b2d5feb1506cac0eac8e33faf8f"
+  },
+  "key.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-key.json",
+    "sha256": "eb78ff104bb723aa8343faac95d5ece63130e45377f421aab099b6ecdaf12059"
+  },
+  "layers-2.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-layers-2.json",
+    "sha256": "979e3fc0f6d069313818bd0010d2ddbf16c35202b6d868d7e54c8cb8b3cec486"
+  },
+  "layers.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-layers.json",
+    "sha256": "3d1c6a4cc459b73c5e4da4dffeac2b5546f34d5fb0ca3d50563c6123e1f222ea"
+  },
+  "layout-dashboard.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-layout-dashboard.json",
+    "sha256": "da8452fd6c5682ca94ccafe9989402671ca3eca40efd1bcb7a4aa3d41ab1ec2b"
+  },
+  "layout-template.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-layout-template.json",
+    "sha256": "b0dda5db3ad3c57984fa8ed47f69341124c7944c829ec7b741728ab12202a46d"
+  },
+  "leaf.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-leaf.json",
+    "sha256": "166fbcad982dd31fc14a8564071f96a165cc14031ee308cabbd989ee738676a1"
+  },
+  "library-big.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-library-big.json",
+    "sha256": "156fc414e99259a426cee2a6ac0153b64bf92e86e116d9de2b67674a2bd07536"
+  },
+  "lightbulb-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-lightbulb-off.json",
+    "sha256": "90139aa88246cc12e4e549ba27c8f40a1b30c389ab4f8c6cbec81417f401e5c2"
+  },
+  "lightbulb.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-lightbulb.json",
+    "sha256": "c4cc35f8bb593c319f118ddfc6c15a8596c59831b515b408a360f29508c3ab2d"
+  },
+  "link-2.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-link-2.json",
+    "sha256": "f796db8d779a9346ed112bcf0896af7251e12a4571598237e198d8dba137fe6e"
+  },
+  "link.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-link.json",
+    "sha256": "c391dd8f47b08466ed70e1a8ef6c06e84816043d186afb270e0faa4aa48dc32f"
+  },
+  "list-filter.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-list-filter.json",
+    "sha256": "fcfc03e68c25b1536d9481b37f8880aabfc32a1628e7dc1b22379d94d5d8955e"
+  },
+  "list.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-list.json",
+    "sha256": "040853e11100e22bf859e3ae82f7ef8dd1d26e6846439dc8b6f5ac1ead02677c"
+  },
+  "loader-circle.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-loader-circle.json",
+    "sha256": "137074496ae13ce1ec3d056935ad8ed9a00f1eb75352499223089eda30e791cd"
+  },
+  "loader-pinwheel.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-loader-pinwheel.json",
+    "sha256": "ff520a36b1df60739ac37f26b6aa931cd9a6b6bf533e04a0dae368d3240372a4"
+  },
+  "loader.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-loader.json",
+    "sha256": "858b95d400a658ec51f9d9ab27039c750831d076497bd07cb9c8b80f35180962"
+  },
+  "lock-keyhole-open.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-lock-keyhole-open.json",
+    "sha256": "25098c92719de62445b1ce15af5b302e3f1b7c64e192f4911735673538c2c16d"
+  },
+  "lock-keyhole.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-lock-keyhole.json",
+    "sha256": "ab9e282de37de352030c2716dda238f15c9fd5a428b28f9f392aa8a3c5bb0eff"
+  },
+  "lock-open.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-lock-open.json",
+    "sha256": "2c4e6047fc2009d92c71992f10fc590894c21aa37b7092d994551bfa429fb9fc"
+  },
+  "lock.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-lock.json",
+    "sha256": "1c68959f9cd3ccf2c3a6acbadd3476b8f31b2bdffa1f1a3c300d5805a06926f3"
+  },
+  "log-in.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-log-in.json",
+    "sha256": "37c563164ed8b65b2bf87a655cfc3fe8848d4fb9899ea0afbf9f6a5c96d0f443"
+  },
+  "log-out.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-log-out.json",
+    "sha256": "71508613446a6010b756bb04cbd6ab8d7a179b22208c616c062ab22530e3cb56"
+  },
+  "mail-check.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-mail-check.json",
+    "sha256": "7de0f33c934cb6a3795fbdde5573813efde194454b14ff569b074316d2303882"
+  },
+  "mail-open.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-mail-open.json",
+    "sha256": "aa388e206810672c44fb0f8c7d76f1bd6f501b12f7ffbbd5f0dc6ec4ce28d36f"
+  },
+  "mail.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-mail.json",
+    "sha256": "64ecdcc574c280f2121c7eda8da107a2d61ac5f46dda5495f265b9a348b8ee25"
+  },
+  "map-pin-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-map-pin-off.json",
+    "sha256": "c26550080ee0f433a56741250b6190a975e86d92a6d13304f347e8b178f78c02"
+  },
+  "map-pin.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-map-pin.json",
+    "sha256": "5da2b2fe1380624729b6150bd08b9173862a5bf70d213f0dc22cbadde4f1d35d",
+    "normalized": "type-only Variants import"
+  },
+  "maximize.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-maximize.json",
+    "sha256": "776b43f1321a6751959b9804942a708cfaf34c4029fe01db4343b419c9cca25a"
+  },
+  "megaphone.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-megaphone.json",
+    "sha256": "aecfe32e265122af7ed01a54b4e3f8e21761ff57209e2ea634a14d93bbac9f3e"
+  },
+  "menu.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-menu.json",
+    "sha256": "5f1152f2e6352f617bbf3798c95344004feff659414881dc1825504e81bf975b"
+  },
+  "message-circle-code.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-circle-code.json",
+    "sha256": "fe0a07d72b6588455a0771a50bf0bddfe9b65a9e6b7e318d2487ffdb7f061d94"
+  },
+  "message-circle-dashed.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-circle-dashed.json",
+    "sha256": "f03d8aa37d22d6b9df36aa3f96790c11b5c229e0d254987d52068932a6264d9c"
+  },
+  "message-circle-heart.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-circle-heart.json",
+    "sha256": "cf11929122637331f6e7cc1739bb4d96f212f9754e13e92fdc8137e837f2bc74"
+  },
+  "message-circle-more.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-circle-more.json",
+    "sha256": "cdd652b326968d823b1f70fd36f1db896d1dde7260bd96a2c47080687d452055"
+  },
+  "message-circle-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-circle-off.json",
+    "sha256": "da7a4bffc087112ef1c5b66ee2b393429801f41da901923e3ba0e58075a1c8ff"
+  },
+  "message-circle-plus.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-circle-plus.json",
+    "sha256": "06ad720b99a7db2a9eb7ae1d553f297b2fe7bc4f3802bdd186d3142a62015814"
+  },
+  "message-circle-question.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-circle-question.json",
+    "sha256": "5f43451d58714ab3e9b9491e1bf48f3b47588c6d28a14986aef92cc3f3e72174"
+  },
+  "message-circle-warning.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-circle-warning.json",
+    "sha256": "1512d7f8cc517bddc2306b2c0f06cdc3469536f3104f7e180de33fa5b2e1d777"
+  },
+  "message-circle-x.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-circle-x.json",
+    "sha256": "bc4c54465f76c520f78a8a393593d1687ce7ffea985501ac3a05a4802372a340"
+  },
+  "message-circle.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-circle.json",
+    "sha256": "a03ffe37d1ff43524821b558d9b2bada171d444d5d638921043f9ab4646de4c5"
+  },
+  "message-square-code.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-code.json",
+    "sha256": "c93b2608e164d1be7701231d927ad3edb994bcd7730867d6332a45ce2259dfef"
+  },
+  "message-square-dashed.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-dashed.json",
+    "sha256": "ec187c43b8ed8eb22d3d1479492d6fcb855b8c6c574e0afd0814e7e92e7db7e8"
+  },
+  "message-square-diff.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-diff.json",
+    "sha256": "f1b5fcbbb2c46a86a890e484417b320f91f24a0609ce23d14812978fd551bd03"
+  },
+  "message-square-dot.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-dot.json",
+    "sha256": "a67c43516bf764a00fd0925cacd1a4114be1d6911a605c471e152bff9341585e"
+  },
+  "message-square-heart.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-heart.json",
+    "sha256": "0585077d5fc849e50de1251b1f9ba092e201bdb038394a79a522500a637c00b1"
+  },
+  "message-square-more.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-more.json",
+    "sha256": "119a2895e34e9b5e7925b30636b94e78a095b4904afc389aa966936fb60f40bf"
+  },
+  "message-square-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-off.json",
+    "sha256": "66f631cba9f652aa1bad7bf56390f9969c03b10880372fb96466fd8f14ad6565"
+  },
+  "message-square-plus.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-plus.json",
+    "sha256": "c89c5fbdd1cf4062ae669d6a7ac551ca71671ac6bb529db7e4d3f73c05ab9bf5"
+  },
+  "message-square-quote.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-quote.json",
+    "sha256": "c8fd9fafdcc414c2e29d090f693fe46d028dad5be5e15747e65ce595c7bd19ff"
+  },
+  "message-square-share.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-share.json",
+    "sha256": "f35c55f69c0ea7cc9a0627b3af62704f42feef325687d2d16c7bf3a89770c7ef"
+  },
+  "message-square-text.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-text.json",
+    "sha256": "bbaec3f9f47c689c6b6469836bf53511c8cdd15d570c7c369e6231332e2728aa"
+  },
+  "message-square-warning.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-warning.json",
+    "sha256": "db5772a2989792e11743f362d068a45517026b96d4a4067d306a17e539bf391e"
+  },
+  "message-square-x.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square-x.json",
+    "sha256": "85e5029ed3be90c3624056634e6a2d6f9259845abc66107473c51517fec63e34"
+  },
+  "message-square.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-message-square.json",
+    "sha256": "05f5e064fb7e1b03e202804f5c14dc91906c24b55eb32e7ef9a659975633d8ef"
+  },
+  "mic-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-mic-off.json",
+    "sha256": "9d28bc40bbd001fd5cd9b612c7464c1568a48236c83e5b3b05cce7352f3b2dfe"
+  },
+  "mic.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-mic.json",
+    "sha256": "c69f58897a19d99b78db69e8b37ac7212dc6f1606e7e91e87558a2746dc12e08"
+  },
+  "minimize.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-minimize.json",
+    "sha256": "c410374397db0bacd85f97e1d28e62236cd0d03e70d1b776efc1528c4acdbb73"
+  },
+  "minus.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-minus.json",
+    "sha256": "edf9afdceb98078097af876d91b4ebd669098b8ed936c92478782b84f8f02495"
+  },
+  "moon-star.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-moon-star.json",
+    "sha256": "1aed8fc140f495caa6198c1de933fb12b17aa2580b327834844fbf67098273ac"
+  },
+  "moon.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-moon.json",
+    "sha256": "e65404ce95d06ae144ee16ccb59a5913ce4a8b215eef523b5cab7552e3132fb0"
+  },
+  "move-down.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-move-down.json",
+    "sha256": "88487941b1f9916acd0632767737cd061cf76a25f1518f0f88174830dc8b017f"
+  },
+  "move-left.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-move-left.json",
+    "sha256": "9be47ad2593c4fd28267fad115d343198b95c2e6ddb1f32bdf6015ba9c797faf"
+  },
+  "move-right.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-move-right.json",
+    "sha256": "ce4e1936f881796fcb493faa680003ea986eb0a3d5cb38793e0a410c6dccab0e"
+  },
+  "move-up.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-move-up.json",
+    "sha256": "336cbc8da359dff4309c1f2c89fe127b8a20b8d2b6e677131ecae783d8c75ead"
+  },
+  "music.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-music.json",
+    "sha256": "a3d1e8be99a870e4bce6071c6c05b13e346f11281a4ba3368b1a2364678e2f0b"
+  },
+  "nfc.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-nfc.json",
+    "sha256": "08a97e338abf1f727be5f26a38632fe72bbb5e68cf7d86b4dfe7bc60148dd231"
+  },
+  "notebook-pen.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-notebook-pen.json",
+    "sha256": "42286fc7e8e657c6232c1ef06d5fc7952ac80e1a3f4af79e31f800b0d8b5a9e1"
+  },
+  "octagon-alert.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-octagon-alert.json",
+    "sha256": "2a94dd80e6d257a966b6d975ae1a49d47a31ae14951eadd79789f5fba8927a6f"
+  },
+  "orbit.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-orbit.json",
+    "sha256": "0ba620f033ef28f32083e4dcedbb79fbb58aa28da2cda34d9348fe92fddf1c5a"
+  },
+  "paintbrush.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-paintbrush.json",
+    "sha256": "383545b174a91ecd89f66d0f7038d93944fa9330f914deea70d8b1a1dd20b0bb"
+  },
+  "palette.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-palette.json",
+    "sha256": "6bf56331a0afae2622a4e56145cfd7db27205bc633f968dd7dae9b722f74ebac"
+  },
+  "panel-bottom-close.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-panel-bottom-close.json",
+    "sha256": "200198504c245f8a2b86d14a2d158d9362fc7de628b0d5943297b88870d98ba4"
+  },
+  "panel-bottom-open.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-panel-bottom-open.json",
+    "sha256": "5b57c91581bb3cc7b7a7c8941a8c1d62c741364a5fddd8804ebe29e2d764d536"
+  },
+  "panel-bottom.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-panel-bottom.json",
+    "sha256": "be8ed7b98b61c32211e3b9c58bd7773dd92d30cab624578d23bc754470d4d1fe"
+  },
+  "panel-left-close.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-panel-left-close.json",
+    "sha256": "635f1d848036a1450d29efcdd46fe505480f94c03c59b8957f2a0723b17892a5"
+  },
+  "panel-left-open.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-panel-left-open.json",
+    "sha256": "774527ddbe49794402aad5e6883576c4fc7c34c76ce4568b9cc31908c80c2c1c"
+  },
+  "panel-left.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-panel-left.json",
+    "sha256": "0e1c64e06f7bae75720c15b5999b6ca80257724a487d3c364ec822c31767efef"
+  },
+  "panel-right-close.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-panel-right-close.json",
+    "sha256": "cb36d9c4f9a22250ab73c43c27e9b62750a6ff4ba4cae8a95a4d97875a28e4b9"
+  },
+  "panel-right-open.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-panel-right-open.json",
+    "sha256": "0c49f2e1bedf44f7220f1ce4deb35667bcb711e18b677c5e922130e5511d0d08"
+  },
+  "panel-right.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-panel-right.json",
+    "sha256": "30f7d3b63b2ab304085e43eda2a7034f85af9ace21f0242f5d0daa4c3dc4873e"
+  },
+  "panel-top-close.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-panel-top-close.json",
+    "sha256": "1931e4dbdcb04691bcb9ebed7c19dcce1179ce86a8bf7b31e15d99263c05cf31"
+  },
+  "panel-top-open.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-panel-top-open.json",
+    "sha256": "683d4d82ccf54a4f1bde00bdc8149072fa8987d06cbea603f809fdc21427c8f2"
+  },
+  "panel-top.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-panel-top.json",
+    "sha256": "88f995dd266902a20d653ea4361882cf5223c99a904e96105da5edfa721c0e5a"
+  },
+  "paperclip.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-paperclip.json",
+    "sha256": "845aa8a918443e0aa8af49b582eb4f3a408e5486f3b69b53579dcffe0a05f368"
+  },
+  "party-popper.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-party-popper.json",
+    "sha256": "5eb90236b6609c8c25c29a7a0ac0050589b1a07f8729fb8092cf4e8d01bc49b1"
+  },
+  "pause.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-pause.json",
+    "sha256": "06bbc425e258b45ca2076fc28ee0b68cb144b2cd1359aabf388c23866a982064"
+  },
+  "pencil-line.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-pencil-line.json",
+    "sha256": "a50429609b20cacd9ad50d5220140e1d12f6f2cf75f4129a278bd705469f6129"
+  },
+  "pencil-ruler.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-pencil-ruler.json",
+    "sha256": "a5f48f079ea3d349c9b598bf7882832a325e0edde7e4450962796b88544270d7"
+  },
+  "pencil.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-pencil.json",
+    "sha256": "93303d104c66aaf08cba8ff17c5936ffe479719e3b56102d84f456830a1649cd"
+  },
+  "phone-call.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-phone-call.json",
+    "sha256": "50fc66a0a6e4be11737661bd865bd814b1648fb268f36c0c6d8dcaf44023ef9a"
+  },
+  "phone-incoming.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-phone-incoming.json",
+    "sha256": "a347ece1ee31a6609a61e75f5e257921138b171f9cf23f3f62a303a1e7aa461e"
+  },
+  "phone-outgoing.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-phone-outgoing.json",
+    "sha256": "6d704d72bad0502fe725c4d55c7b6d08e327d43b39529764dff279a0ffabf015"
+  },
+  "phone.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-phone.json",
+    "sha256": "318ebff359adf7c32cd9d9f3082c2f8b7548b49c6fe546188795f51a71adb845"
+  },
+  "pickaxe.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-pickaxe.json",
+    "sha256": "a01c2a8cfbe3f1bf84f6907ee3a7afd6682da9a68f5fca12227e11c3b193d660"
+  },
+  "pin-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-pin-off.json",
+    "sha256": "7af12aaa9788f6f81b4369ad43ff00977ba91a3649cc65a69521c2c30f56cb3e"
+  },
+  "pin.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-pin.json",
+    "sha256": "f6986226d7eff2662942af115d8c5bfd7202115a01ce2465805dbaca88f729d1",
+    "normalized": "type-only Variants import"
+  },
+  "pipette.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-pipette.json",
+    "sha256": "4cf7c2f5cd8533bcf13c9a6a3bdde502d1db7c1ce2e555cfc12df1c45a5d922b"
+  },
+  "plane-takeoff.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-plane-takeoff.json",
+    "sha256": "040863dd11e5a1b154f2cd8d60945399de0cbbfdf476a9c33fdbaf03a2d80a4d"
+  },
+  "play.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-play.json",
+    "sha256": "b7f8efb229e678d927550f104c9e11870c5f0b976899cde96cd1354fcc9ada04"
+  },
+  "plug-zap.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-plug-zap.json",
+    "sha256": "03e7503c5cc3016d29afd8fd44076c01cf8f5faffed1b19c1eff3fae27340663"
+  },
+  "plus.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-plus.json",
+    "sha256": "7a66cdf54722c98e9eea90c42b3e68a49159e885bb2ab5e7367b55a0541e5c09"
+  },
+  "power.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-power.json",
+    "sha256": "5231f44ddee67f8edf48eea52ef8ba4ed8287d92a0bfa10823558b7139c4f61f"
+  },
+  "printer.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-printer.json",
+    "sha256": "5a8ce803838011a8b0a40473e56cf17dcd8009dc46c22b61c06f1087cd667771"
+  },
+  "radio-tower.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-radio-tower.json",
+    "sha256": "4a4f1bfae85bab5e6262caed4ab68f74c946dd3ee0df360c5a6b2099d95a8cf2"
+  },
+  "radio.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-radio.json",
+    "sha256": "f9ee98f6722891304e5bb9e4dcfc4845543c6733e99e4f2d42944b5d9b2902b1"
+  },
+  "redo-2.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-redo-2.json",
+    "sha256": "913e7df6a86bb63b0718aedb30af39369dc611288178ef0e147efe0e3c8b4a5b"
+  },
+  "redo.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-redo.json",
+    "sha256": "4d5b7e2d8e5d94ff03e28d64372547a41408292d3247ff00c1ed5c234f434350"
+  },
+  "refresh-ccw-dot.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-refresh-ccw-dot.json",
+    "sha256": "0857b173fe39cc8d37190a8206a3e04b68768331c4a443d21f65653469b17bd0"
+  },
+  "refresh-ccw.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-refresh-ccw.json",
+    "sha256": "8a17f0196c2aaeb524cd41bd3219f7c03e50f840a56806eef1d32829104749e9"
+  },
+  "refresh-cw-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-refresh-cw-off.json",
+    "sha256": "485f0d59affaddf268e503d05450913a5559125a97a27a005686f74c47ed8535"
+  },
+  "refresh-cw.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-refresh-cw.json",
+    "sha256": "0ece9ffd8c2bd523d729b68e27cd93f5cf05b1fdae5612132f4baaf277813bc9"
+  },
+  "repeat.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-repeat.json",
+    "sha256": "f078bd2e9c6bcc4973061feecd442df23154ac7ef696f5c8fa8478db89dc13d7"
+  },
+  "reply.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-reply.json",
+    "sha256": "c460df3adb61a8eeada94ab6c3f9c466084546bcae57e3064bc2ee67f1d932b1"
+  },
+  "rewind.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-rewind.json",
+    "sha256": "927a4bbf1a10207447bf2c6b3c4159947725ba9a2d7156e2bdebbf44df4b3865"
+  },
+  "rocket.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-rocket.json",
+    "sha256": "6e072b629a85a54b068ba648f8340ba8aa16cd0aa851796286068153859333ff"
+  },
+  "rotate-ccw-key.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-rotate-ccw-key.json",
+    "sha256": "85a0737e275e67aa6c77ca37de19b7b85c27ebb55b63fbdf0c8459666c328ef1"
+  },
+  "rotate-ccw.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-rotate-ccw.json",
+    "sha256": "adb5a05fcddefacb169e938df900941e2fc8227d39867f5b2eeb2506644a954d"
+  },
+  "rotate-cw.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-rotate-cw.json",
+    "sha256": "cb3b525f27c4548370711a2fe53cba912513c4c882beaf115feb9d07ec4585fe"
+  },
+  "route.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-route.json",
+    "sha256": "4139527f85ffe9434e703fe1b2b2be1998020dc6ee763125ee1d32e161f183c7"
+  },
+  "router.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-router.json",
+    "sha256": "b48b013a3031cc8959712a939988cb5458ca56a59084748beb12280cf8977056"
+  },
+  "save.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-save.json",
+    "sha256": "90b61064fab70182fa2002a626d172a9aa5a6a98c832a3bf630f8ecaf696ab47"
+  },
+  "scissors-line-dashed.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-scissors-line-dashed.json",
+    "sha256": "ac5eab4574c9e1d2f052a3fef51346a5238f2ff130d2e1bd684d62a498049b16"
+  },
+  "scissors.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-scissors.json",
+    "sha256": "4bdd08dd78b96e56243b33fc93fda4cad71f227a0dc950b71dbc77e4cabd1fad"
+  },
+  "scroll.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-scroll.json",
+    "sha256": "f39aa99a74e2d9063ee7b6c3f163272f39cb3abe10e3c7eefd0570b8035a5652"
+  },
+  "search.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-search.json",
+    "sha256": "18727656aef5b39240e80a3437dde3b04ba7d9100c25d13f3f7c0662da155c7f"
+  },
+  "send-horizontal.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-send-horizontal.json",
+    "sha256": "062436617b9915508b26e35353f675604aa9312a29e0d50314270d5b2a17921e"
+  },
+  "send.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-send.json",
+    "sha256": "c190935dd22868ad2a0ef714fc9175ee28f4de8955e7215aaa94d21800c42e10"
+  },
+  "settings.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-settings.json",
+    "sha256": "57dfc1d24da7159fa5e4f338f3e2500d974588c52b8cc82515891734449cb44f"
+  },
+  "shapes.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-shapes.json",
+    "sha256": "c10bf83ae658b34d413d05926eadf57950bae4a25ff998038b398c14e64069c2"
+  },
+  "share-2.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-share-2.json",
+    "sha256": "fafb2ae408ad17574be0233d9ee02538612b98df4abe8cefdbe2b64f96af357a"
+  },
+  "share.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-share.json",
+    "sha256": "3691891b9babd69c5c8515b052c287b7c2be9cacf6768717d5999e3d92a085f4"
+  },
+  "shield-check.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-shield-check.json",
+    "sha256": "b8ea5feefeb88a0456ebce33e1793f39a182dce23d73cc5af098f512edbb7897"
+  },
+  "shopping-bag.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-shopping-bag.json",
+    "sha256": "866fbc1c266325d31cf083c4a0a580c1994c00f357e9ae9d11f4e2619811f1a2"
+  },
+  "shopping-cart.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-shopping-cart.json",
+    "sha256": "66d9f60671f48ab7c6f845752e8d53383e7f38b7302df9d20eb5f614467b860b"
+  },
+  "shrink.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-shrink.json",
+    "sha256": "b9e61f459c48434cecf27e514d496546c7203ee4b8550589aac0a9500229ee81"
+  },
+  "shuffle.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-shuffle.json",
+    "sha256": "1c60f5bae5ec345e3cc78030cbf3bd9a15699a1e39e3dd46aff1b516b09e716f"
+  },
+  "signal-high.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-signal-high.json",
+    "sha256": "4a09f11f48d44efc7e9e034a99c637e73e8b9186150696e6e2509b47008a4164"
+  },
+  "signal-low.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-signal-low.json",
+    "sha256": "a2886d64fcb51949ce55e0097aa149a21cb1442d7871db5918832a0c565eb483"
+  },
+  "signal-medium.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-signal-medium.json",
+    "sha256": "37833a040cca7635528ca18fb6254320fdedfc567f444c6171f77fd2cf1152e0"
+  },
+  "signal-zero.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-signal-zero.json",
+    "sha256": "4b6c8aaba1b1f89ca75cc80d8340e27e0c2db9fcc4c1b2c13874355dd116ff90"
+  },
+  "signal.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-signal.json",
+    "sha256": "35b7294f753f04a8de49494f830a8be8d360b34993bbe47a92bdcf3be80f0b8f"
+  },
+  "skip-back.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-skip-back.json",
+    "sha256": "22edc88145fac5cbafcffd65054a2c4a5fddaab92ad73cb5af62c7f8a9a015af"
+  },
+  "skip-forward.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-skip-forward.json",
+    "sha256": "3e1ac23bbc0f19436e6191d7a24ba8992c2e953c772f07db85bfbcf5b16a0424"
+  },
+  "sliders-horizontal.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-sliders-horizontal.json",
+    "sha256": "eccc3c852c71a412b42a8b2e248957c9fa56bd2220cd850bc8658ede7f77fec9"
+  },
+  "sliders-vertical.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-sliders-vertical.json",
+    "sha256": "83126161661bbb87630eed85b796981f7ca2bf1e5ef7621feb0919399a2b78ea"
+  },
+  "smartphone.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-smartphone.json",
+    "sha256": "c2c6d9cba37cbddeccc5eab916e3535b847876a821e9eca7f2826a1b344efcd6"
+  },
+  "snowflake.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-snowflake.json",
+    "sha256": "ee0816db0cc9669dd670c15fbae30ba8eef7bc6da86ee75f31b5625308ba84ff"
+  },
+  "sparkle.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-sparkle.json",
+    "sha256": "af08c050e08a808c1e84b1919168422448408e9ba04182f0812a098d635dfd38"
+  },
+  "sparkles.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-sparkles.json",
+    "sha256": "573b074735c16333e39ec826c1e9fc142f3dd619bdf338f970cd67387376a46f"
+  },
+  "square-arrow-out-down-left.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-square-arrow-out-down-left.json",
+    "sha256": "96e53a12616140f34bb5a49d2e6003efadfc2165f6b9f9262d7edf6ab9f8836b"
+  },
+  "square-arrow-out-down-right.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-square-arrow-out-down-right.json",
+    "sha256": "adb9fe079a1cb86cd081abbedd990837b7e30967de3f8c31c622f6f8ac3ab806"
+  },
+  "square-arrow-out-up-left.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-square-arrow-out-up-left.json",
+    "sha256": "85222e5b104deaf5833856e08e5dff9c9d117700d73639063be8f2874cf02016"
+  },
+  "square-arrow-out-up-right.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-square-arrow-out-up-right.json",
+    "sha256": "c40d2916ad7df326822dad6c51000333b96c962750870acefe37322c4616c0c6"
+  },
+  "square-dashed-kanban.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-square-dashed-kanban.json",
+    "sha256": "a4f240668fdcb6caa6c4df1dc9017c8831e0602c581c9c043bdcd3ff35e41b62"
+  },
+  "square-kanban.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-square-kanban.json",
+    "sha256": "63f338b24a9bd323aa488616136d30d3bb4046fc097e9e307119f728fd49d2cb"
+  },
+  "square-plus.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-square-plus.json",
+    "sha256": "5e235d1082a60cb3f1e6eead83dd7402f21765f23f2e5496e7f4b243a848e96d"
+  },
+  "square-x.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-square-x.json",
+    "sha256": "b8f9a337c085b9c00b45a65c21be9f1de383d49a32b004487b76c7bdbad435b9"
+  },
+  "star.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-star.json",
+    "sha256": "c4a6345f825afb24307d83250dac51111ddd62ace6527a27baaaf8f25f4af4a7"
+  },
+  "sun-dim.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-sun-dim.json",
+    "sha256": "c14178b78e2b23a18ad6c7f089f5d4e9e7f5e3d43876ca2099d1236162bb0dc7"
+  },
+  "sun-medium.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-sun-medium.json",
+    "sha256": "18a80ea5425ad90a766b0083075bbfd943a577f5baf0334db08e9b1450ae713c"
+  },
+  "sun-moon.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-sun-moon.json",
+    "sha256": "a79968d76c41e818483c5bbb4baae833e46f7796501803b43594ca0b8b06c1cd"
+  },
+  "sun.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-sun.json",
+    "sha256": "3a9ea066bbb212c34f8a92ac7e2eb9bf488a5cc850e123c4066580cc909bd14a"
+  },
+  "sunrise.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-sunrise.json",
+    "sha256": "3475c29c02f810497305aa60511a03b8bc33108dcbf5b96251cd0b341d507348"
+  },
+  "sunset.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-sunset.json",
+    "sha256": "c483d2269b30f7802bee0035aa1c976bb7d155ccb6111fcdf50bd51aa3e31c2b"
+  },
+  "tag.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-tag.json",
+    "sha256": "13d53a54a583fccf482322e5b977a6fd1646e10a0c525481e738a18c13a2440e"
+  },
+  "terminal.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-terminal.json",
+    "sha256": "d43c1dcb7f241cbe9351dfec62213d5601a95ae5b924491a823378b9f6d58daa"
+  },
+  "thermometer.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-thermometer.json",
+    "sha256": "a3950f2331ba45c176a729ca56cab55c32924752802dad33b20057fc6845ba08"
+  },
+  "thumbs-down.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-thumbs-down.json",
+    "sha256": "f75ffcc774fff0694d7af3762825b6177b888992ed78f36f0de8cce4b39c18a9"
+  },
+  "thumbs-up.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-thumbs-up.json",
+    "sha256": "ad39f1465945bc23e75f95bf26ad8abd320d42ff1280acbc348c094bfe2a03c7"
+  },
+  "timer-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-timer-off.json",
+    "sha256": "f3ec5d8c20e8a9f34d9259a07440030b1125fa636f239ed94bcd2ab4fdaf73bd"
+  },
+  "timer.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-timer.json",
+    "sha256": "33315936e792406169f6a4550f60b9fb4a8294ed7c9f38698383c6297423ec38"
+  },
+  "toggle-left.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-toggle-left.json",
+    "sha256": "39a7db1c60303f9f3d98a177a9a6fb3fbf6bfbeaeeb8972c8b1d2456c447213e"
+  },
+  "toggle-right.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-toggle-right.json",
+    "sha256": "713bab20cedf6d4720578cb3f43fa28b017ee3917b6145734ff2fcdd2037d3c0"
+  },
+  "trash-2.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-trash-2.json",
+    "sha256": "8f019c4119243273073a5c6c229cf42e7aed3b84ff4986af2f6ef947055ea0b5"
+  },
+  "trash.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-trash.json",
+    "sha256": "bcb7ace27df35708ada8472444226bc1ec7520c93bb01bcbfbad99ffa6cb23a8"
+  },
+  "trending-down.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-trending-down.json",
+    "sha256": "3deeec8289aeb407d8c9340983e81b5a1a5f1b58ef37ef71c7e942b7b764b85b"
+  },
+  "trending-up.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-trending-up.json",
+    "sha256": "8efb1ca5fa0ec2052491566f22b572d83b8799e8919c104fa55e381e2000f336"
+  },
+  "triangle-alert.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-triangle-alert.json",
+    "sha256": "0d966b0992a3a3f9cd36f899ad759ddba22cfa246ce71a60b7085496da0c542c"
+  },
+  "trophy.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-trophy.json",
+    "sha256": "63d06b2b68f942af651944afaf49253094c63ea14413c8cebe89c8c6abc691be"
+  },
+  "type.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-type.json",
+    "sha256": "f895b58f795fe66ad8c4100bc608e419da4d6b8dec05cf3b1e7e49e06b91e08c"
+  },
+  "umbrella.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-umbrella.json",
+    "sha256": "ede0cacee58131c1a732574022b3f633e255e6a2d290b93f7e2260e58f83f819"
+  },
+  "undo-2.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-undo-2.json",
+    "sha256": "8d74d26e5d24fede38c741f562c555abeafa33d4c47dcc8c15fb67e878526735"
+  },
+  "undo.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-undo.json",
+    "sha256": "19308633863dcad30410b9edcef9e4042ab62e7cb732c41f4a4eba29d53f21f4"
+  },
+  "ungroup.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-ungroup.json",
+    "sha256": "826c39b38ce1bcb00a1cbeb7088736f56b31050cd6a4f232076ad7b4086c4b30"
+  },
+  "unlink-2.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-unlink-2.json",
+    "sha256": "8c0104ff204977d1e23f818a7ea5b9c17f0e9485e50abc22c78367b95e9584b2"
+  },
+  "unplug.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-unplug.json",
+    "sha256": "9b6ab235c00ca93d8dce22699f1bfc8a28b9ff536f9f071472673134059cebfa"
+  },
+  "upload.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-upload.json",
+    "sha256": "13caed69eb05a4e1bdbca3c6a74c114b17fb966eb284aca8928da6c71e3e4899"
+  },
+  "user-cog.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-user-cog.json",
+    "sha256": "e3343610610d24c3c4fdc187e3f430dad0d588d262e80afef0c7f5a480833b4a"
+  },
+  "user-round-cog.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-user-round-cog.json",
+    "sha256": "8af3ea0a731ea3e82044d1965b0480e5ebb866af4c3b85198a0bd76b6ef48979"
+  },
+  "user-round.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-user-round.json",
+    "sha256": "f2f2841d3858ea5c55e32ff1662e345c03a32178833ec748727c1dc9a006743f"
+  },
+  "user.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-user.json",
+    "sha256": "7d414721b0ea89a1624d98e329062c46ff1f312f9bed196e0a391c9d3ee01caf"
+  },
+  "users-round.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-users-round.json",
+    "sha256": "dbd71b1dc3477f9cc72f2e4ffd3b7f109d6c92d3f001a41aaa83c0bde46b191b"
+  },
+  "users.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-users.json",
+    "sha256": "8c14ee397ba403352b927f68352fd13f8f8a34539b5743e84e837d4c99961dd6"
+  },
+  "volume-1.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-volume-1.json",
+    "sha256": "3b51a7df93a3f790f810a0925672a1198f50942335b6d84211b4714a0bb71c41"
+  },
+  "volume-2.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-volume-2.json",
+    "sha256": "b17df1d47499010bc218ad1362dfce01807bc051bc5085c466f7bb97e666292a"
+  },
+  "volume-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-volume-off.json",
+    "sha256": "6c3d18f2b6c1c907901a56d89961b8c01e6ca66845162e13b851cd4adf67856a"
+  },
+  "volume-x.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-volume-x.json",
+    "sha256": "781b1f1360d5731e1254b41305c9c279f040e944b285d5ab66800f1953b0da3a"
+  },
+  "wallet.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-wallet.json",
+    "sha256": "1da9cc2a8097ad24488d10138fdb51ff6e3555c8b5ac3ab48fd6adcf8b8e9067"
+  },
+  "wand-sparkles.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-wand-sparkles.json",
+    "sha256": "7691bb04949ada93728e51efd97fe741d11bd2e546f2a5f811da41d3f96d05c0"
+  },
+  "waves.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-waves.json",
+    "sha256": "53ae6ca110dfd28ee37fdace924dea76895a9555ce73280b35c7442feb098546"
+  },
+  "wifi-cog.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-wifi-cog.json",
+    "sha256": "4793260bfc37a866f344b862882bd80553809653598e09b51de30735d9543ab6"
+  },
+  "wifi-high.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-wifi-high.json",
+    "sha256": "d80f2e452596bfa5ef5b23c66866d2a193d21a23e392d8445c7bb0e270d7d0fe"
+  },
+  "wifi-low.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-wifi-low.json",
+    "sha256": "58d991b25d177a1ec59dc8c8183fcf1cb9cb20ad85cb2e6af716e5c44acba44e"
+  },
+  "wifi-off.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-wifi-off.json",
+    "sha256": "8173139f185c0053cac931e205ccc689e61339ccf13507802420f4d9bca1b7a2"
+  },
+  "wifi-pen.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-wifi-pen.json",
+    "sha256": "54a944a0d92ee4dcb826edc86c23fd59cf4354dd6aa54da1e05bbc076886623e"
+  },
+  "wifi-sync.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-wifi-sync.json",
+    "sha256": "bde85194bd7e5feebe22e6fc377f307e508da785eb9415a222f18f1c9f95aaa5"
+  },
+  "wifi-zero.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-wifi-zero.json",
+    "sha256": "df9d1e9ae480edbdb9a2457138145744e416c7be8b5683d4be7395d0b6b557b7"
+  },
+  "wifi.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-wifi.json",
+    "sha256": "37718b4404d20b96bf3d566d143241bd20fcbf169c3ecb33f935b09c60798580"
+  },
+  "x.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-x.json",
+    "sha256": "10aa868076c7c54b0b1507e0b072476706baeee5fa9a3d2113ed2e14ba5c23db"
+  },
+  "zap.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-zap.json",
+    "sha256": "3214240b0977d9fcaf446912da5cd57e95ed9aae137897d7dc52529371594352"
+  },
+  "zoom-in.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-zoom-in.json",
+    "sha256": "78a324508de645221e77e3d8d94bca0b0021ae13b25f82024af56c3b4feaa33c"
+  },
+  "zoom-out.tsx": {
+    "registry": "https://animate-ui.com/r/icons-lucide-zoom-out.json",
+    "sha256": "8f9f6a298c0e6f71b8e60d3b12b9458138ef5e9891c5da524da660991b0e59de"
+  }
+}

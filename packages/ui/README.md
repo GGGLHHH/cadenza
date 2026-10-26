@@ -49,10 +49,38 @@ export function Toolbar() {
 落在 Base UI 槽位上的 `className` 支持函数形式 ——
 `className={({ selected }) => …}`，参数就是各组件文档页状态表里的那组状态。
 
+## 动画图标
+
+`@gedatou/cadenza-ui/icons` 提供 392 个带动画的图标，来自 [animate-ui](https://animate-ui.com)
+的 lucide 风格图标集，每个图标有自己的动画（铃铛摇摆、齿轮转动……），由 `AnimateIcon` 的触发方式驱动：
+
+```tsx
+import { AnimateIcon, Bell, Settings } from '@gedatou/cadenza-ui/icons'
+
+export function Header() {
+  return (
+    <>
+      {/* 悬停图标本身时播放 */}
+      <Bell animateOnHover />
+      {/* 悬停整个按钮时，里面的图标跟着动 */}
+      <AnimateIcon animateOnHover>
+        <button type="button">
+          <Settings />
+          设置
+        </button>
+      </AnimateIcon>
+    </>
+  )
+}
+```
+
+这些图标派生自 animate-ui（作者 Elliot Sutton），遵循 animate-ui 的 **MIT + Commons Clause** 许可，
+许可全文与来源见 [ANIMATE-UI-LICENSE.md](./ANIMATE-UI-LICENSE.md)。
+
 ## 暗色模式
 
 `.dark` class 和 `data-theme="dark"` 两种约定都认，next-themes 之类的主题方案直接可用。
 
 ## License
 
-[MIT](../../LICENSE.md)
+[MIT](../../LICENSE.md)。`src/icons/animate-ui/` 下的动画图标除外，它们遵循 animate-ui 的许可，见 [ANIMATE-UI-LICENSE.md](./ANIMATE-UI-LICENSE.md)。
