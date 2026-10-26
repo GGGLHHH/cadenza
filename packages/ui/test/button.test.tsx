@@ -142,3 +142,16 @@ it('fires onClick and stays silent when disabled', async () => {
   await userEvent.click(screen.getByRole('button'))
   expect(onClick).toHaveBeenCalledTimes(1)
 })
+
+it('keeps its data-slot under animate-ui\'s press, which writes its own', () => {
+  // animate-ui's slot spreads `data-slot="button"` over the child's; a part
+  // that names itself (a dialog's close, say) would turn back into "button".
+  render(
+    <>
+      <Button>plain</Button>
+      <Button data-slot="dialog-close">named</Button>
+    </>,
+  )
+  expect(screen.getByRole('button', { name: 'plain' }).dataset.slot).toBe('button')
+  expect(screen.getByRole('button', { name: 'named' }).dataset.slot).toBe('dialog-close')
+})

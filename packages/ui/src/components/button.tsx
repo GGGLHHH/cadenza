@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactElement } from 'react'
 import { cloneElement } from 'react'
+import { Press } from '#lib/press'
 import { cn, dataAttr } from '#lib/utils'
 import { Button as ButtonPrimitive } from '#primitives/button'
 import { LoadingOverlay } from './loading-overlay'
@@ -59,6 +60,12 @@ export type ButtonProps = Omit<ComponentProps<typeof ButtonPrimitive>, 'classNam
  *   assertive re-announcement on the transition, which needed a live-region
  *   singleton and had nothing new to read out — our spinner is decorative and
  *   the library ships no text in any language.
+ *
+ * The press is animate-ui's: the button springs down a touch while held
+ * (`tapScale`, no hover scale — its default). Its Button is wrapped around
+ * Base UI's with `asChild`, not handed in as `render`, so a caller's own
+ * `render` keeps working and still gets the press. An inert button — disabled
+ * or pending — does not press.
  */
 export function Button({
   children,
@@ -69,66 +76,68 @@ export function Button({
   ...props
 }: ButtonProps): ReactElement {
   return (
-    <ButtonPrimitive
+    <Press fallback="button" inert={disabled === true || pending === true}>
+      <ButtonPrimitive
       // overflow-hidden shapes the flat scrim to the button's rounded padding
       // box — the same clip that shapes the background, so they coincide to
       // the pixel. Focus ring and outline are box-shadow/outline, which
       // clipping never touches.
-      className={cn(pending !== undefined && 'relative overflow-hidden', className)}
-      disabled={disabled || pending}
-      focusableWhenDisabled={pending === true && disabled !== true}
-      // Spread, not `type={…}`: passing an explicit undefined wins the merge
-      // and strips Base UI's own `type="button"`, leaving a bare <button> that
-      // any surrounding form treats as its submit button. The pending guard
-      // below would not catch that either — it only sees an explicit
-      // `type="submit"`.
-      {...(type === undefined
-        ? {}
-        : { type: type === 'submit' && pending === true ? 'button' : type })}
-      {...props}
-      // Derived from `pending`, so after the spread: a caller cannot half-set
-      // the state by passing one of these on its own.
-      aria-busy={pending === true || undefined}
-      data-pending={dataAttr(pending)}
-    >
-      {pending === undefined
-        ? children
-        : (
-            <>
-              {/* The frost, without backdrop-filter: a blur kernel sampling
+        className={cn(pending !== undefined && 'relative overflow-hidden', className)}
+        disabled={disabled || pending}
+        focusableWhenDisabled={pending === true && disabled !== true}
+        // Spread, not `type={…}`: passing an explicit undefined wins the merge
+        // and strips Base UI's own `type="button"`, leaving a bare <button> that
+        // any surrounding form treats as its submit button. The pending guard
+        // below would not catch that either — it only sees an explicit
+        // `type="submit"`.
+        {...(type === undefined
+          ? {}
+          : { type: type === 'submit' && pending === true ? 'button' : type })}
+        {...props}
+        // Derived from `pending`, so after the spread: a caller cannot half-set
+        // the state by passing one of these on its own.
+        aria-busy={pending === true || undefined}
+        data-pending={dataAttr(pending)}
+      >
+        {pending === undefined
+          ? children
+          : (
+              <>
+                {/* The frost, without backdrop-filter: a blur kernel sampling
                   up to the button's own silhouette smears halos along every
                   edge and corner (verified on the real button — inset,
                   transform, isolation, smaller radii all fail). Blurring the
                   CONTENT instead melts the label identically while the
                   button's edges never enter a kernel: the label stays put,
                   veiled and softly visible — covered, never replaced. */}
-              <span
-                data-slot="button-label"
-                className="
-                  inline-flex items-center gap-[inherit] transition-[filter]
-                  duration-150
-                  group-data-pending/button:blur-[2px]
-                  motion-reduce:transition-none
-                "
-              >
-                {children}
-              </span>
-              {/* rounded-none + backdrop-blur-none: the flat scrim is shaped
+                <span
+                  data-slot="button-label"
+                  className="
+                    inline-flex items-center gap-[inherit] transition-[filter]
+                    duration-150
+                    group-data-pending/button:blur-[2px]
+                    motion-reduce:transition-none
+                  "
+                >
+                  {children}
+                </span>
+                {/* rounded-none + backdrop-blur-none: the flat scrim is shaped
                   entirely by the host's overflow clip — the same geometry
                   that shapes the background, so they coincide to the pixel. */}
-              <LoadingOverlay className="rounded-none backdrop-blur-none" loading={pending}>
-                {/* text-foreground, not currentColor: inside the button the
+                <LoadingOverlay className="rounded-none backdrop-blur-none" loading={pending}>
+                  {/* text-foreground, not currentColor: inside the button the
                     inherited colour is the label's own, which camouflages the
                     spinner against the veiled label — foreground pairs with
                     the background-toned scrim in both themes. */}
-                <Spinner
-                  aria-hidden
-                  className="text-foreground block-[1em] inline-[1em]"
-                />
-              </LoadingOverlay>
-            </>
-          )}
-    </ButtonPrimitive>
+                  <Spinner
+                    aria-hidden
+                    className="text-foreground block-[1em] inline-[1em]"
+                  />
+                </LoadingOverlay>
+              </>
+            )}
+      </ButtonPrimitive>
+    </Press>
   )
 }
 
@@ -161,19 +170,21 @@ export type LinkButtonProps = Omit<ComponentProps<'a'>, 'className'>
 export function LinkButton({ className, disabled, href, render, size, variant, ...props }: LinkButtonProps): ReactElement {
   const anchor = disabled === true || render === undefined ? <a /> : render
   return (
-    <ButtonPrimitive
-      className={cn('data-disabled:opacity-50', className)}
-      disabled={disabled}
-      nativeButton={false}
-      // `role={undefined}` strips the `role="button"` Base UI writes on every
-      // non-native button. This one navigates, so it has to keep announcing as
-      // a link — otherwise a screen reader calls it a button and its user has
-      // no reason to expect a new page. Render-element props win the merge, a
-      // router link's (`render`) included.
-      render={cloneElement(anchor, { ...(disabled !== true && href !== undefined && { href }), role: undefined, ...props })}
-      size={size}
-      variant={variant}
-    />
+    <Press fallback="button" inert={disabled === true}>
+      <ButtonPrimitive
+        className={cn('data-disabled:opacity-50', className)}
+        disabled={disabled}
+        nativeButton={false}
+        // `role={undefined}` strips the `role="button"` Base UI writes on every
+        // non-native button. This one navigates, so it has to keep announcing as
+        // a link — otherwise a screen reader calls it a button and its user has
+        // no reason to expect a new page. Render-element props win the merge, a
+        // router link's (`render`) included.
+        render={cloneElement(anchor, { ...(disabled !== true && href !== undefined && { href }), role: undefined, ...props })}
+        size={size}
+        variant={variant}
+      />
+    </Press>
   )
 }
 

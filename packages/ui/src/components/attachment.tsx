@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
+import { Press } from '#lib/press'
 import {
   Attachment,
   AttachmentAction as AttachmentActionPrimitive,
@@ -83,9 +84,14 @@ export type AttachmentOrientation = NonNullable<AttachmentProps['orientation']>
 /** `image` fills the media box edge to edge; `icon` centres a glyph in it. */
 export type AttachmentMediaVariant = NonNullable<AttachmentMediaProps['variant']>
 
-// A cast, not a wrapper: every prop already reaches the primitive through a
-// plain spread, so only the type needed narrowing (same shape as InputGroupInput).
-const AttachmentAction = AttachmentActionPrimitive as (props: AttachmentActionProps) => ReactElement
+/** Presses like `Button` — animate-ui's spring, none while disabled. */
+function AttachmentAction(props: AttachmentActionProps): ReactElement {
+  return (
+    <Press fallback="attachment-action" inert={props.disabled === true}>
+      <AttachmentActionPrimitive {...props} />
+    </Press>
+  )
+}
 
 export {
   Attachment,

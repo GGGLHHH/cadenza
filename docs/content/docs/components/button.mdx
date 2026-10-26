@@ -20,6 +20,10 @@ import { Button, buttonVariants, LinkButton } from '@gedatou/cadenza-ui'
 <Button variant="outline">保存</Button>
 ```
 
+按住时按钮会轻轻缩到 0.97 再弹回，这是 animate-ui 的按压弹簧，`LinkButton`、`InputGroupButton`、
+`AttachmentAction`、`MessageScrollerButton` 也一样；禁用或进行中的按钮不会缩。它写的是 `transform`，
+和 shadcn 原有的按下下沉 `translate-y-px`（CSS `translate` 属性）互不覆盖。
+
 ## 光标
 
 Tailwind v4

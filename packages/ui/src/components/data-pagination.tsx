@@ -12,12 +12,12 @@ import {
 import { useCallback, useEffect, useRef } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { cn } from '#lib/utils'
-import { Button } from '#primitives/button'
 import {
   Pagination,
   PaginationContent,
   PaginationItem,
 } from '#primitives/pagination'
+import { Button } from './button'
 import {
   Select,
   SelectGroup,

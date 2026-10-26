@@ -1,9 +1,10 @@
 import type { Input as BaseInput } from '@base-ui/react/input'
 import type { ComponentProps, ReactElement, RefAttributes } from 'react'
+import { Press } from '#lib/press'
 import {
   InputGroup,
   InputGroupAddon,
-  InputGroupButton,
+  InputGroupButton as InputGroupButtonPrimitive,
   InputGroupInput as InputGroupInputPrimitive,
   InputGroupText,
   InputGroupTextarea,
@@ -32,7 +33,7 @@ export type InputGroupAddonProps = ComponentProps<typeof InputGroupAddon>
  * Base UI writes instead.
  */
 export type InputGroupButtonProps
-  = Omit<ComponentProps<typeof InputGroupButton>, 'className'> & { className?: string }
+  = Omit<ComponentProps<typeof InputGroupButtonPrimitive>, 'className'> & { className?: string }
 export type InputGroupTextProps = ComponentProps<typeof InputGroupText>
 export type InputGroupTextareaProps = ComponentProps<typeof InputGroupTextarea>
 export type InputGroupInputProps = BaseInput.Props & RefAttributes<HTMLInputElement>
@@ -42,6 +43,15 @@ export type InputGroupInputProps = BaseInput.Props & RefAttributes<HTMLInputElem
 // Input underneath still honours. Every prop reaches it through plain spreads,
 // so only the type needs widening — a cast, not a wrapper.
 const InputGroupInput = InputGroupInputPrimitive as (props: InputGroupInputProps) => ReactElement
+
+/** Presses like `Button` — animate-ui's spring, none while disabled. */
+function InputGroupButton(props: InputGroupButtonProps): ReactElement {
+  return (
+    <Press fallback="button" inert={props.disabled === true}>
+      <InputGroupButtonPrimitive {...props} />
+    </Press>
+  )
+}
 
 export {
   InputGroup,

@@ -4,9 +4,10 @@ import type { ComponentProps, ReactElement } from 'react'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { ScrollArea as ScrollAreaPrimitive } from '@base-ui/react/scroll-area'
 import { MessageScroller as MessageScrollerHeadless } from '@shadcn/react/message-scroller'
+import { Press } from '#lib/press'
 import { cn } from '#lib/utils'
 import {
-  MessageScrollerButton,
+  MessageScrollerButton as MessageScrollerButtonPrimitive,
   MessageScrollerContent,
   MessageScrollerItem,
   MessageScrollerProvider,
@@ -87,7 +88,7 @@ export type MessageScrollerViewportProps
     scrollbars?: ScrollAreaScrollbars
   }
 export type MessageScrollerContentProps = ComponentProps<typeof MessageScrollerContent>
-export type MessageScrollerButtonProps = ComponentProps<typeof MessageScrollerButton>
+export type MessageScrollerButtonProps = ComponentProps<typeof MessageScrollerButtonPrimitive>
 
 /**
  * `messageId` stays optional, as upstream types it, but a row without one is
@@ -140,6 +141,18 @@ export type MessageScrollerButtonDirection = NonNullable<MessageScrollerButtonPr
  */
 export type MessageScrollerButtonState
   = Parameters<Extract<NonNullable<MessageScrollerButtonProps['render']>, (...args: never[]) => unknown>>[1]
+
+/**
+ * Presses like `Button` — animate-ui's spring. Its show/hide runs on the CSS
+ * `scale` / `translate` properties, the press on `transform`; the two compose.
+ */
+function MessageScrollerButton(props: MessageScrollerButtonProps): ReactElement {
+  return (
+    <Press fallback="message-scroller-button">
+      <MessageScrollerButtonPrimitive {...props} />
+    </Press>
+  )
+}
 
 // A cast, not a wrapper: every prop already reaches the root through a plain
 // spread, so only the type needed correcting.
