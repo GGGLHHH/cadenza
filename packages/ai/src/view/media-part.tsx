@@ -2,7 +2,7 @@
 import type { AudioPart, DocumentPart, ImagePart, VideoPart } from '@tanstack/ai/client'
 import type { ReactElement } from 'react'
 import { Attachment, AttachmentContent, AttachmentMedia, AttachmentTitle } from '@gedatou/cadenza-ui'
-import { IconFileText } from '@tabler/icons-react'
+import { FileTextIcon } from '@gedatou/cadenza-ui/icons'
 
 export interface MediaPartProps {
   part: ImagePart | AudioPart | VideoPart | DocumentPart
@@ -33,7 +33,7 @@ export function MediaPart({ part, className }: MediaPartProps): ReactElement {
     case 'document':
       return (
         <Attachment data-slot="media-part" data-type="document" size="sm" className={className}>
-          <AttachmentMedia><IconFileText /></AttachmentMedia>
+          <AttachmentMedia><FileTextIcon animate /></AttachmentMedia>
           <AttachmentContent>
             <AttachmentTitle>{name ?? source.mimeType?.split('/')[1] ?? source.value}</AttachmentTitle>
           </AttachmentContent>

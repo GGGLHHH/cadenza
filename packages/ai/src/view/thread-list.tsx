@@ -3,8 +3,8 @@ import type { ButtonProps, ChangeEventDetails } from '@gedatou/cadenza-ui'
 import type { ComponentProps, KeyboardEvent, ReactElement, ReactNode } from 'react'
 import type { ThreadIndex, ThreadMeta } from '../runtime/threads'
 import { Button, cn, createChangeEventDetails, dataAttr, Input, Item, ItemActions, ItemContent, ItemDescription, ItemTitle, ScrollArea } from '@gedatou/cadenza-ui'
+import { AnimateIcon, ArchiveIcon, PencilIcon, TrashIcon } from '@gedatou/cadenza-ui/icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconArchive, IconPencil, IconTrash } from '@tabler/icons-react'
 import { createContext, use, useCallback, useMemo, useRef, useState } from 'react'
 
 export type ThreadListChangeEventReason = 'item-press' | 'none'
@@ -226,18 +226,20 @@ export type ThreadListRenameProps = ButtonProps
 export function ThreadListRename({ children, onClick, ...props }: ThreadListRenameProps): ReactElement {
   const { setRenaming } = useThreadListItemContext()
   return (
-    <Button
-      data-slot="thread-list-rename"
-      variant="ghost"
-      size="icon-xs"
-      {...props}
-      onClick={(event) => {
-        if (!handled(onClick, event))
-          setRenaming(true)
-      }}
-    >
-      {children ?? <IconPencil />}
-    </Button>
+    <AnimateIcon animateOnHover asChild>
+      <Button
+        data-slot="thread-list-rename"
+        variant="ghost"
+        size="icon-xs"
+        {...props}
+        onClick={(event) => {
+          if (!handled(onClick, event))
+            setRenaming(true)
+        }}
+      >
+        {children ?? <PencilIcon />}
+      </Button>
+    </AnimateIcon>
   )
 }
 
@@ -248,18 +250,20 @@ export function ThreadListArchive({ children, onClick, ...props }: ThreadListArc
   const { index } = useThreadList()
   const { thread } = useThreadListItemContext()
   return (
-    <Button
-      data-slot="thread-list-archive"
-      variant="ghost"
-      size="icon-xs"
-      {...props}
-      onClick={(event) => {
-        if (!handled(onClick, event))
-          index.archive(thread.id, !thread.archived)
-      }}
-    >
-      {children ?? <IconArchive />}
-    </Button>
+    <AnimateIcon animateOnHover asChild>
+      <Button
+        data-slot="thread-list-archive"
+        variant="ghost"
+        size="icon-xs"
+        {...props}
+        onClick={(event) => {
+          if (!handled(onClick, event))
+            index.archive(thread.id, !thread.archived)
+        }}
+      >
+        {children ?? <ArchiveIcon />}
+      </Button>
+    </AnimateIcon>
   )
 }
 
@@ -270,18 +274,20 @@ export function ThreadListDelete({ children, onClick, ...props }: ThreadListDele
   const { index } = useThreadList()
   const { thread } = useThreadListItemContext()
   return (
-    <Button
-      data-slot="thread-list-delete"
-      variant="ghost"
-      size="icon-xs"
-      {...props}
-      onClick={(event) => {
-        if (!handled(onClick, event))
-          index.remove(thread.id)
-      }}
-    >
-      {children ?? <IconTrash />}
-    </Button>
+    <AnimateIcon animateOnHover asChild>
+      <Button
+        data-slot="thread-list-delete"
+        variant="ghost"
+        size="icon-xs"
+        {...props}
+        onClick={(event) => {
+          if (!handled(onClick, event))
+            index.remove(thread.id)
+        }}
+      >
+        {children ?? <TrashIcon />}
+      </Button>
+    </AnimateIcon>
   )
 }
 

@@ -4,8 +4,8 @@ import type { ToolCallPart, ToolResultPart } from '@tanstack/ai/client'
 import type { ReactElement, ReactNode } from 'react'
 import type { AnyToolApprovalInterrupt } from '../runtime/renderers'
 import { cn, Collapsible, CollapsiblePanel, CollapsibleTrigger, createChangeEventDetails, dataAttr, Spinner } from '@gedatou/cadenza-ui'
+import { CheckIcon, ClockIcon, XIcon } from '@gedatou/cadenza-ui/icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconCheck, IconClock, IconX } from '@tabler/icons-react'
 import { Children, useEffect, useEffectEvent, useRef } from 'react'
 import { usePartRenderers } from '../runtime/renderers'
 import { parseToolJson } from '../runtime/tool-json'
@@ -135,19 +135,22 @@ export function ToolCallCard({ part, result, interrupt: _interrupt, streaming = 
           />
         )}
         {state.approvalRequested && (
-          <IconClock
+          <ClockIcon
+            animate
             aria-hidden
             className="block-[1em] inline-[1em]"
           />
         )}
         {state.complete && (
-          <IconCheck
+          <CheckIcon
+            animate
             aria-hidden
             className="block-[1em] inline-[1em]"
           />
         )}
         {state.error && (
-          <IconX
+          <XIcon
+            animate
             aria-hidden
             className="text-destructive block-[1em] inline-[1em]"
           />

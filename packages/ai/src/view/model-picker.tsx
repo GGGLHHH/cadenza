@@ -4,8 +4,8 @@ import type { ByokSnapshot } from '@tanstack/ai-client/byok'
 import type { ReactElement, ReactNode } from 'react'
 import type { Catalog, Model, ThinkingLevel } from '../catalog/types'
 import { Button, cn, Combobox, ComboboxCollection, ComboboxEmpty, ComboboxGroup, ComboboxGroupLabel, ComboboxInput, ComboboxItem, ComboboxList, ComboboxPopup, ComboboxTrigger, ComboboxValue, dataAttr, Select, SelectItem, SelectPopup, SelectTrigger, SelectValue, Toggle } from '@gedatou/cadenza-ui'
+import { AnimateIcon, BrainIcon, GlobeIcon, ImageIcon, KeyIcon } from '@gedatou/cadenza-ui/icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconBrain, IconKey, IconPhoto, IconWorld } from '@tabler/icons-react'
 import { useMemo } from 'react'
 import { modelRef } from '../catalog/catalog'
 import { clampThinkingLevel, supportedThinkingLevels } from '../catalog/thinking'
@@ -74,7 +74,8 @@ export function ModelPicker({ byok, catalog, className, defaultValue, disabledPr
                 <ComboboxGroupLabel className="flex items-center gap-1" data-key-missing={dataAttr(keyMissing)}>
                   {provider?.label ?? group.value}
                   {keyMissing && (
-                    <IconKey
+                    <KeyIcon
+                      animate
                       aria-label="Key missing"
                       className="block-3.5 inline-3.5"
                     />
@@ -84,29 +85,31 @@ export function ModelPicker({ byok, catalog, className, defaultValue, disabledPr
                   {(ref: string) => {
                     const model = catalog.getModel(ref)
                     return (
-                      <ComboboxItem key={ref} disabled={disabledProviders?.includes(group.value)} value={ref}>
-                        <span className="flex-1 truncate">{model?.name ?? ref}</span>
-                        {model?.reasoning === true && (
-                          <IconBrain
-                            aria-label="Reasoning"
-                            className="text-muted-foreground"
-                          />
-                        )}
-                        {model?.input.includes('image') === true && (
-                          <IconPhoto
-                            aria-label="Vision"
-                            className="text-muted-foreground"
-                          />
-                        )}
-                        {model?.contextWindow !== undefined && (
-                          <span className="
-                            text-xs text-muted-foreground tabular-nums
-                          "
-                          >
-                            {formatContext(model.contextWindow)}
-                          </span>
-                        )}
-                      </ComboboxItem>
+                      <AnimateIcon animateOnHover asChild>
+                        <ComboboxItem key={ref} disabled={disabledProviders?.includes(group.value)} value={ref}>
+                          <span className="flex-1 truncate">{model?.name ?? ref}</span>
+                          {model?.reasoning === true && (
+                            <BrainIcon
+                              aria-label="Reasoning"
+                              className="text-muted-foreground"
+                            />
+                          )}
+                          {model?.input.includes('image') === true && (
+                            <ImageIcon
+                              aria-label="Vision"
+                              className="text-muted-foreground"
+                            />
+                          )}
+                          {model?.contextWindow !== undefined && (
+                            <span className="
+                              text-xs text-muted-foreground tabular-nums
+                            "
+                            >
+                              {formatContext(model.contextWindow)}
+                            </span>
+                          )}
+                        </ComboboxItem>
+                      </AnimateIcon>
                     )
                   }}
                 </ComboboxCollection>
@@ -190,30 +193,32 @@ export function ThinkingToggle({ children, className, defaultValue, model, onLev
   const canOff = levels.includes('off')
   const on = level !== 'off'
   return (
-    <Toggle
-      data-slot="thinking-toggle"
-      data-thinking={dataAttr(on)}
-      pressed={on}
-      disabled={!canOff}
-      size="sm"
-      variant="outline"
-      className={cn(`
-        gap-1.5 rounded-full
-        data-pressed:border-primary/40 data-pressed:bg-primary/10
-        data-pressed:text-primary
-        data-pressed:hover:bg-primary/15
-      `, className)}
-      onPressedChange={(pressed, details) => {
-        // Turning on lands at `onLevel` clamped to the model; a clamp that falls to `off` takes the model's strongest level instead.
-        const clamped = clampThinkingLevel(model, onLevel)
-        const next: ThinkingLevel = pressed ? (clamped === 'off' ? levels[levels.length - 1] : clamped) : 'off'
-        setLevel(next)
-        onValueChange(next, details)
-      }}
-    >
-      <IconBrain aria-hidden />
-      {children}
-    </Toggle>
+    <AnimateIcon animateOnHover asChild>
+      <Toggle
+        data-slot="thinking-toggle"
+        data-thinking={dataAttr(on)}
+        pressed={on}
+        disabled={!canOff}
+        size="sm"
+        variant="outline"
+        className={cn(`
+          gap-1.5 rounded-full
+          data-pressed:border-primary/40 data-pressed:bg-primary/10
+          data-pressed:text-primary
+          data-pressed:hover:bg-primary/15
+        `, className)}
+        onPressedChange={(pressed, details) => {
+          // Turning on lands at `onLevel` clamped to the model; a clamp that falls to `off` takes the model's strongest level instead.
+          const clamped = clampThinkingLevel(model, onLevel)
+          const next: ThinkingLevel = pressed ? (clamped === 'off' ? levels[levels.length - 1] : clamped) : 'off'
+          setLevel(next)
+          onValueChange(next, details)
+        }}
+      >
+        <BrainIcon aria-hidden />
+        {children}
+      </Toggle>
+    </AnimateIcon>
   )
 }
 
@@ -249,25 +254,27 @@ export function SearchToggle({ children, className, defaultValue, model, onValue
   if (model?.search !== true)
     return null
   return (
-    <Toggle
-      data-slot="search-toggle"
-      data-search={dataAttr(on)}
-      pressed={on}
-      size="sm"
-      variant="outline"
-      className={cn(`
-        gap-1.5 rounded-full
-        data-pressed:border-primary/40 data-pressed:bg-primary/10
-        data-pressed:text-primary
-        data-pressed:hover:bg-primary/15
-      `, className)}
-      onPressedChange={(next, details) => {
-        setOn(next)
-        onValueChange(next, details)
-      }}
-    >
-      <IconWorld aria-hidden />
-      {children}
-    </Toggle>
+    <AnimateIcon animateOnHover asChild>
+      <Toggle
+        data-slot="search-toggle"
+        data-search={dataAttr(on)}
+        pressed={on}
+        size="sm"
+        variant="outline"
+        className={cn(`
+          gap-1.5 rounded-full
+          data-pressed:border-primary/40 data-pressed:bg-primary/10
+          data-pressed:text-primary
+          data-pressed:hover:bg-primary/15
+        `, className)}
+        onPressedChange={(next, details) => {
+          setOn(next)
+          onValueChange(next, details)
+        }}
+      >
+        <GlobeIcon aria-hidden />
+        {children}
+      </Toggle>
+    </AnimateIcon>
   )
 }

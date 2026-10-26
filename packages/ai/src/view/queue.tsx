@@ -3,7 +3,7 @@ import type { GenericEventDetails } from '@gedatou/cadenza-ui'
 import type { QueuedMessage } from '@tanstack/ai-client'
 import type { ReactElement, ReactNode } from 'react'
 import { Button, createGenericEventDetails, Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from '@gedatou/cadenza-ui'
-import { IconX } from '@tabler/icons-react'
+import { AnimateIcon, XIcon } from '@gedatou/cadenza-ui/icons'
 
 export interface QueueListProps {
   queue: readonly QueuedMessage[]
@@ -32,14 +32,16 @@ export function QueueList({ children, className, onCancel, queue }: QueueListPro
             <ItemTitle>{queuedText(message)}</ItemTitle>
           </ItemContent>
           <ItemActions>
-            <Button
-              aria-label="Cancel"
-              size="icon-xs"
-              variant="ghost"
-              onClick={event => onCancel(message.id, createGenericEventDetails('none', event.nativeEvent))}
-            >
-              <IconX />
-            </Button>
+            <AnimateIcon animateOnHover asChild>
+              <Button
+                aria-label="Cancel"
+                size="icon-xs"
+                variant="ghost"
+                onClick={event => onCancel(message.id, createGenericEventDetails('none', event.nativeEvent))}
+              >
+                <XIcon />
+              </Button>
+            </AnimateIcon>
           </ItemActions>
         </Item>
       ))}

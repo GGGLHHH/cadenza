@@ -22,8 +22,8 @@ import {
   InputGroupButton,
   InputGroupTextarea,
 } from '@gedatou/cadenza-ui'
+import { AnimateIcon, ArrowUpIcon, MicIcon, PaperclipIcon, StopIcon, XIcon } from '@gedatou/cadenza-ui/icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconArrowUp, IconMicrophone, IconPaperclip, IconPlayerStop, IconX } from '@tabler/icons-react'
 import { useAudioRecorder } from '@tanstack/ai-react'
 import { createContext, use, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 
@@ -265,33 +265,37 @@ export function ComposerSubmit({ children, ...props }: ComposerSubmitProps): Rea
   const busy = isBusy(status)
   if (busy) {
     return (
-      <Button
-        aria-label="Stop"
-        data-slot="composer-submit"
-        size="icon-sm"
-        type="button"
-        {...props}
-        onClick={(event) => {
-          props.onClick?.(event)
-          if (!event.defaultPrevented)
-            stop(createGenericEventDetails('none', event.nativeEvent))
-        }}
-      >
-        {children ?? <IconPlayerStop />}
-      </Button>
+      <AnimateIcon animateOnHover asChild>
+        <Button
+          aria-label="Stop"
+          data-slot="composer-submit"
+          size="icon-sm"
+          type="button"
+          {...props}
+          onClick={(event) => {
+            props.onClick?.(event)
+            if (!event.defaultPrevented)
+              stop(createGenericEventDetails('none', event.nativeEvent))
+          }}
+        >
+          {children ?? <StopIcon />}
+        </Button>
+      </AnimateIcon>
     )
   }
   return (
-    <Button
-      aria-label="Send"
-      data-slot="composer-submit"
-      disabled={disabled || !committable}
-      size="icon-sm"
-      type="submit"
-      {...props}
-    >
-      {children ?? <IconArrowUp />}
-    </Button>
+    <AnimateIcon animateOnHover asChild>
+      <Button
+        aria-label="Send"
+        data-slot="composer-submit"
+        disabled={disabled || !committable}
+        size="icon-sm"
+        type="submit"
+        {...props}
+      >
+        {children ?? <ArrowUpIcon />}
+      </Button>
+    </AnimateIcon>
   )
 }
 
@@ -310,15 +314,17 @@ export function ComposerAttachments({ items, onRemove, className }: ComposerAtta
       {items.map(item => (
         <Attachment key={item.id} size="sm" state={item.state}>
           <AttachmentMedia variant={item.previewUrl === undefined ? 'icon' : 'image'}>
-            {item.previewUrl === undefined ? <IconPaperclip /> : <img alt="" src={item.previewUrl} />}
+            {item.previewUrl === undefined ? <PaperclipIcon animate /> : <img alt="" src={item.previewUrl} />}
           </AttachmentMedia>
           <AttachmentContent>
             <AttachmentTitle>{item.name}</AttachmentTitle>
           </AttachmentContent>
           <AttachmentActions>
-            <AttachmentAction aria-label="Remove" onClick={event => onRemove(item.id, createGenericEventDetails('none', event.nativeEvent))}>
-              <IconX />
-            </AttachmentAction>
+            <AnimateIcon animateOnHover asChild>
+              <AttachmentAction aria-label="Remove" onClick={event => onRemove(item.id, createGenericEventDetails('none', event.nativeEvent))}>
+                <XIcon />
+              </AttachmentAction>
+            </AnimateIcon>
           </AttachmentActions>
         </Attachment>
       ))}
@@ -352,20 +358,22 @@ export function ComposerAttach({ accept, children, multiple = true, onClick, onF
             onFiles(files, createGenericEventDetails('input-change', event.nativeEvent))
         }}
       />
-      <InputGroupButton
-        aria-label="Attach"
-        data-slot="composer-attach"
-        disabled={disabled}
-        size="icon-xs"
-        {...props}
-        onClick={(event) => {
-          onClick?.(event)
-          if (!event.defaultPrevented)
-            inputRef.current?.click()
-        }}
-      >
-        {children ?? <IconPaperclip />}
-      </InputGroupButton>
+      <AnimateIcon animateOnHover asChild>
+        <InputGroupButton
+          aria-label="Attach"
+          data-slot="composer-attach"
+          disabled={disabled}
+          size="icon-xs"
+          {...props}
+          onClick={(event) => {
+            onClick?.(event)
+            if (!event.defaultPrevented)
+              inputRef.current?.click()
+          }}
+        >
+          {children ?? <PaperclipIcon />}
+        </InputGroupButton>
+      </AnimateIcon>
     </>
   )
 }
@@ -385,28 +393,30 @@ export function ComposerDictate({ children, onClick, onRecording, ...props }: Co
   // answer through — the way useSyncExternalStore keeps both trees identical.
   const supported = useSyncExternalStore(noSubscribe, () => recorder.isSupported, () => false)
   return (
-    <InputGroupButton
-      aria-label="Dictate"
-      aria-pressed={recorder.isRecording}
-      data-recording={dataAttr(recorder.isRecording)}
-      data-slot="composer-dictate"
-      disabled={disabled || !supported}
-      size="icon-xs"
-      {...props}
-      onClick={(event) => {
-        onClick?.(event)
-        if (event.defaultPrevented)
-          return
-        // A denied microphone prompt rejects. Swallowed here rather than left to
-        // `void`, which turns it into an unhandled rejection — the recorder's own
-        // state is what the UI reads, and it stays not-recording either way.
-        if (recorder.isRecording)
-          recorder.stop().then(recording => onRecording(recording.part, createGenericEventDetails('imperative-action', event.nativeEvent)), () => {})
-        else
-          recorder.start().catch(() => {})
-      }}
-    >
-      {children ?? <IconMicrophone />}
-    </InputGroupButton>
+    <AnimateIcon animateOnHover asChild>
+      <InputGroupButton
+        aria-label="Dictate"
+        aria-pressed={recorder.isRecording}
+        data-recording={dataAttr(recorder.isRecording)}
+        data-slot="composer-dictate"
+        disabled={disabled || !supported}
+        size="icon-xs"
+        {...props}
+        onClick={(event) => {
+          onClick?.(event)
+          if (event.defaultPrevented)
+            return
+          // A denied microphone prompt rejects. Swallowed here rather than left to
+          // `void`, which turns it into an unhandled rejection — the recorder's own
+          // state is what the UI reads, and it stays not-recording either way.
+          if (recorder.isRecording)
+            recorder.stop().then(recording => onRecording(recording.part, createGenericEventDetails('imperative-action', event.nativeEvent)), () => {})
+          else
+            recorder.start().catch(() => {})
+        }}
+      >
+        {children ?? <MicIcon />}
+      </InputGroupButton>
+    </AnimateIcon>
   )
 }

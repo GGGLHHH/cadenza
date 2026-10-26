@@ -4,8 +4,8 @@ import type { ByokClient, ByokSnapshot } from '@tanstack/ai-client/byok'
 import type { FormEvent, ReactElement, ReactNode, RefObject } from 'react'
 import type { Catalog } from '../catalog/types'
 import { Button, cn, createChangeEventDetails, dataAttr, Dialog, DialogBody, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogPopup, DialogTitle, Field, FieldError, FieldLabel, Input } from '@gedatou/cadenza-ui'
+import { AnimateIcon, CheckIcon, ServerIcon, XIcon } from '@gedatou/cadenza-ui/icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconCheck, IconServer, IconX } from '@tabler/icons-react'
 import { useByok } from '@tanstack/ai-react'
 import { createContext, use, useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react'
 
@@ -220,7 +220,8 @@ export function ByokKeyDialogProvider({ provider: id, children, className }: Byo
         <FieldLabel htmlFor={inputId}>
           {provider.label}
           {serverKey && (
-            <IconServer
+            <ServerIcon
+              animate
               aria-label={labels.serverKey}
               className="text-muted-foreground block-4 inline-4"
             />
@@ -245,24 +246,28 @@ export function ByokKeyDialogProvider({ provider: id, children, className }: Byo
         />
         {status.state === 'error' && <FieldError>{status.message}</FieldError>}
       </Field>
-      <Button
-        variant="outline"
-        size="icon-sm"
-        aria-label={labels.save}
-        disabled={key === ''}
-        onClick={() => void byok.update(id, key).then(() => setDraft(''), () => {})}
-      >
-        <IconCheck />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label={labels.clear}
-        disabled={status.state === 'empty'}
-        onClick={() => void byok.clear(id).catch(() => {})}
-      >
-        <IconX />
-      </Button>
+      <AnimateIcon animateOnHover asChild>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          aria-label={labels.save}
+          disabled={key === ''}
+          onClick={() => void byok.update(id, key).then(() => setDraft(''), () => {})}
+        >
+          <CheckIcon />
+        </Button>
+      </AnimateIcon>
+      <AnimateIcon animateOnHover asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={labels.clear}
+          disabled={status.state === 'empty'}
+          onClick={() => void byok.clear(id).catch(() => {})}
+        >
+          <XIcon />
+        </Button>
+      </AnimateIcon>
       {children}
     </div>
   )
