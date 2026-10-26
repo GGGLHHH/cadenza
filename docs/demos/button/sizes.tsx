@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Button } from '@gedatou/cadenza-ui'
-import { IconPlus } from '@tabler/icons-react'
+import { AnimateIcon, PlusIcon } from '@gedatou/cadenza-ui/icons'
 
 // Four height steps plus matching square icon steps; icon-only buttons
 // must always get an aria-label
@@ -11,10 +11,10 @@ export default function SizesDemo(): ReactElement {
       <Button size="sm" variant="outline">Small</Button>
       <Button variant="outline">Default</Button>
       <Button size="lg" variant="outline">Large</Button>
-      <Button aria-label="Add" size="icon-xs" variant="outline"><IconPlus /></Button>
-      <Button aria-label="Add" size="icon-sm" variant="outline"><IconPlus /></Button>
-      <Button aria-label="Add" size="icon" variant="outline"><IconPlus /></Button>
-      <Button aria-label="Add" size="icon-lg" variant="outline"><IconPlus /></Button>
+      <AnimateIcon animateOnHover asChild><Button aria-label="Add" size="icon-xs" variant="outline"><PlusIcon /></Button></AnimateIcon>
+      <AnimateIcon animateOnHover asChild><Button aria-label="Add" size="icon-sm" variant="outline"><PlusIcon /></Button></AnimateIcon>
+      <AnimateIcon animateOnHover asChild><Button aria-label="Add" size="icon" variant="outline"><PlusIcon /></Button></AnimateIcon>
+      <AnimateIcon animateOnHover asChild><Button aria-label="Add" size="icon-lg" variant="outline"><PlusIcon /></Button></AnimateIcon>
     </div>
   )
 }

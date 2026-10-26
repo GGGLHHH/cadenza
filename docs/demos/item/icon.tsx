@@ -8,7 +8,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@gedatou/cadenza-ui'
-import { IconShieldCheck } from '@tabler/icons-react'
+import { ShieldCheckIcon } from '@gedatou/cadenza-ui/icons'
 
 // ItemMedia variant="icon" sizes a bare svg to size-4; an svg with its own
 // size-* class is left alone.
@@ -17,7 +17,7 @@ export default function IconDemo(): ReactElement {
     <div className="flex flex-col gap-4 inline-full max-inline-md">
       <Item variant="outline">
         <ItemMedia variant="icon">
-          <IconShieldCheck />
+          <ShieldCheckIcon animateOnHover />
         </ItemMedia>
         <ItemContent>
           <ItemTitle>Two-factor authentication</ItemTitle>

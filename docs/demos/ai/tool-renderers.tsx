@@ -3,7 +3,7 @@ import type { ReactElement } from 'react'
 import { definePartRenderers, parsePartialJSON, PartRenderersProvider, toolInput, useChat } from '@gedatou/cadenza-ai'
 import { text, tool } from '@gedatou/cadenza-ai/mock'
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@gedatou/cadenza-ui'
-import { IconClock } from '@tabler/icons-react'
+import { ClockIcon } from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
@@ -29,7 +29,7 @@ function TimeCard({ part, result, streaming }: ToolRendererProps): ReactElement 
   return (
     <Item variant="outline" data-streaming={streaming ? '' : undefined}>
       <ItemMedia variant="icon">
-        <IconClock />
+        <ClockIcon animateOnHover />
       </ItemMedia>
       <ItemContent>
         <ItemTitle>{tz ?? 'Somewhere…'}</ItemTitle>

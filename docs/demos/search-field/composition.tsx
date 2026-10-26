@@ -6,7 +6,7 @@ import {
   SearchFieldClear,
   SearchFieldInput,
 } from '@gedatou/cadenza-ui'
-import { IconSearch } from '@tabler/icons-react'
+import { SearchIcon } from '@gedatou/cadenza-ui/icons'
 
 // Composition: passing children takes over the internal structure
 // entirely. Here a shortcut hint sits at the tail and yields its spot
@@ -17,7 +17,7 @@ export default function CompositionDemo(): ReactElement {
       <SearchField aria-label="Search docs">
         <InputGroup>
           <InputGroupAddon>
-            <IconSearch aria-hidden />
+            <SearchIcon animateOnHover aria-hidden />
           </InputGroupAddon>
           <SearchFieldInput placeholder="Search docs..." />
           <SearchFieldClear />

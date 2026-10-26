@@ -7,13 +7,13 @@ import {
   AttachmentMedia,
   AttachmentTitle,
 } from '@gedatou/cadenza-ui'
-import { IconFileText, IconMusic, IconPhoto, IconTable } from '@tabler/icons-react'
+import { FileTextIcon, ImageIcon, MusicIcon, TableIcon } from '@gedatou/cadenza-ui/icons'
 
 const FILES = [
-  { icon: <IconFileText />, name: 'programme-draft.pdf', size: '240 KB' },
-  { icon: <IconMusic />, name: 'la-mer-parts.zip', size: '18 MB' },
-  { icon: <IconPhoto />, name: 'stage-plan.png', size: '1.2 MB' },
-  { icon: <IconTable />, name: 'seating.csv', size: '9 KB' },
+  { icon: <FileTextIcon animateOnHover />, name: 'programme-draft.pdf', size: '240 KB' },
+  { icon: <MusicIcon animateOnHover />, name: 'la-mer-parts.zip', size: '18 MB' },
+  { icon: <ImageIcon animateOnHover />, name: 'stage-plan.png', size: '1.2 MB' },
+  { icon: <TableIcon animateOnHover />, name: 'seating.csv', size: '9 KB' },
 ]
 
 // A snapping, horizontally scrolling row with edge fades and no visible

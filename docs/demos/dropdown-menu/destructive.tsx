@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@gedatou/cadenza-ui'
-import { IconTrash } from '@tabler/icons-react'
+import { AnimateIcon, TrashIcon } from '@gedatou/cadenza-ui/icons'
 
 // variant="destructive" is for irreversible actions: text, icon, and the
 // focused background all shift to the warning colour for the whole row.
@@ -21,10 +21,12 @@ export default function DestructiveDemo(): ReactElement {
         <DropdownMenuItem>Rename</DropdownMenuItem>
         <DropdownMenuItem>Archive</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive">
-          <IconTrash />
-          Delete project
-        </DropdownMenuItem>
+        <AnimateIcon animateOnHover asChild>
+          <DropdownMenuItem variant="destructive">
+            <TrashIcon />
+            Delete project
+          </DropdownMenuItem>
+        </AnimateIcon>
       </DropdownMenuPopup>
     </DropdownMenu>
   )

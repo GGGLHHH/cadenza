@@ -8,7 +8,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@gedatou/cadenza-ui'
-import { IconMessage } from '@tabler/icons-react'
+import { MessageSquareIcon } from '@gedatou/cadenza-ui/icons'
 
 // The canonical row: icon media, title + description, and an action on the
 // trailing edge — one Item, all four parts in place.
@@ -17,7 +17,7 @@ export default function BasicDemo(): ReactElement {
     <div className="flex flex-col gap-4 inline-full max-inline-md">
       <Item variant="outline">
         <ItemMedia variant="icon">
-          <IconMessage />
+          <MessageSquareIcon animateOnHover />
         </ItemMedia>
         <ItemContent>
           <ItemTitle>Rehearsal schedule</ItemTitle>

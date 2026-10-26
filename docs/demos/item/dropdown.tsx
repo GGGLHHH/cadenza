@@ -12,7 +12,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@gedatou/cadenza-ui'
-import { IconDots, IconFileMusic } from '@tabler/icons-react'
+import { AnimateIcon, EllipsisIcon, FileMusicIcon } from '@gedatou/cadenza-ui/icons'
 
 // ItemActions hosts a DropdownMenu: the trigger renders through a ghost icon
 // Button so the row keeps a single overflow affordance.
@@ -21,7 +21,7 @@ export default function DropdownDemo(): ReactElement {
     <div className="flex flex-col gap-4 inline-full max-inline-md">
       <Item variant="outline">
         <ItemMedia variant="icon">
-          <IconFileMusic />
+          <FileMusicIcon animateOnHover />
         </ItemMedia>
         <ItemContent>
           <ItemTitle>score-final.pdf</ItemTitle>
@@ -29,9 +29,11 @@ export default function DropdownDemo(): ReactElement {
         </ItemContent>
         <ItemActions>
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="More" />}>
-              <IconDots />
-            </DropdownMenuTrigger>
+            <AnimateIcon animateOnHover asChild>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="More" />}>
+                <EllipsisIcon />
+              </DropdownMenuTrigger>
+            </AnimateIcon>
             <DropdownMenuPopup align="end">
               <DropdownMenuItem>Rename</DropdownMenuItem>
               <DropdownMenuItem>Download</DropdownMenuItem>

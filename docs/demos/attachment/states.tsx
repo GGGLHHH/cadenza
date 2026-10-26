@@ -8,7 +8,7 @@ import {
   AttachmentTitle,
   Spinner,
 } from '@gedatou/cadenza-ui'
-import { IconAlertTriangle, IconFileText, IconPlus } from '@tabler/icons-react'
+import { FileTextIcon, PlusIcon, TriangleAlertIcon } from '@gedatou/cadenza-ui/icons'
 
 const STATES: { state: AttachmentState, note: string }[] = [
   { state: 'idle', note: 'Drop a file' },
@@ -27,10 +27,10 @@ export default function StatesDemo(): ReactElement {
       {STATES.map(({ state, note }) => (
         <Attachment key={state} state={state}>
           <AttachmentMedia>
-            {state === 'idle' && <IconPlus />}
-            {state === 'error' && <IconAlertTriangle />}
+            {state === 'idle' && <PlusIcon animateOnHover />}
+            {state === 'error' && <TriangleAlertIcon animateOnHover />}
             {(state === 'uploading' || state === 'processing') && <Spinner />}
-            {state === 'done' && <IconFileText />}
+            {state === 'done' && <FileTextIcon animateOnHover />}
           </AttachmentMedia>
           <AttachmentContent>
             <AttachmentTitle>rehearsal-notes.pdf</AttachmentTitle>

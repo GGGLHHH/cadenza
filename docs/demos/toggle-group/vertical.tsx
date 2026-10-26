@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
-import { IconLayoutGrid, IconLayoutList, IconTable } from '@tabler/icons-react'
+import { AnimateIcon, LayoutGridIcon, ListIcon, TableIcon } from '@gedatou/cadenza-ui/icons'
 
 // orientation="vertical": the group stacks and the arrow keys switch to
 // ↑ / ↓ at the same time -- focus any item and press up/down to verify.
@@ -14,18 +14,24 @@ export default function VerticalDemo(): ReactElement {
       orientation="vertical"
       variant="outline"
     >
-      <ToggleGroupItem value="list">
-        <IconLayoutList />
-        List
-      </ToggleGroupItem>
-      <ToggleGroupItem value="grid">
-        <IconLayoutGrid />
-        Grid
-      </ToggleGroupItem>
-      <ToggleGroupItem value="table">
-        <IconTable />
-        Table
-      </ToggleGroupItem>
+      <AnimateIcon animateOnHover asChild>
+        <ToggleGroupItem value="list">
+          <ListIcon />
+          List
+        </ToggleGroupItem>
+      </AnimateIcon>
+      <AnimateIcon animateOnHover asChild>
+        <ToggleGroupItem value="grid">
+          <LayoutGridIcon />
+          Grid
+        </ToggleGroupItem>
+      </AnimateIcon>
+      <AnimateIcon animateOnHover asChild>
+        <ToggleGroupItem value="table">
+          <TableIcon />
+          Table
+        </ToggleGroupItem>
+      </AnimateIcon>
     </ToggleGroup>
   )
 }

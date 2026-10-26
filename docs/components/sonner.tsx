@@ -2,13 +2,7 @@
 
 import type { ReactElement } from 'react'
 import type { ToasterProps } from 'sonner'
-import {
-  IconAlertTriangle,
-  IconCircleCheck,
-  IconCircleX,
-  IconInfoCircle,
-  IconLoader2,
-} from '@tabler/icons-react'
+import { CircleCheckIcon, CircleXIcon, InfoIcon, LoaderCircleIcon, TriangleAlertIcon } from '@gedatou/cadenza-ui/icons'
 import { useTheme } from 'next-themes'
 import { Toaster as Sonner } from 'sonner'
 
@@ -21,11 +15,17 @@ export function Toaster(props: ToasterProps): ReactElement {
     <Sonner
       theme={theme as ToasterProps['theme']}
       icons={{
-        success: <IconCircleCheck className="block-4 inline-4" />,
-        info: <IconInfoCircle className="block-4 inline-4" />,
-        warning: <IconAlertTriangle className="block-4 inline-4" />,
-        error: <IconCircleX className="block-4 inline-4" />,
-        loading: <IconLoader2 className="animate-spin block-4 inline-4" />,
+        success: <CircleCheckIcon animate className="block-4 inline-4" />,
+        info: <InfoIcon animate className="block-4 inline-4" />,
+        warning: <TriangleAlertIcon animate className="block-4 inline-4" />,
+        error: <CircleXIcon animate className="block-4 inline-4" />,
+        loading: (
+          // animate-ui's loader turns on its own; no `animate-spin` on top.
+          <LoaderCircleIcon
+            animate
+            className="block-4 inline-4"
+          />
+        ),
       }}
       style={
         {

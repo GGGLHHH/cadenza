@@ -6,7 +6,7 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from '@gedatou/cadenza-ui'
-import { IconPaperclip, IconSend } from '@tabler/icons-react'
+import { AnimateIcon, PaperclipIcon, SendIcon } from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 
 // block-end: the addon spans the full row and sits below; InputGroup
@@ -26,16 +26,20 @@ export default function TextareaDemo(): ReactElement {
           onChange={event => setValue(event.target.value)}
         />
         <InputGroupAddon align="block-end">
-          <InputGroupButton aria-label="Add attachment" size="icon-xs">
-            <IconPaperclip aria-hidden />
-          </InputGroupButton>
+          <AnimateIcon animateOnHover asChild>
+            <InputGroupButton aria-label="Add attachment" size="icon-xs">
+              <PaperclipIcon aria-hidden />
+            </InputGroupButton>
+          </AnimateIcon>
           <InputGroupText className="ms-auto">
             {`${value.length} / 500`}
           </InputGroupText>
-          <InputGroupButton disabled={value.trim() === ''} variant="default">
-            Send
-            <IconSend aria-hidden />
-          </InputGroupButton>
+          <AnimateIcon animateOnHover asChild>
+            <InputGroupButton disabled={value.trim() === ''} variant="default">
+              Send
+              <SendIcon aria-hidden />
+            </InputGroupButton>
+          </AnimateIcon>
         </InputGroupAddon>
       </InputGroup>
     </div>

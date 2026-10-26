@@ -13,14 +13,7 @@ import {
   DropdownMenuSubmenuTrigger,
   DropdownMenuTrigger,
 } from '@gedatou/cadenza-ui'
-import {
-  IconLogout,
-  IconMail,
-  IconMessage,
-  IconSettings,
-  IconUser,
-  IconUserPlus,
-} from '@tabler/icons-react'
+import { AnimateIcon, LogOutIcon, MailIcon, MessageSquareIcon, SettingsIcon, UserIcon, UserPlusIcon } from '@gedatou/cadenza-ui/icons'
 
 // Everything at once: groups + icons + shortcuts + a submenu in one menu.
 export default function ComplexDemo(): ReactElement {
@@ -32,42 +25,54 @@ export default function ComplexDemo(): ReactElement {
       <DropdownMenuPopup>
         <DropdownMenuGroup>
           <DropdownMenuGroupLabel>My account</DropdownMenuGroupLabel>
-          <DropdownMenuItem>
-            <IconUser />
-            Profile
-            <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <IconSettings />
-            Settings
-            <DropdownMenuShortcut>⌘,</DropdownMenuShortcut>
-          </DropdownMenuItem>
+          <AnimateIcon animateOnHover asChild>
+            <DropdownMenuItem>
+              <UserIcon />
+              Profile
+              <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
+            </DropdownMenuItem>
+          </AnimateIcon>
+          <AnimateIcon animateOnHover asChild>
+            <DropdownMenuItem>
+              <SettingsIcon />
+              Settings
+              <DropdownMenuShortcut>⌘,</DropdownMenuShortcut>
+            </DropdownMenuItem>
+          </AnimateIcon>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuSubmenu>
-            <DropdownMenuSubmenuTrigger>
-              <IconUserPlus />
-              Invite members
-            </DropdownMenuSubmenuTrigger>
+            <AnimateIcon animateOnHover asChild>
+              <DropdownMenuSubmenuTrigger>
+                <UserPlusIcon />
+                Invite members
+              </DropdownMenuSubmenuTrigger>
+            </AnimateIcon>
             <DropdownMenuSubmenuPopup>
-              <DropdownMenuItem>
-                <IconMail />
-                Invite by email
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <IconMessage />
-                Direct message
-              </DropdownMenuItem>
+              <AnimateIcon animateOnHover asChild>
+                <DropdownMenuItem>
+                  <MailIcon />
+                  Invite by email
+                </DropdownMenuItem>
+              </AnimateIcon>
+              <AnimateIcon animateOnHover asChild>
+                <DropdownMenuItem>
+                  <MessageSquareIcon />
+                  Direct message
+                </DropdownMenuItem>
+              </AnimateIcon>
             </DropdownMenuSubmenuPopup>
           </DropdownMenuSubmenu>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          <IconLogout />
-          Sign out
-          <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
-        </DropdownMenuItem>
+        <AnimateIcon animateOnHover asChild>
+          <DropdownMenuItem>
+            <LogOutIcon />
+            Sign out
+            <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
+          </DropdownMenuItem>
+        </AnimateIcon>
       </DropdownMenuPopup>
     </DropdownMenu>
   )

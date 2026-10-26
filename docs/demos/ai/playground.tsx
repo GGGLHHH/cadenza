@@ -35,7 +35,7 @@ import {
   useUsageTracker,
 } from '@gedatou/cadenza-ai'
 import { Button, cn, Dialog, DialogBody, DialogHeader, DialogPopup, DialogTitle, DialogTrigger, Tabs, TabsList, TabsPanel, TabsTab, ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
-import { IconChartBar, IconKey } from '@tabler/icons-react'
+import { AnimateIcon, ChartBarIcon, KeyIcon } from '@gedatou/cadenza-ui/icons'
 import { completeOpenRouterPkceIntoByok, startOpenRouterPkceLogin } from '@tanstack/ai-openrouter/pkce'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
@@ -195,11 +195,13 @@ function Chat({ anchorTurns, byok, catalog, className, resumeRef, threadId }: { 
           )}
           {usage.lastRun !== undefined && (
             <Dialog>
-              <DialogTrigger
-                render={<Button aria-label="Usage" size="icon-sm" variant="ghost" />}
-              >
-                <IconChartBar />
-              </DialogTrigger>
+              <AnimateIcon animateOnHover asChild>
+                <DialogTrigger
+                  render={<Button aria-label="Usage" size="icon-sm" variant="ghost" />}
+                >
+                  <ChartBarIcon />
+                </DialogTrigger>
+              </AnimateIcon>
               <DialogPopup>
                 <DialogHeader>
                   <DialogTitle>Usage</DialogTitle>
@@ -218,14 +220,16 @@ function Chat({ anchorTurns, byok, catalog, className, resumeRef, threadId }: { 
               </DialogPopup>
             </Dialog>
           )}
-          <Button
-            aria-label="API keys"
-            size="icon-sm"
-            variant="ghost"
-            onClick={() => byok.request(sel.selection.provider, 'missing')}
-          >
-            <IconKey />
-          </Button>
+          <AnimateIcon animateOnHover asChild>
+            <Button
+              aria-label="API keys"
+              size="icon-sm"
+              variant="ghost"
+              onClick={() => byok.request(sel.selection.provider, 'missing')}
+            >
+              <KeyIcon />
+            </Button>
+          </AnimateIcon>
         </>
       )}
     />

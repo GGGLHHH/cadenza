@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Toggle } from '@gedatou/cadenza-ui'
-import { IconBold, IconItalic } from '@tabler/icons-react'
+import { AnimateIcon, BoldIcon, ItalicIcon } from '@gedatou/cadenza-ui/icons'
 
 // A real <button aria-pressed>: the root element is the button itself and
 // the name comes straight from children, so there is no FieldLabel htmlFor
@@ -9,12 +9,14 @@ import { IconBold, IconItalic } from '@tabler/icons-react'
 export default function BasicDemo(): ReactElement {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Toggle aria-label="Bold" defaultPressed><IconBold /></Toggle>
-      <Toggle aria-label="Italic"><IconItalic /></Toggle>
-      <Toggle variant="outline">
-        <IconBold />
-        Bold
-      </Toggle>
+      <AnimateIcon animateOnHover asChild><Toggle aria-label="Bold" defaultPressed><BoldIcon /></Toggle></AnimateIcon>
+      <AnimateIcon animateOnHover asChild><Toggle aria-label="Italic"><ItalicIcon /></Toggle></AnimateIcon>
+      <AnimateIcon animateOnHover asChild>
+        <Toggle variant="outline">
+          <BoldIcon />
+          Bold
+        </Toggle>
+      </AnimateIcon>
     </div>
   )
 }

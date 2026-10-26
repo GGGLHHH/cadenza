@@ -7,7 +7,7 @@ import {
   AttachmentMedia,
   AttachmentTitle,
 } from '@gedatou/cadenza-ui'
-import { IconFileText } from '@tabler/icons-react'
+import { FileTextIcon } from '@gedatou/cadenza-ui/icons'
 
 const SIZES: AttachmentSize[] = ['default', 'sm', 'xs']
 
@@ -22,7 +22,7 @@ export default function SizesDemo(): ReactElement {
       {SIZES.map(size => (
         <Attachment key={size} size={size}>
           <AttachmentMedia>
-            <IconFileText />
+            <FileTextIcon animateOnHover />
           </AttachmentMedia>
           <AttachmentContent>
             <AttachmentTitle>programme-draft.pdf</AttachmentTitle>

@@ -8,7 +8,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@gedatou/cadenza-ui'
-import { IconDots } from '@tabler/icons-react'
+import { AnimateIcon, EllipsisIcon } from '@gedatou/cadenza-ui/icons'
 
 // An inline SVG stands in for a real cover so the demo needs no network.
 const COVER = `data:image/svg+xml,${encodeURIComponent(
@@ -29,9 +29,11 @@ export default function ImageDemo(): ReactElement {
           <ItemDescription>Chopin · Op. 9 No. 2</ItemDescription>
         </ItemContent>
         <ItemActions>
-          <Button variant="ghost" size="icon-sm" aria-label="More">
-            <IconDots />
-          </Button>
+          <AnimateIcon animateOnHover asChild>
+            <Button variant="ghost" size="icon-sm" aria-label="More">
+              <EllipsisIcon />
+            </Button>
+          </AnimateIcon>
         </ItemActions>
       </Item>
     </div>

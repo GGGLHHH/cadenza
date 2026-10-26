@@ -38,7 +38,7 @@ import {
   DialogTrigger,
   SearchField,
 } from '@gedatou/cadenza-ui'
-import { IconMenu2, IconTrash } from '@tabler/icons-react'
+import { AnimateIcon, MenuIcon, TrashIcon } from '@gedatou/cadenza-ui/icons'
 import { useEffect, useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
@@ -95,9 +95,11 @@ function DeleteThread({ persistence: store }: { persistence: Persistence }): Rea
   const { thread } = useThreadListItem()
   return (
     <AlertDialog>
-      <AlertDialogTrigger render={<Button aria-label="Delete thread" size="icon-xs" variant="ghost" />}>
-        <IconTrash />
-      </AlertDialogTrigger>
+      <AnimateIcon animateOnHover asChild>
+        <AlertDialogTrigger render={<Button aria-label="Delete thread" size="icon-xs" variant="ghost" />}>
+          <TrashIcon />
+        </AlertDialogTrigger>
+      </AnimateIcon>
       <AlertDialogPopup size="sm">
         <AlertDialogHeader>
           <AlertDialogTitle>Delete this thread?</AlertDialogTitle>
@@ -180,20 +182,22 @@ export function ThreadPane({ sidebarClassName, triggerClassName, footer, untitle
         `, sidebarClassName)}
       />
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger render={(
-          <Button
-            className={cn(`
-              self-start
-              md:hidden
-            `, triggerClassName)}
-            size="sm"
-            variant="outline"
-          />
-        )}
-        >
-          <IconMenu2 />
-          Threads
-        </DialogTrigger>
+        <AnimateIcon animateOnHover asChild>
+          <DialogTrigger render={(
+            <Button
+              className={cn(`
+                self-start
+                md:hidden
+              `, triggerClassName)}
+              size="sm"
+              variant="outline"
+            />
+          )}
+          >
+            <MenuIcon />
+            Threads
+          </DialogTrigger>
+        </AnimateIcon>
         <DialogPopup>
           <DialogHeader>
             <DialogTitle>Threads</DialogTitle>

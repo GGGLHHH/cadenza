@@ -10,7 +10,7 @@ import {
   Message,
   MessageContent,
 } from '@gedatou/cadenza-ui'
-import { IconFileText } from '@tabler/icons-react'
+import { FileTextIcon } from '@gedatou/cadenza-ui/icons'
 
 // An attachment is just another child of MessageContent — it sits above or
 // below the bubble and inherits the row's alignment, so a file sent by the
@@ -22,7 +22,7 @@ export default function AttachmentDemo(): ReactElement {
         <MessageContent>
           <Attachment>
             <AttachmentMedia>
-              <IconFileText />
+              <FileTextIcon animateOnHover />
             </AttachmentMedia>
             <AttachmentContent>
               <AttachmentTitle>programme-draft.pdf</AttachmentTitle>

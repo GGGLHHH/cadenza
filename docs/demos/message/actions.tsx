@@ -7,7 +7,7 @@ import {
   MessageContent,
   MessageFooter,
 } from '@gedatou/cadenza-ui'
-import { IconCopy, IconRefresh, IconThumbDown, IconThumbUp } from '@tabler/icons-react'
+import { AnimateIcon, CopyIcon, RefreshCwIcon, ThumbsDownIcon, ThumbsUpIcon } from '@gedatou/cadenza-ui/icons'
 
 // Message-level actions live in the footer: copy, retry, feedback. They are
 // icon-only, so every one needs an aria-label — the icon is decorative and
@@ -24,18 +24,26 @@ export default function ActionsDemo(): ReactElement {
             </BubbleContent>
           </Bubble>
           <MessageFooter className="gap-0.5">
-            <Button aria-label="Copy" size="icon-xs" variant="ghost">
-              <IconCopy />
-            </Button>
-            <Button aria-label="Regenerate" size="icon-xs" variant="ghost">
-              <IconRefresh />
-            </Button>
-            <Button aria-label="Good response" size="icon-xs" variant="ghost">
-              <IconThumbUp />
-            </Button>
-            <Button aria-label="Bad response" size="icon-xs" variant="ghost">
-              <IconThumbDown />
-            </Button>
+            <AnimateIcon animateOnHover asChild>
+              <Button aria-label="Copy" size="icon-xs" variant="ghost">
+                <CopyIcon />
+              </Button>
+            </AnimateIcon>
+            <AnimateIcon animateOnHover asChild>
+              <Button aria-label="Regenerate" size="icon-xs" variant="ghost">
+                <RefreshCwIcon />
+              </Button>
+            </AnimateIcon>
+            <AnimateIcon animateOnHover asChild>
+              <Button aria-label="Good response" size="icon-xs" variant="ghost">
+                <ThumbsUpIcon />
+              </Button>
+            </AnimateIcon>
+            <AnimateIcon animateOnHover asChild>
+              <Button aria-label="Bad response" size="icon-xs" variant="ghost">
+                <ThumbsDownIcon />
+              </Button>
+            </AnimateIcon>
           </MessageFooter>
         </MessageContent>
       </Message>

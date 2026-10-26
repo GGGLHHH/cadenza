@@ -20,7 +20,7 @@ import {
   FieldLabel,
   InputGroup,
 } from '@gedatou/cadenza-ui'
-import { IconArrowNarrowRight } from '@tabler/icons-react'
+import { ArrowRightIcon } from '@gedatou/cadenza-ui/icons'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
@@ -86,7 +86,8 @@ export default function DateRangePickerDemo(): ReactElement {
                       placeholder="Check-in"
                       onBlur={field.handleBlur}
                     />
-                    <IconArrowNarrowRight
+                    <ArrowRightIcon
+                      animateOnHover
                       aria-hidden
                       className="
                         shrink-0 text-muted-foreground block-4 inline-4

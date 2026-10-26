@@ -9,7 +9,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from '@gedatou/cadenza-ui'
-import { IconSearch } from '@tabler/icons-react'
+import { SearchIcon } from '@gedatou/cadenza-ui/icons'
 
 // The most ordinary channel: the id lands on the real <input>, FieldLabel
 // htmlFor points at it. When something must share the input's border, switch
@@ -27,7 +27,7 @@ export default function InputDemo(): ReactElement {
       <Field>
         <FieldLabel htmlFor="field-input-keyword">Search keyword</FieldLabel>
         <InputGroup>
-          <InputGroupAddon><IconSearch /></InputGroupAddon>
+          <InputGroupAddon><SearchIcon animateOnHover /></InputGroupAddon>
           <InputGroupInput id="field-input-keyword" placeholder="Ravel" />
         </InputGroup>
         <FieldDescription>With an icon, switch to InputGroup; the id still lands on the inner input.</FieldDescription>

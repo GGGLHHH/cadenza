@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactElement } from 'react'
-import { IconAlignLeft, IconFile, IconHash, IconSearch } from '@tabler/icons-react'
+import { AlignLeftIcon, AnimateIcon, FileIcon, HashIcon, SearchIcon } from '@gedatou/cadenza-ui/icons'
 import { useDocsSearch } from 'fumadocs-core/search/client'
 import { fetchClient } from 'fumadocs-core/search/client/fetch'
 import { useParams, useRouter } from 'next/navigation'
@@ -10,9 +10,9 @@ import { getDictionary } from '@/lib/dictionary'
 import { cn } from '@/lib/utils'
 
 const TYPE_ICON = {
-  page: IconFile,
-  heading: IconHash,
-  text: IconAlignLeft,
+  page: FileIcon,
+  heading: HashIcon,
+  text: AlignLeftIcon,
 } as const
 
 /** 结果内容是 Markdown 片段:剥掉命中标记 <mark> 和行内记号(`、**) */
@@ -71,43 +71,48 @@ export function CommandMenu(): ReactElement {
 
   return (
     <>
-      <button
-        type="button"
-        className="
-          hidden items-center justify-between gap-2 rounded-lg border bg-surface
-          px-3 text-sm text-muted-foreground transition-colors block-8 inline-56
-          hover:bg-muted/50
-          md:inline-flex
-          [&_svg]:block-4 [&_svg]:inline-4
-        "
-        onClick={() => setOpen(true)}
-      >
-        <span className="flex items-center gap-2">
-          <IconSearch />
-          {dict.search.placeholder}
-        </span>
-        <kbd className="
-          rounded-sm border bg-muted px-1.5 font-mono text-[10px]
-          text-muted-foreground
-        "
+      <AnimateIcon animateOnHover asChild>
+        <button
+          type="button"
+          className="
+            hidden items-center justify-between gap-2 rounded-lg border
+            bg-surface px-3 text-sm text-muted-foreground transition-colors
+            block-8 inline-56
+            hover:bg-muted/50
+            md:inline-flex
+            [&_svg]:block-4 [&_svg]:inline-4
+          "
+          onClick={() => setOpen(true)}
         >
-          ⌘K
-        </kbd>
-      </button>
-      <button
-        type="button"
-        className="
-          inline-flex items-center justify-center rounded-md text-foreground
-          transition-colors block-8 inline-8
-          hover:bg-muted
-          md:hidden
-          [&_svg]:block-4.5 [&_svg]:inline-4.5
-        "
-        onClick={() => setOpen(true)}
-      >
-        <span className="sr-only">{dict.search.open}</span>
-        <IconSearch />
-      </button>
+          <span className="flex items-center gap-2">
+            <SearchIcon />
+            {dict.search.placeholder}
+          </span>
+          <kbd className="
+            rounded-sm border bg-muted px-1.5 font-mono text-[10px]
+            text-muted-foreground
+          "
+          >
+            ⌘K
+          </kbd>
+        </button>
+      </AnimateIcon>
+      <AnimateIcon animateOnHover asChild>
+        <button
+          type="button"
+          className="
+            inline-flex items-center justify-center rounded-md text-foreground
+            transition-colors block-8 inline-8
+            hover:bg-muted
+            md:hidden
+            [&_svg]:block-4.5 [&_svg]:inline-4.5
+          "
+          onClick={() => setOpen(true)}
+        >
+          <span className="sr-only">{dict.search.open}</span>
+          <SearchIcon />
+        </button>
+      </AnimateIcon>
       {open && (
         <div className="fixed inset-0 z-50">
           <button
@@ -126,9 +131,9 @@ export function CommandMenu(): ReactElement {
             "
           >
             <div className="flex items-center gap-2 border-be px-3">
-              <IconSearch className="
-                shrink-0 text-muted-foreground block-4 inline-4
-              "
+              <SearchIcon
+                animateOnHover
+                className="shrink-0 text-muted-foreground block-4 inline-4"
               />
               <input
                 ref={inputRef}
@@ -185,27 +190,28 @@ export function CommandMenu(): ReactElement {
               {results.map((result, index) => {
                 const Icon = TYPE_ICON[result.type]
                 return (
-                  <button
-                    key={result.id}
-                    type="button"
-                    data-active={index === activeIndex}
-                    className={cn(
-                      `
-                        flex cursor-pointer items-center gap-2 rounded-lg px-3
-                        py-2 text-start text-sm inline-full
-                        data-[active=true]:bg-accent
-                        data-[active=true]:text-accent-foreground
-                        [&_svg]:shrink-0 [&_svg]:text-muted-foreground
-                        [&_svg]:block-4 [&_svg]:inline-4
-                      `,
-                      result.type !== 'page' && 'ps-6',
-                    )}
-                    onClick={() => go(result.url)}
-                    onMouseMove={() => setActiveIndex(index)}
-                  >
-                    <Icon />
-                    <span className="truncate">{cleanContent(result.content)}</span>
-                  </button>
+                  <AnimateIcon key={result.id} animateOnHover asChild>
+                    <button
+                      type="button"
+                      data-active={index === activeIndex}
+                      className={cn(
+                        `
+                          flex cursor-pointer items-center gap-2 rounded-lg px-3
+                          py-2 text-start text-sm inline-full
+                          data-[active=true]:bg-accent
+                          data-[active=true]:text-accent-foreground
+                          [&_svg]:shrink-0 [&_svg]:text-muted-foreground
+                          [&_svg]:block-4 [&_svg]:inline-4
+                        `,
+                        result.type !== 'page' && 'ps-6',
+                      )}
+                      onClick={() => go(result.url)}
+                      onMouseMove={() => setActiveIndex(index)}
+                    >
+                      <Icon />
+                      <span className="truncate">{cleanContent(result.content)}</span>
+                    </button>
+                  </AnimateIcon>
                 )
               })}
             </div>

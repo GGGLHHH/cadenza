@@ -383,7 +383,7 @@ const ordered = order.map(id => allColumns.find(column => column.id === id)!)
 <DataTableColumnsSelect columns={ordered} value={visible}
   onValueChange={setVisible} onOrderCommitted={setOrder}>
   <SelectTrigger aria-label="显示列">
-    <IconColumns />
+    <ColumnsIcon animateOnHover />
     <SelectValue>{() => `${visible.length} / ${ordered.length} 列`}</SelectValue>
   </SelectTrigger>
   <SelectPopup>

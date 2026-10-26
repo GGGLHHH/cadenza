@@ -19,7 +19,7 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from '@gedatou/cadenza-ui'
-import { IconX } from '@tabler/icons-react'
+import { AnimateIcon, XIcon } from '@gedatou/cadenza-ui/icons'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
@@ -88,15 +88,17 @@ export default function ArrayDemo(): ReactElement {
                               />
                               {field.state.value.length > 1 && (
                                 <InputGroupAddon align="inline-end">
-                                  <InputGroupButton
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon-xs"
-                                    aria-label={`Remove email ${index + 1}`}
-                                    onClick={() => void field.removeValue(index)}
-                                  >
-                                    <IconX aria-hidden />
-                                  </InputGroupButton>
+                                  <AnimateIcon animateOnHover asChild>
+                                    <InputGroupButton
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon-xs"
+                                      aria-label={`Remove email ${index + 1}`}
+                                      onClick={() => void field.removeValue(index)}
+                                    >
+                                      <XIcon aria-hidden />
+                                    </InputGroupButton>
+                                  </AnimateIcon>
                                 </InputGroupAddon>
                               )}
                             </InputGroup>

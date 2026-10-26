@@ -1,9 +1,8 @@
 import type { Modality, Provider } from '@gedatou/cadenza-ai'
-import type { Icon } from '@tabler/icons-react'
-import type { ReactElement } from 'react'
+import type { ComponentType, ReactElement } from 'react'
 import { defaultCatalog, modelRef, parseModelRef, supportedThinkingLevels } from '@gedatou/cadenza-ai'
 import { Badge } from '@gedatou/cadenza-ui'
-import { IconBrain, IconFileText, IconMicrophone, IconPhoto, IconTypography, IconVideo } from '@tabler/icons-react'
+import { BrainIcon, FileTextIcon, ImageIcon, MicIcon, TypeIcon, VideoIcon } from '@gedatou/cadenza-ui/icons'
 import { ResettableDemo } from '../lib/resettable'
 
 // Proves the catalog is plain data: every provider and model of
@@ -21,12 +20,15 @@ const local: Provider = {
 }
 const catalog = defaultCatalog.withProvider(local)
 
-const MODALITY: Record<Modality, [Icon, string]> = {
-  text: [IconTypography, 'Text'],
-  image: [IconPhoto, 'Image'],
-  audio: [IconMicrophone, 'Audio'],
-  video: [IconVideo, 'Video'],
-  document: [IconFileText, 'Document'],
+// Typed by the props used below: each icon's `animation` names its own set.
+type ModalityIcon = ComponentType<{ 'animateOnHover'?: boolean, 'aria-label'?: string, 'className'?: string }>
+
+const MODALITY: Record<Modality, [ModalityIcon, string]> = {
+  text: [TypeIcon, 'Text'],
+  image: [ImageIcon, 'Image'],
+  audio: [MicIcon, 'Audio'],
+  video: [VideoIcon, 'Video'],
+  document: [FileTextIcon, 'Document'],
 }
 
 const SAMPLE_REF = 'openrouter/anthropic/claude-sonnet-4.5'
@@ -84,7 +86,8 @@ function ProviderRows({ provider }: { provider: Provider }): ReactElement {
             <span className="flex items-center gap-1.5">
               {model.name}
               {model.reasoning && (
-                <IconBrain
+                <BrainIcon
+                  animateOnHover
                   aria-label="Reasoning"
                   className="text-muted-foreground block-4 inline-4"
                 />
@@ -99,6 +102,7 @@ function ProviderRows({ provider }: { provider: Provider }): ReactElement {
                 return (
                   <ModalityIcon
                     key={modality}
+                    animateOnHover
                     aria-label={label}
                     className="block-4 inline-4"
                   />

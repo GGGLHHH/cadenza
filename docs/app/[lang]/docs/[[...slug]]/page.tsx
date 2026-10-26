@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import type { ReactElement } from 'react'
-import { IconArrowLeft, IconArrowRight } from '@tabler/icons-react'
+import { AnimateIcon, ArrowLeftIcon, ArrowRightIcon } from '@gedatou/cadenza-ui/icons'
 import { findNeighbour } from 'fumadocs-core/page-tree'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -78,30 +78,34 @@ export default async function Page(props: {
               </h1>
               <div className="flex items-center gap-2">
                 {neighbours.previous && (
-                  <Link
-                    href={neighbours.previous.url}
-                    className={`
-                      ${NEIGHBOUR_LINK_CLASSNAME}
-                      block-8 inline-8
-                      md:block-7 md:inline-7
-                    `}
-                  >
-                    <IconArrowLeft />
-                    <span className="sr-only">{dict.pager.previous}</span>
-                  </Link>
+                  <AnimateIcon animateOnHover asChild>
+                    <Link
+                      href={neighbours.previous.url}
+                      className={`
+                        ${NEIGHBOUR_LINK_CLASSNAME}
+                        block-8 inline-8
+                        md:block-7 md:inline-7
+                      `}
+                    >
+                      <ArrowLeftIcon />
+                      <span className="sr-only">{dict.pager.previous}</span>
+                    </Link>
+                  </AnimateIcon>
                 )}
                 {neighbours.next && (
-                  <Link
-                    href={neighbours.next.url}
-                    className={`
-                      ${NEIGHBOUR_LINK_CLASSNAME}
-                      block-8 inline-8
-                      md:block-7 md:inline-7
-                    `}
-                  >
-                    <span className="sr-only">{dict.pager.next}</span>
-                    <IconArrowRight />
-                  </Link>
+                  <AnimateIcon animateOnHover asChild>
+                    <Link
+                      href={neighbours.next.url}
+                      className={`
+                        ${NEIGHBOUR_LINK_CLASSNAME}
+                        block-8 inline-8
+                        md:block-7 md:inline-7
+                      `}
+                    >
+                      <span className="sr-only">{dict.pager.next}</span>
+                      <ArrowRightIcon />
+                    </Link>
+                  </AnimateIcon>
                 )}
               </div>
             </div>
@@ -128,28 +132,32 @@ export default async function Page(props: {
           "
           >
             {neighbours.previous && (
-              <Link
-                href={neighbours.previous.url}
-                className={`
-                  ${NEIGHBOUR_LINK_CLASSNAME}
-                  px-3 block-8
-                `}
-              >
-                <IconArrowLeft />
-                {neighbours.previous.name}
-              </Link>
+              <AnimateIcon animateOnHover asChild>
+                <Link
+                  href={neighbours.previous.url}
+                  className={`
+                    ${NEIGHBOUR_LINK_CLASSNAME}
+                    px-3 block-8
+                  `}
+                >
+                  <ArrowLeftIcon />
+                  {neighbours.previous.name}
+                </Link>
+              </AnimateIcon>
             )}
             {neighbours.next && (
-              <Link
-                href={neighbours.next.url}
-                className={`
-                  ${NEIGHBOUR_LINK_CLASSNAME}
-                  ms-auto px-3 block-8
-                `}
-              >
-                {neighbours.next.name}
-                <IconArrowRight />
-              </Link>
+              <AnimateIcon animateOnHover asChild>
+                <Link
+                  href={neighbours.next.url}
+                  className={`
+                    ${NEIGHBOUR_LINK_CLASSNAME}
+                    ms-auto px-3 block-8
+                  `}
+                >
+                  {neighbours.next.name}
+                  <ArrowRightIcon />
+                </Link>
+              </AnimateIcon>
             )}
           </div>
         </div>

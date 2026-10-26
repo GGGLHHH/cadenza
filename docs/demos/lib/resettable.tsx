@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { Button } from '@gedatou/cadenza-ui'
-import { IconRefresh } from '@tabler/icons-react'
+import { AnimateIcon, RefreshCwIcon } from '@gedatou/cadenza-ui/icons'
 import { Fragment, useState } from 'react'
 
 // Demo-only scaffolding. Every stateful demo accumulates state you cannot undo
@@ -31,16 +31,18 @@ export function ResettableDemo({
     `}
     >
       <div className="flex justify-end">
-        <Button
-          aria-label="Reset demo"
-          size="icon-sm"
-          variant="ghost"
-          onClick={() => {
-            void reset()
-          }}
-        >
-          <IconRefresh />
-        </Button>
+        <AnimateIcon animateOnHover asChild>
+          <Button
+            aria-label="Reset demo"
+            size="icon-sm"
+            variant="ghost"
+            onClick={() => {
+              void reset()
+            }}
+          >
+            <RefreshCwIcon />
+          </Button>
+        </AnimateIcon>
       </div>
       <Fragment key={generation}>{children}</Fragment>
     </div>

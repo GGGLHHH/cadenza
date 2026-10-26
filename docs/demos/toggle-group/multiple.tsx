@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
-import { IconBold, IconItalic, IconUnderline } from '@tabler/icons-react'
+import { AnimateIcon, BoldIcon, ItalicIcon, UnderlineIcon } from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 
 // multiple: several items can be pressed at once. value has exactly the
@@ -18,9 +18,9 @@ export default function MultipleDemo(): ReactElement {
         value={marks}
         variant="outline"
       >
-        <ToggleGroupItem aria-label="Bold" value="bold"><IconBold /></ToggleGroupItem>
-        <ToggleGroupItem aria-label="Italic" value="italic"><IconItalic /></ToggleGroupItem>
-        <ToggleGroupItem aria-label="Underline" value="underline"><IconUnderline /></ToggleGroupItem>
+        <AnimateIcon animateOnHover asChild><ToggleGroupItem aria-label="Bold" value="bold"><BoldIcon /></ToggleGroupItem></AnimateIcon>
+        <AnimateIcon animateOnHover asChild><ToggleGroupItem aria-label="Italic" value="italic"><ItalicIcon /></ToggleGroupItem></AnimateIcon>
+        <AnimateIcon animateOnHover asChild><ToggleGroupItem aria-label="Underline" value="underline"><UnderlineIcon /></ToggleGroupItem></AnimateIcon>
       </ToggleGroup>
       <p className="text-sm text-muted-foreground">
         {`value: [${marks.join(', ')}]`}

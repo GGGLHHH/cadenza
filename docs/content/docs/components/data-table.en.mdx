@@ -472,7 +472,7 @@ new**: `DataTableColumnsSelectList` / `Item` / `Grip`.
 <DataTableColumnsSelect columns={ordered} value={visible}
   onValueChange={setVisible} onOrderCommitted={setOrder}>
   <SelectTrigger aria-label="Show columns">
-    <IconColumns />
+    <ColumnsIcon animateOnHover />
     <SelectValue>{() => `${visible.length} / ${ordered.length} columns`}</SelectValue>
   </SelectTrigger>
   <SelectPopup>

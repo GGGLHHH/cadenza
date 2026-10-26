@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@gedatou/cadenza-ui'
-import { IconChevronRight, IconFile, IconFolder, IconFolderOpen } from '@tabler/icons-react'
+import { AnimateIcon, ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon } from '@gedatou/cadenza-ui/icons'
 
 interface Node {
   name: string
@@ -48,7 +48,7 @@ function TreeNode({ node }: { node: Node }): ReactElement {
         flex items-center gap-2 rounded-md px-2 py-1 text-muted-foreground
       "
       >
-        <IconFile className="shrink-0 block-4 inline-4" />
+        <FileIcon animateOnHover className="shrink-0 block-4 inline-4" />
         {node.name}
       </div>
     )
@@ -56,29 +56,31 @@ function TreeNode({ node }: { node: Node }): ReactElement {
 
   return (
     <Collapsible defaultOpen={node.name === 'packages'}>
-      <CollapsibleTrigger className="
-        group/trigger flex items-center gap-2 rounded-md px-2 py-1 text-start
-        inline-full
-        hover:bg-accent
-      "
-      >
-        <IconChevronRight className="
-          shrink-0 text-muted-foreground transition-transform block-4 inline-4
-          group-data-panel-open/trigger:rotate-90
+      <AnimateIcon animateOnHover asChild>
+        <CollapsibleTrigger className="
+          group/trigger flex items-center gap-2 rounded-md px-2 py-1 text-start
+          inline-full
+          hover:bg-accent
         "
-        />
-        <IconFolder className="
-          shrink-0 block-4 inline-4
-          group-data-panel-open/trigger:hidden
-        "
-        />
-        <IconFolderOpen className="
-          hidden shrink-0 block-4 inline-4
-          group-data-panel-open/trigger:block
-        "
-        />
-        {node.name}
-      </CollapsibleTrigger>
+        >
+          <ChevronRightIcon className="
+            shrink-0 text-muted-foreground transition-transform block-4 inline-4
+            group-data-panel-open/trigger:rotate-90
+          "
+          />
+          <FolderIcon className="
+            shrink-0 block-4 inline-4
+            group-data-panel-open/trigger:hidden
+          "
+          />
+          <FolderOpenIcon className="
+            hidden shrink-0 block-4 inline-4
+            group-data-panel-open/trigger:block
+          "
+          />
+          {node.name}
+        </CollapsibleTrigger>
+      </AnimateIcon>
       <CollapsiblePanel>
         <div className="ms-4 border-s ps-2">
           {node.children.map(child => <TreeNode key={child.name} node={child} />)}

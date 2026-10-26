@@ -51,7 +51,7 @@ import {
   Textarea,
   useInfiniteComboboxState,
 } from '@gedatou/cadenza-ui'
-import { IconMail } from '@tabler/icons-react'
+import { MailIcon } from '@gedatou/cadenza-ui/icons'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -269,7 +269,7 @@ export default function MultiStepDemo(): ReactElement {
                     <FieldLabel htmlFor={msId(field.name)}>Email</FieldLabel>
                     <InputGroup>
                       <InputGroupAddon>
-                        <IconMail aria-hidden />
+                        <MailIcon animateOnHover aria-hidden />
                       </InputGroupAddon>
                       <InputGroupInput
                         {...msControlProps(field)}

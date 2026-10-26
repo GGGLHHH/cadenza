@@ -11,7 +11,7 @@ import {
   AlertDialogTrigger,
   Button,
 } from '@gedatou/cadenza-ui'
-import { IconAlertTriangle } from '@tabler/icons-react'
+import { TriangleAlertIcon } from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 
 // AlertDialogMedia is the icon cell above the title (to its left on wide
@@ -37,7 +37,7 @@ export default function MediaDemo(): ReactElement {
         <AlertDialogPopup>
           <AlertDialogHeader>
             <AlertDialogMedia>
-              <IconAlertTriangle />
+              <TriangleAlertIcon animateOnHover />
             </AlertDialogMedia>
             <AlertDialogTitle>Revoke this key immediately?</AlertDialogTitle>
             <AlertDialogDescription>

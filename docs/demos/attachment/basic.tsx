@@ -8,7 +8,7 @@ import {
   AttachmentMedia,
   AttachmentTitle,
 } from '@gedatou/cadenza-ui'
-import { IconFileText, IconX } from '@tabler/icons-react'
+import { AnimateIcon, FileTextIcon, XIcon } from '@gedatou/cadenza-ui/icons'
 
 // A file card: media, metadata, actions. Nothing here uploads anything — the
 // component renders whatever state you hand it.
@@ -17,16 +17,18 @@ export default function BasicDemo(): ReactElement {
     <div className="mx-auto flex flex-col gap-3 inline-full max-inline-sm">
       <Attachment>
         <AttachmentMedia>
-          <IconFileText />
+          <FileTextIcon animateOnHover />
         </AttachmentMedia>
         <AttachmentContent>
           <AttachmentTitle>programme-draft.pdf</AttachmentTitle>
           <AttachmentDescription>240 KB</AttachmentDescription>
         </AttachmentContent>
         <AttachmentActions>
-          <AttachmentAction aria-label="Remove programme-draft.pdf">
-            <IconX />
-          </AttachmentAction>
+          <AnimateIcon animateOnHover asChild>
+            <AttachmentAction aria-label="Remove programme-draft.pdf">
+              <XIcon />
+            </AttachmentAction>
+          </AnimateIcon>
         </AttachmentActions>
       </Attachment>
     </div>

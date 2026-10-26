@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Bubble, BubbleContent, BubbleReactions, Button } from '@gedatou/cadenza-ui'
-import { IconCornerUpLeft, IconMoodSmile } from '@tabler/icons-react'
+import { AnimateIcon, ReplyIcon, SmileIcon } from '@gedatou/cadenza-ui/icons'
 
 // Reactions overlap the bubble's edge by design, so rows need vertical room
 // between them — hence the larger gap. side picks the edge, align the corner.
@@ -18,12 +18,16 @@ export default function ReactionsDemo(): ReactElement {
       <Bubble align="end">
         <BubbleContent>Curtain down before ten.</BubbleContent>
         <BubbleReactions align="start" side="top">
-          <Button aria-label="React to this message" size="icon-xs" variant="ghost">
-            <IconMoodSmile />
-          </Button>
-          <Button aria-label="Reply to this message" size="icon-xs" variant="ghost">
-            <IconCornerUpLeft />
-          </Button>
+          <AnimateIcon animateOnHover asChild>
+            <Button aria-label="React to this message" size="icon-xs" variant="ghost">
+              <SmileIcon />
+            </Button>
+          </AnimateIcon>
+          <AnimateIcon animateOnHover asChild>
+            <Button aria-label="Reply to this message" size="icon-xs" variant="ghost">
+              <ReplyIcon />
+            </Button>
+          </AnimateIcon>
         </BubbleReactions>
       </Bubble>
     </div>

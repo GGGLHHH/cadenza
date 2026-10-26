@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@gedatou/cadenza-ui'
-import { IconCopy, IconPencil, IconShare, IconStar } from '@tabler/icons-react'
+import { AnimateIcon, CopyIcon, PencilIcon, ShareIcon, StarIcon } from '@gedatou/cadenza-ui/icons'
 
 // Icons go straight into the item — item styles already size and space a
 // leading svg.
@@ -18,23 +18,31 @@ export default function IconsDemo(): ReactElement {
         Actions
       </DropdownMenuTrigger>
       <DropdownMenuPopup>
-        <DropdownMenuItem>
-          <IconPencil />
-          Edit
-        </DropdownMenuItem>
-        <DropdownMenuItem>
-          <IconCopy />
-          Duplicate
-        </DropdownMenuItem>
-        <DropdownMenuItem>
-          <IconStar />
-          Favourite
-        </DropdownMenuItem>
+        <AnimateIcon animateOnHover asChild>
+          <DropdownMenuItem>
+            <PencilIcon />
+            Edit
+          </DropdownMenuItem>
+        </AnimateIcon>
+        <AnimateIcon animateOnHover asChild>
+          <DropdownMenuItem>
+            <CopyIcon />
+            Duplicate
+          </DropdownMenuItem>
+        </AnimateIcon>
+        <AnimateIcon animateOnHover asChild>
+          <DropdownMenuItem>
+            <StarIcon />
+            Favourite
+          </DropdownMenuItem>
+        </AnimateIcon>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          <IconShare />
-          Share
-        </DropdownMenuItem>
+        <AnimateIcon animateOnHover asChild>
+          <DropdownMenuItem>
+            <ShareIcon />
+            Share
+          </DropdownMenuItem>
+        </AnimateIcon>
       </DropdownMenuPopup>
     </DropdownMenu>
   )

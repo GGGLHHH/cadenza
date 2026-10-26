@@ -8,7 +8,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@gedatou/cadenza-ui'
-import { IconBell } from '@tabler/icons-react'
+import { BellIcon } from '@gedatou/cadenza-ui/icons'
 
 // Three densities: default, sm and xs. xs also drops the content gap and
 // shrinks the description text.
@@ -17,7 +17,7 @@ export default function SizeDemo(): ReactElement {
     <div className="flex flex-col gap-4 inline-full max-inline-md">
       <Item variant="outline">
         <ItemMedia variant="icon">
-          <IconBell />
+          <BellIcon animateOnHover />
         </ItemMedia>
         <ItemContent>
           <ItemTitle>Default size</ItemTitle>
@@ -31,7 +31,7 @@ export default function SizeDemo(): ReactElement {
       </Item>
       <Item variant="outline" size="sm">
         <ItemMedia variant="icon">
-          <IconBell />
+          <BellIcon animateOnHover />
         </ItemMedia>
         <ItemContent>
           <ItemTitle>Small</ItemTitle>
@@ -45,7 +45,7 @@ export default function SizeDemo(): ReactElement {
       </Item>
       <Item variant="outline" size="xs">
         <ItemMedia variant="icon">
-          <IconBell />
+          <BellIcon animateOnHover />
         </ItemMedia>
         <ItemContent>
           <ItemTitle>Extra small</ItemTitle>

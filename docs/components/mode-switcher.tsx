@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactElement } from 'react'
-import { IconMoon, IconSun } from '@tabler/icons-react'
+import { AnimateIcon, MoonIcon, SunIcon } from '@gedatou/cadenza-ui/icons'
 import { useTheme } from 'next-themes'
 import { useParams } from 'next/navigation'
 import { useSyncExternalStore } from 'react'
@@ -23,18 +23,20 @@ export function ModeSwitcher(): ReactElement | null {
     return null
 
   return (
-    <button
-      type="button"
-      className="
-        inline-flex items-center justify-center rounded-md text-foreground
-        transition-colors block-8 inline-8
-        hover:bg-muted
-        [&_svg]:block-4.5 [&_svg]:inline-4.5
-      "
-      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-    >
-      <span className="sr-only">{getDictionary(lang).themeToggle}</span>
-      {mounted && (resolvedTheme === 'dark' ? <IconMoon /> : <IconSun />)}
-    </button>
+    <AnimateIcon animateOnHover asChild>
+      <button
+        type="button"
+        className="
+          inline-flex items-center justify-center rounded-md text-foreground
+          transition-colors block-8 inline-8
+          hover:bg-muted
+          [&_svg]:block-4.5 [&_svg]:inline-4.5
+        "
+        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+      >
+        <span className="sr-only">{getDictionary(lang).themeToggle}</span>
+        {mounted && (resolvedTheme === 'dark' ? <MoonIcon /> : <SunIcon />)}
+      </button>
+    </AnimateIcon>
   )
 }

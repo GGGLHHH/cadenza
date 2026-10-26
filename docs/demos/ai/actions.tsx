@@ -1,7 +1,7 @@
 import type { UIMessage } from '@gedatou/cadenza-ai'
 import type { ReactElement } from 'react'
 import { editAndResend, messageText, TranscriptAction, useChat, useStoredState } from '@gedatou/cadenza-ai'
-import { IconCopy, IconPencil, IconRefresh, IconThumbDown, IconThumbUp, IconTrash, IconVolume } from '@tabler/icons-react'
+import { CopyIcon, PencilIcon, RefreshCwIcon, ThumbsDownIcon, ThumbsUpIcon, TrashIcon, Volume2Icon } from '@gedatou/cadenza-ui/icons'
 import { useState, useSyncExternalStore } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'
@@ -65,27 +65,27 @@ function Body(): ReactElement {
       renderActions={message => (
         <>
           <TranscriptAction aria-label="Copy" onClick={() => void navigator.clipboard.writeText(messageText(message))}>
-            <IconCopy />
+            <CopyIcon animateOnHover />
           </TranscriptAction>
           {message.id === chat.messages.at(-1)?.id && (
             <TranscriptAction aria-label="Regenerate" onClick={() => void chat.reload()}>
-              <IconRefresh />
+              <RefreshCwIcon animateOnHover />
             </TranscriptAction>
           )}
           <TranscriptAction aria-label="Edit" onClick={() => edit(message)}>
-            <IconPencil />
+            <PencilIcon animateOnHover />
           </TranscriptAction>
           <TranscriptAction aria-label="Good response" aria-pressed={feedback[message.id] === 'up'} onClick={() => rate(message, 'up')}>
-            <IconThumbUp />
+            <ThumbsUpIcon animateOnHover />
           </TranscriptAction>
           <TranscriptAction aria-label="Bad response" aria-pressed={feedback[message.id] === 'down'} onClick={() => rate(message, 'down')}>
-            <IconThumbDown />
+            <ThumbsDownIcon animateOnHover />
           </TranscriptAction>
           <TranscriptAction aria-label="Read aloud" disabled={!canSpeak} onClick={() => speak(message)}>
-            <IconVolume />
+            <Volume2Icon animateOnHover />
           </TranscriptAction>
           <TranscriptAction aria-label="Clear" onClick={() => chat.clear()}>
-            <IconTrash />
+            <TrashIcon animateOnHover />
           </TranscriptAction>
         </>
       )}

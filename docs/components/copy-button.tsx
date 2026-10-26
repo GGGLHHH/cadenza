@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactElement } from 'react'
-import { IconCheck, IconCopy } from '@tabler/icons-react'
+import { AnimateIcon, CheckIcon, CopyIcon } from '@gedatou/cadenza-ui/icons'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { getDictionary } from '@/lib/dictionary'
@@ -25,25 +25,27 @@ export function CopyButton({
   }, [hasCopied])
 
   return (
-    <button
-      type="button"
-      data-slot="copy-button"
-      className={cn(
-        `
-          absolute inset-e-2 inset-bs-3 z-10 inline-flex items-center
-          justify-center rounded-md bg-code text-code-foreground opacity-70
-          transition-opacity block-7 inline-7
-          hover:opacity-100
-          [&_svg]:block-3.5 [&_svg]:inline-3.5
-        `,
-        className,
-      )}
-      onClick={() => {
-        void navigator.clipboard.writeText(value).then(() => setHasCopied(true))
-      }}
-    >
-      <span className="sr-only">{getDictionary(lang).copy}</span>
-      {hasCopied ? <IconCheck /> : <IconCopy />}
-    </button>
+    <AnimateIcon animateOnHover asChild>
+      <button
+        type="button"
+        data-slot="copy-button"
+        className={cn(
+          `
+            absolute inset-e-2 inset-bs-3 z-10 inline-flex items-center
+            justify-center rounded-md bg-code text-code-foreground opacity-70
+            transition-opacity block-7 inline-7
+            hover:opacity-100
+            [&_svg]:block-3.5 [&_svg]:inline-3.5
+          `,
+          className,
+        )}
+        onClick={() => {
+          void navigator.clipboard.writeText(value).then(() => setHasCopied(true))
+        }}
+      >
+        <span className="sr-only">{getDictionary(lang).copy}</span>
+        {hasCopied ? <CheckIcon /> : <CopyIcon />}
+      </button>
+    </AnimateIcon>
   )
 }

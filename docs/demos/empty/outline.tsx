@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Button, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@gedatou/cadenza-ui'
-import { IconFolderOpen } from '@tabler/icons-react'
+import { FolderOpenIcon } from '@gedatou/cadenza-ui/icons'
 
 // The root already carries border-dashed and rounded-xl; a single `border`
 // utility turns it into an outlined drop zone
@@ -9,7 +9,7 @@ export default function OutlineDemo(): ReactElement {
     <Empty className="border">
       <EmptyHeader>
         <EmptyMedia variant="icon">
-          <IconFolderOpen aria-hidden />
+          <FolderOpenIcon animateOnHover aria-hidden />
         </EmptyMedia>
         <EmptyTitle>No projects</EmptyTitle>
         <EmptyDescription>Create a project to start organising your work.</EmptyDescription>

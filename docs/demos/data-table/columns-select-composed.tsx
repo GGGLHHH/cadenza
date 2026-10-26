@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@gedatou/cadenza-ui'
-import { IconColumns } from '@tabler/icons-react'
+import { ColumnsIcon } from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 import { PEOPLE } from '../lib/people'
 import { personColumns } from './columns'
@@ -43,7 +43,8 @@ export default function ColumnsSelectComposedDemo(): ReactElement {
         onValueChange={setVisible}
       >
         <SelectTrigger aria-label="Show columns" className="inline-40">
-          <IconColumns
+          <ColumnsIcon
+            animateOnHover
             aria-hidden
             className="text-muted-foreground block-4 inline-4"
           />

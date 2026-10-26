@@ -10,7 +10,7 @@ import {
   ItemSeparator,
   ItemTitle,
 } from '@gedatou/cadenza-ui'
-import { IconMusic } from '@tabler/icons-react'
+import { MusicIcon } from '@gedatou/cadenza-ui/icons'
 
 const PIECES = [
   { title: 'Prelude in C', description: 'Bach · BWV 846' },
@@ -28,7 +28,7 @@ export default function GroupDemo(): ReactElement {
           {index > 0 && <ItemSeparator />}
           <Item render={<li />}>
             <ItemMedia variant="icon">
-              <IconMusic />
+              <MusicIcon animateOnHover />
             </ItemMedia>
             <ItemContent>
               <ItemTitle>{piece.title}</ItemTitle>

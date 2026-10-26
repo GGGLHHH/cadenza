@@ -16,7 +16,6 @@
     "@gedatou/cadenza-form": "workspace:*",
     "@gedatou/cadenza-ui": "workspace:*",
     "@gedatou/cadenza-utils": "workspace:*",
-    "@tabler/icons-react": "catalog:ui",
     "@tanstack/ai-anthropic": "catalog:ui",
     "@tanstack/ai-bedrock": "catalog:ui",
     "@tanstack/ai-gemini": "catalog:ui",
