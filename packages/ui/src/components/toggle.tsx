@@ -2,6 +2,7 @@ import type { Toggle as TogglePrimitive } from '@base-ui/react/toggle'
 import type { VariantProps } from 'class-variance-authority'
 import type { ReactElement } from 'react'
 import { Toggle as AnimatedToggle } from '@animate-ui/react/primitives/base-ui/toggle'
+import { PRESS_TRANSITION } from '#lib/press'
 import { cn } from '#lib/utils'
 import { toggleVariants } from '#primitives/toggle'
 
@@ -80,6 +81,8 @@ export type ToggleProps<Value extends string = string>
  */
 // The vendored part's composition on animate-ui's Toggle, which adds a
 // Motion press (a brief scale-down). The vendored part renders Base UI's.
+// `PRESS_TRANSITION` takes `transform` out of the vendored `transition-all`,
+// as on `Button`: the press owns it.
 export function Toggle<Value extends string = string>({
   className,
   variant = 'default',
@@ -89,7 +92,7 @@ export function Toggle<Value extends string = string>({
   return (
     <AnimatedToggle<Value>
       data-slot="toggle"
-      className={cn(toggleVariants({ variant, size }), PRESSED_APART, className)}
+      className={cn(toggleVariants({ variant, size }), PRESS_TRANSITION, PRESSED_APART, className)}
       {...props}
     />
   )
