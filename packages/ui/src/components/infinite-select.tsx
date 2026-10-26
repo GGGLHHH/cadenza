@@ -693,7 +693,7 @@ export function InfiniteSelect<T>(props: InfiniteSelectProps<T>): ReactElement {
       )
 }
 
-/** The input-group part: Base UI's `Combobox.Input` plus the icon, wired by the root. */
+/** The input-group part: animate-ui's `Combobox.Input` plus the icon, wired by the root. */
 export function InfiniteSelectInputGroup({
   placeholder,
   autoFocus = false,
@@ -713,7 +713,9 @@ export function InfiniteSelectInputGroup({
             className="shrink-0 text-muted-foreground block-4 inline-4"
             data-slot="infinite-select-input-group-icon"
           />
-          <Combobox.Input
+          {/* animate-ui's, as in ComboboxInput: it swaps the text when a
+              pick rewrites it and tells the popup the pick did so. */}
+          <AnimatedCombobox.Input
             aria-label={placeholder ?? 'Search'}
             autoFocus={autoFocus}
             className="
