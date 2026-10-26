@@ -197,8 +197,14 @@ demo 那样。
 | `input-otp-group` | 一组连续的格子 |
 | `input-otp-slot` | 单个格子 |
 | `input-otp-separator` | 组间分隔符，同时带 `role="separator"` |
+| `input-otp-ring` / `input-otp-ghosts` | animate-ui 叠在容器里的两层装饰，`aria-hidden`，见下 |
 
 可见的容器行没有 `data-slot`，它带的是 `input-otp` 包自己的 `data-input-otp-container`。
+
+**动效来自 animate-ui。** 根换成了它的 `OTPInput`（`input-otp` 包的原样替身）：
+键入的字符弹进格子，删掉的字符缩小淡出，最后一格填满时整行起伏一次。焦点环会在格子之间
+滑动 —— 它读取当前格自己画出的 `ring`，再把它挪到一层浮层上，所以写在
+`data-[active=true]:` 上的环色、圆角照样生效，只是画的人换成了浮层。
 
 **`data-active` 是值形布尔。** 当前光标所在的格子标的是 `data-active="true"`，其余的是
 `data-active="false"` —— 属性**一直在**，只是值在变。这和本库其余部分的空串形态

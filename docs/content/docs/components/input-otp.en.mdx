@@ -227,9 +227,17 @@ There are only three state attributes, none of them from Base UI:
 | `input-otp-group` | one consecutive run of slots |
 | `input-otp-slot` | a single slot |
 | `input-otp-separator` | the between-group separator, also carrying `role="separator"` |
+| `input-otp-ring` / `input-otp-ghosts` | two decorative layers animate-ui adds inside the container, `aria-hidden`, see below |
 
 The visible container row has no `data-slot`; it carries the `input-otp`
 package's own `data-input-otp-container`.
+
+**The motion is animate-ui's.** The root is its `OTPInput`, a drop-in for the
+`input-otp` package's own: typed characters pop into their slots, deleted ones
+shrink away, and the row ripples once when the last slot fills. The focus ring
+glides from slot to slot — it reads the `ring` the active slot paints and moves
+it onto an overlay, so ring colours and radii written under
+`data-[active=true]:` still apply; only the element painting them changes.
 
 **`data-active` is a value-typed boolean.** The slot under the caret is marked
 `data-active="true"`, the rest `data-active="false"` — the attribute is

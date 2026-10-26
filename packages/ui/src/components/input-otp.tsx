@@ -1,8 +1,9 @@
 import type { ComponentProps, ReactElement } from 'react'
+import type { InputOTP as InputOTPPrimitive } from '#primitives/input-otp'
+import { OTPInput } from '@animate-ui/react/primitives/input-otp'
 import { cn } from '#lib/utils'
 import {
   InputOTPGroup as InputOTPGroupPrimitive,
-  InputOTP as InputOTPPrimitive,
   InputOTPSeparator as InputOTPSeparatorPrimitive,
   InputOTPSlot as InputOTPSlotPrimitive,
 } from '#primitives/input-otp'
@@ -60,8 +61,35 @@ export type InputOTPSeparatorProps = ComponentProps<typeof InputOTPSeparatorPrim
  * the rest of the library uses — the vendored file writes the raw boolean and is
  * byte-locked. `styles.css` keeps a lenient variant for exactly this, so
  * `data-[active=true]:` is the selector to write here.
+ *
+ * The motion is animate-ui's: typed characters pop into their boxes, the
+ * focus ring glides from box to box, deleted characters shrink away, and the
+ * row ripples once when the last box fills. Its `OTPInput` is a drop-in for the
+ * package's own, so the root is rebuilt on it here with the vendored root's
+ * classes, kept in sync by hand; the vendored slots stay — animate-ui finds
+ * them by their `data-slot` and lifts the ring off the active one.
  */
-export const InputOTP = InputOTPPrimitive as (props: InputOTPProps) => ReactElement
+export function InputOTP({ className, containerClassName, ...props }: InputOTPProps): ReactElement {
+  return (
+    <OTPInput
+      data-slot="input-otp"
+      containerClassName={cn(
+        // A marker, not a utility: the `in-[.cn-input-otp…]` variants below
+        // key off it, as they did off the vendored root.
+        // eslint-disable-next-line better-tailwindcss/no-unknown-classes
+        'cn-input-otp',
+        `
+          flex items-center
+          has-disabled:opacity-50
+        `,
+        containerClassName,
+      )}
+      spellCheck={false}
+      className={cn('disabled:cursor-not-allowed', className)}
+      {...props as ComponentProps<typeof OTPInput>}
+    />
+  )
+}
 
 /**
  * Wrapped rather than re-exported: the vendored invalid recipe is keyed on
