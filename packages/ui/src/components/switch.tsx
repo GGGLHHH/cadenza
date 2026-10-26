@@ -4,7 +4,7 @@ import type { KeyboardEvent, PointerEvent, ReactElement } from 'react'
 import { Switch as SwitchPrimitive } from '@animate-ui/react/primitives/base-ui/switch'
 import { useReducedMotion } from 'motion/react'
 import { useRef } from 'react'
-import { MIN_PRESS } from '#lib/press'
+import { MIN_PRESS, replayPress } from '#lib/press'
 import { cn, dataAttr } from '#lib/utils'
 import { Spinner } from './spinner'
 
@@ -66,73 +66,41 @@ export type SwitchState = SwitchPrimitive.Root.State
 export type SwitchChangeEventDetails = SwitchPrimitive.Root.ChangeEventDetails
 
 /**
- * animate-ui stretches the thumb while the switch is held (its `width`, leaning
- * toward the track's middle through its `transform`). A trackpad tap releases
- * within a frame, before the stretch shows — so a release under `MIN_PRESS`
- * plays it once through on properties nothing else animates: `min-inline-size`
- * widens the thumb by animate-ui's 18.75%, a negative `margin-inline-start`
- * keeps the growth off the track's end (logical, so RTL needs nothing more).
- * Not `translate`: the vendored thumb rests on it (`translate-x-*` when
- * checked), and animating it would drop the thumb off its rest position. Pointer and key events, not Motion's tap
- * ones: animate-ui's root claims those for itself.
+ * animate-ui stretches the thumb while the switch is held — and only while: a
+ * trackpad tap releases within a frame, before the stretch shows. So a release
+ * under `MIN_PRESS` replays the press (`replayPress`) and animate-ui stretches
+ * and leans the thumb exactly as for a held one. Pointer and key events, not
+ * Motion's tap ones: animate-ui's root claims those for itself.
  */
-const ECHO_ID = 'cadenza-switch-echo'
-
 function useThumbStretchEcho(inert: boolean): {
   onKeyDown: (event: KeyboardEvent<HTMLElement>) => void
   onKeyUp: (event: KeyboardEvent<HTMLElement>) => void
-  onPointerDown: (event: PointerEvent<HTMLElement>) => void
+  onPointerDown: () => void
   onPointerUp: (event: PointerEvent<HTMLElement>) => void
 } {
   const pressedAtRef = useRef(0)
-  const naturalRef = useRef(0)
   const reduce = useReducedMotion() === true
-  const thumbOf = (root: HTMLElement): HTMLElement | null => root.querySelector('[data-slot="switch-thumb"]')
-  const start = (root: HTMLElement): void => {
+  const start = (): void => {
     pressedAtRef.current = performance.now()
-    // The thumb's width at rest, read now: by the release animate-ui's own
-    // stretch has begun, and widening on top of it would overshoot.
-    // A previous echo still playing (a quick second tap) would inflate it too.
-    const thumb = thumbOf(root)
-    thumb?.getAnimations().forEach((animation) => {
-      if (animation.id === ECHO_ID)
-        animation.cancel()
-    })
-    naturalRef.current = thumb?.offsetWidth ?? 0
   }
   const end = (root: HTMLElement): void => {
     if (inert || reduce || performance.now() - pressedAtRef.current >= MIN_PRESS)
       return
-    // A frame on, so the thumb reads the state the tap just flipped it to.
-    requestAnimationFrame(() => {
-      const thumb = thumbOf(root)
-      const natural = naturalRef.current
-      if (!thumb)
-        return
-      const extra = Math.round(natural * 0.1875)
-      // Checked rests at the track's inline end: grow back toward the start.
-      const shift = thumb.hasAttribute('data-checked') ? -extra : 0
-      thumb.animate(
-        [
-          { marginInlineStart: '0px', minInlineSize: `${natural}px` },
-          { marginInlineStart: `${shift}px`, minInlineSize: `${natural + extra}px`, offset: 0.35 },
-          { marginInlineStart: '0px', minInlineSize: `${natural}px` },
-        ],
-        { duration: 280, easing: 'ease-out', id: ECHO_ID },
-      )
-    })
+    // A frame on: this release is still on its way to `window`, where it would
+    // end the replay the moment Motion began listening for one.
+    requestAnimationFrame(() => replayPress(root))
   }
   const isPressKey = (event: KeyboardEvent<HTMLElement>): boolean => event.key === ' ' || event.key === 'Enter'
   return {
     onKeyDown: (event) => {
       if (isPressKey(event) && !event.repeat)
-        start(event.currentTarget)
+        start()
     },
     onKeyUp: (event) => {
       if (isPressKey(event))
         end(event.currentTarget)
     },
-    onPointerDown: event => start(event.currentTarget),
+    onPointerDown: start,
     onPointerUp: event => end(event.currentTarget),
   }
 }
@@ -192,7 +160,7 @@ export function Switch({
         onKeyUp?.(event)
       }}
       onPointerDown={(event) => {
-        echo.onPointerDown(event)
+        echo.onPointerDown()
         onPointerDown?.(event)
       }}
       onPointerUp={(event) => {

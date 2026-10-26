@@ -1,6 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
 import { Button as AnimatedButton } from '@animate-ui/react/primitives/buttons/button'
-import { motionTokens } from '@animate-ui/react/utils/motion'
 import { useReducedMotion } from 'motion/react'
 import { createElement, useRef } from 'react'
 
@@ -14,47 +13,71 @@ import { createElement, useRef } from 'react'
 export const PRESS_TRANSITION
   = 'transition-[color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,box-shadow,opacity,translate]'
 
-// A press shorter than this, in ms, gets the echo: about what animate-ui's
-// press spring needs to reach its depth (measured: 100ms → 0.974 of 0.97).
+// A press shorter than this, in ms, is replayed at this length: about what
+// animate-ui's press spring needs to reach its depth (100ms → 0.974 of 0.97).
 export const MIN_PRESS = 100
 
+// The pointer events `replayPress` dispatches, so the handlers that start a
+// replay can tell them from a person's.
+const replays = new WeakSet<Event>()
+
+export function isReplay(event: Event): boolean {
+  return replays.has(event)
+}
+
 /**
- * Tap handlers that make a too-short press visible. animate-ui's presses are
- * `whileTap`: they last exactly as long as the press, and a trackpad
- * tap-to-click (or a keypress) releases within a frame or two, so the spring
- * turns back before it has moved. On such a release this plays the press once
- * through on the element's CSS `scale` — a property apart from the `transform`
- * animate-ui writes, so the two compose instead of fighting. A longer press is
- * animate-ui's alone.
+ * Presses `element` for `MIN_PRESS` through Motion's own press gesture, so
+ * animate-ui plays its press exactly as for a held one — the button's spring,
+ * the switch thumb's stretch and lean, all of it its own.
  *
- * Spread onto anything that renders an animate-ui press (it reaches the Motion
- * element through Base UI's prop forwarding); `slot` finds that element from
- * the event, since Motion hands tap callbacks over a frame late.
+ * animate-ui's presses are `whileTap`-style: they last exactly as long as the
+ * press, and a trackpad tap-to-click (or a keypress) releases within a frame
+ * or two, so the spring turns back before it has moved. A replay gives it the
+ * length a held press has. The down event does not bubble — Motion listens on
+ * the element itself — so React and the caller's handlers never see it; the up
+ * event goes to `window`, where Motion waits for it.
  */
-export function usePressEcho(slot: string): { onTap: (event: Event) => void, onTapCancel: (event: Event) => void, onTapStart: () => void } {
+export function replayPress(element: Element): void {
+  const init: PointerEventInit = { button: 0, isPrimary: true, pointerId: -1, pointerType: 'mouse' }
+  const down = new PointerEvent('pointerdown', init)
+  replays.add(down)
+  element.dispatchEvent(down)
+  setTimeout(() => {
+    const up = new PointerEvent('pointerup', init)
+    replays.add(up)
+    window.dispatchEvent(up)
+  }, MIN_PRESS)
+}
+
+/**
+ * Motion tap handlers that replay a too-short press (`replayPress`). Spread
+ * onto anything that renders an animate-ui `whileTap` press (it reaches the
+ * Motion element through Base UI's prop forwarding); `slot` finds that element
+ * from the event, since Motion hands tap callbacks over a frame late.
+ */
+export function usePressEcho(slot: string): { onTap: (event: Event) => void, onTapCancel: (event: Event) => void, onTapStart: (event: Event) => void } {
   const pressedAtRef = useRef(0)
   const reduce = useReducedMotion() === true
   const onRelease = (event: Event): void => {
-    if (reduce || performance.now() - pressedAtRef.current >= MIN_PRESS)
+    if (isReplay(event) || reduce || performance.now() - pressedAtRef.current >= MIN_PRESS)
       return
     const target = event.target instanceof Element ? event.target.closest(`[data-slot="${slot}"]`) : null
-    target?.animate(
-      [{ scale: '1' }, { scale: String(motionTokens.scale.press), offset: 0.35 }, { scale: '1' }],
-      { duration: 280, easing: 'ease-out' },
-    )
+    if (target)
+      replayPress(target)
   }
   return {
     onTap: onRelease,
     onTapCancel: onRelease,
-    onTapStart: () => {
-      pressedAtRef.current = performance.now()
+    onTapStart: (event) => {
+      if (!isReplay(event))
+        pressedAtRef.current = performance.now()
     },
   }
 }
 
 /**
  * animate-ui's button press around one of our buttons, through `asChild`, so
- * the button keeps its own element, `render` and props — plus the echo for a
+ * the button keeps its own element, `render` and props — plus the replay of a
  * too-short press (`usePressEcho`).
  *
  * Its slot writes `data-slot="button"` over the child's, so the child's own
