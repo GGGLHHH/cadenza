@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactElement } from 'react'
-import { Press } from '#lib/press'
+import { Press, PRESS_TRANSITION } from '#lib/press'
+import { cn } from '#lib/utils'
 import {
   Attachment,
   AttachmentAction as AttachmentActionPrimitive,
@@ -88,7 +89,7 @@ export type AttachmentMediaVariant = NonNullable<AttachmentMediaProps['variant']
 function AttachmentAction(props: AttachmentActionProps): ReactElement {
   return (
     <Press fallback="attachment-action" inert={props.disabled === true}>
-      <AttachmentActionPrimitive {...props} />
+      <AttachmentActionPrimitive {...props} className={cn(PRESS_TRANSITION, props.className)} />
     </Press>
   )
 }

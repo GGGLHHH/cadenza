@@ -13,6 +13,16 @@ import { createElement } from 'react'
  * Private: in `#lib`, never re-exported. `.ts` like the rest of `#lib`, hence
  * `createElement`.
  */
+/**
+ * The vendored buttons' `transition-all` minus `transform`, which the press
+ * owns: a CSS transition on it would chase every frame the spring writes and
+ * smear it. animate-ui's own Button leaves `transform` out the same way;
+ * `translate` stays for shadcn's press-down nudge. Put it before the caller's
+ * `className` so theirs still wins.
+ */
+export const PRESS_TRANSITION
+  = 'transition-[color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,box-shadow,opacity,translate]'
+
 export function Press({ children, fallback, inert = false }: {
   children: ReactElement<{ 'data-slot'?: string }>
   fallback: string

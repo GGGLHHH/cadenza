@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactElement } from 'react'
 import { cloneElement } from 'react'
-import { Press } from '#lib/press'
+import { Press, PRESS_TRANSITION } from '#lib/press'
 import { cn, dataAttr } from '#lib/utils'
 import { Button as ButtonPrimitive } from '#primitives/button'
 import { LoadingOverlay } from './loading-overlay'
@@ -82,7 +82,9 @@ export function Button({
       // box — the same clip that shapes the background, so they coincide to
       // the pixel. Focus ring and outline are box-shadow/outline, which
       // clipping never touches.
-        className={cn(pending !== undefined && 'relative overflow-hidden', className)}
+        className={cn(PRESS_TRANSITION, pending !== undefined && `
+          relative overflow-hidden
+        `, className)}
         disabled={disabled || pending}
         focusableWhenDisabled={pending === true && disabled !== true}
         // Spread, not `type={…}`: passing an explicit undefined wins the merge
@@ -172,7 +174,7 @@ export function LinkButton({ className, disabled, href, render, size, variant, .
   return (
     <Press fallback="button" inert={disabled === true}>
       <ButtonPrimitive
-        className={cn('data-disabled:opacity-50', className)}
+        className={cn(PRESS_TRANSITION, 'data-disabled:opacity-50', className)}
         disabled={disabled}
         nativeButton={false}
         // `role={undefined}` strips the `role="button"` Base UI writes on every

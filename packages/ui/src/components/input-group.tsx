@@ -1,6 +1,7 @@
 import type { Input as BaseInput } from '@base-ui/react/input'
 import type { ComponentProps, ReactElement, RefAttributes } from 'react'
-import { Press } from '#lib/press'
+import { Press, PRESS_TRANSITION } from '#lib/press'
+import { cn } from '#lib/utils'
 import {
   InputGroup,
   InputGroupAddon,
@@ -48,7 +49,7 @@ const InputGroupInput = InputGroupInputPrimitive as (props: InputGroupInputProps
 function InputGroupButton(props: InputGroupButtonProps): ReactElement {
   return (
     <Press fallback="button" inert={props.disabled === true}>
-      <InputGroupButtonPrimitive {...props} />
+      <InputGroupButtonPrimitive {...props} className={cn(PRESS_TRANSITION, props.className)} />
     </Press>
   )
 }
