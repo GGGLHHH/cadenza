@@ -16,5 +16,10 @@ export default defineConfig({
     // 5s default once a loaded machine slows the parallel run (seen at a load
     // average of ~20). A hang still fails, at 15s.
     testTimeout: 15_000,
+    // Half the cores: on a machine already busy, a worker per core starves
+    // every test of CPU and the slowest drift past even 15s. Measured at load
+    // averages of 15–50: half the workers finished the suite in ~35s against
+    // 29–86s, with the summed test time cut by half or more.
+    maxWorkers: '50%',
   },
 })
