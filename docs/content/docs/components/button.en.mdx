@@ -25,7 +25,9 @@ import { Button, buttonVariants, LinkButton } from '@gedatou/cadenza-ui'
 
 While held, the button springs down to 0.97 and back — animate-ui's press,
 shared by `LinkButton`, `InputGroupButton`, `AttachmentAction` and
-`MessageScrollerButton`; a disabled or pending button does not press. It
+`MessageScrollerButton`; a disabled or pending button does not press. The
+press holds for at least 100ms, so a trackpad tap or a keypress that
+releases at once still shows it. It
 writes `transform`, so shadcn's own press-down `translate-y-px` (the CSS
 `translate` property) still applies alongside it.
 
