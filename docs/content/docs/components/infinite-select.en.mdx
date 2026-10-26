@@ -519,7 +519,10 @@ when you need those visuals, draw them yourself from `selected` /
 UI and cannot be read during render. To restyle along with the highlight,
 hook onto the row's `data-highlighted` (the function form of `itemClassName`
 or a Tailwind variant, either works), see
-[State and className](#state-and-classname).
+[State and className](#state-and-classname). The default highlight background
+is not painted on the row: it is animate-ui's Highlight, one surface gliding
+between rows, and `renderItem` keeps it; a `data-highlighted:bg-*` on the row
+paints over it.
 
 A `label` that is not a plain string needs nothing extra either: there is no
 client-side typeahead here, and filtering is all server-side — typing drives

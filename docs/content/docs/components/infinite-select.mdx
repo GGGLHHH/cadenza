@@ -435,7 +435,9 @@ interface InfiniteSelectItemRenderParams<T> {
 
 **键盘/指针高亮不在参数里**：它归 Base UI 所有，渲染期间读不到。要跟着高亮换样式，
 挂行上的 `data-highlighted`（`itemClassName` 的函数形式或 Tailwind 变体都行），
-见[状态与 className](#状态与-classname)。
+见[状态与 className](#状态与-classname)。默认的高亮底色不画在行上：它是 animate-ui 的
+Highlight，一块在行与行之间滑动的底板，`renderItem` 照样有；行上再加
+`data-highlighted:bg-*` 会叠在它上面。
 
 `label` 不是纯字符串也不用补什么：这里没有客户端 typeahead，过滤全在服务端 ——
 打字驱动 `onInputValueChange`，调用方重新取数。
