@@ -18,7 +18,6 @@ import {
   SelectScrollUpButton,
   SelectSeparator,
   SelectTrigger as SelectTriggerPrimitive,
-  SelectValue,
 } from '#primitives/select'
 import { Spinner } from './spinner'
 
@@ -167,7 +166,7 @@ export type SelectItemProps = SelectPrimitive.Item.Props
 export type SelectLabelProps = ComponentProps<typeof SelectLabel>
 export type SelectSeparatorProps = ComponentProps<typeof SelectSeparator>
 export type SelectTriggerProps = ComponentProps<typeof SelectTriggerPrimitive>
-export type SelectValueProps = ComponentProps<typeof SelectValue>
+export type SelectValueProps = SelectPrimitive.Value.Props
 
 interface SelectContextValue {
   /** Something is selected — a non-null single value or a non-empty array. Base UI's Field word for "has a value" (`data-filled`), not a coined `hasValue`. */
@@ -651,9 +650,23 @@ export function SelectItem({ children, className, ...props }: SelectItemProps): 
   )
 }
 
+/**
+ * What the trigger shows. The vendored value's classes on animate-ui's, which
+ * swaps the old label out for the new one when the value changes — the
+ * vendored one is Base UI's own and just replaces the text.
+ */
+export function SelectValue({ className, ...props }: SelectValueProps): ReactElement {
+  return (
+    <AnimatedSelect.Value
+      className={cn('flex flex-1 text-start', className)}
+      data-slot="select-value"
+      {...props}
+    />
+  )
+}
+
 export {
   SelectGroup,
   SelectLabel,
   SelectSeparator,
-  SelectValue,
 }
