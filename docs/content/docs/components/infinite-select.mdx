@@ -93,7 +93,8 @@ InfiniteCombobox
 触发器可以是任何元素（库里的 `Button` 即可）—— Base UI 的 `Combobox.Trigger` 把
 它变成触发按钮（面板自己的 `Combobox` 此时不再内联，搜索框在弹层里），弹层开合、
 焦点归还、Esc 关闭都由 Base UI 的 `Combobox` 接管。弹层是 animate-ui 的 Combobox
-弹层：各行错落滑入、高亮在行间滑动，单选点中后对勾画完才收起。`Search` 和 `List` 两个 part 由便利层
+弹层：各行错落滑入、高亮在行间滑动，单选点中后对勾画完才收起。加载更多追加的行也以同样的
+错落方式滑入（单独用 `InfiniteSelect` 时也有）。`Search` 和 `List` 两个 part 由便利层
 自己渲染，**不要**再写进来（再写一个 `InfiniteSelectList` 会得到两个列表）。
 
 `children` 传函数时，整个 children 就是触发器（能拿到当前状态做摘要展示），此时没有

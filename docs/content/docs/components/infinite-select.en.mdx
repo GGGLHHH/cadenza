@@ -103,7 +103,8 @@ The trigger can be any element (the library's `Button` is fine) — Base UI's
 opening/closing, focus return and Esc-to-close are all taken over by Base
 UI's `Combobox`. The popup is animate-ui's Combobox popup: rows stagger in,
 the highlight glides between them, and a single pick closes only once its
-check has drawn. The
+check has drawn. Rows a load-more appends stagger in the same way (a
+standalone `InfiniteSelect` does this too). The
 `Search` and `List` parts are rendered by the convenience layer itself — do
 **not** write them in again (writing another `InfiniteSelectList` gets you
 two lists).

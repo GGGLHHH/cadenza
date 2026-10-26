@@ -308,6 +308,33 @@ describe('infiniteSelect selection', () => {
     expect(container.querySelector('[data-slot="infinite-select-no-more-rule"]')).not.toBeNull()
   })
 
+  it('rows a page appends arrive with animate-ui\'s entrance; a new search does not', () => {
+    const page = (from: number, to: number): { id: string, label: string }[] =>
+      Array.from({ length: to - from }, (_, i) => ({ id: `i${from + i}`, label: `Item ${from + i}` }))
+    const arriving = (): string[] => [...document.querySelectorAll('[data-slot="infinite-select-arrival"]')]
+      .map(wrapper => wrapper.textContent ?? '')
+    const { rerender } = render(
+      <InfiniteSelect getOption={getOption} items={page(0, 2)}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    expect(arriving()).toEqual([])
+
+    rerender(
+      <InfiniteSelect getOption={getOption} items={page(0, 4)}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    expect(arriving()).toEqual(['Item 2', 'Item 3'])
+
+    rerender(
+      <InfiniteSelect getOption={getOption} items={page(10, 12)}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    expect(arriving()).toEqual([])
+  })
+
   it('infiniteSelectNoMore replaces the default end-of-list mark, and only then', () => {
     render(
       <InfiniteSelect getOption={getOption} items={items}>

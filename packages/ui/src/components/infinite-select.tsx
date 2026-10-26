@@ -6,7 +6,9 @@ import type { ButtonProps } from './button'
 import type { LoadingOverlayProps } from './loading-overlay'
 import type { ScrollAreaProps, ScrollAreaScrollbars } from './scroll-area'
 import { Combobox as AnimatedCombobox } from '@animate-ui/react/primitives/base-ui/combobox'
+import { Effect } from '@animate-ui/react/primitives/effects/effect'
 import { Highlight, HighlightItem } from '@animate-ui/react/primitives/effects/highlight'
+import { motionTokens } from '@animate-ui/react/utils/motion'
 import { Combobox } from '@base-ui/react/combobox'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { IconCheck, IconSearch } from '@tabler/icons-react'
@@ -772,6 +774,38 @@ function LoadMoreSentinel({
   return <div aria-hidden data-slot="infinite-select-load-more-sentinel" ref={ref} />
 }
 
+// animate-ui's row stagger, the one its popup plays on open: 0.3s on the soft
+// ease, rows sliding 8px in from the side out of a 4px blur, 33ms apart —
+// closer together past ten rows. The timings are internal to animate-ui
+// (internal/stagger.js), so they are restated here.
+const ARRIVAL_TRANSITION = { duration: 0.3, ease: motionTokens.ease.soft }
+const ARRIVAL_STEP_MS = 33
+const ARRIVAL_CALM = 10
+const NO_ARRIVALS: ReadonlyMap<string, number> = new Map()
+
+/**
+ * Plays animate-ui's row entrance on a row a page has just appended. Decided
+ * once, at mount: a row the virtualizer remounts on scroll just shows, and
+ * the element tree never changes under a mounted row.
+ */
+function Arrival({ delay, children }: { delay: number | undefined, children: ReactElement }): ReactElement {
+  const [arriving] = useState(delay !== undefined)
+  return arriving
+    ? (
+        <Effect
+          blur={{ initialBlur: 4 }}
+          data-slot="infinite-select-arrival"
+          delay={delay}
+          fade
+          slide={{ direction: 'left', offset: 8 }}
+          transition={ARRIVAL_TRANSITION}
+        >
+          {children}
+        </Effect>
+      )
+    : children
+}
+
 /** The option-list part: ScrollArea + Base UI `Combobox.List`, virtualized on demand. */
 export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T>): ReactElement | null {
   const {
@@ -854,13 +888,35 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
         </Highlight>
       )
 
+  // Rows a page appends arrive the way the popup's rows do on open. Only
+  // appends: the first option kept its id (the same tell as the scroll reset
+  // above) and new ids showed up. A new search replaces the list — no
+  // arrival — and the first render has none either: the popup's own stagger
+  // covers it. The map is cleared right after the commit it lands in, so only
+  // the rows mounted with the page play it.
+  const [arrivals, setArrivals] = useState({ items, delays: NO_ARRIVALS })
+  if (arrivals.items !== items) {
+    const before = new Set(arrivals.items.map(item => getOption(item).id))
+    const added = before.has(firstItemId ?? '')
+      ? items.map(item => getOption(item).id).filter(id => !before.has(id))
+      : []
+    const step = added.length > ARRIVAL_CALM ? ARRIVAL_STEP_MS * Math.sqrt(ARRIVAL_CALM / added.length) : ARRIVAL_STEP_MS
+    setArrivals({ items, delays: added.length > 0 ? new Map(added.map((id, i) => [id, i * step])) : NO_ARRIVALS })
+  }
+  useEffect(() => {
+    if (arrivals.delays.size > 0)
+      // One extra render per page landed, and it has to come after the commit:
+      // the arriving rows read their delay while mounting in it.
+      // eslint-disable-next-line react/set-state-in-effect
+      setArrivals(current => ({ ...current, delays: NO_ARRIVALS }))
+  }, [arrivals.delays])
+
   const renderOption = (item: T, index: number): ReactElement => {
     const option = getOption(item)
     const isSelected = selectedIds.includes(option.id)
     const row = (
       // Positioned, so it paints above the gliding surface.
       <AnimatedCombobox.Item
-        key={option.id}
         className={cn(
           `
             group/option relative flex cursor-default items-center gap-2
@@ -929,9 +985,11 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
             )}
       </AnimatedCombobox.Item>
     )
-    return inPopup
-      ? row
-      : <HighlightItem key={option.id} asChild value={option.id}>{row}</HighlightItem>
+    return (
+      <Arrival key={option.id} delay={arrivals.delays.get(option.id)}>
+        {inPopup ? row : <HighlightItem asChild value={option.id}>{row}</HighlightItem>}
+      </Arrival>
+    )
   }
 
   // First page still coming: nothing exists to size the list yet, so the
