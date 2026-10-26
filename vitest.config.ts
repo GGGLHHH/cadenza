@@ -11,5 +11,10 @@ export default defineConfig({
     globals: true,
     include: ['packages/*/test/**/*.test.{ts,tsx}'],
     setupFiles: ['./vitest.setup.ts'],
+    // The pickers' tests drive multi-step interactions (open the panel, open
+    // the year list, type a date key by key) that run ~1s alone and pass the
+    // 5s default once a loaded machine slows the parallel run (seen at a load
+    // average of ~20). A hang still fails, at 15s.
+    testTimeout: 15_000,
   },
 })

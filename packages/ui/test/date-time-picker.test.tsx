@@ -159,8 +159,6 @@ describe('date-time-picker', () => {
       expect([value.getDate(), value.getHours(), value.getMinutes(), value.getSeconds()]).toEqual([20, 14, 23, 0])
     })
 
-    // Each keystroke re-renders the picker — the work this test is about — so
-    // it gets room for a loaded parallel run rather than the 5s default.
     it('rejects typed values outside the bounds, on disabled days, or off the minute step', async () => {
       const onValueChange = vi.fn()
       render(
@@ -186,7 +184,7 @@ describe('date-time-picker', () => {
       await user.type(getInput(), '2026-08-18 09:15')
       const [value] = onValueChange.mock.lastCall as [Date]
       expect([value.getDate(), value.getHours(), value.getMinutes()]).toEqual([18, 9, 15])
-    }, 15_000)
+    })
   })
 
   it('stages picks in confirm mode and commits them only on close, with reason close-press', async () => {
