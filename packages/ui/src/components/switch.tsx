@@ -76,26 +76,39 @@ export type SwitchChangeEventDetails = SwitchPrimitive.Root.ChangeEventDetails
  * checked), and animating it would drop the thumb off its rest position. Pointer and key events, not Motion's tap
  * ones: animate-ui's root claims those for itself.
  */
+const ECHO_ID = 'cadenza-switch-echo'
+
 function useThumbStretchEcho(inert: boolean): {
   onKeyDown: (event: KeyboardEvent<HTMLElement>) => void
   onKeyUp: (event: KeyboardEvent<HTMLElement>) => void
-  onPointerDown: () => void
+  onPointerDown: (event: PointerEvent<HTMLElement>) => void
   onPointerUp: (event: PointerEvent<HTMLElement>) => void
 } {
   const pressedAtRef = useRef(0)
+  const naturalRef = useRef(0)
   const reduce = useReducedMotion() === true
-  const start = (): void => {
+  const thumbOf = (root: HTMLElement): HTMLElement | null => root.querySelector('[data-slot="switch-thumb"]')
+  const start = (root: HTMLElement): void => {
     pressedAtRef.current = performance.now()
+    // The thumb's width at rest, read now: by the release animate-ui's own
+    // stretch has begun, and widening on top of it would overshoot.
+    // A previous echo still playing (a quick second tap) would inflate it too.
+    const thumb = thumbOf(root)
+    thumb?.getAnimations().forEach((animation) => {
+      if (animation.id === ECHO_ID)
+        animation.cancel()
+    })
+    naturalRef.current = thumb?.offsetWidth ?? 0
   }
   const end = (root: HTMLElement): void => {
     if (inert || reduce || performance.now() - pressedAtRef.current >= MIN_PRESS)
       return
     // A frame on, so the thumb reads the state the tap just flipped it to.
     requestAnimationFrame(() => {
-      const thumb = root.querySelector<HTMLElement>('[data-slot="switch-thumb"]')
+      const thumb = thumbOf(root)
+      const natural = naturalRef.current
       if (!thumb)
         return
-      const natural = thumb.offsetWidth
       const extra = Math.round(natural * 0.1875)
       // Checked rests at the track's inline end: grow back toward the start.
       const shift = thumb.hasAttribute('data-checked') ? -extra : 0
@@ -105,7 +118,7 @@ function useThumbStretchEcho(inert: boolean): {
           { marginInlineStart: `${shift}px`, minInlineSize: `${natural + extra}px`, offset: 0.35 },
           { marginInlineStart: '0px', minInlineSize: `${natural}px` },
         ],
-        { duration: 280, easing: 'ease-out' },
+        { duration: 280, easing: 'ease-out', id: ECHO_ID },
       )
     })
   }
@@ -113,13 +126,13 @@ function useThumbStretchEcho(inert: boolean): {
   return {
     onKeyDown: (event) => {
       if (isPressKey(event) && !event.repeat)
-        start()
+        start(event.currentTarget)
     },
     onKeyUp: (event) => {
       if (isPressKey(event))
         end(event.currentTarget)
     },
-    onPointerDown: start,
+    onPointerDown: event => start(event.currentTarget),
     onPointerUp: event => end(event.currentTarget),
   }
 }
@@ -179,7 +192,7 @@ export function Switch({
         onKeyUp?.(event)
       }}
       onPointerDown={(event) => {
-        echo.onPointerDown()
+        echo.onPointerDown(event)
         onPointerDown?.(event)
       }}
       onPointerUp={(event) => {
