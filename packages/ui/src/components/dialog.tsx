@@ -7,6 +7,9 @@ import { Dialog as BaseDialog } from '@animate-ui/react/primitives/base-ui/dialo
 import { Dialog as BaseUIDialog } from '@base-ui/react/dialog'
 import { IconX } from '@tabler/icons-react'
 import { cn } from '#lib/utils'
+// The vendored button for the ✕: animate-ui's `Dialog.Close` is Base UI's own,
+// without its press, which the published Button would add.
+import { Button as ButtonPrimitive } from '#primitives/button'
 import {
   DialogClose as DialogClosePrimitive,
   DialogDescription as DialogDescriptionPrimitive,
@@ -14,7 +17,6 @@ import {
   DialogHeader as DialogHeaderPrimitive,
   DialogTitle as DialogTitlePrimitive,
 } from '#primitives/dialog'
-import { Button } from './button'
 
 /**
  * The published Dialog family.
@@ -228,7 +230,7 @@ export function DialogPopup({
             <BaseDialog.Close
               data-slot="dialog-close"
               render={(
-                <Button
+                <ButtonPrimitive
                   variant="ghost"
                   size="icon-sm"
                   className="absolute inset-e-2 inset-bs-2"

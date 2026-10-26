@@ -4,8 +4,13 @@ import type { ComponentProps, ReactElement } from 'react'
 import { Combobox as ComboboxPrimitive } from '@animate-ui/react/primitives/base-ui/combobox'
 import { IconCheck, IconChevronDown, IconX } from '@tabler/icons-react'
 import { cn, dataAttr } from '#lib/utils'
-import { Button } from './button'
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from './input-group'
+// The vendored buttons, not the published ones, for the arrow, the clear
+// button and a chip's remove: animate-ui's Combobox renders those parts
+// (`Trigger`, `Clear`, `ChipRemove`) as Base UI's own, without its press —
+// the published buttons would add one animate-ui's combobox does not have.
+import { Button as ButtonPrimitive } from '#primitives/button'
+import { InputGroupButton as InputGroupButtonPrimitive } from '#primitives/input-group'
+import { InputGroup, InputGroupAddon, InputGroupInput } from './input-group'
 
 export type ComboboxProps<Value, Multiple extends boolean | undefined = false>
   = ComboboxPrimitive.Root.Props<Value, Multiple>
@@ -148,7 +153,7 @@ export function ComboboxClear({ className, ...props }: ComboboxClearProps): Reac
       aria-label="Clear"
       className={className}
       data-slot="combobox-clear"
-      render={<InputGroupButton size="icon-xs" variant="ghost" />}
+      render={<InputGroupButtonPrimitive size="icon-xs" variant="ghost" />}
       {...props}
     >
       <IconX className="pointer-events-none" />
@@ -204,7 +209,7 @@ export function ComboboxInput({
       {(trigger || clearable) && (
         <InputGroupAddon align="inline-end">
           {trigger && (
-            <InputGroupButton
+            <InputGroupButtonPrimitive
               className={`
                 group-has-data-[slot=combobox-clear]/input-group:hidden
                 data-pressed:bg-transparent
@@ -456,7 +461,7 @@ export function ComboboxChip({
             hover:opacity-100
           "
           data-slot="combobox-chip-remove"
-          render={<Button size="icon-xs" variant="ghost" />}
+          render={<ButtonPrimitive size="icon-xs" variant="ghost" />}
         >
           <IconX className="pointer-events-none" />
         </ComboboxPrimitive.ChipRemove>

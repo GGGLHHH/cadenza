@@ -28,7 +28,8 @@ shared by `LinkButton`, `InputGroupButton`, `AttachmentAction` and
 `MessageScrollerButton`; a disabled or pending button does not press. A press
 released in under 100ms (a trackpad tap, a keypress) is replayed as a
 100ms animate-ui press on release, so it still shows; Toggle, RadioGroup and
-Switch (its thumb stretch) do the same. It
+Switch (its thumb stretch) do the same. Combobox's arrow, clear and chip
+remove, and Dialog's ✕, do not press: animate-ui's own parts there have none. It
 writes `transform`, so shadcn's own press-down `translate-y-px` (the CSS
 `translate` property) still applies alongside it.
 
