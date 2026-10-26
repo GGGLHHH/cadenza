@@ -1,7 +1,10 @@
 'use client'
 
-import type { ReactElement } from 'react'
+import type { KeyboardEvent, PointerEvent, ReactElement } from 'react'
 import { Switch as SwitchPrimitive } from '@animate-ui/react/primitives/base-ui/switch'
+import { useReducedMotion } from 'motion/react'
+import { useRef } from 'react'
+import { MIN_PRESS } from '#lib/press'
 import { cn, dataAttr } from '#lib/utils'
 import { Spinner } from './spinner'
 
@@ -62,13 +65,77 @@ export type SwitchState = SwitchPrimitive.Root.State
 /** `onCheckedChange`'s second argument — `reason` is always `'none'`. */
 export type SwitchChangeEventDetails = SwitchPrimitive.Root.ChangeEventDetails
 
+/**
+ * animate-ui stretches the thumb while the switch is held (its `width`, leaning
+ * toward the track's middle through its `transform`). A trackpad tap releases
+ * within a frame, before the stretch shows — so a release under `MIN_PRESS`
+ * plays it once through on properties nothing else animates: `min-inline-size`
+ * widens the thumb by animate-ui's 18.75%, a negative `margin-inline-start`
+ * keeps the growth off the track's end (logical, so RTL needs nothing more).
+ * Not `translate`: the vendored thumb rests on it (`translate-x-*` when
+ * checked), and animating it would drop the thumb off its rest position. Pointer and key events, not Motion's tap
+ * ones: animate-ui's root claims those for itself.
+ */
+function useThumbStretchEcho(inert: boolean): {
+  onKeyDown: (event: KeyboardEvent<HTMLElement>) => void
+  onKeyUp: (event: KeyboardEvent<HTMLElement>) => void
+  onPointerDown: () => void
+  onPointerUp: (event: PointerEvent<HTMLElement>) => void
+} {
+  const pressedAtRef = useRef(0)
+  const reduce = useReducedMotion() === true
+  const start = (): void => {
+    pressedAtRef.current = performance.now()
+  }
+  const end = (root: HTMLElement): void => {
+    if (inert || reduce || performance.now() - pressedAtRef.current >= MIN_PRESS)
+      return
+    // A frame on, so the thumb reads the state the tap just flipped it to.
+    requestAnimationFrame(() => {
+      const thumb = root.querySelector<HTMLElement>('[data-slot="switch-thumb"]')
+      if (!thumb)
+        return
+      const natural = thumb.offsetWidth
+      const extra = Math.round(natural * 0.1875)
+      // Checked rests at the track's inline end: grow back toward the start.
+      const shift = thumb.hasAttribute('data-checked') ? -extra : 0
+      thumb.animate(
+        [
+          { marginInlineStart: '0px', minInlineSize: `${natural}px` },
+          { marginInlineStart: `${shift}px`, minInlineSize: `${natural + extra}px`, offset: 0.35 },
+          { marginInlineStart: '0px', minInlineSize: `${natural}px` },
+        ],
+        { duration: 280, easing: 'ease-out' },
+      )
+    })
+  }
+  const isPressKey = (event: KeyboardEvent<HTMLElement>): boolean => event.key === ' ' || event.key === 'Enter'
+  return {
+    onKeyDown: (event) => {
+      if (isPressKey(event) && !event.repeat)
+        start()
+    },
+    onKeyUp: (event) => {
+      if (isPressKey(event))
+        end(event.currentTarget)
+    },
+    onPointerDown: start,
+    onPointerUp: event => end(event.currentTarget),
+  }
+}
+
 export function Switch({
   className,
+  onKeyDown,
+  onKeyUp,
+  onPointerDown,
+  onPointerUp,
   pending,
   readOnly,
   size = 'default',
   ...props
 }: SwitchProps): ReactElement {
+  const echo = useThumbStretchEcho(props.disabled === true || readOnly === true || pending === true)
   return (
     <SwitchPrimitive.Root
       data-slot="switch"
@@ -102,6 +169,23 @@ export function Switch({
         className,
       )}
       {...props}
+      // Chained, so a caller's own pointer and key handlers still run.
+      onKeyDown={(event) => {
+        echo.onKeyDown(event)
+        onKeyDown?.(event)
+      }}
+      onKeyUp={(event) => {
+        echo.onKeyUp(event)
+        onKeyUp?.(event)
+      }}
+      onPointerDown={(event) => {
+        echo.onPointerDown()
+        onPointerDown?.(event)
+      }}
+      onPointerUp={(event) => {
+        echo.onPointerUp(event)
+        onPointerUp?.(event)
+      }}
       // Derived from `pending`, after the spread — same rule as Button: a
       // caller cannot half-set the state.
       aria-busy={pending === true || undefined}

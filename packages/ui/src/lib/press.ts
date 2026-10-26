@@ -16,7 +16,7 @@ export const PRESS_TRANSITION
 
 // A press shorter than this, in ms, gets the echo: about what animate-ui's
 // press spring needs to reach its depth (measured: 100ms → 0.974 of 0.97).
-const MIN_PRESS = 100
+export const MIN_PRESS = 100
 
 /**
  * Tap handlers that make a too-short press visible. animate-ui's presses are
