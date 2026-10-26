@@ -1,0 +1,156 @@
+---
+title: Icons
+description: Animated icons — animate-ui's 392 lucide-style icons, each with a motion of its own
+---
+
+<ComponentPreview name="icons/basic" />
+
+392 animated icons from [animate-ui](https://animate-ui.com)'s lucide-style set,
+exported from the main package's `@gedatou/cadenza-ui/icons` subpath. Each icon
+has its own motion — the bell swings, the cog turns, the heart beats, the arrow
+flies off — designed for the shape rather than one fade laid over all of them.
+
+The icons are SVGs written in Motion; when they play is decided by animate-ui's
+`AnimateIcon`: on hover, on press, on entering the viewport, or looping on their
+own. The trigger can sit on the icon itself or be handed to an outer element —
+hover the whole button and the icon inside plays.
+
+## Usage
+
+```tsx
+import { Bell } from '@gedatou/cadenza-ui/icons'
+```
+
+```tsx
+<Bell animateOnHover />
+```
+
+The subpath is built apart, one module per icon: a single icon comes to about
+1kB bundled, and the icons you do not use never reach the bundle.
+
+## Triggers
+
+Four ways to start playing, one prop each:
+
+<ComponentPreview name="icons/triggers" />
+
+| Prop | Plays when |
+| --- | --- |
+| `animateOnHover` | the pointer enters; back to the start when it leaves |
+| `animateOnTap` | pressed; back to the start on release |
+| `animateOnView` | it enters the viewport; `animateOnViewOnce` (default `true`) plays it once, `animateOnViewMargin` moves the boundary |
+| `animate` | `true` — plays straight away; add `loop` to keep it going |
+
+On release or leave, the icon animates back to its start by default. For a quick
+press to still play the whole animation, add `completeOnStop`; to stay on its
+last frame, add `persistOnAnimateEnd`.
+
+## Triggered by a parent
+
+Wrap an element such as a button in `AnimateIcon` and put the trigger on it: the
+icons inside then play on the whole element's hover or press:
+
+<ComponentPreview name="icons/parent" />
+
+`AnimateIcon` renders a `<span>`; with `asChild` it puts the trigger on its one
+child instead of adding a wrapper. The icons inside need no trigger prop of their
+own — they read the context `AnimateIcon` provides, and every icon under one
+`AnimateIcon` plays together.
+
+## Animations
+
+Many icons have more than one motion; `animation` picks which one plays. `path`
+and `path-loop` (drawing the strokes in) work on every icon:
+
+<ComponentPreview name="icons/animations" />
+
+Which animations an icon has is in its own type: `animation` is typed as that
+icon's union of animation names, so the editor completes them. 183 of the 392
+icons have extra ones — Bot's `blink` / `wink`, the arrows' `pointing` / `out`,
+and the various `-loop` versions.
+
+## All icons
+
+All 392, searchable; hover any tile to see its animation:
+
+<ComponentPreview name="icons/gallery" align="stretch" />
+
+Each icon is exported under two names, `Xxx` and `XxxIcon` (`Bell` and
+`BellIcon` are the same component); use the suffixed one when the plain name
+clashes with a local.
+
+## Source and license
+
+The icons are animate-ui's (by Elliot Sutton), synced from its shadcn registry
+with `pnpm --filter @gedatou/cadenza-ui sync:icons`; each file's source and hash
+is recorded in `packages/ui/src/icons/animate-ui/manifest.json`. They are under
+animate-ui's **MIT + Commons Clause** license rather than the MIT the rest of
+this library uses — full text in the package's `ANIMATE-UI-LICENSE.md`.
+
+## When to use Icons
+
+The library's own components use [Tabler](https://tabler.io/icons)'s static
+icons (`@tabler/icons-react`); reach for the animated ones where an icon should
+react — primary buttons, the notifications entry, empty-state art, actions that
+need attention. In dense UI — lists, tables, forms — every icon moving is noise,
+and static icons fit better.
+
+Both sets are a 24 grid, 2px strokes and round caps, so mixing them in one row
+shows no change of style.
+
+## State and className
+
+An icon renders one `<svg>`, with no state attributes. `className` lands on the
+`<svg>`; color follows `currentColor` (the text color — change it with `text-*`),
+and `size` sets the size in pixels, width and height both.
+
+The `<span>` `AnimateIcon` renders has no state attributes either; its
+`className` lands on that `<span>`.
+
+## Props
+
+Order: **required → uncontrolled defaults → controlled values → callbacks → behavior switches → appearance → className**.
+
+### Icon
+
+Every icon (`Bell`, `Settings`, …) takes the same props:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `animate` | `boolean \| animation name` | `false` | plays while true; an animation name plays that one |
+| `animateOnHover` | `boolean \| animation name` | — | plays on hover |
+| `animateOnTap` | `boolean \| animation name` | — | plays while pressed |
+| `animateOnView` | `boolean \| animation name` | — | plays on entering the viewport |
+| `animateOnViewOnce` | `boolean` | `true` | play on entering the viewport only once |
+| `animateOnViewMargin` | `string` | `'0px'` | the viewport boundary, as IntersectionObserver's `rootMargin` |
+| `animation` | the icon's animation names \| `'path'` \| `'path-loop'` | `'default'` | which animation a trigger plays |
+| `loop` | `boolean` | `false` | loop the animation |
+| `loopDelay` | `number` | `0` | the pause between loops (ms) |
+| `delay` | `number` | `0` | the delay before playing (ms) |
+| `speed` | `number` | `1` | playback speed multiplier |
+| `completeOnStop` | `boolean` | `false` | when the trigger stops, finish the current run first |
+| `persistOnAnimateEnd` | `boolean` | `false` | stay on the last frame instead of returning to the start |
+| `initialOnAnimateEnd` | `boolean` | `false` | jump back to the start as soon as a run ends |
+| `size` | `number` | `28` | width and height (px) |
+| `className` | `string` | — | lands on the `<svg>` |
+| rest | Motion `motion.svg` props (SVG attributes + ref), except `animate` | — | passed through |
+
+### AnimateIcon
+
+Wraps other elements and takes the trigger for them; the icons inside need no
+trigger prop. Takes every trigger and playback prop in the table above except
+`size`, plus:
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `asChild` | `boolean` | `false` | render no `<span>`; put the trigger on the one child |
+| rest | Motion `motion.span` props | — | passed through |
+
+```tsx
+<AnimateIcon animateOnHover asChild>
+  <button type="button"><Bell size={16} /> Notifications</button>
+</AnimateIcon>
+```
+
+Three shared types are exported: AnimateIconProps / IconProps / IconWrapperProps;
+each icon also has its own XxxProps (and the matching XxxIconProps).

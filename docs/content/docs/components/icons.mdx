@@ -1,0 +1,137 @@
+---
+title: Icons
+description: 带动画的图标 —— animate-ui 的 392 个 lucide 风格图标，每个有自己的动作
+---
+
+<ComponentPreview name="icons/basic" />
+
+392 个带动画的图标，来自 [animate-ui](https://animate-ui.com) 的 lucide 风格图标集，从主包的
+`@gedatou/cadenza-ui/icons` 子路径导出。每个图标都有自己的动作：铃铛摇摆、齿轮转动、心跳、箭头飞出……
+不是统一套一个淡入，而是按图形本身设计的动画。
+
+图标是 Motion 写的 SVG，什么时候播放由 animate-ui 的 `AnimateIcon` 决定：悬停、按下、进入视口，
+或者自己循环。触发方式可以直接写在图标上，也可以交给外层元素 —— 悬停整个按钮，里面的图标跟着动。
+
+## 使用
+
+```tsx
+import { Bell } from '@gedatou/cadenza-ui/icons'
+```
+
+```tsx
+<Bell animateOnHover />
+```
+
+子路径单独构建、每个图标一个模块：只用一个图标，打包后约 1kB，用不到的图标不会进包。
+
+## 触发方式
+
+四种开始播放的方式，各对应一个 prop：
+
+<ComponentPreview name="icons/triggers" />
+
+| Prop | 什么时候播放 |
+| --- | --- |
+| `animateOnHover` | 指针移入时播放，移出时回到初始状态 |
+| `animateOnTap` | 按下时播放，松开时回到初始状态 |
+| `animateOnView` | 进入视口时播放；`animateOnViewOnce`（默认 `true`）只播一次，`animateOnViewMargin` 调整触发边界 |
+| `animate` | 为 `true` 时直接播放，配合 `loop` 持续循环 |
+
+松开或移出时，图标默认带动画地回到初始状态。想让一次快速的点按也把动画完整播完，加
+`completeOnStop`；想停在动画的最后一帧，加 `persistOnAnimateEnd`。
+
+## 由父元素触发
+
+用 `AnimateIcon` 包住按钮这类元素，触发方式写在它身上，里面的图标就跟着整个元素的悬停、按下播放：
+
+<ComponentPreview name="icons/parent" />
+
+`AnimateIcon` 渲染一个 `<span>`，加 `asChild` 则把触发挂到唯一的子元素上、不多包一层。
+里面的图标不需要再写任何触发 prop —— 它们读的是 `AnimateIcon` 提供的上下文；
+一个 `AnimateIcon` 下有几个图标，就一起播放几个。
+
+## 动画变体
+
+不少图标不止一套动作，`animation` 选择播放哪一套；`path` 和 `path-loop`（把描边画出来）所有图标都能用：
+
+<ComponentPreview name="icons/animations" />
+
+每个图标有哪些动画写在它自己的类型里：`animation` 的类型是这个图标的动画名联合，
+编辑器会补全。392 个图标里有 183 个带额外的动画，例如 Bot 的 `blink` / `wink`、
+箭头的 `pointing` / `out`、各类 `-loop` 版本。
+
+## 全部图标
+
+全部 392 个，可搜索；悬停任意一格就能看到它的动画：
+
+<ComponentPreview name="icons/gallery" align="stretch" />
+
+每个图标同时以 `Xxx` 和 `XxxIcon` 两个名字导出（`Bell` 与 `BellIcon` 是同一个组件），
+和本地变量重名时用带 `Icon` 后缀的那个。
+
+## 来源与许可
+
+这些图标来自 animate-ui（作者 Elliot Sutton），用
+`pnpm --filter @gedatou/cadenza-ui sync:icons` 从它的 shadcn 注册表同步；每个文件的来源和哈希记录在
+`packages/ui/src/icons/animate-ui/manifest.json`。它们遵循 animate-ui 的 **MIT + Commons Clause**
+许可，而不是本库其余部分的 MIT，全文见包内的 `ANIMATE-UI-LICENSE.md`。
+
+## 什么时候用 Icons
+
+库里的组件自己用的是 [Tabler](https://tabler.io/icons) 的静态图标（`@tabler/icons-react`），
+动画图标只在你想让图标「有反应」的地方用：主要按钮、通知入口、空状态插图、需要吸引注意的操作。
+列表、表格、表单这类密集界面里，每个图标都在动反而吵，静态图标更合适。
+
+两套图标都是 24 网格、2px 描边、圆角端点，同一行里混用看不出风格差异。
+
+## 状态与 className
+
+图标渲染一个 `<svg>`，没有状态属性。`className` 落在 `<svg>` 上，颜色走 `currentColor`
+（跟随文字颜色，用 `text-*` 改），尺寸用 `size`（像素，同时设宽高）。
+
+`AnimateIcon` 渲染的 `<span>` 也一样没有状态属性；它的 `className` 落在这个 `<span>` 上。
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### 图标
+
+每个图标（`Bell`、`Settings`……）都收同一组 props：
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `animate` | `boolean \| 动画名` | `false` | 为真时播放；传动画名则播放那一套 |
+| `animateOnHover` | `boolean \| 动画名` | — | 悬停时播放 |
+| `animateOnTap` | `boolean \| 动画名` | — | 按下时播放 |
+| `animateOnView` | `boolean \| 动画名` | — | 进入视口时播放 |
+| `animateOnViewOnce` | `boolean` | `true` | 进入视口只播一次 |
+| `animateOnViewMargin` | `string` | `'0px'` | 判定「进入视口」的边界，同 IntersectionObserver 的 `rootMargin` |
+| `animation` | 该图标的动画名 \| `'path'` \| `'path-loop'` | `'default'` | 触发时播放哪一套 |
+| `loop` | `boolean` | `false` | 循环播放 |
+| `loopDelay` | `number` | `0` | 两次循环之间的间隔（ms） |
+| `delay` | `number` | `0` | 开始播放前的延迟（ms） |
+| `speed` | `number` | `1` | 播放速度倍率 |
+| `completeOnStop` | `boolean` | `false` | 停止触发时先把当前这一遍播完 |
+| `persistOnAnimateEnd` | `boolean` | `false` | 播完停在最后一帧，不回到初始状态 |
+| `initialOnAnimateEnd` | `boolean` | `false` | 播完立刻跳回初始状态 |
+| `size` | `number` | `28` | 宽高（px） |
+| `className` | `string` | — | 落在 `<svg>` 上 |
+| 其余 | Motion `motion.svg` 的 props（SVG 属性 + ref），`animate` 除外 | — | 透传 |
+
+### AnimateIcon
+
+包住其他元素、把触发方式交给它；里面的图标不用再写触发 prop。收上表中除 `size` 之外的全部触发与播放 props，另加：
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `asChild` | `boolean` | `false` | 不渲染 `<span>`，把触发挂到唯一的子元素上 |
+| 其余 | Motion `motion.span` 的 props | — | 透传 |
+
+```tsx
+<AnimateIcon animateOnHover asChild>
+  <button type="button"><Bell size={16} /> 通知</button>
+</AnimateIcon>
+```
+
+3 个通用类型一并导出：AnimateIconProps / IconProps / IconWrapperProps；每个图标另有自己的 XxxProps（及同义的 XxxIconProps）。
