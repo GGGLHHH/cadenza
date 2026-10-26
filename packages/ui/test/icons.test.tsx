@@ -3,6 +3,7 @@ import { render } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import * as icons from '../src/icons'
 import manifest from '../src/icons/animate-ui/manifest.json'
+import * as drawnIcons from '../src/icons/drawn'
 
 // Every pulled icon is exported under its own name and as `<Name>Icon`; the
 // base re-exports (`AnimateIcon`, `IconWrapper`) are not icons.
@@ -12,7 +13,7 @@ const own = (Object.entries(icons) as [string, ComponentType][]).filter(([name])
 
 it('exports one component per pulled icon, plus the drawn ones', () => {
   // drawn.tsx: Tabler shapes on animate-ui's stroke draw, for what the set lacks.
-  const drawn = ['Brain', 'ChevronsLeft', 'ChevronsRight', 'GripVertical', 'Server', 'Stop']
+  const drawn = Object.keys(drawnIcons).filter(name => !name.endsWith('Icon'))
   expect(own.map(([name]) => name).filter(name => !drawn.includes(name))).toHaveLength(Object.keys(manifest).length)
   expect(drawn.every(name => own.some(([n]) => n === name))).toBe(true)
 })

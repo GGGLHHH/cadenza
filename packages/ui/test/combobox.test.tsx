@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { IconSearch } from '@tabler/icons-react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
@@ -15,6 +14,7 @@ import {
   ComboboxPopup,
 } from '../src/components/combobox'
 import { InputGroupAddon } from '../src/components/input-group'
+import { SearchIcon } from '../src/icons/animate-ui/search'
 
 const COMPOSERS = ['拉威尔', '德彪西', '萨蒂']
 
@@ -102,7 +102,7 @@ it('lets a root-level disabled reach the input and the row', () => {
 it('keeps the list open when the documented leading addon is pressed', async () => {
   const user = userEvent.setup()
   const onOpenChange = vi.fn()
-  renderComposers({ onOpenChange }, <InputGroupAddon data-testid="search"><IconSearch /></InputGroupAddon>)
+  renderComposers({ onOpenChange }, <InputGroupAddon data-testid="search"><SearchIcon /></InputGroupAddon>)
 
   const input = screen.getByRole('combobox', { name: '作曲家' })
   await user.click(input)
@@ -113,7 +113,7 @@ it('keeps the list open when the documented leading addon is pressed', async () 
   // (`!contains(inputGroupElement, target)`, AriaCombobox.js:911), and only
   // `Combobox.InputGroup` fills that slot in. Rendered as a bare div the addon
   // matched none of the four anchors, so the press the docs teach —
-  // `<InputGroupAddon><IconSearch /></InputGroupAddon>` inside `ComboboxInput`
+  // `<InputGroupAddon><SearchIcon /></InputGroupAddon>` inside `ComboboxInput`
   // — dismissed the list it was meant to search.
   await user.click(screen.getByTestId('search'))
   expect(screen.queryByRole('option', { name: '德彪西' })).not.toBeNull()
