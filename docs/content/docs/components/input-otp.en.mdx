@@ -127,10 +127,11 @@ when accepting letters, remember to change it to `'text'` as well.
 ## Separator
 
 `InputOTPGroup`, `InputOTPSlot` and `InputOTPSeparator` are all **rewrapped** by
-the seam; only `InputOTP` itself is re-exported as-is (a single type cast). The
-first two wrap an invalid-state bridge (see [Invalid state](#invalid-state));
-`InputOTPSeparator` wraps a `cn` merge. It renders an `IconMinus` with
-`role="separator"`.
+the seam: `InputOTP` itself is rebuilt on animate-ui's `OTPInput` (glyphs popping
+in, the focus ring gliding); the first two wrap an invalid-state bridge (see
+[Invalid state](#invalid-state)); `InputOTPSeparator` is drawn by the seam — an
+animated animate-ui `Minus` with `role="separator"`, played by hovering the row
+— and also does a `cn` merge.
 
 The reason: the vendored copy writes its own `className` **before** the props
 spread:

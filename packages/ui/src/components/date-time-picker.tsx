@@ -7,9 +7,9 @@ import type { ChangeEventDetails } from '#lib/change-event-details'
 import type { TimeGranularity } from '#lib/time'
 import type { DatePickerCalendarProps } from './date-picker'
 import type { TimePickerColumnsProps } from './time-picker'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { Popover as PopoverPrimitive } from '@animate-ui/react/primitives/base-ui/popover'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
-import { IconCalendarTime, IconX } from '@tabler/icons-react'
 import {
   addMinutes,
   addSeconds,
@@ -28,6 +28,8 @@ import { isOwnLabelPress, LABEL_PRESS_REASONS } from '#lib/own-label-press'
 import { popupClassName, SERIAL_FORMAT } from '#lib/popup'
 import { granularityOf, timeSerialFormat, truncateTime } from '#lib/time'
 import { cn, dataAttr } from '#lib/utils'
+import { CalendarClockIcon } from '../icons/animate-ui/calendar-clock'
+import { XIcon } from '../icons/animate-ui/x'
 import { Button } from './button'
 import { Calendar } from './calendar'
 import {
@@ -357,26 +359,28 @@ export function DateTimePickerTrigger({
   const field = useDateTimePickerContext()
   return (
     <InputGroupAddon align="inline-end" data-slot="date-time-picker-trigger-addon">
-      <InputGroupButton
-        // English aria-only fallback, the house pattern: it never renders
-        // visibly, and a caller-passed aria-label wins.
-        aria-label="Open date and time picker"
-        className={className}
-        data-slot="date-time-picker-trigger"
-        disabled={field.disabled}
-        tabIndex={-1}
-        {...props}
-        // After the spread: a caller listening for clicks must not silently
-        // take the toggle away.
-        onClick={(event) => {
-          onClick?.(event)
-          if (event.defaultPrevented || field.readOnly)
-            return
-          field.setOpen(!field.open, createChangeEventDetails('trigger-press', event.nativeEvent))
-        }}
-      >
-        {children ?? <IconCalendarTime aria-hidden />}
-      </InputGroupButton>
+      <AnimateIcon animateOnHover asChild>
+        <InputGroupButton
+          // English aria-only fallback, the house pattern: it never renders
+          // visibly, and a caller-passed aria-label wins.
+          aria-label="Open date and time picker"
+          className={className}
+          data-slot="date-time-picker-trigger"
+          disabled={field.disabled}
+          tabIndex={-1}
+          {...props}
+          // After the spread: a caller listening for clicks must not silently
+          // take the toggle away.
+          onClick={(event) => {
+            onClick?.(event)
+            if (event.defaultPrevented || field.readOnly)
+              return
+            field.setOpen(!field.open, createChangeEventDetails('trigger-press', event.nativeEvent))
+          }}
+        >
+          {children ?? <CalendarClockIcon aria-hidden />}
+        </InputGroupButton>
+      </AnimateIcon>
     </InputGroupAddon>
   )
 }
@@ -401,29 +405,31 @@ export function DateTimePickerClear({
       className="group-data-empty/date-time-picker:invisible"
       data-slot="date-time-picker-clear-addon"
     >
-      <InputGroupButton
-        aria-label="Clear date and time"
-        className={cn('rounded-full', className)}
-        data-slot="date-time-picker-clear"
-        disabled={field.disabled}
-        // Out of the tab order on purpose: keyboard users clear by emptying
-        // the text.
-        tabIndex={-1}
-        {...props}
-        // After the spread for the same reason as the trigger's onClick.
-        onClick={(event) => {
-          onClick?.(event)
-          if (event.defaultPrevented)
-            return
-          field.setDraft(null)
-          // A staged-but-unconfirmed pick is part of what this button clears —
-          // left in place, confirming would resurrect it.
-          field.stage(undefined)
-          field.setValue(null, createChangeEventDetails('clear-press', event.nativeEvent))
-        }}
-      >
-        {children ?? <IconX aria-hidden />}
-      </InputGroupButton>
+      <AnimateIcon animateOnHover asChild>
+        <InputGroupButton
+          aria-label="Clear date and time"
+          className={cn('rounded-full', className)}
+          data-slot="date-time-picker-clear"
+          disabled={field.disabled}
+          // Out of the tab order on purpose: keyboard users clear by emptying
+          // the text.
+          tabIndex={-1}
+          {...props}
+          // After the spread for the same reason as the trigger's onClick.
+          onClick={(event) => {
+            onClick?.(event)
+            if (event.defaultPrevented)
+              return
+            field.setDraft(null)
+            // A staged-but-unconfirmed pick is part of what this button clears —
+            // left in place, confirming would resurrect it.
+            field.stage(undefined)
+            field.setValue(null, createChangeEventDetails('clear-press', event.nativeEvent))
+          }}
+        >
+          {children ?? <XIcon aria-hidden />}
+        </InputGroupButton>
+      </AnimateIcon>
     </InputGroupAddon>
   )
 }

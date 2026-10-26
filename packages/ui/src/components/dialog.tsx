@@ -1,11 +1,11 @@
 'use client'
 
 import type { ComponentProps, ReactElement } from 'react'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { Dialog as BaseDialog } from '@animate-ui/react/primitives/base-ui/dialog'
 // The handle is Base UI's own object — animate-ui re-exports it unchanged —
 // and taken from there so the emitted declaration can name its type.
 import { Dialog as BaseUIDialog } from '@base-ui/react/dialog'
-import { IconX } from '@tabler/icons-react'
 import { cn } from '#lib/utils'
 // The vendored button for the ✕: animate-ui's `Dialog.Close` is Base UI's own,
 // without its press, which the published Button would add.
@@ -17,6 +17,7 @@ import {
   DialogHeader as DialogHeaderPrimitive,
   DialogTitle as DialogTitlePrimitive,
 } from '#primitives/dialog'
+import { XIcon } from '../icons/animate-ui/x'
 
 /**
  * The published Dialog family.
@@ -227,19 +228,21 @@ export function DialogPopup({
         >
           {children}
           {showCloseButton && (
-            <BaseDialog.Close
-              data-slot="dialog-close"
-              render={(
-                <ButtonPrimitive
-                  variant="ghost"
-                  size="icon-sm"
-                  className="absolute inset-e-2 inset-bs-2"
-                />
-              )}
-            >
-              <IconX />
-              <span className="sr-only">Close</span>
-            </BaseDialog.Close>
+            <AnimateIcon animateOnHover asChild>
+              <BaseDialog.Close
+                data-slot="dialog-close"
+                render={(
+                  <ButtonPrimitive
+                    variant="ghost"
+                    size="icon-sm"
+                    className="absolute inset-e-2 inset-bs-2"
+                  />
+                )}
+              >
+                <XIcon />
+                <span className="sr-only">Close</span>
+              </BaseDialog.Close>
+            </AnimateIcon>
           )}
         </BaseDialog.Popup>
       </BaseDialog.Viewport>

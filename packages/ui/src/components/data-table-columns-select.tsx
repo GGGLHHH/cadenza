@@ -3,12 +3,13 @@
 import type { DragControls } from 'motion/react'
 import type { ReactElement, ReactNode } from 'react'
 import type { ChangeEventDetails, GenericEventDetails } from '#lib/change-event-details'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconGripVertical } from '@tabler/icons-react'
 import { Reorder, useDragControls } from 'motion/react'
 import { createContext, Fragment, use, useMemo, useRef, useState } from 'react'
 import { createChangeEventDetails, createGenericEventDetails } from '#lib/change-event-details'
 import { cn } from '#lib/utils'
+import { GripVerticalIcon } from '../icons/drawn'
 import {
   Select,
   SelectItem,
@@ -435,24 +436,26 @@ export function DataTableColumnsSelectGrip({ className, children }: DataTableCol
     return null
 
   return (
-    <span
-      aria-hidden
-      data-slot="data-table-columns-select-grip"
-      className={cn(
-        `
-          -ms-0.5 cursor-grab text-muted-foreground
-          active:cursor-grabbing
-        `,
-        className,
-      )}
-      // Swallow the press so the option never sees it; never preventDefault —
-      // starting the drag is the default here.
-      onPointerDown={(event) => {
-        event.stopPropagation()
-        dragControls.start(event)
-      }}
-    >
-      {children ?? <IconGripVertical className="block-3.5 inline-3.5" />}
-    </span>
+    <AnimateIcon animateOnHover asChild>
+      <span
+        aria-hidden
+        data-slot="data-table-columns-select-grip"
+        className={cn(
+          `
+            -ms-0.5 cursor-grab text-muted-foreground
+            active:cursor-grabbing
+          `,
+          className,
+        )}
+        // Swallow the press so the option never sees it; never preventDefault —
+        // starting the drag is the default here.
+        onPointerDown={(event) => {
+          event.stopPropagation()
+          dragControls.start(event)
+        }}
+      >
+        {children ?? <GripVerticalIcon className="block-3.5 inline-3.5" />}
+      </span>
+    </AnimateIcon>
   )
 }

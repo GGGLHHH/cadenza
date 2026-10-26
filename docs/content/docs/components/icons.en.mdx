@@ -89,14 +89,18 @@ this library uses — full text in the package's `ANIMATE-UI-LICENSE.md`.
 
 ## When to use Icons
 
-The library's own components use [Tabler](https://tabler.io/icons)'s static
-icons (`@tabler/icons-react`); reach for the animated ones where an icon should
-react — primary buttons, the notifications entry, empty-state art, actions that
-need attention. In dense UI — lists, tables, forms — every icon moving is noise,
-and static icons fit better.
+The library's own components use this set themselves: the clear buttons' ✕,
+dropdown and paging chevrons, the calendar button, NumberField's plus and
+minus… each playing as its button or field is hovered; Spinner is a looping
+`Loader`. Checked indicators (Checkbox, the ticks in list items) have their
+check drawn by animate-ui's indicator itself rather than a second animated icon.
 
-Both sets are a 24 grid, 2px strokes and round caps, so mixing them in one row
-shows no change of style.
+In your own UI, reach for them where an icon should react — primary buttons,
+the notifications entry, empty-state art, actions that need attention. In dense
+UI — lists, tables, forms — every icon moving is noise: play them on hover only,
+as the library does, or use static icons such as [Tabler](https://tabler.io/icons)'s —
+both are a 24 grid, 2px strokes and round caps, so mixing them in one row shows
+no change of style.
 
 ## State and className
 

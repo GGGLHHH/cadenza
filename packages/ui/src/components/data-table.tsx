@@ -6,8 +6,8 @@ import type { Key, Selection, SortDescriptor } from '#lib/collections'
 import type { ButtonProps } from './button'
 import type { LoadingOverlayProps } from './loading-overlay'
 import type { ScrollAreaScrollbars } from './scroll-area'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconChevronDown, IconChevronUp, IconSelector } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { createContext, use, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { createChangeEventDetails, createGenericEventDetails } from '#lib/change-event-details'
@@ -20,6 +20,9 @@ import {
   TableHeader,
   TableRow,
 } from '#primitives/table'
+import { ChevronDownIcon } from '../icons/animate-ui/chevron-down'
+import { ChevronUpIcon } from '../icons/animate-ui/chevron-up'
+import { ChevronUpDownIcon } from '../icons/animate-ui/chevron-up-down'
 import { Button } from './button'
 import { Checkbox } from './checkbox'
 import { LoadingOverlay } from './loading-overlay'
@@ -410,8 +413,8 @@ const PINNED_BODY_CELL_CLASSNAME = `
 
 function SortIndicator({ direction }: { direction: 'ascending' | 'descending' | undefined }): ReactElement {
   const Icon = direction === 'ascending'
-    ? IconChevronUp
-    : direction === 'descending' ? IconChevronDown : IconSelector
+    ? ChevronUpIcon
+    : direction === 'descending' ? ChevronDownIcon : ChevronUpDownIcon
   return (
     <Icon
       aria-hidden
@@ -852,18 +855,21 @@ export function DataTable<T>(props: DataTableProps<T>): ReactElement {
     // A button, not a click handler on the <th>: sorting has to be reachable
     // and announceable, and `aria-sort` on the header is what says which way.
     return (
-      <button
-        className="
-          flex items-center gap-1 rounded-sm outline-none inline-full
-          focus-visible:ring-3 focus-visible:ring-ring/50
-        "
-        data-slot="data-table-sort-button"
-        type="button"
-        onClick={event => sortToggle(column.id, event.nativeEvent)}
-      >
-        {column.header}
-        <SortIndicator direction={direction} />
-      </button>
+      // Hovering the header plays the sort chevron (animate-ui's icon).
+      <AnimateIcon animateOnHover asChild>
+        <button
+          className="
+            flex items-center gap-1 rounded-sm outline-none inline-full
+            focus-visible:ring-3 focus-visible:ring-ring/50
+          "
+          data-slot="data-table-sort-button"
+          type="button"
+          onClick={event => sortToggle(column.id, event.nativeEvent)}
+        >
+          {column.header}
+          <SortIndicator direction={direction} />
+        </button>
+      </AnimateIcon>
     )
   }
 

@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { Checkbox as CheckboxPrimitive } from '@animate-ui/react/primitives/base-ui/checkbox'
-import { IconCheck } from '@tabler/icons-react'
 import { cn } from '#lib/utils'
+import { IndicatorCheck } from '../icons/indicator-check'
 
 /**
  * The published Checkbox — Base UI's `Checkbox.Root` in shadcn's base-nova box.
@@ -109,7 +109,8 @@ export function Checkbox({ className, ...props }: CheckboxProps): ReactElement {
           [&>svg]:block-3.5 [&>svg]:inline-3.5
         "
       >
-        <IconCheck />
+        {/* The bare check: animate-ui's indicator animates it (see IndicatorCheck). */}
+        <IndicatorCheck />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   )

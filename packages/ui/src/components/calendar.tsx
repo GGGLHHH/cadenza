@@ -1,9 +1,14 @@
-import type { ChangeEvent, ComponentProps, ReactElement } from 'react'
+import type { ButtonHTMLAttributes, ChangeEvent, ComponentProps, ReactElement } from 'react'
 import type { DropdownProps } from 'react-day-picker'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { useMemo, useRef } from 'react'
 import { defaultDateLib } from 'react-day-picker'
 import { cn } from '#lib/utils'
 import { CalendarDayButton, Calendar as CalendarPrimitive } from '#primitives/calendar'
+import { ChevronDownIcon } from '../icons/animate-ui/chevron-down'
+import { ChevronLeftIcon } from '../icons/animate-ui/chevron-left'
+import { ChevronRightIcon } from '../icons/animate-ui/chevron-right'
+import { ChevronUpIcon } from '../icons/animate-ui/chevron-up'
 import { Select, SelectItem, SelectPopup, SelectTrigger } from './select'
 
 /**
@@ -49,6 +54,23 @@ export type CalendarDayButtonProps = ComponentProps<typeof CalendarDayButton>
  * object is the whole contract — mirroring the whole `ChangeEvent` would be
  * inventing obligations neither side has.
  */
+// The vendored chevrons, as animate-ui's animated ones (the vendored part
+// renders Tabler icons and is byte-pinned; its `components` map lets ours in).
+function CalendarChevron({ className, orientation }: { className?: string, orientation?: 'up' | 'down' | 'left' | 'right' }): ReactElement {
+  const Chevron = { down: ChevronDownIcon, left: ChevronLeftIcon, right: ChevronRightIcon, up: ChevronUpIcon }[orientation ?? 'down']
+  return <Chevron aria-hidden className={cn('block-4 inline-4', className)} />
+}
+
+// react-day-picker's own month buttons, made the hover target for the chevron
+// inside: hovering the button plays it.
+function CalendarNavButton(props: ButtonHTMLAttributes<HTMLButtonElement>): ReactElement {
+  return (
+    <AnimateIcon animateOnHover asChild>
+      <button type="button" {...props} />
+    </AnimateIcon>
+  )
+}
+
 function CalendarNavDropdown({
   'aria-label': ariaLabel,
   disabled,
@@ -180,6 +202,9 @@ export function Calendar({
       // Defaults, not overrides: a caller composing their own dropdowns still
       // wins, the same way the vendored calendar treats its own components.
       components={{
+        Chevron: CalendarChevron,
+        NextMonthButton: CalendarNavButton,
+        PreviousMonthButton: CalendarNavButton,
         MonthsDropdown: CalendarNavDropdown,
         YearsDropdown: CalendarNavDropdown,
         ...components,

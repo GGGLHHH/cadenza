@@ -2,13 +2,8 @@
 
 import type { ReactElement, ReactNode, SetStateAction } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import {
-  IconChevronLeft,
-  IconChevronRight,
-  IconChevronsLeft,
-  IconChevronsRight,
-} from '@tabler/icons-react'
 import { useCallback, useEffect, useRef } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { cn } from '#lib/utils'
@@ -17,6 +12,9 @@ import {
   PaginationContent,
   PaginationItem,
 } from '#primitives/pagination'
+import { ChevronLeftIcon } from '../icons/animate-ui/chevron-left'
+import { ChevronRightIcon } from '../icons/animate-ui/chevron-right'
+import { ChevronsLeftIcon, ChevronsRightIcon } from '../icons/drawn'
 import { Button } from './button'
 import {
   Select,
@@ -259,48 +257,56 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
         <Pagination className="mx-0 inline-auto">
           <PaginationContent className="gap-1.5">
             <PaginationItem>
-              <Button
-                aria-label={firstPageLabel}
-                disabled={!canPrevious}
-                onClick={event => setPage(1, createChangeEventDetails('item-press', event.nativeEvent))}
-                size="icon"
-                variant="outline"
-              >
-                <IconChevronsLeft />
-              </Button>
+              <AnimateIcon animateOnHover asChild>
+                <Button
+                  aria-label={firstPageLabel}
+                  disabled={!canPrevious}
+                  onClick={event => setPage(1, createChangeEventDetails('item-press', event.nativeEvent))}
+                  size="icon"
+                  variant="outline"
+                >
+                  <ChevronsLeftIcon />
+                </Button>
+              </AnimateIcon>
             </PaginationItem>
             <PaginationItem>
-              <Button
-                aria-label={previousPageLabel}
-                disabled={!canPrevious}
-                onClick={event => setPage(current => current - 1, createChangeEventDetails('item-press', event.nativeEvent))}
-                size="icon"
-                variant="outline"
-              >
-                <IconChevronLeft />
-              </Button>
+              <AnimateIcon animateOnHover asChild>
+                <Button
+                  aria-label={previousPageLabel}
+                  disabled={!canPrevious}
+                  onClick={event => setPage(current => current - 1, createChangeEventDetails('item-press', event.nativeEvent))}
+                  size="icon"
+                  variant="outline"
+                >
+                  <ChevronLeftIcon />
+                </Button>
+              </AnimateIcon>
             </PaginationItem>
             <PaginationItem>
-              <Button
-                aria-label={nextPageLabel}
-                disabled={!canNext}
-                onClick={event => setPage(current => current + 1, createChangeEventDetails('item-press', event.nativeEvent))}
-                size="icon"
-                variant="outline"
-              >
-                <IconChevronRight />
-              </Button>
+              <AnimateIcon animateOnHover asChild>
+                <Button
+                  aria-label={nextPageLabel}
+                  disabled={!canNext}
+                  onClick={event => setPage(current => current + 1, createChangeEventDetails('item-press', event.nativeEvent))}
+                  size="icon"
+                  variant="outline"
+                >
+                  <ChevronRightIcon />
+                </Button>
+              </AnimateIcon>
             </PaginationItem>
             <PaginationItem>
-              <Button
-                aria-label={lastPageLabel}
-                disabled={!canNext}
-                onClick={event => setPage(totalPages, createChangeEventDetails('item-press', event.nativeEvent))}
-                size="icon"
-                variant="outline"
-              >
-                <IconChevronsRight />
-              </Button>
+              <AnimateIcon animateOnHover asChild>
+                <Button
+                  aria-label={lastPageLabel}
+                  disabled={!canNext}
+                  onClick={event => setPage(totalPages, createChangeEventDetails('item-press', event.nativeEvent))}
+                  size="icon"
+                  variant="outline"
+                >
+                  <ChevronsRightIcon />
+                </Button>
+              </AnimateIcon>
             </PaginationItem>
           </PaginationContent>
         </Pagination>

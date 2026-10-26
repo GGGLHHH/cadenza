@@ -42,8 +42,9 @@ export default antfu(
       'packages/*/src/hooks',
       // animate-ui's animated icons, pulled by scripts/sync-animate-ui-icons.mjs
       // as they are (plus the generated index): re-running the sync must reproduce
-      // them, and the formatters would rewrite every file.
-      'packages/ui/src/icons',
+      // them, and the formatters would rewrite every file. drawn.tsx is ours.
+      'packages/ui/src/icons/animate-ui',
+      'packages/ui/src/icons/index.ts',
       // Vendored React Bits source, same deal as the shadcn primitives above:
       // kept as pulled so `shadcn add -o` still diffs cleanly against upstream.
       // The logical-property and class-order fixers would rewrite every line.

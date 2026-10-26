@@ -2,12 +2,14 @@
 
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import type { ChangeEventDetails, GenericEventDetails } from '#lib/change-event-details'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
-import { IconSearch, IconX } from '@tabler/icons-react'
 import { useDebounceFn } from 'ahooks'
 import { createContext, use, useCallback } from 'react'
 import { createChangeEventDetails, createGenericEventDetails } from '#lib/change-event-details'
 import { cn, dataAttr } from '#lib/utils'
+import { SearchIcon } from '../icons/animate-ui/search'
+import { XIcon } from '../icons/animate-ui/x'
 // The seam versions, not the primitives: their prop types carry the full Base UI
 // contract (function className on the control, ref), so ours inherit it.
 import {
@@ -302,26 +304,29 @@ export function SearchFieldClear({
       className="group-data-empty/search-field:hidden"
       data-slot="search-field-clear-addon"
     >
-      <InputGroupButton
+      {/* Hovering the button plays the ✕'s animation (animate-ui's icon). */}
+      <AnimateIcon animateOnHover asChild>
+        <InputGroupButton
         // English aria-only fallback, the house pattern ('Search', 'Loading'):
         // it never renders visibly, and a caller-passed aria-label wins.
-        aria-label="Clear search"
-        className={cn('rounded-full', className)}
-        data-slot="search-field-clear"
-        disabled={field.disabled}
-        // Out of the tab order on purpose: keyboard users clear with Escape,
-        // and a stop between the input and the next control is friction.
-        tabIndex={-1}
-        {...props}
-        // After the spread for the same reason as the input's onKeyDown.
-        onClick={(event) => {
-          onClick?.(event)
-          if (!event.defaultPrevented)
-            field.clear(createChangeEventDetails('clear-press', event.nativeEvent))
-        }}
-      >
-        {children ?? <IconX aria-hidden />}
-      </InputGroupButton>
+          aria-label="Clear search"
+          className={cn('rounded-full', className)}
+          data-slot="search-field-clear"
+          disabled={field.disabled}
+          // Out of the tab order on purpose: keyboard users clear with Escape,
+          // and a stop between the input and the next control is friction.
+          tabIndex={-1}
+          {...props}
+          // After the spread for the same reason as the input's onKeyDown.
+          onClick={(event) => {
+            onClick?.(event)
+            if (!event.defaultPrevented)
+              field.clear(createChangeEventDetails('clear-press', event.nativeEvent))
+          }}
+        >
+          {children ?? <XIcon aria-hidden />}
+        </InputGroupButton>
+      </AnimateIcon>
     </InputGroupAddon>
   )
 }
@@ -369,13 +374,17 @@ export function SearchField({
   }
 
   const defaultChildren = (
-    <InputGroup>
-      <InputGroupAddon>
-        <IconSearch aria-hidden />
-      </InputGroupAddon>
-      <SearchFieldInput placeholder={placeholder} />
-      {!readOnly && <SearchFieldClear />}
-    </InputGroup>
+    // Hovering the field plays the search icon; the clear button's own
+    // AnimateIcon is the nearer one for its ✕.
+    <AnimateIcon animateOnHover asChild>
+      <InputGroup>
+        <InputGroupAddon>
+          <SearchIcon aria-hidden />
+        </InputGroupAddon>
+        <SearchFieldInput placeholder={placeholder} />
+        {!readOnly && <SearchFieldClear />}
+      </InputGroup>
+    </AnimateIcon>
   )
 
   return (

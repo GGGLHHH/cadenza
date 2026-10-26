@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { NumberField as NumberFieldPrimitive } from '@base-ui/react/number-field'
-import { IconMinus, IconPlus } from '@tabler/icons-react'
 import { cn } from '#lib/utils'
+import { MinusIcon } from '../icons/animate-ui/minus'
+import { PlusIcon } from '../icons/animate-ui/plus'
 
 export interface NumberFieldProps extends NumberFieldPrimitive.Root.Props {
   /** 默认组合里内层输入框的占位文案；自己组合 children 时请写在 `NumberFieldInput` 上。 */
@@ -138,25 +140,29 @@ const stepperClassName = `
 /** 减号步进钮。不写 children 就渲染默认的减号图标。 */
 export function NumberFieldDecrement({ children, className, ...props }: NumberFieldDecrementProps): ReactElement {
   return (
-    <NumberFieldPrimitive.Decrement
-      data-slot="number-field-decrement"
-      className={cn(stepperClassName, 'border-e', className)}
-      {...props}
-    >
-      {children ?? <IconMinus aria-hidden />}
-    </NumberFieldPrimitive.Decrement>
+    <AnimateIcon animateOnHover asChild>
+      <NumberFieldPrimitive.Decrement
+        data-slot="number-field-decrement"
+        className={cn(stepperClassName, 'border-e', className)}
+        {...props}
+      >
+        {children ?? <MinusIcon aria-hidden />}
+      </NumberFieldPrimitive.Decrement>
+    </AnimateIcon>
   )
 }
 
 /** 加号步进钮。不写 children 就渲染默认的加号图标。 */
 export function NumberFieldIncrement({ children, className, ...props }: NumberFieldIncrementProps): ReactElement {
   return (
-    <NumberFieldPrimitive.Increment
-      data-slot="number-field-increment"
-      className={cn(stepperClassName, 'border-s', className)}
-      {...props}
-    >
-      {children ?? <IconPlus aria-hidden />}
-    </NumberFieldPrimitive.Increment>
+    <AnimateIcon animateOnHover asChild>
+      <NumberFieldPrimitive.Increment
+        data-slot="number-field-increment"
+        className={cn(stepperClassName, 'border-s', className)}
+        {...props}
+      >
+        {children ?? <PlusIcon aria-hidden />}
+      </NumberFieldPrimitive.Increment>
+    </AnimateIcon>
   )
 }

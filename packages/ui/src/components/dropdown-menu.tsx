@@ -8,8 +8,8 @@ import type {
   DropdownMenuRadioItem as DropdownMenuRadioItemPrimitive,
   DropdownMenuSubTrigger as DropdownMenuSubmenuTriggerPrimitive,
 } from '#primitives/dropdown-menu'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { Menu as AnimatedMenu } from '@animate-ui/react/primitives/base-ui/menu'
-import { IconCheck, IconChevronRight } from '@tabler/icons-react'
 import { cn } from '#lib/utils'
 import {
   DropdownMenuLabel as DropdownMenuGroupLabelPrimitive,
@@ -18,6 +18,8 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger as DropdownMenuTriggerPrimitive,
 } from '#primitives/dropdown-menu'
+import { ChevronRightIcon } from '../icons/animate-ui/chevron-right'
+import { IndicatorCheck } from '../icons/indicator-check'
 
 /**
  * The published DropdownMenu family — a menu of actions behind a trigger.
@@ -234,7 +236,7 @@ export function DropdownMenuCheckboxItem({ children, className, inset, ...props 
       {...props}
     >
       <AnimatedMenu.CheckboxItemIndicator className={INDICATOR} data-slot="dropdown-menu-checkbox-item-indicator">
-        <IconCheck />
+        <IndicatorCheck />
       </AnimatedMenu.CheckboxItemIndicator>
       {children}
     </AnimatedMenu.CheckboxItem>
@@ -254,7 +256,7 @@ export function DropdownMenuRadioItem({ children, className, inset, ...props }: 
       {...props}
     >
       <AnimatedMenu.RadioItemIndicator className={INDICATOR} data-slot="dropdown-menu-radio-item-indicator">
-        <IconCheck />
+        <IndicatorCheck />
       </AnimatedMenu.RadioItemIndicator>
       {children}
     </AnimatedMenu.RadioItem>
@@ -266,24 +268,27 @@ export function DropdownMenuSubmenu(props: DropdownMenuSubmenuProps): ReactEleme
 }
 export function DropdownMenuSubmenuTrigger({ children, className, inset, ...props }: DropdownMenuSubmenuTriggerProps): ReactElement {
   return (
-    <AnimatedMenu.SubmenuTrigger
-      className={cn(
-        ROW,
-        `
-          px-1.5
-          not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground
-          data-popup-open:bg-accent data-popup-open:text-accent-foreground
-          data-open:bg-accent data-open:text-accent-foreground
-        `,
-        className,
-      )}
-      data-inset={inset}
-      data-slot="dropdown-menu-sub-trigger"
-      {...props}
-    >
-      {children}
-      <IconChevronRight className="ms-auto" />
-    </AnimatedMenu.SubmenuTrigger>
+    // Hovering the row plays the chevron (animate-ui's icon) as the submenu opens.
+    <AnimateIcon animateOnHover asChild>
+      <AnimatedMenu.SubmenuTrigger
+        className={cn(
+          ROW,
+          `
+            px-1.5
+            not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground
+            data-popup-open:bg-accent data-popup-open:text-accent-foreground
+            data-open:bg-accent data-open:text-accent-foreground
+          `,
+          className,
+        )}
+        data-inset={inset}
+        data-slot="dropdown-menu-sub-trigger"
+        {...props}
+      >
+        {children}
+        <ChevronRightIcon className="ms-auto" />
+      </AnimatedMenu.SubmenuTrigger>
+    </AnimateIcon>
   )
 }
 export const DropdownMenuSubmenuPopup = DropdownMenuSubmenuPopupPart as (props: DropdownMenuSubmenuPopupProps) => ReactElement

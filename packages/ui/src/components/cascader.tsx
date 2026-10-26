@@ -2,15 +2,19 @@
 
 import type { ComponentProps, ReactElement, ReactNode, RefObject } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { Menu as MenuPrimitive } from '@animate-ui/react/primitives/base-ui/menu'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconCheck, IconChevronRight, IconSelector, IconX } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { createContext, Fragment, use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
 import { isOwnLabelPress, LABEL_PRESS_REASONS } from '#lib/own-label-press'
 import { cn, dataAttr } from '#lib/utils'
+import { ChevronRightIcon } from '../icons/animate-ui/chevron-right'
+import { ChevronUpDownIcon } from '../icons/animate-ui/chevron-up-down'
+import { XIcon } from '../icons/animate-ui/x'
+import { IndicatorCheck } from '../icons/indicator-check'
 import { LoadingOverlay } from './loading-overlay'
 import { ScrollArea } from './scroll-area'
 import { Spinner } from './spinner'
@@ -521,61 +525,65 @@ export function CascaderTrigger({ children, className, ref, size = 'default', ..
   const clearProps = clearable ? composedClearProps : undefined
   const clearVisible = clearProps !== undefined && filled && !disabled
   const trigger = (
-    <MenuPrimitive.Trigger
-      data-placeholder={dataAttr(!filled)}
-      data-size={size}
-      data-slot="cascader-trigger"
-      className={cn(
-        `
-          flex items-center justify-between gap-1.5 rounded-lg border
-          border-input bg-transparent py-2 ps-2.5 pe-2 text-sm whitespace-nowrap
-          transition-colors outline-none select-none inline-fit
-          focus-visible:border-ring focus-visible:ring-3
-          focus-visible:ring-ring/50
-          disabled:cursor-not-allowed disabled:opacity-50
-          aria-invalid:border-destructive aria-invalid:ring-3
-          aria-invalid:ring-destructive/20
-          data-placeholder:text-muted-foreground
-          data-[size=default]:block-8
-          data-[size=sm]:rounded-[min(var(--radius-md),10px)]
-          data-[size=sm]:block-7
-          *:data-[slot=cascader-value]:line-clamp-1
-          *:data-[slot=cascader-value]:flex
-          *:data-[slot=cascader-value]:items-center
-          *:data-[slot=cascader-value]:gap-1.5
-          dark:bg-input/30
-          dark:hover:bg-input/50
-          dark:aria-invalid:border-destructive/50
-          dark:aria-invalid:ring-destructive/40
-          [&_svg]:pointer-events-none [&_svg]:shrink-0
-          [&_svg:not([class*='size-'])]:block-4
-          [&_svg:not([class*='size-'])]:inline-4
-        `,
-        clearVisible && '[&>svg:last-child]:invisible',
-        // Inside the clear container the trigger must follow the container's
-        // width: layouts that stretch form controls (Field's `*:w-full`)
-        // stretch the container, and a fit-content trigger would leave the
-        // lifted ✕ pinned to the far edge, orphaned from the button.
-        clearProps !== undefined && 'flex-1',
-        className,
-      )}
-      // Claimed, not taken: the caller's ref still gets the element. The root
-      // needs it to recognise presses on this control's own label.
-      ref={(node: HTMLButtonElement | null) => {
-        triggerRef.current = node
-        if (typeof ref === 'function')
-          ref(node)
-        else if (ref !== null && ref !== undefined)
-          ref.current = node
-      }}
-      {...props}
-    >
-      {autoComposed ? <CascaderValue /> : children}
-      <IconSelector
-        aria-hidden
-        className="pointer-events-none text-muted-foreground block-4 inline-4"
-      />
-    </MenuPrimitive.Trigger>
+    // Hovering the trigger plays its chevron (animate-ui's icon).
+    <AnimateIcon animateOnHover asChild>
+      <MenuPrimitive.Trigger
+        data-placeholder={dataAttr(!filled)}
+        data-size={size}
+        data-slot="cascader-trigger"
+        className={cn(
+          `
+            flex items-center justify-between gap-1.5 rounded-lg border
+            border-input bg-transparent py-2 ps-2.5 pe-2 text-sm
+            whitespace-nowrap transition-colors outline-none select-none
+            inline-fit
+            focus-visible:border-ring focus-visible:ring-3
+            focus-visible:ring-ring/50
+            disabled:cursor-not-allowed disabled:opacity-50
+            aria-invalid:border-destructive aria-invalid:ring-3
+            aria-invalid:ring-destructive/20
+            data-placeholder:text-muted-foreground
+            data-[size=default]:block-8
+            data-[size=sm]:rounded-[min(var(--radius-md),10px)]
+            data-[size=sm]:block-7
+            *:data-[slot=cascader-value]:line-clamp-1
+            *:data-[slot=cascader-value]:flex
+            *:data-[slot=cascader-value]:items-center
+            *:data-[slot=cascader-value]:gap-1.5
+            dark:bg-input/30
+            dark:hover:bg-input/50
+            dark:aria-invalid:border-destructive/50
+            dark:aria-invalid:ring-destructive/40
+            [&_svg]:pointer-events-none [&_svg]:shrink-0
+            [&_svg:not([class*='size-'])]:block-4
+            [&_svg:not([class*='size-'])]:inline-4
+          `,
+          clearVisible && '[&>svg:last-child]:invisible',
+          // Inside the clear container the trigger must follow the container's
+          // width: layouts that stretch form controls (Field's `*:w-full`)
+          // stretch the container, and a fit-content trigger would leave the
+          // lifted ✕ pinned to the far edge, orphaned from the button.
+          clearProps !== undefined && 'flex-1',
+          className,
+        )}
+        // Claimed, not taken: the caller's ref still gets the element. The root
+        // needs it to recognise presses on this control's own label.
+        ref={(node: HTMLButtonElement | null) => {
+          triggerRef.current = node
+          if (typeof ref === 'function')
+            ref(node)
+          else if (ref !== null && ref !== undefined)
+            ref.current = node
+        }}
+        {...props}
+      >
+        {autoComposed ? <CascaderValue /> : children}
+        <ChevronUpDownIcon
+          aria-hidden
+          className="pointer-events-none text-muted-foreground block-4 inline-4"
+        />
+      </MenuPrimitive.Trigger>
+    </AnimateIcon>
   )
   if (clearProps === undefined)
     return trigger
@@ -647,42 +655,44 @@ function CascaderClearOverlay({
   ...props
 }: CascaderClearProps & { clear: (event: Event) => void }): ReactElement {
   return (
-    <button
-      aria-label={ariaLabel}
-      data-slot="cascader-clear"
-      type="button"
-      className={cn(
-        `
-          absolute inset-e-2 inset-bs-1/2 flex -translate-y-1/2 items-center
-          justify-center rounded-sm text-muted-foreground outline-none
-          hover:text-foreground
-          focus-visible:ring-2 focus-visible:ring-ring/50
-        `,
-        className,
-      )}
-      {...props}
-      // After the spread: a caller listening for clicks must not silently
-      // take clearing away.
-      onClick={(event) => {
-        onClick?.(event)
-        if (!event.defaultPrevented)
-          clear(event.nativeEvent)
-      }}
-      // Base UI's own clear does exactly this, with the same one-line reason
-      // (`ComboboxClear.js:96-98`, "Avoid stealing focus from the input"): a
-      // pointer press on a clear affordance must not move focus. It matters
-      // more here than upstream, because HTML forbids a button inside a button
-      // so this one is lifted out of the trigger — taking focus would land it
-      // outside the popup's own elements and the dismissal machinery would
-      // read a genuine focus-out. Cancelling the mousedown default is what
-      // keeps a press on the control's own part from reading as leaving it.
-      onMouseDown={(event) => {
-        onMouseDown?.(event)
-        event.preventDefault()
-      }}
-    >
-      {children ?? <IconX aria-hidden className="block-4 inline-4" />}
-    </button>
+    <AnimateIcon animateOnHover asChild>
+      <button
+        aria-label={ariaLabel}
+        data-slot="cascader-clear"
+        type="button"
+        className={cn(
+          `
+            absolute inset-e-2 inset-bs-1/2 flex -translate-y-1/2 items-center
+            justify-center rounded-sm text-muted-foreground outline-none
+            hover:text-foreground
+            focus-visible:ring-2 focus-visible:ring-ring/50
+          `,
+          className,
+        )}
+        {...props}
+        // After the spread: a caller listening for clicks must not silently
+        // take clearing away.
+        onClick={(event) => {
+          onClick?.(event)
+          if (!event.defaultPrevented)
+            clear(event.nativeEvent)
+        }}
+        // Base UI's own clear does exactly this, with the same one-line reason
+        // (`ComboboxClear.js:96-98`, "Avoid stealing focus from the input"): a
+        // pointer press on a clear affordance must not move focus. It matters
+        // more here than upstream, because HTML forbids a button inside a button
+        // so this one is lifted out of the trigger — taking focus would land it
+        // outside the popup's own elements and the dismissal machinery would
+        // read a genuine focus-out. Cancelling the mousedown default is what
+        // keeps a press on the control's own part from reading as leaving it.
+        onMouseDown={(event) => {
+          onMouseDown?.(event)
+          event.preventDefault()
+        }}
+      >
+        {children ?? <XIcon aria-hidden className="block-4 inline-4" />}
+      </button>
+    </AnimateIcon>
   )
 }
 
@@ -890,7 +900,8 @@ function CascaderRow({ node, parentPath }: { node: CascaderNode, parentPath: str
           data-slot="cascader-item-indicator"
         >
           <MenuPrimitive.RadioItemIndicator>
-            <IconCheck aria-hidden />
+            {/* The bare check: animate-ui's indicator animates it (see IndicatorCheck). */}
+            <IndicatorCheck aria-hidden />
           </MenuPrimitive.RadioItemIndicator>
         </span>
         {node.label ?? node.value}
@@ -901,25 +912,28 @@ function CascaderRow({ node, parentPath }: { node: CascaderNode, parentPath: str
     && path.every((segment, index) => selectedPath[index] === segment)
   return (
     <MenuPrimitive.SubmenuRoot closeParentOnEsc defaultOpen={onSelectedPath}>
-      <MenuPrimitive.SubmenuTrigger
-        data-selected={dataAttr(onSelectedPath)}
-        data-slot="cascader-submenu-trigger"
-        disabled={node.disabled}
-        className={cn(
-          itemClassName,
-          `
-            px-1.5 py-1
-            data-popup-open:bg-accent data-popup-open:text-accent-foreground
-            data-selected:font-medium
-          `,
-        )}
-      >
-        {node.label ?? node.value}
-        <IconChevronRight
-          aria-hidden
-          className="ms-auto text-muted-foreground"
-        />
-      </MenuPrimitive.SubmenuTrigger>
+      {/* Hovering the row plays the chevron as the next level opens. */}
+      <AnimateIcon animateOnHover asChild>
+        <MenuPrimitive.SubmenuTrigger
+          data-selected={dataAttr(onSelectedPath)}
+          data-slot="cascader-submenu-trigger"
+          disabled={node.disabled}
+          className={cn(
+            itemClassName,
+            `
+              px-1.5 py-1
+              data-popup-open:bg-accent data-popup-open:text-accent-foreground
+              data-selected:font-medium
+            `,
+          )}
+        >
+          {node.label ?? node.value}
+          <ChevronRightIcon
+            aria-hidden
+            className="ms-auto text-muted-foreground"
+          />
+        </MenuPrimitive.SubmenuTrigger>
+      </AnimateIcon>
       <MenuPrimitive.Portal>
         <MenuPrimitive.Positioner
           align="start"

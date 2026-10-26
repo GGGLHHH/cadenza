@@ -4,9 +4,9 @@ import type { Locale } from 'date-fns'
 import type { ComponentProps, ReactElement, ReactNode, RefObject } from 'react'
 import type { Matcher } from 'react-day-picker'
 import type { ChangeEventDetails } from '#lib/change-event-details'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { Popover as PopoverPrimitive } from '@animate-ui/react/primitives/base-ui/popover'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
-import { IconCalendar, IconX } from '@tabler/icons-react'
 import { format as formatDate, isValid, parse as parseDate, startOfDay } from 'date-fns'
 import { createContext, use, useEffect, useRef, useState } from 'react'
 import { dateMatchModifiers } from 'react-day-picker'
@@ -15,6 +15,8 @@ import { findComposedPart } from '#lib/find-part'
 import { isOwnLabelPress, LABEL_PRESS_REASONS } from '#lib/own-label-press'
 import { popupClassName, SERIAL_FORMAT } from '#lib/popup'
 import { cn, dataAttr } from '#lib/utils'
+import { CalendarIcon } from '../icons/animate-ui/calendar'
+import { XIcon } from '../icons/animate-ui/x'
 import { Button } from './button'
 import { Calendar } from './calendar'
 import {
@@ -350,26 +352,28 @@ export function DatePickerTrigger({
   const field = useDatePickerContext()
   return (
     <InputGroupAddon align="inline-end" data-slot="date-picker-trigger-addon">
-      <InputGroupButton
-        // English aria-only fallback, the house pattern: it never renders
-        // visibly, and a caller-passed aria-label wins.
-        aria-label="Open calendar"
-        className={className}
-        data-slot="date-picker-trigger"
-        disabled={field.disabled}
-        tabIndex={-1}
-        {...props}
-        // After the spread: a caller listening for clicks must not silently
-        // take the toggle away.
-        onClick={(event) => {
-          onClick?.(event)
-          if (event.defaultPrevented || field.readOnly)
-            return
-          field.setOpen(!field.open, createChangeEventDetails('trigger-press', event.nativeEvent))
-        }}
-      >
-        {children ?? <IconCalendar aria-hidden />}
-      </InputGroupButton>
+      <AnimateIcon animateOnHover asChild>
+        <InputGroupButton
+          // English aria-only fallback, the house pattern: it never renders
+          // visibly, and a caller-passed aria-label wins.
+          aria-label="Open calendar"
+          className={className}
+          data-slot="date-picker-trigger"
+          disabled={field.disabled}
+          tabIndex={-1}
+          {...props}
+          // After the spread: a caller listening for clicks must not silently
+          // take the toggle away.
+          onClick={(event) => {
+            onClick?.(event)
+            if (event.defaultPrevented || field.readOnly)
+              return
+            field.setOpen(!field.open, createChangeEventDetails('trigger-press', event.nativeEvent))
+          }}
+        >
+          {children ?? <CalendarIcon aria-hidden />}
+        </InputGroupButton>
+      </AnimateIcon>
     </InputGroupAddon>
   )
 }
@@ -397,31 +401,33 @@ export function DatePickerClear({
       className="group-data-empty/date-picker:invisible"
       data-slot="date-picker-clear-addon"
     >
-      <InputGroupButton
-        aria-label="Clear date"
-        className={cn('rounded-full', className)}
-        data-slot="date-picker-clear"
-        disabled={field.disabled}
-        // Out of the tab order on purpose: keyboard users clear by emptying
-        // the text, and a stop between the input and the next control is
-        // friction.
-        tabIndex={-1}
-        {...props}
-        // After the spread for the same reason as the trigger's onClick.
-        onClick={(event) => {
-          onClick?.(event)
-          if (event.defaultPrevented)
-            return
-          field.setDraft(null)
-          // A staged-but-unconfirmed pick is part of what this button clears —
-          // left in place it would keep previewing, and confirming would
-          // resurrect it.
-          field.stage(undefined)
-          field.setValue(null, createChangeEventDetails('clear-press', event.nativeEvent))
-        }}
-      >
-        {children ?? <IconX aria-hidden />}
-      </InputGroupButton>
+      <AnimateIcon animateOnHover asChild>
+        <InputGroupButton
+          aria-label="Clear date"
+          className={cn('rounded-full', className)}
+          data-slot="date-picker-clear"
+          disabled={field.disabled}
+          // Out of the tab order on purpose: keyboard users clear by emptying
+          // the text, and a stop between the input and the next control is
+          // friction.
+          tabIndex={-1}
+          {...props}
+          // After the spread for the same reason as the trigger's onClick.
+          onClick={(event) => {
+            onClick?.(event)
+            if (event.defaultPrevented)
+              return
+            field.setDraft(null)
+            // A staged-but-unconfirmed pick is part of what this button clears —
+            // left in place it would keep previewing, and confirming would
+            // resurrect it.
+            field.stage(undefined)
+            field.setValue(null, createChangeEventDetails('clear-press', event.nativeEvent))
+          }}
+        >
+          {children ?? <XIcon aria-hidden />}
+        </InputGroupButton>
+      </AnimateIcon>
     </InputGroupAddon>
   )
 }

@@ -2,16 +2,15 @@
 
 import type { ReactElement } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import {
-  IconArrowBackUp,
-  IconArrowForwardUp,
-  IconPalette,
-  IconX,
-} from '@tabler/icons-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { cn, dataAttr } from '#lib/utils'
+import { PaletteIcon } from '../icons/animate-ui/palette'
+import { Redo2Icon } from '../icons/animate-ui/redo-2'
+import { Undo2Icon } from '../icons/animate-ui/undo-2'
+import { XIcon } from '../icons/animate-ui/x'
 import { Button } from './button'
 import { ColorPicker } from './color-picker'
 import { ScrollArea } from './scroll-area'
@@ -637,16 +636,18 @@ export function ThemeEditor({
             >
               {mode === 'dark' ? editingDarkLabel : editingLightLabel}
             </span>
-            <Button
-              aria-label={closeLabel}
-              size="icon-xs"
-              variant="ghost"
-              className="ms-auto"
-              onClick={event =>
-                setOpen(false, createChangeEventDetails('close-press', event.nativeEvent))}
-            >
-              <IconX />
-            </Button>
+            <AnimateIcon animateOnHover asChild>
+              <Button
+                aria-label={closeLabel}
+                size="icon-xs"
+                variant="ghost"
+                className="ms-auto"
+                onClick={event =>
+                  setOpen(false, createChangeEventDetails('close-press', event.nativeEvent))}
+              >
+                <XIcon />
+              </Button>
+            </AnimateIcon>
           </div>
 
           {defaults !== null && (importing
@@ -688,24 +689,28 @@ export function ThemeEditor({
             : (
                 <>
                   <div className="flex items-center gap-2 px-4 pbs-3">
-                    <Button
-                      aria-label={undoLabel}
-                      size="icon-sm"
-                      variant="ghost"
-                      disabled={history.past.length === 0}
-                      onClick={undo}
-                    >
-                      <IconArrowBackUp />
-                    </Button>
-                    <Button
-                      aria-label={redoLabel}
-                      size="icon-sm"
-                      variant="ghost"
-                      disabled={history.future.length === 0}
-                      onClick={redo}
-                    >
-                      <IconArrowForwardUp />
-                    </Button>
+                    <AnimateIcon animateOnHover asChild>
+                      <Button
+                        aria-label={undoLabel}
+                        size="icon-sm"
+                        variant="ghost"
+                        disabled={history.past.length === 0}
+                        onClick={undo}
+                      >
+                        <Undo2Icon />
+                      </Button>
+                    </AnimateIcon>
+                    <AnimateIcon animateOnHover asChild>
+                      <Button
+                        aria-label={redoLabel}
+                        size="icon-sm"
+                        variant="ghost"
+                        disabled={history.future.length === 0}
+                        onClick={redo}
+                      >
+                        <Redo2Icon />
+                      </Button>
+                    </AnimateIcon>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -809,19 +814,21 @@ export function ThemeEditor({
         </div>
       )}
 
-      <Button
-        aria-label={ariaLabel}
-        aria-expanded={open}
-        data-slot="theme-editor-trigger"
-        size="icon-lg"
-        className="rounded-full shadow-lg"
-        onClick={(event) => {
-          const reason = open ? 'close-press' : 'trigger-press'
-          setOpen(!open, createChangeEventDetails(reason, event.nativeEvent))
-        }}
-      >
-        {open ? <IconX /> : <IconPalette />}
-      </Button>
+      <AnimateIcon animateOnHover asChild>
+        <Button
+          aria-label={ariaLabel}
+          aria-expanded={open}
+          data-slot="theme-editor-trigger"
+          size="icon-lg"
+          className="rounded-full shadow-lg"
+          onClick={(event) => {
+            const reason = open ? 'close-press' : 'trigger-press'
+            setOpen(!open, createChangeEventDetails(reason, event.nativeEvent))
+          }}
+        >
+          {open ? <XIcon /> : <PaletteIcon />}
+        </Button>
+      </AnimateIcon>
     </div>
   )
 }

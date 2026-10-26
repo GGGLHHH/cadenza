@@ -1,13 +1,14 @@
 ---
 title: Spinner
-description: 旋转的加载指示 —— role="status" 的语义化 svg，尺寸颜色全走 className
+description: 加载指示 —— animate-ui 的动画 Loader，role="status" 的语义化 svg，尺寸颜色全走 className
 ---
 
 <ComponentPreview name="spinner/basic" />
 
-一个旋转的 `IconLoader`（`animate-spin`），带 `role="status"`。底下是纯 svg，
+animate-ui 的动画 `Loader` —— 八根辐条依次变暗、一直循环（来自
+[动画图标](/docs/components/icons)），带 `role="status"`。底下是纯 svg，
 不是 Base UI 部件 —— 没有任何 state，`className` 只收字符串，其余原生 svg
-属性（含 `ref`）原样透传。尺寸默认 `size-4`、颜色继承文字色，两者都从
+属性（含 `ref`）原样透传。尺寸默认 `block-4 inline-4`、颜色继承文字色，两者都从
 `className` 改。
 
 它也是全库加载反馈的那颗零件：[Button](/docs/components/button) 的 `pending`、
@@ -32,9 +33,9 @@ import { Spinner } from '@gedatou/cadenza-ui'
 `block-[1em] inline-[1em]` 让它跟着所在处的字号走（Button 的 pending 用的就是
 后者）。上面的 hero 三档演示的就是这条。
 
-为什么不是再写一个 `size-*`：`size-4` 是烘进组件的类，同族的工具类特异性一样，
-谁赢只看产物里的先后，不保险；逻辑工具类（`block-*` / `inline-*`）在生成的样式表里
-排在物理的 `size-*` 之后，所以覆盖稳定生效。
+为什么不写 `size-*`：组件烘进的默认尺寸就是 `block-4 inline-4`，同族的逻辑工具类在合并
+className 时直接替换它；`size-*` 是另一族，两者都会留下，谁赢只看产物里的先后 ——
+逻辑工具类排在物理的 `size-*` 之后，`size-*` 会输。
 
 颜色同理走 `className` 的文字色类（`text-primary`…）—— 不传就继承所在处的文字色。
 
@@ -84,8 +85,8 @@ spinner 浮在暗纱上，按钮宽度不变。
 动作面只有 `pending`、内容面只有 `loading`，两个词是对应词不是别名 —— 选组件时先认
 自己在哪一面。
 
-**换图标没有 prop 口子**：图标写死是 `IconLoader`，它躺在 vendored 的 shadcn 源码里
-（`src/primitives` 有逐字节校验，不从那里改）。要别的图标就直接放你自己的 svg ——
+**换图标没有 prop 口子**：图标写死是 animate-ui 的 `Loader`。要别的图标就直接放你自己的
+svg，或 [动画图标](/docs/components/icons) 里任一个加上 `animate loop` ——
 上面几个消费点收的都是 `children`（`LoadingOverlay` 的 children、`DataTable` 与
 `InfiniteSelect` 的加载槽位），不认 `Spinner` 这个具体类型。
 

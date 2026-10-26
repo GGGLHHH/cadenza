@@ -4,9 +4,9 @@ import type { Locale } from 'date-fns'
 import type { ComponentProps, ReactElement, ReactNode, RefObject } from 'react'
 import type { DateRange as DayPickerRange, Matcher } from 'react-day-picker'
 import type { ChangeEventDetails } from '#lib/change-event-details'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { Popover as PopoverPrimitive } from '@animate-ui/react/primitives/base-ui/popover'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
-import { IconArrowNarrowRight, IconCalendar, IconX } from '@tabler/icons-react'
 import { format as formatDate, isValid, parse as parseDate, startOfDay } from 'date-fns'
 import { createContext, use, useEffect, useRef, useState } from 'react'
 import { dateMatchModifiers } from 'react-day-picker'
@@ -15,6 +15,9 @@ import { findComposedPart } from '#lib/find-part'
 import { isOwnLabelPress, LABEL_PRESS_REASONS } from '#lib/own-label-press'
 import { popupClassName, SERIAL_FORMAT } from '#lib/popup'
 import { cn, dataAttr } from '#lib/utils'
+import { ArrowRightIcon } from '../icons/animate-ui/arrow-right'
+import { CalendarIcon } from '../icons/animate-ui/calendar'
+import { XIcon } from '../icons/animate-ui/x'
 import { Button } from './button'
 import { Calendar } from './calendar'
 import {
@@ -457,24 +460,26 @@ export function DateRangePickerTrigger({
   const field = useDateRangePickerContext()
   return (
     <InputGroupAddon align="inline-end" data-slot="date-range-picker-trigger-addon">
-      <InputGroupButton
-        aria-label="Open calendar"
-        className={className}
-        data-slot="date-range-picker-trigger"
-        disabled={field.disabled}
-        tabIndex={-1}
-        {...props}
-        // After the spread: a caller listening for clicks must not silently
-        // take the toggle away.
-        onClick={(event) => {
-          onClick?.(event)
-          if (event.defaultPrevented || field.readOnly)
-            return
-          field.setOpen(!field.open, createChangeEventDetails('trigger-press', event.nativeEvent))
-        }}
-      >
-        {children ?? <IconCalendar aria-hidden />}
-      </InputGroupButton>
+      <AnimateIcon animateOnHover asChild>
+        <InputGroupButton
+          aria-label="Open calendar"
+          className={className}
+          data-slot="date-range-picker-trigger"
+          disabled={field.disabled}
+          tabIndex={-1}
+          {...props}
+          // After the spread: a caller listening for clicks must not silently
+          // take the toggle away.
+          onClick={(event) => {
+            onClick?.(event)
+            if (event.defaultPrevented || field.readOnly)
+              return
+            field.setOpen(!field.open, createChangeEventDetails('trigger-press', event.nativeEvent))
+          }}
+        >
+          {children ?? <CalendarIcon aria-hidden />}
+        </InputGroupButton>
+      </AnimateIcon>
     </InputGroupAddon>
   )
 }
@@ -501,29 +506,31 @@ export function DateRangePickerClear({
       className="group-data-empty/date-range-picker:invisible"
       data-slot="date-range-picker-clear-addon"
     >
-      <InputGroupButton
-        aria-label="Clear dates"
-        className={cn('rounded-full', className)}
-        data-slot="date-range-picker-clear"
-        disabled={field.disabled}
-        tabIndex={-1}
-        {...props}
-        // After the spread for the same reason as the trigger's onClick.
-        onClick={(event) => {
-          onClick?.(event)
-          if (event.defaultPrevented)
-            return
-          field.setDraft('from', null)
-          field.setDraft('to', null)
-          // A staged-but-unconfirmed range is part of what this button clears —
-          // left in place it would keep previewing, and confirming would
-          // resurrect it.
-          field.stage(undefined)
-          field.setValue(null, createChangeEventDetails('clear-press', event.nativeEvent))
-        }}
-      >
-        {children ?? <IconX aria-hidden />}
-      </InputGroupButton>
+      <AnimateIcon animateOnHover asChild>
+        <InputGroupButton
+          aria-label="Clear dates"
+          className={cn('rounded-full', className)}
+          data-slot="date-range-picker-clear"
+          disabled={field.disabled}
+          tabIndex={-1}
+          {...props}
+          // After the spread for the same reason as the trigger's onClick.
+          onClick={(event) => {
+            onClick?.(event)
+            if (event.defaultPrevented)
+              return
+            field.setDraft('from', null)
+            field.setDraft('to', null)
+            // A staged-but-unconfirmed range is part of what this button clears —
+            // left in place it would keep previewing, and confirming would
+            // resurrect it.
+            field.stage(undefined)
+            field.setValue(null, createChangeEventDetails('clear-press', event.nativeEvent))
+          }}
+        >
+          {children ?? <XIcon aria-hidden />}
+        </InputGroupButton>
+      </AnimateIcon>
     </InputGroupAddon>
   )
 }
@@ -1071,16 +1078,20 @@ export function DateRangePicker({
   }
 
   const defaultChildren = (
-    <InputGroup>
-      <DateRangePickerStartInput />
-      <IconArrowNarrowRight
-        aria-hidden
-        className="shrink-0 text-muted-foreground block-4 inline-4"
-      />
-      <DateRangePickerEndInput />
-      {!readOnly && <DateRangePickerClear />}
-      {!readOnly && <DateRangePickerTrigger />}
-    </InputGroup>
+    // Hovering the field plays the arrow between the two ends; the buttons'
+    // own AnimateIcons are the nearer ones for their icons.
+    <AnimateIcon animateOnHover asChild>
+      <InputGroup>
+        <DateRangePickerStartInput />
+        <ArrowRightIcon
+          aria-hidden
+          className="shrink-0 text-muted-foreground block-4 inline-4"
+        />
+        <DateRangePickerEndInput />
+        {!readOnly && <DateRangePickerClear />}
+        {!readOnly && <DateRangePickerTrigger />}
+      </InputGroup>
+    </AnimateIcon>
   )
 
   // Layered takeover: an unwritten part stays present by default. Children

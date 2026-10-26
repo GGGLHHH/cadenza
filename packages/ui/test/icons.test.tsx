@@ -10,8 +10,11 @@ import manifest from '../src/icons/animate-ui/manifest.json'
 // all 392 is not something a bare `<Icon />` can be checked against.
 const own = (Object.entries(icons) as [string, ComponentType][]).filter(([name]) => !name.endsWith('Icon') && name !== 'IconWrapper')
 
-it('exports one component per pulled icon', () => {
-  expect(own).toHaveLength(Object.keys(manifest).length)
+it('exports one component per pulled icon, plus the drawn ones', () => {
+  // drawn.tsx: Tabler shapes on animate-ui's stroke draw, for what the set lacks.
+  const drawn = ['Brain', 'ChevronsLeft', 'ChevronsRight', 'GripVertical', 'Server', 'Stop']
+  expect(own.map(([name]) => name).filter(name => !drawn.includes(name))).toHaveLength(Object.keys(manifest).length)
+  expect(drawn.every(name => own.some(([n]) => n === name))).toBe(true)
 })
 
 it('renders every icon as an svg', () => {

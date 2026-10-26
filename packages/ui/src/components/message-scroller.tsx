@@ -2,6 +2,7 @@
 
 import type { ComponentProps, ReactElement } from 'react'
 import type { ScrollAreaScrollbars } from './scroll-area'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { ScrollArea as ScrollAreaPrimitive } from '@base-ui/react/scroll-area'
 import { MessageScroller as MessageScrollerHeadless } from '@shadcn/react/message-scroller'
 import { Press } from '#lib/press'
@@ -13,6 +14,7 @@ import {
   MessageScrollerProvider,
   MessageScroller as MessageScrollerStyled,
 } from '#primitives/message-scroller'
+import { ArrowDownIcon } from '../icons/animate-ui/arrow-down'
 import { ScrollArea } from './scroll-area'
 
 /**
@@ -146,11 +148,24 @@ export type MessageScrollerButtonState
  * Presses like `Button` — animate-ui's spring. Its show/hide runs on the CSS
  * `scale` / `translate` properties, the press on `transform`; the two compose.
  */
-function MessageScrollerButton(props: MessageScrollerButtonProps): ReactElement {
+function MessageScrollerButton({ children, ...props }: MessageScrollerButtonProps): ReactElement {
   return (
-    <Press fallback="message-scroller-button">
-      <MessageScrollerButtonPrimitive {...props} />
-    </Press>
+    // Hovering the button plays its arrow (animate-ui's icon).
+    <AnimateIcon animateOnHover asChild>
+      <Press fallback="message-scroller-button">
+        <MessageScrollerButtonPrimitive {...props}>
+          {/* The vendored default, its Tabler arrow swapped for animate-ui's. */}
+          {children ?? (
+            <>
+              <ArrowDownIcon />
+              <span className="sr-only">
+                {props.direction === 'start' ? 'Scroll to start' : 'Scroll to end'}
+              </span>
+            </>
+          )}
+        </MessageScrollerButtonPrimitive>
+      </Press>
+    </AnimateIcon>
   )
 }
 

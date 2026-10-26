@@ -110,9 +110,10 @@ InputOTP
 
 ## 分隔符
 
-`InputOTPGroup` / `InputOTPSlot` / `InputOTPSeparator` 三个都被封装层**重新包过**，只有
-`InputOTP` 是原样转出（一次类型 cast）。前两个包的是无效态桥接（见[无效态](#无效态)），
-`InputOTPSeparator` 包的是一次 `cn` 合并。它渲染的是一个 `IconMinus`，带 `role="separator"`。
+四个部件都由封装层重新组过：`InputOTP` 改用 animate-ui 的 `OTPInput`（带字形弹入、焦点环滑动等动效），
+`InputOTPGroup` / `InputOTPSlot` 包的是无效态桥接（见[无效态](#无效态)），
+`InputOTPSeparator` 由封装层自己渲染：一个 animate-ui 的动画 `Minus`，带 `role="separator"`，
+悬停整行时播放。它也负责一次 `cn` 合并。
 
 原因是 vendored 那份把自己的 `className` 写在 props 展开的**前面**：
 

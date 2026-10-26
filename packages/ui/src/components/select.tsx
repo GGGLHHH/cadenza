@@ -3,9 +3,10 @@
 import type { Select as SelectPrimitive } from '@base-ui/react/select'
 import type { ComponentProps, ReactElement, ReactNode, RefObject } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
+import type { SelectTrigger as SelectTriggerPrimitive } from '#primitives/select'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { Select as AnimatedSelect } from '@animate-ui/react/primitives/base-ui/select'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconCheck, IconX } from '@tabler/icons-react'
 import { createContext, use, useMemo, useRef } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
@@ -14,11 +15,13 @@ import { cn, dataAttr } from '#lib/utils'
 import {
   SelectGroup,
   SelectLabel,
-  SelectScrollDownButton,
-  SelectScrollUpButton,
   SelectSeparator,
-  SelectTrigger as SelectTriggerPrimitive,
 } from '#primitives/select'
+import { ChevronDownIcon } from '../icons/animate-ui/chevron-down'
+import { ChevronUpIcon } from '../icons/animate-ui/chevron-up'
+import { ChevronUpDownIcon } from '../icons/animate-ui/chevron-up-down'
+import { XIcon } from '../icons/animate-ui/x'
+import { IndicatorCheck } from '../icons/indicator-check'
 import { Spinner } from './spinner'
 
 /**
@@ -420,11 +423,11 @@ export function SelectPopup({
           className={cn(POPUP_CLASSNAME, className)}
           {...props}
         >
-          <SelectScrollUpButton />
+          <SelectScrollArrow direction="up" />
           <AnimatedSelect.List>
             {hasGroup ? children : <SelectGroup>{children}</SelectGroup>}
           </AnimatedSelect.List>
-          <SelectScrollDownButton />
+          <SelectScrollArrow direction="down" />
         </AnimatedSelect.Popup>
       </AnimatedSelect.Positioner>
     </AnimatedSelect.Portal>
@@ -455,7 +458,7 @@ export function SelectTrigger({ children, className, ref, ...props }: SelectTrig
   const pendingVisible = pending === true
   const clearVisible = clearProps !== undefined && filled && !disabled && !readOnly && !pendingVisible
   const trigger = (
-    <SelectTriggerPrimitive
+    <SelectTriggerPart
       className={cn(
         // One boolean per occupant of the chevron's spot: the same flag that
         // renders the stand-in (✕ or spinner) hides the chevron underneath.
@@ -500,7 +503,7 @@ export function SelectTrigger({ children, className, ref, ...props }: SelectTrig
           />
         </span>
       )}
-    </SelectTriggerPrimitive>
+    </SelectTriggerPart>
   )
   if (clearProps === undefined)
     return trigger
@@ -540,42 +543,95 @@ function SelectClearOverlay({
   ...props
 }: SelectClearProps & { clear: (event: Event) => void }): ReactElement {
   return (
-    <button
-      aria-label={ariaLabel}
-      data-slot="select-clear"
-      type="button"
-      className={cn(
-        `
-          absolute inset-e-2 inset-bs-1/2 flex -translate-y-1/2 items-center
-          justify-center rounded-sm text-muted-foreground outline-none
-          hover:text-foreground
-          focus-visible:ring-2 focus-visible:ring-ring/50
-        `,
-        className,
-      )}
-      {...props}
-      // After the spread, same as SearchFieldClear: a caller listening for
-      // clicks must not silently take clearing away.
-      onClick={(event) => {
-        onClick?.(event)
-        if (!event.defaultPrevented)
-          clear(event.nativeEvent)
-      }}
-      // Base UI's own clear does exactly this, with the same one-line reason
-      // (`ComboboxClear.js:96-98`, "Avoid stealing focus from the input"): a
-      // pointer press on a clear affordance must not move focus. It matters
-      // more here than upstream, because HTML forbids a button inside a button
-      // so this one is lifted out of the trigger — taking focus would land it
-      // outside the popup's own elements and the dismissal machinery would
-      // read a genuine focus-out. Cancelling the mousedown default is what
-      // keeps a press on the control's own part from reading as leaving it.
-      onMouseDown={(event) => {
-        onMouseDown?.(event)
-        event.preventDefault()
-      }}
-    >
-      {children ?? <IconX aria-hidden className="block-4 inline-4" />}
-    </button>
+    <AnimateIcon animateOnHover asChild>
+      <button
+        aria-label={ariaLabel}
+        data-slot="select-clear"
+        type="button"
+        className={cn(
+          `
+            absolute inset-e-2 inset-bs-1/2 flex -translate-y-1/2 items-center
+            justify-center rounded-sm text-muted-foreground outline-none
+            hover:text-foreground
+            focus-visible:ring-2 focus-visible:ring-ring/50
+          `,
+          className,
+        )}
+        {...props}
+        // After the spread, same as SearchFieldClear: a caller listening for
+        // clicks must not silently take clearing away.
+        onClick={(event) => {
+          onClick?.(event)
+          if (!event.defaultPrevented)
+            clear(event.nativeEvent)
+        }}
+        // Base UI's own clear does exactly this, with the same one-line reason
+        // (`ComboboxClear.js:96-98`, "Avoid stealing focus from the input"): a
+        // pointer press on a clear affordance must not move focus. It matters
+        // more here than upstream, because HTML forbids a button inside a button
+        // so this one is lifted out of the trigger — taking focus would land it
+        // outside the popup's own elements and the dismissal machinery would
+        // read a genuine focus-out. Cancelling the mousedown default is what
+        // keeps a press on the control's own part from reading as leaving it.
+        onMouseDown={(event) => {
+          onMouseDown?.(event)
+          event.preventDefault()
+        }}
+      >
+        {children ?? <XIcon aria-hidden className="block-4 inline-4" />}
+      </button>
+    </AnimateIcon>
+  )
+}
+
+// The vendored trigger's classes and composition, its chevron swapped for
+// animate-ui's animated one, which hovering the trigger plays. The vendored
+// part renders a Tabler icon and is byte-pinned.
+const TRIGGER_CLASSNAME = 'flex w-fit items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-8 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=\'size-\'])]:size-4'
+
+function SelectTriggerPart({ className, size = 'default', children, ...props }: SelectTriggerProps): ReactElement {
+  return (
+    <AnimateIcon animateOnHover asChild>
+      <AnimatedSelect.Trigger
+        className={cn(TRIGGER_CLASSNAME, className)}
+        data-size={size}
+        data-slot="select-trigger"
+        {...props}
+      >
+        {children}
+        <AnimatedSelect.Icon render={(
+          <ChevronUpDownIcon className="
+            pointer-events-none text-muted-foreground block-4 inline-4
+          "
+          />
+        )}
+        />
+      </AnimatedSelect.Trigger>
+    </AnimateIcon>
+  )
+}
+
+// The vendored scroll buttons' classes, animated chevrons; Base UI scrolls on
+// hover, and the hover plays the chevron.
+function SelectScrollArrow({ direction }: { direction: 'up' | 'down' }): ReactElement {
+  const Arrow = direction === 'up' ? AnimatedSelect.ScrollUpArrow : AnimatedSelect.ScrollDownArrow
+  return (
+    <AnimateIcon animateOnHover asChild>
+      <Arrow
+        className={cn(
+          direction === 'up' ? 'inset-bs-0' : 'inset-be-0',
+          `
+            z-10 flex cursor-default items-center justify-center bg-popover py-1
+            inline-full
+            [&_svg:not([class*='size-'])]:block-4
+            [&_svg:not([class*='size-'])]:inline-4
+          `,
+        )}
+        data-slot={`select-scroll-${direction}-button`}
+      >
+        {direction === 'up' ? <ChevronUpIcon /> : <ChevronDownIcon />}
+      </Arrow>
+    </AnimateIcon>
   )
 }
 
@@ -644,7 +700,8 @@ export function SelectItem({ children, className, ...props }: SelectItemProps): 
           />
         )}
       >
-        <IconCheck className="pointer-events-none" />
+        {/* The bare check: animate-ui's indicator animates it (see IndicatorCheck). */}
+        <IndicatorCheck className="pointer-events-none" />
       </AnimatedSelect.ItemIndicator>
     </AnimatedSelect.Item>
   )

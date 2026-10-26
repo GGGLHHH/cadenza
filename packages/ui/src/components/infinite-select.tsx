@@ -5,13 +5,13 @@ import type { ChangeEventDetails } from '#lib/change-event-details'
 import type { ButtonProps } from './button'
 import type { LoadingOverlayProps } from './loading-overlay'
 import type { ScrollAreaProps, ScrollAreaScrollbars } from './scroll-area'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { Combobox as AnimatedCombobox } from '@animate-ui/react/primitives/base-ui/combobox'
 import { Effect } from '@animate-ui/react/primitives/effects/effect'
 import { Highlight, HighlightItem } from '@animate-ui/react/primitives/effects/highlight'
 import { motionTokens } from '@animate-ui/react/utils/motion'
 import { Combobox } from '@base-ui/react/combobox'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconCheck, IconSearch } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { createContext, use, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
@@ -19,6 +19,8 @@ import { findComposedPart } from '#lib/find-part'
 import { InfiniteSelectHostContext } from '#lib/infinite-select-host'
 import { cn, dataAttr } from '#lib/utils'
 import { Separator } from '#primitives/separator'
+import { SearchIcon } from '../icons/animate-ui/search'
+import { IndicatorCheck } from '../icons/indicator-check'
 import { Button } from './button'
 import { LoadingOverlay } from './loading-overlay'
 import { ScrollArea } from './scroll-area'
@@ -702,35 +704,38 @@ export function InfiniteSelectInputGroup({
   ...props
 }: InfiniteSelectInputGroupProps): ReactElement {
   return (
-    <div
-      className={cn('flex items-center gap-2 border-be border-border px-3', className)}
-      data-slot="infinite-select-input-group"
-      {...props}
-    >
-      {children ?? (
-        <>
-          <IconSearch
-            className="shrink-0 text-muted-foreground block-4 inline-4"
-            data-slot="infinite-select-input-group-icon"
-          />
-          {/* animate-ui's, as in ComboboxInput: it swaps the text when a
+    // Hovering the search row plays the search icon (animate-ui's).
+    <AnimateIcon animateOnHover asChild>
+      <div
+        className={cn('flex items-center gap-2 border-be border-border px-3', className)}
+        data-slot="infinite-select-input-group"
+        {...props}
+      >
+        {children ?? (
+          <>
+            <SearchIcon
+              className="shrink-0 text-muted-foreground block-4 inline-4"
+              data-slot="infinite-select-input-group-icon"
+            />
+            {/* animate-ui's, as in ComboboxInput: it swaps the text when a
               pick rewrites it and tells the popup the pick did so. */}
-          <AnimatedCombobox.Input
-            aria-label={placeholder ?? 'Search'}
-            autoFocus={autoFocus}
-            className="
-              flex-1 bg-transparent py-2 text-sm/5 text-popover-foreground
-              outline-none min-inline-0
-              placeholder:text-muted-foreground
-              [&::-webkit-search-cancel-button]:appearance-none
-            "
-            data-slot="infinite-select-input"
-            placeholder={placeholder}
-            type="search"
-          />
-        </>
-      )}
-    </div>
+            <AnimatedCombobox.Input
+              aria-label={placeholder ?? 'Search'}
+              autoFocus={autoFocus}
+              className="
+                flex-1 bg-transparent py-2 text-sm/5 text-popover-foreground
+                outline-none min-inline-0
+                placeholder:text-muted-foreground
+                [&::-webkit-search-cancel-button]:appearance-none
+              "
+              data-slot="infinite-select-input"
+              placeholder={placeholder}
+              type="search"
+            />
+          </>
+        )}
+      </div>
+    </AnimateIcon>
   )
 }
 
@@ -966,7 +971,7 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
                       <span className="flex" />
                     )}
                     >
-                      <IconCheck className="block-3 inline-3" />
+                      <IndicatorCheck className="block-3 inline-3" />
                     </AnimatedCombobox.ItemIndicator>
                   </span>
                 )}
@@ -980,7 +985,7 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
                       />
                     )}
                   >
-                    <IconCheck className="block-4 inline-4" />
+                    <IndicatorCheck className="block-4 inline-4" />
                   </AnimatedCombobox.ItemIndicator>
                 )}
               </>

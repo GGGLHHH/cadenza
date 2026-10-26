@@ -1,12 +1,13 @@
 import type { ComponentProps, ReactElement } from 'react'
 import type { InputOTP as InputOTPPrimitive } from '#primitives/input-otp'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { OTPInput } from '@animate-ui/react/primitives/input-otp'
 import { cn } from '#lib/utils'
 import {
   InputOTPGroup as InputOTPGroupPrimitive,
-  InputOTPSeparator as InputOTPSeparatorPrimitive,
   InputOTPSlot as InputOTPSlotPrimitive,
 } from '#primitives/input-otp'
+import { MinusIcon } from '../icons/animate-ui/minus'
 
 /**
  * `render` is dropped from the public surface. The `input-otp` package uses that
@@ -19,7 +20,7 @@ import {
 export type InputOTPProps = Omit<ComponentProps<typeof InputOTPPrimitive>, 'render'>
 export type InputOTPGroupProps = ComponentProps<typeof InputOTPGroupPrimitive>
 export type InputOTPSlotProps = ComponentProps<typeof InputOTPSlotPrimitive>
-export type InputOTPSeparatorProps = ComponentProps<typeof InputOTPSeparatorPrimitive>
+export type InputOTPSeparatorProps = ComponentProps<'div'>
 
 /**
  * The published InputOTP — a one-time-code field drawn as separate boxes.
@@ -71,23 +72,27 @@ export type InputOTPSeparatorProps = ComponentProps<typeof InputOTPSeparatorPrim
  */
 export function InputOTP({ className, containerClassName, ...props }: InputOTPProps): ReactElement {
   return (
-    <OTPInput
-      data-slot="input-otp"
-      containerClassName={cn(
+    // Hovering the row plays the separators' dash (animate-ui's icon): the
+    // trigger lands on input-otp's one real <input>, stretched over the boxes.
+    <AnimateIcon animateOnHover asChild>
+      <OTPInput
+        data-slot="input-otp"
+        containerClassName={cn(
         // A marker, not a utility: the `in-[.cn-input-otp…]` variants below
         // key off it, as they did off the vendored root.
         // eslint-disable-next-line better-tailwindcss/no-unknown-classes
-        'cn-input-otp',
-        `
-          flex items-center
-          has-disabled:opacity-50
-        `,
-        containerClassName,
-      )}
-      spellCheck={false}
-      className={cn('disabled:cursor-not-allowed', className)}
-      {...props as ComponentProps<typeof OTPInput>}
-    />
+          'cn-input-otp',
+          `
+            flex items-center
+            has-disabled:opacity-50
+          `,
+          containerClassName,
+        )}
+        spellCheck={false}
+        className={cn('disabled:cursor-not-allowed', className)}
+        {...props as ComponentProps<typeof OTPInput>}
+      />
+    </AnimateIcon>
   )
 }
 
@@ -147,7 +152,10 @@ export function InputOTPSeparator({
   ...props
 }: InputOTPSeparatorProps): ReactElement {
   return (
-    <InputOTPSeparatorPrimitive
+    // The vendored separator's markup, drawn here: it renders a Tabler dash and
+    // is byte-pinned; this one is animate-ui's animated `Minus`.
+    <div
+      data-slot="input-otp-separator"
       className={cn(
         // Physical `size-4` on purpose, and copied from the vendored file
         // verbatim: tailwind-merge treats `size-*` and `block-*`/`inline-*` as
@@ -163,7 +171,10 @@ export function InputOTPSeparator({
         `,
         className,
       )}
+      role="separator"
       {...props}
-    />
+    >
+      <MinusIcon />
+    </div>
   )
 }

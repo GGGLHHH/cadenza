@@ -1,15 +1,16 @@
 ---
 title: Spinner
-description: A spinning loading indicator — a semantic svg with role="status", size and colour all through className
+description: A loading indicator — animate-ui's animated Loader, a semantic svg with role="status", size and colour all through className
 ---
 
 <ComponentPreview name="spinner/basic" />
 
-A spinning `IconLoader` (`animate-spin`) with `role="status"`. Underneath is a
-plain svg, not a Base UI part — no state at all, `className` only takes a
-string, and the remaining native svg attributes (`ref` included) are passed
-through as-is. Size defaults to `size-4`, colour inherits the text colour, and
-both change from `className`.
+animate-ui's animated `Loader` — eight spokes dimming in turn, looping (from
+the [animated icons](/en/docs/components/icons)) — with `role="status"`.
+Underneath is a plain svg, not a Base UI part — no state at all, `className`
+only takes a string, and the remaining native svg attributes (`ref` included)
+are passed through as-is. Size defaults to `block-4 inline-4`, colour inherits
+the text colour, and both change from `className`.
 
 It is also the one moving part of loading feedback across the library:
 [Button](/en/docs/components/button)'s `pending`,
@@ -35,11 +36,11 @@ fixed size, `block-[1em] inline-[1em]` makes it track the local font size
 (Button's pending uses the latter). The three tiers in the hero above
 demonstrate exactly this.
 
-Why not just another `size-*`: `size-4` is the class baked into the component,
-and utilities of the same family share specificity — the winner is whichever
-comes later in the output, which is not safe; the logical utilities
-(`block-*` / `inline-*`) sort after the physical `size-*` in the generated
-stylesheet, so the override lands reliably.
+Why not `size-*`: the size baked into the component is `block-4 inline-4`,
+which logical utilities of the same family replace outright when the classes
+are merged; `size-*` is another family, so both stay and the winner is
+whichever comes later in the output — and the logical ones sort after the
+physical `size-*`, so `size-*` loses.
 
 Colour works the same way through text-colour classes in `className`
 (`text-primary`…) — omitted, it inherits the local text colour.
@@ -101,9 +102,9 @@ the two words correspond, they do not alias. When choosing a component, first
 know which side you are on.
 
 **There is no prop opening for swapping the icon**: the icon is hard-coded as
-`IconLoader`, which lives in the vendored shadcn source (`src/primitives` is
-byte-for-byte verified; no edits go in there). For another icon, drop in your
-own svg directly — the consumption points above all take `children`
+animate-ui's `Loader`. For another icon, drop in your own svg, or any of the
+[animated icons](/en/docs/components/icons) with `animate loop` — the
+consumption points above all take `children`
 (`LoadingOverlay`'s children, the loading slots of `DataTable` and
 `InfiniteSelect`) and never demand the concrete `Spinner` type.
 

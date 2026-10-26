@@ -1,8 +1,8 @@
 'use client'
 
 import type { ComponentProps, ReactElement } from 'react'
+import { AnimateIcon } from '@animate-ui/react/icons'
 import { Combobox as ComboboxPrimitive } from '@animate-ui/react/primitives/base-ui/combobox'
-import { IconCheck, IconChevronDown, IconX } from '@tabler/icons-react'
 import { cn, dataAttr } from '#lib/utils'
 // The vendored buttons, not the published ones, for the arrow, the clear
 // button and a chip's remove: animate-ui's Combobox renders those parts
@@ -10,6 +10,9 @@ import { cn, dataAttr } from '#lib/utils'
 // the published buttons would add one animate-ui's combobox does not have.
 import { Button as ButtonPrimitive } from '#primitives/button'
 import { InputGroupButton as InputGroupButtonPrimitive } from '#primitives/input-group'
+import { ChevronDownIcon } from '../icons/animate-ui/chevron-down'
+import { XIcon } from '../icons/animate-ui/x'
+import { IndicatorCheck } from '../icons/indicator-check'
 import { InputGroup, InputGroupAddon, InputGroupInput } from './input-group'
 
 export type ComboboxProps<Value, Multiple extends boolean | undefined = false>
@@ -121,21 +124,24 @@ export function ComboboxTrigger({
   ...props
 }: ComboboxTriggerProps): ReactElement {
   return (
-    <ComboboxPrimitive.Trigger
-      aria-label="Open list"
-      className={cn(`
-        [&_svg:not([class*='size-'])]:block-4
-        [&_svg:not([class*='size-'])]:inline-4
-      `, className)}
-      data-slot="combobox-trigger"
-      {...props}
-    >
-      {children}
-      <IconChevronDown className="
-        pointer-events-none text-muted-foreground block-4 inline-4
-      "
-      />
-    </ComboboxPrimitive.Trigger>
+    // Hovering the arrow plays its animate-ui icon.
+    <AnimateIcon animateOnHover asChild>
+      <ComboboxPrimitive.Trigger
+        aria-label="Open list"
+        className={cn(`
+          [&_svg:not([class*='size-'])]:block-4
+          [&_svg:not([class*='size-'])]:inline-4
+        `, className)}
+        data-slot="combobox-trigger"
+        {...props}
+      >
+        {children}
+        <ChevronDownIcon className="
+          pointer-events-none text-muted-foreground block-4 inline-4
+        "
+        />
+      </ComboboxPrimitive.Trigger>
+    </AnimateIcon>
   )
 }
 
@@ -149,15 +155,17 @@ export function ComboboxTrigger({
  */
 export function ComboboxClear({ className, ...props }: ComboboxClearProps): ReactElement {
   return (
-    <ComboboxPrimitive.Clear
-      aria-label="Clear"
-      className={className}
-      data-slot="combobox-clear"
-      render={<InputGroupButtonPrimitive size="icon-xs" variant="ghost" />}
-      {...props}
-    >
-      <IconX className="pointer-events-none" />
-    </ComboboxPrimitive.Clear>
+    <AnimateIcon animateOnHover asChild>
+      <ComboboxPrimitive.Clear
+        aria-label="Clear"
+        className={className}
+        data-slot="combobox-clear"
+        render={<InputGroupButtonPrimitive size="icon-xs" variant="ghost" />}
+        {...props}
+      >
+        <XIcon className="pointer-events-none" />
+      </ComboboxPrimitive.Clear>
+    </AnimateIcon>
   )
 }
 
@@ -341,7 +349,8 @@ export function ComboboxItem({ children, className, ...props }: ComboboxItemProp
           />
         )}
       >
-        <IconCheck className="pointer-events-none" />
+        {/* The bare check: animate-ui's indicator animates it (see IndicatorCheck). */}
+        <IndicatorCheck className="pointer-events-none" />
       </ComboboxPrimitive.ItemIndicator>
     </ComboboxPrimitive.Item>
   )
@@ -455,16 +464,18 @@ export function ComboboxChip({
     >
       {children}
       {removable && (
-        <ComboboxPrimitive.ChipRemove
-          className="
-            -ms-1 opacity-50
-            hover:opacity-100
-          "
-          data-slot="combobox-chip-remove"
-          render={<ButtonPrimitive size="icon-xs" variant="ghost" />}
-        >
-          <IconX className="pointer-events-none" />
-        </ComboboxPrimitive.ChipRemove>
+        <AnimateIcon animateOnHover asChild>
+          <ComboboxPrimitive.ChipRemove
+            className="
+              -ms-1 opacity-50
+              hover:opacity-100
+            "
+            data-slot="combobox-chip-remove"
+            render={<ButtonPrimitive size="icon-xs" variant="ghost" />}
+          >
+            <XIcon className="pointer-events-none" />
+          </ComboboxPrimitive.ChipRemove>
+        </AnimateIcon>
       )}
     </ComboboxPrimitive.Chip>
   )

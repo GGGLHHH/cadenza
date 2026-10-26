@@ -63,6 +63,9 @@ await writeFile(join(iconsDir, 'index.ts'), [
   '// the trigger and the base re-exported below come from its npm package.',
   'export { AnimateIcon, type AnimateIconProps, type IconProps, IconWrapper, type IconWrapperProps } from \'@animate-ui/react/icons\'',
   ...exportLines.map(([, line]) => line),
+  '// Ours, not pulled: Tabler shapes on animate-ui\'s stroke draw, for the icons',
+  '// the set lacks.',
+  'export * from \'./drawn\'',
   '',
 ].join('\n'))
 await writeFile(join(vendorDir, 'manifest.json'), `${JSON.stringify(Object.fromEntries(Object.entries(manifest).sort()), null, 2)}\n`)

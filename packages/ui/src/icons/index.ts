@@ -394,3 +394,6 @@ export { X, X as XIcon, type XProps, type XProps as XIconProps } from './animate
 export { Zap, Zap as ZapIcon, type ZapProps, type ZapProps as ZapIconProps } from './animate-ui/zap'
 export { ZoomIn, ZoomIn as ZoomInIcon, type ZoomInProps, type ZoomInProps as ZoomInIconProps } from './animate-ui/zoom-in'
 export { ZoomOut, ZoomOut as ZoomOutIcon, type ZoomOutProps, type ZoomOutProps as ZoomOutIconProps } from './animate-ui/zoom-out'
+// Ours, not pulled: Tabler shapes on animate-ui's stroke draw, for the icons
+// the set lacks.
+export * from './drawn'

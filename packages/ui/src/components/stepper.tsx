@@ -3,10 +3,10 @@
 import type { ComponentProps, CSSProperties, ReactElement } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconCheck } from '@tabler/icons-react'
 import { createContext, use, useCallback, useEffect, useMemo, useRef } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { cn, dataAttr } from '#lib/utils'
+import { CheckIcon } from '../icons/animate-ui/check'
 import { Spinner } from './spinner'
 
 /**
@@ -341,7 +341,9 @@ export function StepperIndicator({ children, className, ...props }: StepperIndic
       >
         {children ?? item.step}
       </span>
-      <IconCheck
+      {/* animate-ui's check plays once as the step completes, and stays drawn. */}
+      <CheckIcon
+        animate={item.completed}
         aria-hidden
         className={`
           absolute scale-0 transition-transform
