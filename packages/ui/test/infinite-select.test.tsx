@@ -250,7 +250,8 @@ describe('infiniteSelect selection', () => {
   // never trip — so what is testable here is which tail element is present, in
   // both render paths. The trigger distance is browser-verified.
   it.each([true, false])('the tail row switches from load-more to end-of-list (virtualized: %s)', (virtualized) => {
-    const many = Array.from({ length: 1000 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
+    // Enough rows to overflow the list either way; the count is not under test.
+    const many = Array.from({ length: 100 }, (_, i) => ({ id: `i${i}`, label: `Item ${i}` }))
     const loadMore = '[data-slot="infinite-select-load-more"]'
     const noMore = '[data-slot="infinite-select-no-more"]'
     const { container, rerender } = render(
@@ -269,6 +270,7 @@ describe('infiniteSelect selection', () => {
         hasNextPage
         isFetchingNextPage
         items={many}
+        virtualized={virtualized}
         onLoadMore={vi.fn()}
       >
         <InfiniteSelectList />
@@ -287,6 +289,7 @@ describe('infiniteSelect selection', () => {
         hasNextPage
         isFetchingNextPage
         items={many}
+        virtualized={virtualized}
         onLoadMore={vi.fn()}
       >
         <InfiniteSelectList />
@@ -295,7 +298,7 @@ describe('infiniteSelect selection', () => {
     expect(container.querySelector(`${loadMore} [data-slot="spinner"]`)).not.toBeNull()
 
     rerender(
-      <InfiniteSelect getOption={getOption} items={many} onLoadMore={vi.fn()}>
+      <InfiniteSelect getOption={getOption} items={many} virtualized={virtualized} onLoadMore={vi.fn()}>
         <InfiniteSelectList />
       </InfiniteSelect>,
     )
