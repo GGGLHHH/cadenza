@@ -5,7 +5,7 @@ import type { ComponentProps, ReactElement, ReactNode, RefObject } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
 import { Select as AnimatedSelect } from '@animate-ui/react/primitives/base-ui/select'
 import { useControllableState } from '@gedatou/cadenza-utils'
-import { IconX } from '@tabler/icons-react'
+import { IconCheck, IconX } from '@tabler/icons-react'
 import { createContext, use, useMemo, useRef } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { findComposedPart } from '#lib/find-part'
@@ -13,7 +13,6 @@ import { isOwnLabelPress, LABEL_PRESS_REASONS } from '#lib/own-label-press'
 import { cn, dataAttr } from '#lib/utils'
 import {
   SelectGroup,
-  SelectItem,
   SelectLabel,
   SelectScrollDownButton,
   SelectScrollUpButton,
@@ -164,7 +163,7 @@ export type SelectProps<Value = string, Multiple extends boolean | undefined = f
 export type SelectPopupProps = AnimatedSelect.Popup.Props
   & Pick<AnimatedSelect.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset' | 'alignItemWithTrigger'>
 export type SelectGroupProps = ComponentProps<typeof SelectGroup>
-export type SelectItemProps = ComponentProps<typeof SelectItem>
+export type SelectItemProps = SelectPrimitive.Item.Props
 export type SelectLabelProps = ComponentProps<typeof SelectLabel>
 export type SelectSeparatorProps = ComponentProps<typeof SelectSeparator>
 export type SelectTriggerProps = ComponentProps<typeof SelectTriggerPrimitive>
@@ -603,9 +602,57 @@ export function SelectEmpty({ className, ...props }: SelectEmptyProps): ReactEle
   )
 }
 
+/**
+ * One option. The vendored item's composition and classes on animate-ui's
+ * parts — the vendored one is Base UI's own `Item`, and animate-ui's row motion
+ * lives on its parts: the highlight that glides between rows (its `Item`), the
+ * check that draws in, and the popup holding open until it has (its
+ * `ItemIndicator`). Highlight keys off `data-highlighted`, as in
+ * `ComboboxItem`, rather than the vendored `focus:`.
+ */
+export function SelectItem({ children, className, ...props }: SelectItemProps): ReactElement {
+  return (
+    <AnimatedSelect.Item
+      className={cn(
+        `
+          relative flex cursor-default items-center gap-1.5 rounded-md py-1
+          ps-1.5 pe-8 text-sm outline-hidden select-none inline-full
+          data-highlighted:bg-accent data-highlighted:text-accent-foreground
+          not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground
+          data-disabled:pointer-events-none data-disabled:opacity-50
+          [&_svg]:pointer-events-none [&_svg]:shrink-0
+          [&_svg:not([class*='size-'])]:block-4
+          [&_svg:not([class*='size-'])]:inline-4
+          *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2
+        `,
+        className,
+      )}
+      data-slot="select-item"
+      {...props}
+    >
+      <AnimatedSelect.ItemText className="
+        flex flex-1 shrink-0 gap-2 whitespace-nowrap
+      "
+      >
+        {children}
+      </AnimatedSelect.ItemText>
+      <AnimatedSelect.ItemIndicator
+        render={(
+          <span className="
+            pointer-events-none absolute inset-e-2 flex items-center
+            justify-center block-4 inline-4
+          "
+          />
+        )}
+      >
+        <IconCheck className="pointer-events-none" />
+      </AnimatedSelect.ItemIndicator>
+    </AnimatedSelect.Item>
+  )
+}
+
 export {
   SelectGroup,
-  SelectItem,
   SelectLabel,
   SelectSeparator,
   SelectValue,
