@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactElement } from 'react'
+import { ThemeToggler } from '@animate-ui/react/primitives/effects/theme-toggler'
 import { AnimateIcon, MoonIcon, SunIcon } from '@gedatou/cadenza-ui/icons'
 import { useTheme } from 'next-themes'
 import { useParams } from 'next/navigation'
@@ -22,21 +23,31 @@ export function ModeSwitcher(): ReactElement | null {
   if (forcedTheme !== undefined)
     return null
 
+  // 站点只在 light / dark 之间切换(theme-provider 没开 system),
+  // 把 next-themes 可能给的 undefined 规整成两者之一
+  const resolved = resolvedTheme === 'light' ? 'light' : 'dark'
+
+  // animate-ui 的 ThemeToggler:用 View Transition 把新主题从左往右擦过来;
+  // 减少动态效果时直接切换
   return (
-    <AnimateIcon animateOnHover asChild>
-      <button
-        type="button"
-        className="
-          inline-flex items-center justify-center rounded-md text-foreground
-          transition-colors block-8 inline-8
-          hover:bg-muted
-          [&_svg]:block-4.5 [&_svg]:inline-4.5
-        "
-        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-      >
-        <span className="sr-only">{getDictionary(lang).themeToggle}</span>
-        {mounted && (resolvedTheme === 'dark' ? <MoonIcon /> : <SunIcon />)}
-      </button>
-    </AnimateIcon>
+    <ThemeToggler resolvedTheme={resolved} setTheme={setTheme} theme={resolved}>
+      {({ resolved: shown, toggleTheme }) => (
+        <AnimateIcon animateOnHover asChild>
+          <button
+            type="button"
+            className="
+              inline-flex items-center justify-center rounded-md text-foreground
+              transition-colors block-8 inline-8
+              hover:bg-muted
+              [&_svg]:block-4.5 [&_svg]:inline-4.5
+            "
+            onClick={() => void toggleTheme(shown === 'dark' ? 'light' : 'dark')}
+          >
+            <span className="sr-only">{getDictionary(lang).themeToggle}</span>
+            {mounted && (shown === 'dark' ? <MoonIcon /> : <SunIcon />)}
+          </button>
+        </AnimateIcon>
+      )}
+    </ThemeToggler>
   )
 }

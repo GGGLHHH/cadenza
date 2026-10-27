@@ -1,12 +1,17 @@
 'use client'
 
 import type { ReactElement } from 'react'
+import { CopyButton as AnimatedCopyButton, CopyButtonIcon } from '@animate-ui/react/primitives/buttons/copy'
 import { AnimateIcon, CheckIcon, CopyIcon } from '@gedatou/cadenza-ui/icons'
 import { useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
 import { getDictionary } from '@/lib/dictionary'
 import { cn } from '@/lib/utils'
 
+/**
+ * animate-ui's copy button: it writes the clipboard, holds `data-copied` for
+ * two seconds and swaps the icons with its own transition. It renders
+ * `data-slot="copy-button"`, which the preview card's code panel keys off.
+ */
 export function CopyButton({
   value,
   className,
@@ -15,20 +20,12 @@ export function CopyButton({
   className?: string
 }): ReactElement {
   const { lang } = useParams<{ lang: string }>()
-  const [hasCopied, setHasCopied] = useState(false)
-
-  useEffect(() => {
-    if (!hasCopied)
-      return
-    const timer = setTimeout(setHasCopied, 2000, false)
-    return () => clearTimeout(timer)
-  }, [hasCopied])
 
   return (
     <AnimateIcon animateOnHover asChild>
-      <button
-        type="button"
-        data-slot="copy-button"
+      <AnimatedCopyButton
+        content={value}
+        delay={2000}
         className={cn(
           `
             absolute inset-e-2 inset-bs-3 z-10 inline-flex items-center
@@ -39,13 +36,10 @@ export function CopyButton({
           `,
           className,
         )}
-        onClick={() => {
-          void navigator.clipboard.writeText(value).then(() => setHasCopied(true))
-        }}
       >
         <span className="sr-only">{getDictionary(lang).copy}</span>
-        {hasCopied ? <CheckIcon /> : <CopyIcon />}
-      </button>
+        <CopyButtonIcon copiedIcon={<CheckIcon />} icon={<CopyIcon />} />
+      </AnimatedCopyButton>
     </AnimateIcon>
   )
 }
