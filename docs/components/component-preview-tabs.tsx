@@ -64,7 +64,7 @@ export function ComponentPreviewTabs({
         className="
           relative overflow-hidden
           **:data-rehype-pretty-code-figure:m-0!
-          **:data-rehype-pretty-code-figure:rounded-t-none
+          **:data-rehype-pretty-code-figure:rounded-none
           **:data-rehype-pretty-code-figure:border-bs
           **:data-[slot=copy-button]:inset-e-4 **:data-[slot=copy-button]:hidden
           data-[code-visible=true]:**:data-[slot=copy-button]:flex
