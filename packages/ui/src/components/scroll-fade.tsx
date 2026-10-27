@@ -47,15 +47,14 @@ export function ScrollFade({
   transition,
   ...props
 }: ScrollFadeProps): ReactElement {
-  const fadeRef = useRef<HTMLElement>(null)
+  const fadeRef = useRef<HTMLDivElement>(null)
   useScrollFade(fadeRef, { blur, orientation, shrink, size, transition })
+  // Props rather than `state`, so a caller's `data-slot` (DialogBody's) wins.
+  const own = { 'data-orientation': orientation, 'data-slot': 'scroll-fade', 'style': OVERFLOW[orientation] }
   return useRender({
     defaultTagName: 'div',
-    props: mergeProps<'div'>(
-      { 'data-orientation': orientation, 'data-slot': 'scroll-fade', 'style': OVERFLOW[orientation] },
-      props,
-    ),
-    ref: [fadeRef, ref],
+    props: mergeProps<'div'>(own, props),
+    ref: [fadeRef, ref ?? null],
     render,
   })
 }

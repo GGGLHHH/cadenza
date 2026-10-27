@@ -797,7 +797,7 @@ const NO_ARRIVALS: ReadonlyMap<string, number> = new Map()
  */
 function Arrival({ delay, children }: { delay: number | undefined, children: ReactElement }): ReactElement {
   const [arriving] = useState(delay !== undefined)
-  const ref = useRef<HTMLElement>(null)
+  const ref = useRef<HTMLDivElement>(null)
   return arriving
     ? (
         <Effect
