@@ -6,13 +6,19 @@ description: An offset pagination bar — page / limit independently controlled,
 <ComponentPreview name="data-pagination/basic" align="stretch" />
 
 An offset pagination bar: a summary on the left; on the right, a rows-per-page
-selector + a page indicator + four navigation buttons.
-The component **produces no visible copy of its own** — the page indicator
-defaults to the language-neutral `3 / 13`, while the summary and the "per page"
-label are injected from outside, so i18n naturally stays in the application
-layer. aria-labels have English fallbacks (the four navigation buttons, plus
-the rows-per-page selector's `'Rows per page'` when `rowsPerPageLabel` is not
-passed); pass translations from the application layer to override.
+selector + previous / page numbers / next. A page number jumps straight to its
+page: the first and last pages always show, the current page keeps one
+neighbour on each side, and the rest fold into ellipses; past 7 pages it is
+always 7 slots, so the row keeps its width and the buttons stay put as the page
+changes. The current page's outline is animate-ui's pagination surface, which
+slides from the old page to the new one.
+
+The component **produces no visible copy of its own** — the pages are numbers,
+while the summary and the "per page" label are injected from outside, so i18n
+naturally stays in the application layer. aria-labels have English fallbacks
+(the previous / next icon buttons, plus the rows-per-page selector's
+`'Rows per page'` when `rowsPerPageLabel` is not passed); pass translations
+from the application layer to override.
 
 ## Usage
 
@@ -49,9 +55,9 @@ independently of each other).
 
 ## Custom copy
 
-`pageIndicator` swaps out the default page indicator; a range can be computed
-inside `summary`; the four navigation buttons' aria-labels take translations
-from the application layer; `limitOptions={[]}` removes the rows-per-page
+`pageIndicator` adds text before the page numbers (none by default — the
+numbers already say where you are); a range can be computed inside `summary`;
+the previous / next aria-labels take translations from the application layer; `limitOptions={[]}` removes the rows-per-page
 selector (expressed by absence, not a render switch):
 
 <ComponentPreview name="data-pagination/labels" align="stretch" />
@@ -65,7 +71,7 @@ selector (expressed by absence, not a render switch):
 - **With data loaded and `page` out of range, it clamps back** to the last page
   (happens after deleting the last page's rows, or raising `limit`).
 - **When `limit` is 0 / NaN** (parsed from a URL parameter, say), the page
-  count falls back to 1 — no `1 / Infinity`, no NaN buttons.
+  count falls back to 1 — no Infinity of page numbers, no NaN buttons.
 
 Clamping takes the same callback as a click: `onPageChange` receives
 `eventDetails` with `reason: 'missing'`, and `cancel()` can reject it just the
@@ -105,8 +111,11 @@ pages, so there is no "page X of Y" to show — go through
 ## State and className
 
 The pagination bar is plain DOM structure and **puts no state attributes on
-itself** — a navigation button's unavailability is a real `disabled` (when
-`canPrevious` / `canNext` is false); style by state through that. `className`
+itself** — previous / next being unavailable is a real `disabled` (when
+`canPrevious` / `canNext` is false); style by state through that. The current
+page number carries `aria-current="page"` and gets its look from the button's
+`outline` variant: the surface copies the current page's classes, so don't
+style it with an `aria-[current=page]:` class, which the surface can't follow. `className`
 is a plain string landing only on the root element; there is no `...rest`
 passthrough, so other attributes never reach the DOM.
 
@@ -118,7 +127,10 @@ from outside:
 | `data-pagination` | the root element, where `className` lands |
 | `data-pagination-summary` | the summary on the left; without `summary` it becomes a slot-less empty placeholder div that pushes the right side to the right |
 | `data-pagination-limit` | the rows-per-page selector's trigger |
-| `data-pagination-indicator` | the page indicator |
+| `data-pagination-indicator` | the `pageIndicator` text; not rendered without it |
+| `pagination-link` | a page number button; the current one also has `aria-current="page"` |
+| `pagination-ellipsis` | a folded gap (`aria-hidden`) |
+| `pagination-indicator` | the surface animate-ui renders under the current page |
 
 ## Keyboard interactions
 
@@ -126,8 +138,8 @@ The controls are all native semantics:
 
 | Key | Effect |
 | --- | --- |
-| `Tab` | lands in turn on the rows-per-page selector and the four navigation buttons; unavailable buttons are genuinely `disabled` and simply skipped |
-| `Enter` / `Space` | triggers the focused navigation button |
+| `Tab` | lands in turn on the rows-per-page selector, previous, each page number, and next; unavailable buttons are genuinely `disabled` and simply skipped |
+| `Enter` / `Space` | triggers the focused button; on a page number it jumps there, on the current page nothing happens |
 | `Arrow keys` / `Enter` / `Esc` | the rows-per-page control is this library's [Select](/en/docs/components/select#keyboard-interactions): arrow keys select, Enter confirms, Esc closes |
 
 ## Props
@@ -143,8 +155,8 @@ callbacks → behaviour switches → appearance → `className`**.
 | `limitOptions` | `number[]` | `[10, 20, 50, 100]` | rows-per-page options; `[]` removes the whole selector from rendering |
 | `summary` | `(state) => ReactNode` | — | the summary on the left; omitted, the slot folds away |
 | `rowsPerPageLabel` | `string` | — | the visible label before the selector (not rendered when omitted), doubling as the selector's aria-label; omitted, the aria-label falls back to the English `'Rows per page'`. A `string`, not a `ReactNode` — rich content goes through composition channels, and a "per page" label is not that |
-| `pageIndicator` | `(state) => ReactNode` | `page / totalPages` | the page indicator |
-| `firstPageLabel` / `previousPageLabel` / `nextPageLabel` / `lastPageLabel` | `string` | `'First page'` etc. | aria-labels of the four icon buttons; pass translations from the application layer |
+| `pageIndicator` | `(state) => ReactNode` | — | text before the page numbers (e.g. "Page 3 of 13"); not rendered when omitted |
+| `previousPageLabel` / `nextPageLabel` | `string` | `'Previous page'` / `'Next page'` | aria-labels of the two icon buttons; pass translations from the application layer |
 | `className` | `string` | — | root element class |
 
 `state` is the exported `DataPaginationState`: `{ page, limit, total, totalPages }`.

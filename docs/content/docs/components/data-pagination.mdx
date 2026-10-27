@@ -5,11 +5,14 @@ description: offset 分页条 —— page / limit 独立受控，零文案设计
 
 <ComponentPreview name="data-pagination/basic" align="stretch" />
 
-offset 分页条：左侧摘要、右侧「每页条数选择器 + 页码指示 + 四个导航按钮」。
-组件自己**不产出任何可见文案** —— 页码指示默认是语言中立的 `3 / 13`，摘要、
-「每页」标签由外部注入，i18n 天然留在业务层。aria-label 有英文兜底（四个导航
-按钮，以及每页选择器在不传 `rowsPerPageLabel` 时的 `'Rows per page'`），
-从业务层传译文即可覆盖。
+offset 分页条：左侧摘要、右侧「每页条数选择器 + 上一页 / 页码 / 下一页」。
+页码点一下就跳过去：首页和末页常驻，当前页两侧各留一个邻居，其余折成省略号；
+超过 7 页时始终是 7 格，换页时整排宽度不变、按钮不挪位。当前页的外框是
+animate-ui 的分页滑块，换页时从旧页码滑到新页码。
+
+组件自己**不产出任何可见文案** —— 页码是数字，摘要、「每页」标签由外部注入，
+i18n 天然留在业务层。aria-label 有英文兜底（上一页 / 下一页两个图标按钮，以及
+每页选择器在不传 `rowsPerPageLabel` 时的 `'Rows per page'`），从业务层传译文即可覆盖。
 
 ## 使用
 
@@ -41,8 +44,8 @@ import { DataPagination } from '@gedatou/cadenza-ui'
 
 ## 自定义文案
 
-`pageIndicator` 换掉默认页码指示；`summary` 里能算出区间；四个导航按钮的
-aria-label 从业务层传译文；`limitOptions={[]}` 去掉每页条数选择器（用缺席表达，不开渲染开关）：
+`pageIndicator` 在页码前加一段文字（默认没有，数字已经说明了位置）；
+`summary` 里能算出区间；上一页 / 下一页的 aria-label 从业务层传译文；`limitOptions={[]}` 去掉每页条数选择器（用缺席表达，不开渲染开关）：
 
 <ComponentPreview name="data-pagination/labels" align="stretch" />
 
@@ -54,7 +57,7 @@ aria-label 从业务层传译文；`limitOptions={[]}` 去掉每页条数选择�
 - **数据已加载且 `page` 越界时自动钳回**最后一页（删光最后一页的行、
   调大 `limit` 后都会发生）。
 - **`limit` 为 0 / NaN**（比如从 URL 参数解析而来）时总页数按 1 兜底，
-  不会出现 `1 / Infinity` 和 NaN 按钮。
+  不会出现 Infinity 个页码和 NaN 按钮。
 
 钳位走的是和点击同一条回调：`onPageChange` 会拿到 `reason: 'missing'` 的
 `eventDetails`，`cancel()` 同样能拒绝它。
@@ -88,8 +91,10 @@ const { page, setPage, canNext } = useDataPaginationState({
 
 ## 状态与 className
 
-分页条是纯 DOM 结构，自己**不挂状态属性** —— 导航按钮的不可用是真实的
-`disabled`（`canPrevious` / `canNext` 为假时），按状态改样式就用它。`className`
+分页条是纯 DOM 结构，自己**不挂状态属性** —— 上一页 / 下一页的不可用是真实的
+`disabled`（`canPrevious` / `canNext` 为假时），按状态改样式就用它。当前页码带
+`aria-current="page"`，外观走按钮的 `outline` 变体：滑块复制的是当前页码的类名，
+所以别用 `aria-[current=page]:` 类给当前页上样式，滑块认不出来。`className`
 是普通字符串，只落在根元素；没有 `...rest` 透传，其余属性到不了 DOM。
 
 内部部件各带一个 `data-slot`，需要从外部定位时当选择器用：
@@ -99,7 +104,10 @@ const { page, setPage, canNext } = useDataPaginationState({
 | `data-pagination` | 根元素，`className` 的落点 |
 | `data-pagination-summary` | 左侧摘要；不传 `summary` 时换成一个不带 slot 的空占位 div，把右侧顶到右边 |
 | `data-pagination-limit` | 每页条数选择器的触发器 |
-| `data-pagination-indicator` | 页码指示 |
+| `data-pagination-indicator` | `pageIndicator` 的文字；不传就不渲染 |
+| `pagination-link` | 页码按钮；当前页另带 `aria-current="page"` |
+| `pagination-ellipsis` | 折叠的省略号（`aria-hidden`） |
+| `pagination-indicator` | animate-ui 渲染的滑块，在当前页码底下 |
 
 ## 键盘交互
 
@@ -107,8 +115,8 @@ const { page, setPage, canNext } = useDataPaginationState({
 
 | 按键 | 效果 |
 | --- | --- |
-| `Tab` | 依次落到每页条数选择器与四个导航按钮；不可用的按钮是真实 `disabled`，直接跳过 |
-| `Enter` / `Space` | 触发当前聚焦的导航按钮 |
+| `Tab` | 依次落到每页条数选择器、上一页、各个页码、下一页；不可用的按钮是真实 `disabled`，直接跳过 |
+| `Enter` / `Space` | 触发当前聚焦的按钮；在页码上就是跳到那一页，在当前页上什么也不发生 |
 | `方向键` / `Enter` / `Esc` | 每页条数是本库的 [Select](/docs/components/select#键盘交互)：方向键选择、Enter 确认、Esc 关闭 |
 
 ## Props
@@ -123,8 +131,8 @@ const { page, setPage, canNext } = useDataPaginationState({
 | `limitOptions` | `number[]` | `[10, 20, 50, 100]` | 每页条数选项；`[]` 整个选择器不渲染 |
 | `summary` | `(state) => ReactNode` | — | 左侧摘要；不传则该槽位收起 |
 | `rowsPerPageLabel` | `string` | — | 选择器前的可见标签（不传则不渲染），同时作为选择器的 aria-label；不传时 aria-label 兜底英文 `'Rows per page'`。是 `string` 不是 `ReactNode`——要富文本的内容走组合通道，一个「每页」标签不属于那种 |
-| `pageIndicator` | `(state) => ReactNode` | `page / totalPages` | 页码指示 |
-| `firstPageLabel` / `previousPageLabel` / `nextPageLabel` / `lastPageLabel` | `string` | `'First page'` 等 | 四个图标按钮的 aria-label，从业务层传译文 |
+| `pageIndicator` | `(state) => ReactNode` | — | 页码前的文字（如「第 3 页，共 13 页」）；不传则不渲染 |
+| `previousPageLabel` / `nextPageLabel` | `string` | `'Previous page'` / `'Next page'` | 两个图标按钮的 aria-label，从业务层传译文 |
 | `className` | `string` | — | 根元素类名 |
 
 `state` 即导出的 `DataPaginationState`：`{ page, limit, total, totalPages }`。

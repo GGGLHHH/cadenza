@@ -3,18 +3,15 @@
 import type { ReactElement, ReactNode, SetStateAction } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
 import { AnimateIcon } from '@animate-ui/react/icons'
+import { Root as PaginationRoot } from '@animate-ui/react/primitives/pagination'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { useCallback, useEffect, useRef } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { cn } from '#lib/utils'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-} from '#primitives/pagination'
+import { PaginationContent, PaginationItem } from '#primitives/pagination'
 import { ChevronLeftIcon } from '../icons/animate-ui/chevron-left'
 import { ChevronRightIcon } from '../icons/animate-ui/chevron-right'
-import { ChevronsLeftIcon, ChevronsRightIcon } from '../icons/drawn'
+import { EllipsisIcon } from '../icons/animate-ui/ellipsis'
 import { Button } from './button'
 import {
   Select,
@@ -29,9 +26,8 @@ import {
  * Offset pagination bar: summary on the start side, controls on the end side.
  * `page` and `limit` are independently controllable (controlled via
  * `page`/`limit`, uncontrolled via `defaultPage`/`defaultLimit`). The bar
- * renders no words of its own — the page indicator defaults to the
- * language-neutral `page / totalPages`, everything else comes in through
- * props — so i18n stays in the caller's layer.
+ * renders no words of its own — the pages are numbers, everything else comes
+ * in through props — so i18n stays in the caller's layer.
  */
 export interface DataPaginationState {
   page: number
@@ -160,18 +156,37 @@ export interface DataPaginationProps extends DataPaginationStateOptions {
    * is not that. Omitted: no text renders and the name falls back to English.
    */
   rowsPerPageLabel?: string
-  /** Page position between the nav buttons. Defaults to `page / totalPages`. */
+  /** Text before the page buttons (e.g. "第 3 页,共 13 页"). Omitted: none — the numbers say it. */
   pageIndicator?: (state: DataPaginationState) => ReactNode
   // Accessible names for the icon-only controls. English defaults; pass
   // translations from the business layer.
-  firstPageLabel?: string
   previousPageLabel?: string
   nextPageLabel?: string
-  lastPageLabel?: string
   className?: string
 }
 
 const DEFAULT_LIMIT_OPTIONS = [10, 20, 50, 100]
+
+/**
+ * The page buttons: the first and last page always, the current one with a
+ * neighbour on each side, and an ellipsis for each gap — MUI's usePagination
+ * with one boundary and one sibling. Past 7 pages it is always 7 slots, so the
+ * row keeps its width as the page moves and the buttons stay where they are.
+ */
+function pageSlots(page: number, totalPages: number): (number | 'ellipsis')[] {
+  if (totalPages <= 7)
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  const start = Math.min(Math.max(page - 1, 3), totalPages - 4)
+  return [
+    1,
+    start > 3 ? 'ellipsis' : 2,
+    start,
+    start + 1,
+    start + 2,
+    start + 2 < totalPages - 2 ? 'ellipsis' : totalPages - 1,
+    totalPages,
+  ]
+}
 
 export function DataPagination(props: DataPaginationProps): ReactElement {
   const {
@@ -180,10 +195,8 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
     summary,
     rowsPerPageLabel,
     pageIndicator,
-    firstPageLabel = 'First page',
     previousPageLabel = 'Previous page',
     nextPageLabel = 'Next page',
-    lastPageLabel = 'Last page',
     className,
   } = props
 
@@ -247,28 +260,20 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
           </div>
         )}
 
-        <span
-          className="text-sm whitespace-nowrap tabular-nums"
-          data-slot="data-pagination-indicator"
-        >
-          {pageIndicator ? pageIndicator(state) : `${page} / ${totalPages}`}
-        </span>
+        {pageIndicator && (
+          <span
+            className="text-sm whitespace-nowrap tabular-nums"
+            data-slot="data-pagination-indicator"
+          >
+            {pageIndicator(state)}
+          </span>
+        )}
 
-        <Pagination className="mx-0 inline-auto">
-          <PaginationContent className="gap-1.5">
-            <PaginationItem>
-              <AnimateIcon animateOnHover asChild>
-                <Button
-                  aria-label={firstPageLabel}
-                  disabled={!canPrevious}
-                  onClick={event => setPage(1, createChangeEventDetails('item-press', event.nativeEvent))}
-                  size="icon"
-                  variant="outline"
-                >
-                  <ChevronsLeftIcon />
-                </Button>
-              </AnimateIcon>
-            </PaginationItem>
+        {/* animate-ui's Root: the current page's outline slides to the page
+            pressed. It finds the pages by `data-slot="pagination-link"` and
+            the current one by `aria-current="page"`. */}
+        <PaginationRoot aria-label="pagination" className="flex">
+          <PaginationContent className="gap-1">
             <PaginationItem>
               <AnimateIcon animateOnHover asChild>
                 <Button
@@ -276,12 +281,46 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
                   disabled={!canPrevious}
                   onClick={event => setPage(current => current - 1, createChangeEventDetails('item-press', event.nativeEvent))}
                   size="icon"
-                  variant="outline"
+                  variant="ghost"
                 >
                   <ChevronLeftIcon />
                 </Button>
               </AnimateIcon>
             </PaginationItem>
+            {/* Keyed by slot, not by page: the 7 buttons stay put and only
+                their numbers change, so the outline slides from where it was
+                drawn. */}
+            {pageSlots(page, totalPages).map((slot, index) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <PaginationItem key={index}>
+                {slot === 'ellipsis'
+                  ? (
+                      <span
+                        aria-hidden
+                        className="
+                          flex items-center justify-center block-8 inline-8
+                          [&>svg]:block-4 [&>svg]:inline-4
+                        "
+                        data-slot="pagination-ellipsis"
+                      >
+                        <EllipsisIcon />
+                      </span>
+                    )
+                  : (
+                      <Button
+                        aria-current={slot === page ? 'page' : undefined}
+                        className="tabular-nums"
+                        data-slot="pagination-link"
+                        // The current page again is no change (Base UI's Tabs on the active tab).
+                        onClick={event => slot !== page && setPage(slot, createChangeEventDetails('item-press', event.nativeEvent))}
+                        size="icon"
+                        variant={slot === page ? 'outline' : 'ghost'}
+                      >
+                        {slot}
+                      </Button>
+                    )}
+              </PaginationItem>
+            ))}
             <PaginationItem>
               <AnimateIcon animateOnHover asChild>
                 <Button
@@ -289,27 +328,14 @@ export function DataPagination(props: DataPaginationProps): ReactElement {
                   disabled={!canNext}
                   onClick={event => setPage(current => current + 1, createChangeEventDetails('item-press', event.nativeEvent))}
                   size="icon"
-                  variant="outline"
+                  variant="ghost"
                 >
                   <ChevronRightIcon />
                 </Button>
               </AnimateIcon>
             </PaginationItem>
-            <PaginationItem>
-              <AnimateIcon animateOnHover asChild>
-                <Button
-                  aria-label={lastPageLabel}
-                  disabled={!canNext}
-                  onClick={event => setPage(totalPages, createChangeEventDetails('item-press', event.nativeEvent))}
-                  size="icon"
-                  variant="outline"
-                >
-                  <ChevronsRightIcon />
-                </Button>
-              </AnimateIcon>
-            </PaginationItem>
           </PaginationContent>
-        </Pagination>
+        </PaginationRoot>
       </div>
     </div>
   )

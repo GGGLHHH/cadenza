@@ -3,22 +3,53 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { DataPagination } from '../src/components/data-pagination'
 
+// The page buttons as rendered: numbers, `…` for an ellipsis, `[n]` for the current page.
+function pages(): string {
+  return [...document.querySelectorAll('[data-slot=pagination-link], [data-slot=pagination-ellipsis]')]
+    .map(slot => slot.matches('[data-slot=pagination-ellipsis]')
+      ? '…'
+      : slot.getAttribute('aria-current') === 'page' ? `[${slot.textContent}]` : slot.textContent)
+    .join(' ')
+}
+
 describe('dataPagination', () => {
-  it('renders the neutral page indicator and pages uncontrolled', async () => {
+  it('pages uncontrolled through the nav buttons', async () => {
     const onPageChange = vi.fn()
     render(<DataPagination onPageChange={onPageChange} total={100} />)
-    expect(screen.getByText('1 / 5')).not.toBeNull()
+    expect(pages()).toBe('[1] 2 3 4 5')
     await userEvent.click(screen.getByRole('button', { name: 'Next page' }))
     expect(onPageChange).toHaveBeenCalledWith(2, expect.objectContaining({ reason: 'item-press' }))
-    expect(screen.getByText('2 / 5')).not.toBeNull()
+    expect(pages()).toBe('1 [2] 3 4 5')
+  })
+
+  it('jumps straight to a pressed page, and the current one again is no change', async () => {
+    const onPageChange = vi.fn()
+    render(<DataPagination onPageChange={onPageChange} total={100} />)
+    await userEvent.click(screen.getByRole('button', { name: '4' }))
+    expect(onPageChange).toHaveBeenCalledWith(4, expect.objectContaining({ reason: 'item-press' }))
+    expect(pages()).toBe('1 2 3 [4] 5')
+    await userEvent.click(screen.getByRole('button', { name: '4' }))
+    expect(onPageChange).toHaveBeenCalledTimes(1)
+  })
+
+  // Seven slots once there are more than seven pages, so the row never
+  // changes width as the page moves.
+  it.each([
+    [1, '[1] 2 3 4 5 … 13'],
+    [4, '1 2 3 [4] 5 … 13'],
+    [5, '1 … 4 [5] 6 … 13'],
+    [9, '1 … 8 [9] 10 … 13'],
+    [10, '1 … 9 [10] 11 12 13'],
+    [13, '1 … 9 10 11 12 [13]'],
+  ])('windows 13 pages around page %i', (page, expected) => {
+    render(<DataPagination limit={10} page={page} total={130} />)
+    expect(pages()).toBe(expected)
   })
 
   it('disables backward controls on the first page and forward on the last', async () => {
     render(<DataPagination defaultPage={5} total={100} />)
     expect(screen.getByRole('button', { name: 'Next page' }).matches('[disabled], [aria-disabled=true]')).toBe(true)
-    expect(screen.getByRole('button', { name: 'Last page' }).matches('[disabled], [aria-disabled=true]')).toBe(true)
-    await userEvent.click(screen.getByRole('button', { name: 'First page' }))
-    expect(screen.getByText('1 / 5')).not.toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: '1' }))
     expect(screen.getByRole('button', { name: 'Previous page' }).matches('[disabled], [aria-disabled=true]')).toBe(true)
   })
 
@@ -27,7 +58,7 @@ describe('dataPagination', () => {
     render(<DataPagination onPageChange={onPageChange} page={3} total={100} />)
     await userEvent.click(screen.getByRole('button', { name: 'Next page' }))
     expect(onPageChange).toHaveBeenCalledWith(4, expect.objectContaining({ reason: 'item-press' }))
-    expect(screen.getByText('3 / 5')).not.toBeNull()
+    expect(pages()).toBe('1 2 [3] 4 5')
   })
 
   it('clamps an overshooting page when total shrinks, but never on total=0', () => {
@@ -46,7 +77,7 @@ describe('dataPagination', () => {
 
   it('guards against limit=0 instead of dividing into Infinity', () => {
     render(<DataPagination limit={0} total={100} />)
-    expect(screen.getByText('1 / 1')).not.toBeNull()
+    expect(pages()).toBe('[1]')
   })
 
   it('renders summary and custom page indicator from the state', () => {
