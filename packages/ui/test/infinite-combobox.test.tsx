@@ -90,14 +90,18 @@ describe('infiniteCombobox trigger and popover', () => {
   })
 
   it('passes popoverProps to the popover shell, with the wiring written after the spread', async () => {
-    render(<Harness popoverProps={{ side: 'top' }} />)
+    // `right`, not `top`: the trigger sits at jsdom's origin, so a top popup has
+    // no room and flips once a viewport exists (react-aria adds a
+    // visualViewport on import). Right has room either way, and is not the
+    // default, so it still proves the prop got through.
+    render(<Harness popoverProps={{ side: 'right' }} />)
     await userEvent.click(screen.getByRole('button', { name: '选择器' }))
     const content = await waitFor(() => {
       const element = document.querySelector('[data-slot="infinite-combobox-content"]')
       expect(element).not.toBeNull()
       return element
     })
-    expect(content?.getAttribute('data-side')).toBe('top')
+    expect(content?.getAttribute('data-side')).toBe('right')
   })
 })
 
