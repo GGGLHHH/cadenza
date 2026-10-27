@@ -797,6 +797,7 @@ const NO_ARRIVALS: ReadonlyMap<string, number> = new Map()
  */
 function Arrival({ delay, children }: { delay: number | undefined, children: ReactElement }): ReactElement {
   const [arriving] = useState(delay !== undefined)
+  const ref = useRef<HTMLElement>(null)
   return arriving
     ? (
         <Effect
@@ -804,6 +805,15 @@ function Arrival({ delay, children }: { delay: number | undefined, children: Rea
           data-slot="infinite-select-arrival"
           delay={delay}
           fade
+          // The blur settles at `blur(0px)`, which is still a filter, and a
+          // filter keeps the row in a stacking context of its own. The gliding
+          // highlight inside it (z-index -1, meant to pass under every row)
+          // would then paint over the text of the rows before it. Motion
+          // writes that final value inline after this callback runs, so the
+          // reset is an important class keyed to a mark Motion never touches.
+          className="data-arrived:filter-none!"
+          onAnimationComplete={() => ref.current?.setAttribute('data-arrived', '')}
+          ref={ref}
           slide={{ direction: 'left', offset: 8 }}
           transition={ARRIVAL_TRANSITION}
         >
@@ -922,13 +932,16 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
     const option = getOption(item)
     const isSelected = selectedIds.includes(option.id)
     const row = (
-      // Positioned, so it paints above the gliding surface.
+      // Positioned, so it paints above the gliding surface. No color
+      // transition: in a popup animate-ui lifts the row's own background the
+      // moment it lights, and a transition would turn that lift into a 150ms
+      // fade — the row's own fill showing beside the gliding one.
       <AnimatedCombobox.Item
         className={cn(
           `
             group/option relative flex cursor-default items-center gap-2
             rounded-lg px-2 py-1.5 text-sm/5 text-popover-foreground
-            transition-colors outline-none select-none
+            outline-none select-none
           `,
           inPopup && 'data-highlighted:bg-muted',
           `data-selected:not-data-highlighted:bg-muted/50`,
@@ -1038,10 +1051,14 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
             ? (
                 <div className="relative inline-full" style={{ height: virtualizer.getTotalSize() }}>
                   {glide(virtualItems.map(virtualItem => (
+                    // Placed by offset, not `transform`: a transform gives
+                    // every row a stacking context, and the popup's gliding
+                    // highlight inside a row would then paint over the text of
+                    // the rows before it.
                     <div
                       key={virtualItem.key}
                       className="absolute inset-s-0 px-1 inline-full"
-                      style={{ height: virtualItem.size, transform: `translateY(${virtualItem.start}px)` }}
+                      style={{ height: virtualItem.size, insetBlockStart: virtualItem.start }}
                     >
                       {renderOption(items[virtualItem.index], virtualItem.index)}
                     </div>

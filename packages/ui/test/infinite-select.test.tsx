@@ -168,6 +168,19 @@ describe('infiniteSelect selection', () => {
     expect(document.querySelectorAll('[data-slot="infinite-select-item"]')).toHaveLength(2)
   })
 
+  // animate-ui lifts a lit row's own background to transparent and glides a
+  // copy; a color transition on the row turns that lift into a visible fade,
+  // two highlights at once.
+  it('gives rows no color transition to fight the gliding highlight', () => {
+    render(
+      <InfiniteSelect getOption={getOption} items={items}>
+        <InfiniteSelectList />
+      </InfiniteSelect>,
+    )
+    for (const option of screen.getAllByRole('option'))
+      expect(option.className).not.toMatch(/\btransition/)
+  })
+
   it('single: reports the picked item, and re-clicking it keeps it picked', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

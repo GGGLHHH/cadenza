@@ -1005,13 +1005,15 @@ function CascaderVirtualRows({ nodes, parentPath }: { nodes: CascaderNode[], par
       {virtualizer.getVirtualItems().map(item => (
         // px-1 on the shell: the virtualized list drops its own padding
         // (p-0), absolute rows carry it instead (InfiniteSelect precedent).
+        // Placed by offset, not `transform`: a transform gives every row a
+        // stacking context, and the menu's gliding highlight inside a row would
+        // then paint over the text of the rows before it.
         <div
           key={nodes[item.index].value}
           className="
-            absolute inset-s-0 inset-bs-0 flex flex-col justify-center px-1
-            inline-full
+            absolute inset-s-0 flex flex-col justify-center px-1 inline-full
           "
-          style={{ blockSize: item.size, transform: `translateY(${item.start}px)` }}
+          style={{ blockSize: item.size, insetBlockStart: item.start }}
         >
           <CascaderRow node={nodes[item.index]} parentPath={parentPath} />
         </div>
