@@ -38,6 +38,7 @@ All packages of this repository share one version. Each section is written at re
 - `motion` 从 ^13 升到 ^14（animate-ui 的要求）。如果你的项目还在用 motion 13，就会同时装上两份 motion，你自己的 `MotionConfig`（比如 `reducedMotion`）管不到本库的组件，建议一起升到 14。
 - `@base-ui/react` 从 ^1.7 升到 ^1.9。
 - 新增 `@floating-ui/react`：新发布的 `AvatarGroup` 用到的 animate-ui tooltip 依赖它。
+- `@gedatou/cadenza-ai` 对 `@gedatou/cadenza-ui` 的 peer 要求从 `^0.8.0` 变成了 `^0.9.0`。0.x 版本里 `^` 不跨次版本，所以这两个包要一起升级。
 
 ### 🚀 Enhancements
 
