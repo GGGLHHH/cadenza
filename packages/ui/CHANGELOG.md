@@ -1,5 +1,7 @@
 # @gedatou/cadenza-ui
 
+> 0.9.0 起，changelog 在发版时由 commit 自动生成，写在仓库根目录的 [CHANGELOG.md](../../CHANGELOG.md)，四个包共用一份。这里只保留 0.3.0 及更早的手写记录。
+
 ## 0.3.0
 
 **底座从 React Aria Components 换成 [Base UI](https://base-ui.com)。** 视觉不变

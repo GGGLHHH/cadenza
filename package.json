@@ -27,6 +27,7 @@
     "@types/react-dom": "catalog:types",
     "@vitejs/plugin-react": "catalog:testing",
     "bumpp": "catalog:cli",
+    "changelogen": "catalog:cli",
     "eslint": "catalog:cli",
     "eslint-plugin-better-tailwindcss": "catalog:cli",
     "eslint-plugin-react-hooks": "catalog:cli",
