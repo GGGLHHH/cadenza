@@ -1,14 +1,14 @@
 ---
 title: ScrollArea
-description: A scroll container with overlay scrollbars — rendered outside the viewport, naturally compatible with the scroll-fade masks
+description: A scroll container with overlay scrollbars — rendered outside the viewport, naturally compatible with scroll fades
 ---
 
 <ComponentPreview name="scroll-area/basic" />
 
 A scroll container built on Base UI: what actually scrolls is the **viewport**,
 and the scrollbars render as the viewport's **siblings** (overlay-style, taking
-no layout width). This structure is its reason to exist — the library's
-scroll-fade is a mask hung on the scrolling element, and a native scrollbar
+no layout width). This structure is its reason to exist — a scroll
+fade is a mask hung on the scrolling element, and a native scrollbar
 living inside the scrolling element gets dimmed along with it by the mask,
 while a sibling scrollbar stays crisp throughout.
 
@@ -80,24 +80,34 @@ exists while the pointer is inside the area, precisely when the bar is opaque.
 
 ## Scroll fade
 
-Hang the scroll-fade utility classes on the **viewport** (`viewportClassName`,
-not the root element):
+Write `fade` and the viewport fades toward each edge that still has more to
+scroll:
 
 <ComponentPreview name="scroll-area/scroll-fade" />
 
-`scroll-fade-y` is vertical, `scroll-fade-x` horizontal, and
-`scroll-fade-inset` covers both axes with support for sticky-header /
-pinned-column offsets. The fades follow the scroll position — reach an end and
-that edge's fade disappears on its own; this step relies on
-`animation-timeline: scroll(self)`, which **only has progress when the element
-itself scrolls**: hung on the root it gets no progress and dims the sibling
-scrollbars too, right back in the native scrollbar's predicament.
-Browsers without scroll-driven animation degrade to fades always shown at both
-ends.
+The fade is animate-ui's scroll fade: each edge gets a mask, and the items
+nearing it shrink and blur a little. Reach an end and that edge settles away
+smoothly; it also eases along when the content grows or shrinks. The axes follow
+`orientation`. The mask sits on the viewport, so the sibling scrollbars never
+dim.
 
-Tune the size with `--scroll-fade-size` (or utility classes like
-`scroll-fade-8`); see the scroll-fade family in
-`@gedatou/cadenza-ui/styles.css`.
+Pass an object to `fade` to tune it: `size` is the fade's depth (px, default
+40), `shrink` how much an item scales down (default 0.03), `blur` its blur
+radius (px, default 4), and `transition` how an edge settles. With reduced
+motion on, only the mask stays; items do not scale.
+
+For a scrolling element that is not a ScrollArea, use `ScrollFade`. It takes the
+same options, and `render` swaps the element:
+
+```tsx
+import { ScrollFade } from '@gedatou/cadenza-ui'
+
+<ScrollFade className="max-block-64">…</ScrollFade>
+```
+
+The `scroll-fade-*` utilities in `styles.css` are still there. They are pure CSS,
+with no shrink or blur; `scroll-fade-inset` can keep clear of a sticky header and
+pinned columns, which is what [DataTable](/docs/components/data-table) uses.
 
 ## State and className
 
@@ -155,8 +165,9 @@ callbacks → behaviour switches → appearance → `className`**.
 | --- | --- | --- | --- |
 | `orientation` | `'vertical'` \| `'horizontal'` \| `'both'` | `'vertical'` | which scrollbars render, see [Orientation](#orientation) |
 | `scrollbars` | `'always'` \| `'hover'` \| `'hidden'` | `'hover'` | scrollbar visibility policy (exported type `ScrollAreaScrollbars`), see [Scrollbar visibility](#scrollbar-visibility) |
+| `fade` | `boolean` \| `ScrollFadeOptions` | — | fade toward each edge with more to scroll; the object form tunes `size` / `shrink` / `blur` / `transition`, see [Scroll fade](#scroll-fade) |
 | `viewportRef` | `Ref<HTMLDivElement>` | — | viewport ref (scroll position and virtualization both need it) |
-| `viewportClassName` | `string \| (state) => string` | — | viewport class; [scroll-fade](#scroll-fade) hangs here. The function form receives the viewport state (`scrolling`, `hasOverflowX/Y` and the four overflow-edge flags — exactly what scroll-fade reads) |
+| `viewportClassName` | `string \| (state) => string` | — | viewport class. The function form receives the viewport state (`scrolling`, `hasOverflowX/Y` and the four overflow-edge flags) |
 | `viewportRender` | `ReactElement \| (props, state) => ReactElement` | — | Fuse the viewport with another component's element (Base UI's `render`). `MessageScrollerViewport` is built this way |
 | `viewportStyle` | `CSSProperties \| (state) => CSSProperties` | — | viewport inline style (e.g. `maxHeight`), function form supported as well |
 | `className` | `string \| (state) => string` | — | root element class; size constraints live here. The function form receives Base UI Root's state (`scrolling`, `hasOverflowX/Y`, the overflow directions like `overflowXStart`, and `cornerHidden` — `hovering` is not among them, living only on the scrollbar elements' `data-hovering`) |
@@ -166,4 +177,5 @@ Three types are exported alongside: `ScrollAreaProps` (the root component's
 full props: Base UI Root's props + the seam extensions in the table above) /
 `ScrollAreaScrollbarProps` (the scrollbar part's props, i.e.
 `ScrollArea.Scrollbar.Props`) / `ScrollAreaScrollbars` (the union of
-`scrollbars` values).
+`scrollbars` values). `ScrollFade` brings `ScrollFadeProps` /
+`ScrollFadeOptions` (the object form of `fade`) / `ScrollFadeOrientation`.

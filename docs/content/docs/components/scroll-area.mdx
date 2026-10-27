@@ -1,13 +1,13 @@
 ---
 title: ScrollArea
-description: 覆盖式滚动条的滚动容器 —— 滚动条渲染在视口之外，与 scroll-fade 渐隐天然兼容
+description: 覆盖式滚动条的滚动容器 —— 滚动条渲染在视口之外，与滚动渐隐天然兼容
 ---
 
 <ComponentPreview name="scroll-area/basic" />
 
 基于 Base UI 的滚动容器：真正滚动的是**视口**，滚动条渲染成视口的
 **兄弟节点**（覆盖式，不占布局宽度）。这个结构是它存在的理由 ——
-库里的 scroll-fade 渐隐是挂在滚动元素上的 mask，原生滚动条长在滚动元素
+滚动渐隐是挂在滚动元素上的 mask，原生滚动条长在滚动元素
 内部会被 mask 一起压暗，兄弟滚动条则始终清晰。
 
 库内的 [DataTable](/docs/components/data-table)、
@@ -69,18 +69,29 @@ viewport / thumb / corner 由封装层按 `orientation` 与 `scrollbars` 自动�
 
 ## 滚动渐隐
 
-把 scroll-fade 工具类挂到**视口**上（`viewportClassName`，不要挂根元素）：
+写 `fade`，视口朝还能继续滚的那一侧渐隐：
 
 <ComponentPreview name="scroll-area/scroll-fade" />
 
-`scroll-fade-y` 纵向、`scroll-fade-x` 横向、`scroll-fade-inset` 双轴并支持
-固定表头 / 固定列偏移。渐隐随滚动位置显隐 —— 滚到头对应边的 fade 自动消失，
-这一步靠 `animation-timeline: scroll(self)`，**只有元素自己在滚动时才有进度**：
-挂到根元素上既拿不到进度，又会把兄弟滚动条一起压暗，等于退回原生滚动条的处境。
-不支持 scroll-driven animation 的浏览器退化成两端常显渐隐。
+渐隐来自 animate-ui 的 scroll fade：边缘挂 mask，靠近边缘的条目同时微缩、
+模糊，滚到头时那一侧平滑收起，内容变高变矮时也会过渡过去。轴向跟
+`orientation` 走。mask 挂在视口上，兄弟滚动条不会被压暗。
 
-尺寸用 `--scroll-fade-size`（或 `scroll-fade-8` 这类工具类）调，
-详见 `@gedatou/cadenza-ui/styles.css` 里的 scroll-fade 一族。
+`fade` 传对象可以调样子：`size` 是渐隐深度（px，默认 40），`shrink` 是条目的
+缩小比例（默认 0.03），`blur` 是模糊半径（px，默认 4），`transition` 是边缘
+收放的过渡。系统开了「减少动态效果」时只留 mask，条目不缩放。
+
+不是 ScrollArea 的滚动元素用 `ScrollFade`，参数相同，`render` 可以换成别的元素：
+
+```tsx
+import { ScrollFade } from '@gedatou/cadenza-ui'
+
+<ScrollFade className="max-block-64">…</ScrollFade>
+```
+
+`styles.css` 里的 `scroll-fade-*` 工具类仍然保留。它们是纯 CSS 的，不缩放、
+不模糊；`scroll-fade-inset` 能避开固定表头和固定列，
+[DataTable](/docs/components/data-table) 用的就是它。
 
 ## 状态与 className
 
@@ -133,8 +144,9 @@ Base UI 让有溢出的视口可聚焦（否则纯键盘用户到不了滚动区
 | --- | --- | --- | --- |
 | `orientation` | `'vertical'` \| `'horizontal'` \| `'both'` | `'vertical'` | 渲染哪些滚动条，见[方向](#方向) |
 | `scrollbars` | `'always'` \| `'hover'` \| `'hidden'` | `'hover'` | 滚动条显隐策略（导出类型 `ScrollAreaScrollbars`），见[滚动条显隐](#滚动条显隐) |
+| `fade` | `boolean` \| `ScrollFadeOptions` | — | 朝还能滚的一侧渐隐，对象形式调 `size` / `shrink` / `blur` / `transition`，见[滚动渐隐](#滚动渐隐) |
 | `viewportRef` | `Ref<HTMLDivElement>` | — | 视口引用（滚动位置、虚拟化都要它） |
-| `viewportClassName` | `string \| (state) => string` | — | 视口类名；[scroll-fade](#滚动渐隐) 挂这里。函数形式收到视口状态（`scrolling`、`hasOverflowX/Y` 与四个溢出边缘标志——正是 scroll-fade 要读的那些） |
+| `viewportClassName` | `string \| (state) => string` | — | 视口类名。函数形式收到视口状态（`scrolling`、`hasOverflowX/Y` 与四个溢出边缘标志） |
 | `viewportRender` | `ReactElement \| (props, state) => ReactElement` | — | 把视口与另一个组件的元素融合成同一个元素（Base UI 的 `render`）。`MessageScrollerViewport` 就是这么建的 |
 | `viewportStyle` | `CSSProperties \| (state) => CSSProperties` | — | 视口内联样式（如 `maxHeight`），同样支持函数形式 |
 | `className` | `string \| (state) => string` | — | 根元素类名；尺寸约束定在这里。函数形式收到 Base UI Root 的状态（`scrolling`、`hasOverflowX/Y` 与 `overflowXStart` 等溢出方向、`cornerHidden`——`hovering` 不在其中，它只挂在滚动条元素的 `data-hovering` 上） |
@@ -143,3 +155,5 @@ Base UI 让有溢出的视口可聚焦（否则纯键盘用户到不了滚动区
 三个类型一并导出：`ScrollAreaProps`（根组件完整 props：Base UI Root 的 props +
 上表的 seam 扩展）/ `ScrollAreaScrollbarProps`（滚动条部件的 props，即
 `ScrollArea.Scrollbar.Props`）/ `ScrollAreaScrollbars`（`scrollbars` 的取值联合）。
+`ScrollFade` 另带 `ScrollFadeProps` / `ScrollFadeOptions`（`fade` 的对象形式）/
+`ScrollFadeOrientation`。

@@ -9,7 +9,7 @@ description: 聊天记录滚动容器 —— 锚定轮次、跟随流式输出�
 `@shadcn/react/message-scroller`，外面是 shadcn base-nova 的皮。封装层不改行为，
 只做三件事：给 upstream 内联声明的 props 起名字（业务层想再包一层时才有类型可引），
 摘掉根节点的 `ref`（[为什么](#props)），以及把滚动视口换成本库的
-[ScrollArea](/docs/components/scroll-area) —— 上下两条 scroll-fade 渐隐要成立，
+[ScrollArea](/docs/components/scroll-area) —— 上下两条滚动渐隐要成立，
 就得让滚动条待在被 mask 的元素之外。
 
 ## 流式聊天体验的标准
@@ -120,7 +120,7 @@ import {
   自动滚动、锚定、滚动指令、可见性追踪这些行为 props。
 - **`MessageScroller`** —— 样式外壳。在 Provider 内部排布视口、内容和控件。
 - **`MessageScrollerViewport`** —— 可滚动元素，同时也是一个 `ScrollArea`：
-  overlay 滚动条渲染在它外面，上下缘各有一条随滚动收放的 scroll-fade。它接原生
+  overlay 滚动条渲染在它外面，上下缘各有一条随滚动收放的渐隐（`fade`）。它接原生
   滚动事件，并在更早的消息前插时保住可见行。
 - **`MessageScrollerContent`** —— 记录容器。装下所有行，并提供新消息播报所需的
   live region 缺省值。
@@ -427,7 +427,7 @@ return (
 
 只想要一个漂亮的滚动条 —— 列表、面板、任意溢出的盒子 —— 用
 [ScrollArea](/docs/components/scroll-area)：它的滚动条渲染在视口之外，与
-scroll-fade 渐隐天然兼容，除此之外不介入滚动位置。
+滚动渐隐天然兼容，除此之外不介入滚动位置。
 
 内容会在读者阅读期间自己长出来，就换 MessageScroller。锚定、跟随实时边缘、
 前插保位这三件事都要求组件持有滚动位置，这是 ScrollArea 刻意不做的。
@@ -553,19 +553,18 @@ headless 根。持有滚动状态与行为 props，交给各部件和几个 hook
 | `aria-label` | `string` | `'Messages'` | 记录滚动区的可访问名 |
 | `tabIndex` | `number` | Base UI 定 | 有溢出时 `0`，两个轴都装得下时 `-1` —— 滚不动的区域不占焦点位 |
 | `scrollbars` | `'hover' \| 'always' \| 'hidden'` | `'hover'` | 渲染哪些滚动条，与 [ScrollArea](/docs/components/scroll-area) 同一套词 |
+| `fade` | `boolean` \| `ScrollFadeOptions` | `{ shrink: 0, blur: 0 }` | ScrollArea 的[滚动渐隐](/docs/components/scroll-area#滚动渐隐)，默认只留 mask。缩放和模糊按整条消息的中心点计算，比视口还高的消息中心一越过上边缘，整条都会模糊，正在读的几行也不例外。消息都很短、记录区旁边也没有别的元素时，可以传 `true` 打开完整效果 |
 | `className` | `string \| (state) => string` | — | 落在 Base UI 的视口槽位，所以这一个**也收函数形态**，参数是 `ScrollAreaViewportState`（`scrolling`、`hasOverflowX/Y` 与四个溢出边缘标志） |
 | 其余 | `ComponentProps<'div'>`（含 `ref`，与内部合并） | — | 透传 |
 
-shadcn 给这个视口配的是一条细原生滚动条加 `scroll-fade-b`，两样在这里都不对，而且
-从外面都改不掉：原生滚动条长在被 mask 的元素**内部**，会跟着内容一起被渐隐吃掉
-（本库 ScrollArea 存在的理由就是把滚动条挪到滚动元素外面当兄弟）；而
-`scroll-fade-b` 写的 `--scroll-fade-mask` 在 styles.css 里比 `scroll-fade-y` 的更靠后，
-使用方再追加一个 `scroll-fade-y` 也压不过它。所以封装层没有去"覆盖"，而是拿同一个
-headless `MessageScroller.Viewport` 重建了这个部件。
+shadcn 给这个视口配的是一条细原生滚动条加 `scroll-fade-b`，两样在这里都不合适，
+而且从外面都改不掉：原生滚动条长在被 mask 的元素**内部**，会跟着内容一起被渐隐吃掉
+（本库 ScrollArea 存在的理由就是把滚动条挪到滚动元素外面当兄弟）；写死在 vendored
+视口上的类名也摘不下来。所以封装层没有去"覆盖"，而是拿同一个 headless
+`MessageScroller.Viewport` 重建了这个部件，两端的渐隐交给 ScrollArea 的 `fade`。
 
 Base UI 的视口和记录视口通过 `render` 融合成**同一个元素** —— 必须如此：滚动器的
-测量、锚定、保位都是对着"它滚的那个元素"做的，而驱动渐隐的 `scroll(self y)` 也只认
-滚动容器自己。两边是合并不是替换：Base UI 的 ref 经 `useRenderElement` 汇入滚动器的，
+测量、锚定、保位都是对着"它滚的那个元素"做的，渐隐监听的也是这个元素自己的滚动。两边是合并不是替换：Base UI 的 ref 经 `useRenderElement` 汇入滚动器的，
 事件 handler 也是双方都跑。
 
 它整个就是一个 `ScrollArea`——通过 `viewportRender` 把记录视口融合到 ScrollArea 的

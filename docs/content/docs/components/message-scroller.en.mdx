@@ -145,7 +145,7 @@ container.
   controls inside the provider.
 - **`MessageScrollerViewport`** — the scrollable element, and a `ScrollArea` in
   its own right: the overlay scrollbar renders outside it, and both edges carry
-  a scroll-fade that retracts as you reach them. It receives native scroll
+  a fade (`fade`) that retracts as you reach them. It receives native scroll
   events and preserves the visible row when older messages are prepended.
 - **`MessageScrollerContent`** — the transcript container. Holds the rows and
   provides the live-region defaults for new messages.
@@ -500,7 +500,7 @@ inactive scroll controls do not create extra focus stops.
 
 For a nice scrollbar around a list, a panel, any overflowing box, use
 [ScrollArea](/en/docs/components/scroll-area): its scrollbars render outside the
-viewport, they compose naturally with the scroll-fade masks, and it never
+viewport, they compose naturally with scroll fades, and it never
 touches scroll position.
 
 Switch to MessageScroller when content grows on its own while the reader is
@@ -642,22 +642,23 @@ builds itself rather than promoting from the vendored file.
 | `aria-label` | `string` | `'Messages'` | Accessible name for the scrollable transcript |
 | `tabIndex` | `number` | Base UI's | `0` while either axis overflows, `-1` when both fit — a region that cannot scroll takes no focus stop |
 | `scrollbars` | `'hover' \| 'always' \| 'hidden'` | `'hover'` | Which scrollbars to render, in [ScrollArea](/en/docs/components/scroll-area)'s vocabulary |
+| `fade` | `boolean` \| `ScrollFadeOptions` | `{ shrink: 0, blur: 0 }` | ScrollArea's [scroll fade](/en/docs/components/scroll-area#scroll-fade), mask only by default. Shrink and blur work from each message's centre, so once a message taller than the viewport has its centre past the top edge, all of it blurs, the lines being read included. Pass `true` for the full effect when messages stay short and nothing sits beside the transcript |
 | `className` | `string \| (state) => string` | — | Lands on Base UI's viewport slot, so this one **also takes the function form**, resolved against `ScrollAreaViewportState` (`scrolling`, `hasOverflowX/Y`, the four overflow-edge flags) |
 | the rest | `ComponentProps<'div'>` (`ref` included, merged with the internal one) | — | Spread |
 
 shadcn dresses this viewport in a thin native scrollbar plus `scroll-fade-b`.
-Both are wrong here, and neither can be undone from the outside: a native bar
-lives *inside* the element the mask dims, so it fades along with the content
-(exactly why this library has `ScrollArea` — its bars are siblings of the
-scrolling element), and `scroll-fade-b` sets `--scroll-fade-mask`, declared
-later in styles.css than `scroll-fade-y`'s, so appending `scroll-fade-y` from
-the outside never wins. Rather than override, the seam rebuilds the part on the
-same headless `MessageScroller.Viewport` the vendored file wraps.
+Neither suits this library, and neither can be undone from the outside: a
+native bar lives *inside* the element the mask dims, so it fades along with the
+content (exactly why this library has `ScrollArea` — its bars are siblings of
+the scrolling element), and a class baked into the vendored viewport cannot be
+taken back off it. Rather than override, the seam rebuilds the part on the same
+headless `MessageScroller.Viewport` the vendored file wraps, and fades both edges
+with `ScrollArea`'s `fade`.
 
 Base UI's viewport and the transcript viewport are fused into **one** element
 through `render`, as they must be: the scroller measures, anchors and preserves
-position against the element it scrolls, and `scroll(self y)` — what drives the
-fade — only reads the scroll container itself. Both sides merge rather than
+position against the element it scrolls, and the fade listens for scrolls on that
+same element. Both sides merge rather than
 replace: Base UI's ref joins the scroller's through `useRenderElement`, and each
 side's event handlers both run.
 

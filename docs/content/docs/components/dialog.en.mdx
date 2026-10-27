@@ -153,8 +153,8 @@ so the percentage never resolves and content is never clipped. Putting
 `overflow` directly on the flex item bypasses percentages entirely.
 
 The cost is the scrollbar: ScrollArea exists precisely to keep the scrollbar
-independent of the scrolling element, undimmed by the scroll-fade mask, whereas
-the native scrollbar here sits inside the mask. `scroll-fade-y` stays on by
+independent of the scrolling element, undimmed by the scroll fade's mask, whereas
+the native scrollbar here sits inside the mask. The fade stays on by
 default — a line of text half cut off at the edge is the only hint that there is
 more below, all the more since a macOS scrollbar is invisible until it moves.
 
@@ -442,10 +442,10 @@ Both render a `<button>`, both take `render` to swap the shell.
 
 ### DialogBody
 
-A plain `<div>` with `overflow-y-auto` built in; takes native props only. Its
+A `<div>` that scrolls vertically (a [`ScrollFade`](/en/docs/components/scroll-area#scroll-fade)); takes native props only. Its
 presence switches the popup to
-[inner scroll](#header-and-footer-pinned-only-the-middle-scrolls). It defaults
-to `scroll-fade-y`, plus `-mx-4 px-4` — cancelling the popup's padding and
+[inner scroll](#header-and-footer-pinned-only-the-middle-scrolls). It fades its
+edges by default, plus `-mx-4 px-4` — cancelling the popup's padding and
 adding it straight back, so the scroll region stretches to the popup's full
 width and the scrollbar rides the popup's edge, while the text moves not one
 character. Override with `className`.

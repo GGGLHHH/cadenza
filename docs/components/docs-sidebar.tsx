@@ -2,8 +2,10 @@
 
 import type * as PageTree from 'fumadocs-core/page-tree'
 import type { ReactElement, ReactNode } from 'react'
+import { ScrollFade } from '@gedatou/cadenza-ui'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useId } from 'react'
 import { cn } from '@/lib/utils'
 
 // i18n 模式下 source.pageTree 变成按语言的 Record,树类型直接取 fumadocs 的
@@ -38,6 +40,7 @@ function SidebarLink({
 
 function SidebarNode({ node }: { node: PageTreeNode }): ReactElement | null {
   const pathname = usePathname()
+  const labelId = useId()
 
   if (node.type === 'page') {
     return (
@@ -52,13 +55,15 @@ function SidebarNode({ node }: { node: PageTreeNode }): ReactElement | null {
   if (node.type === 'folder') {
     return (
       <div className="flex flex-col">
-        <p className="
-          px-4 pbs-6 pbe-2 text-xs font-medium text-muted-foreground
-        "
+        <p
+          id={labelId}
+          className="px-4 pbs-6 pbe-2 text-xs font-medium text-muted-foreground"
         >
           {node.name}
         </p>
-        <div className="flex flex-col gap-0.5 px-2">
+        {/* A labelled group, which is also what lets ScrollFade reach each
+            link: it only looks inside lists and groups for items */}
+        <div aria-labelledby={labelId} className="flex flex-col gap-0.5 px-2" role="group">
           {node.children.map(child =>
             child.type === 'page'
               ? (
@@ -98,17 +103,14 @@ export function DocsSidebar({
         className,
       )}
     >
-      <div className="
-        no-scrollbar flex scroll-fade-y flex-col overflow-y-auto pbs-8 pbe-12
-      "
-      >
+      <ScrollFade className="no-scrollbar flex flex-col pbs-8 pbe-12">
         {tree.children.map(node => (
           <SidebarNode
             key={node.$id ?? (node.type === 'page' ? node.url : String(node.name))}
             node={node}
           />
         ))}
-      </div>
+      </ScrollFade>
     </aside>
   )
 }

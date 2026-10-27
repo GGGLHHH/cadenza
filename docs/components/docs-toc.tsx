@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactElement, ReactNode } from 'react'
+import { ScrollFade } from '@gedatou/cadenza-ui'
 import { useParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { getDictionary } from '@/lib/dictionary'
@@ -50,26 +51,30 @@ export function DocsTableOfContents({
   if (toc.length === 0)
     return null
 
+  // The scroller lives here, not in the page: the page is a server
+  // component, and ScrollFade needs the client.
   return (
-    <div className={cn('flex flex-col gap-2 p-4 pbs-0 text-sm', className)}>
-      <p className="text-xs font-medium text-muted-foreground block-6">{getDictionary(lang).toc}</p>
-      {toc.map(item => (
-        <a
-          key={item.url}
-          href={item.url}
-          data-active={item.url === `#${activeHeading}`}
-          data-depth={item.depth}
-          className="
-            text-[0.8rem] text-muted-foreground no-underline transition-colors
-            hover:text-foreground
-            data-[active=true]:font-medium data-[active=true]:text-foreground
-            data-[depth=3]:ps-4
-            data-[depth=4]:ps-6
-          "
-        >
-          {item.title}
-        </a>
-      ))}
-    </div>
+    <ScrollFade className="no-scrollbar flex flex-col gap-8 px-8">
+      <div className={cn('flex flex-col gap-2 p-4 pbs-0 text-sm', className)}>
+        <p className="text-xs font-medium text-muted-foreground block-6">{getDictionary(lang).toc}</p>
+        {toc.map(item => (
+          <a
+            key={item.url}
+            href={item.url}
+            data-active={item.url === `#${activeHeading}`}
+            data-depth={item.depth}
+            className="
+              text-[0.8rem] text-muted-foreground no-underline transition-colors
+              hover:text-foreground
+              data-[active=true]:font-medium data-[active=true]:text-foreground
+              data-[depth=3]:ps-4
+              data-[depth=4]:ps-6
+            "
+          >
+            {item.title}
+          </a>
+        ))}
+      </div>
+    </ScrollFade>
   )
 }

@@ -170,14 +170,7 @@ export default async function Page(props: {
       "
       >
         <div className="shrink-0 block-8" />
-        {doc.toc.length > 0 && (
-          <div className="
-            no-scrollbar flex scroll-fade-y flex-col gap-8 overflow-y-auto px-8
-          "
-          >
-            <DocsTableOfContents toc={doc.toc} />
-          </div>
-        )}
+        <DocsTableOfContents toc={doc.toc} />
       </div>
     </div>
   )
