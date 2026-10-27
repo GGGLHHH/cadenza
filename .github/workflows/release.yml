@@ -7,7 +7,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: read
+  contents: write # for the GitHub release
   id-token: write # for npm provenance / trusted publishing
 
 jobs:
@@ -54,3 +54,13 @@ jobs:
       # (2) Settings -> Trusted publishing on npmjs.com points at this repo and workflow.
       - name: Publish to npm (OIDC trusted publishing)
         run: pnpm --filter "@gedatou/*" publish --access public --no-git-checks
+
+      # The tag's section of the root CHANGELOG.md (bumpp wrote it in the release
+      # commit) becomes the release notes. After publish, so a failed publish
+      # leaves no release behind.
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          awk -v h="## ${GITHUB_REF_NAME}" '$0==h{f=1;next} /^## /&&f{exit} f' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"
