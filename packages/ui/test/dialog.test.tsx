@@ -141,7 +141,8 @@ describe('dialogBody', () => {
 
     expect(body.className).toContain('flex-1')
     expect(body.className).toContain('min-block-0')
-    expect(body.className).toContain('overflow-y-auto')
+    // ScrollFade writes the overflow inline, on the same element it masks.
+    expect(body.style.overflowY).toBe('auto')
   })
 })
 

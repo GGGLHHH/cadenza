@@ -1033,8 +1033,14 @@ export function InfiniteSelectList<T = unknown>(props: InfiniteSelectListProps<T
     <div className="relative" data-slot="infinite-select-list-container">
       <ScrollArea
         className={className}
+        // Mask only. The fade looks for items inside lists and groups, not a
+        // listbox, so the sentinel and status rows beside it would turn the
+        // whole list into one item that blurs as a block; and a shrunk or
+        // blurred row gets a stacking context, which lets the gliding
+        // highlight inside it paint over the rows before it.
+        fade={{ blur: 0, shrink: 0 }}
         scrollbars={scrollbars}
-        viewportClassName="scroll-fade-y overscroll-contain"
+        viewportClassName="overscroll-contain"
         viewportRef={viewportRef}
         viewportStyle={{ maxHeight: maxListHeight }}
       >

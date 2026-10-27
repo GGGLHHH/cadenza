@@ -18,6 +18,7 @@ import {
   DialogTitle as DialogTitlePrimitive,
 } from '#primitives/dialog'
 import { XIcon } from '../icons/animate-ui/x'
+import { ScrollFade } from './scroll-fade'
 
 /**
  * The published Dialog family.
@@ -287,11 +288,12 @@ export type DialogBodyProps = ComponentProps<'div'>
  * which no class can outrank. Putting `overflow` straight on the flex item
  * sidesteps percentage resolution altogether.
  *
- * The trade is the scrollbar: `ScrollArea` exists so the scroll-fade mask
+ * The trade is the scrollbar: `ScrollArea` exists so the scroll fade's mask
  * cannot dim it (its bar is a sibling of the scrolling element, not inside it).
- * Here the native bar does sit inside the mask. `scroll-fade-y` still earns its
- * place — a line cut mid-height at the edge is the only cue that there is more
- * content, and on macOS the overlay bar is invisible until you actually move.
+ * Here the native bar does sit inside the mask. The fade (a `ScrollFade`, which
+ * also sets that `overflow`) still earns its place — a line cut mid-height at
+ * the edge is the only cue that there is more content, and on macOS the overlay
+ * bar is invisible until you actually move.
  *
  * `-mx-4 px-4` cancels the popup's own padding and puts the same amount back as
  * the section's, which widens the scroll box to the popup's full width without
@@ -302,12 +304,9 @@ export type DialogBodyProps = ComponentProps<'div'>
  */
 export function DialogBody({ className, ...props }: DialogBodyProps): ReactElement {
   return (
-    <div
+    <ScrollFade
       data-slot="dialog-body"
-      className={cn(
-        `-mx-4 flex-1 scroll-fade-y overflow-y-auto px-4 min-block-0`,
-        className,
-      )}
+      className={cn(`-mx-4 flex-1 px-4 min-block-0`, className)}
       {...props}
     />
   )

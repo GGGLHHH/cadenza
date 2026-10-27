@@ -699,7 +699,7 @@ function CascaderClearOverlay({
 /**
  * Shared by the root popup and every submenu panel. The popup does not scroll
  * itself — each panel scrolls inside its own `ScrollArea` viewport (the
- * InfiniteSelect treatment: overlay scrollbars, `scroll-fade-y`); the popup
+ * InfiniteSelect treatment: overlay scrollbars, `fade`); the popup
  * only clips to its radius. No animation classes: the menu parts are
  * animate-ui's, which drive enter/exit (and the transform origin) with Motion.
  */
@@ -814,7 +814,11 @@ function CascaderPanel({ nodes, path }: { nodes: CascaderNode[] | undefined, pat
     >
       {filled && (
         <ScrollArea
-          viewportClassName="scroll-fade-y overscroll-contain"
+          // Mask only: shrinking or blurring a row gives it a stacking context,
+          // and the menu's gliding highlight lives inside the row — it would
+          // then paint over the text of the rows before it.
+          fade={{ blur: 0, shrink: 0 }}
+          viewportClassName="overscroll-contain"
           viewportStyle={{ maxHeight: maxListHeight }}
         >
           <div

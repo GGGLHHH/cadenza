@@ -1,4 +1,5 @@
 import { render } from '@testing-library/react'
+import { createRef } from 'react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { ScrollArea } from '../src/components/scroll-area'
 
@@ -72,5 +73,23 @@ describe('scrollArea scrollbars enum', () => {
     const [bar] = scrollbarsIn(container)
     expect(bar).toBeDefined()
     expect(bar.className).not.toContain('opacity-0')
+  })
+})
+
+describe('scrollArea fade', () => {
+  function viewportIn(container: HTMLElement): HTMLElement {
+    return container.querySelector<HTMLElement>('[data-slot=scroll-area-viewport]')!
+  }
+
+  it('drives the scroll fade on the viewport and still hands the caller its ref', () => {
+    const ref = createRef<HTMLDivElement>()
+    const { container } = render(<ScrollArea fade={{ size: 24 }} viewportRef={ref}>content</ScrollArea>)
+    expect(viewportIn(container).style.getPropertyValue('--scroll-fade-size')).toBe('24px')
+    expect(ref.current).toBe(viewportIn(container))
+  })
+
+  it('leaves the viewport alone without fade', () => {
+    const { container } = render(<ScrollArea>content</ScrollArea>)
+    expect(viewportIn(container).style.getPropertyValue('--scroll-fade-size')).toBe('')
   })
 })

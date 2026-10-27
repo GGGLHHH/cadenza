@@ -2,6 +2,7 @@
 
 import type { ComponentProps, ReactElement } from 'react'
 import type { ScrollAreaScrollbars } from './scroll-area'
+import type { ScrollFadeOptions } from './scroll-fade'
 import { AnimateIcon } from '@animate-ui/react/icons'
 import { ScrollArea as ScrollAreaPrimitive } from '@base-ui/react/scroll-area'
 import { MessageScroller as MessageScrollerHeadless } from '@shadcn/react/message-scroller'
@@ -83,6 +84,15 @@ export type MessageScrollerViewportProps
      * `hasOverflowX/Y` and the four overflow-edge flags.
      */
     className?: ScrollAreaPrimitive.Viewport.Props['className']
+    /**
+     * `ScrollArea`'s fade. By default only the mask: the fade shrinks and blurs
+     * a whole item by where its centre sits, so a message taller than the
+     * viewport would blur entirely — the lines being read included — once its
+     * centre crossed the top edge. Pass `true` for the full effect when
+     * messages stay short and nothing sits beside the transcript (anything
+     * that does turns the whole transcript into one item).
+     */
+    fade?: boolean | ScrollFadeOptions
     /**
      * Which scrollbars to render — `ScrollArea`'s vocabulary and its three
      * values, since underneath this *is* a `ScrollArea`.
@@ -173,26 +183,26 @@ function MessageScrollerButton({ children, ...props }: MessageScrollerButtonProp
 // spread, so only the type needed correcting.
 const MessageScroller = MessageScrollerStyled as (props: MessageScrollerProps) => ReactElement
 
+const MASK_ONLY = { blur: 0, shrink: 0 }
+
 /**
  * The scrolling element — and the one part the seam builds itself rather than
  * promoting, because the vendored viewport scrolls the shadcn way and this
  * library scrolls its own way.
  *
  * shadcn styles the viewport with a thin native scrollbar and `scroll-fade-b`.
- * Both are wrong here, and neither can be undone from the outside: a native bar
- * lives *inside* the element the fade masks, so it dims along with the content
- * (the very reason `ScrollArea` exists in this library — its bars are siblings
- * of the scrolling element), and `scroll-fade-b` sets `--scroll-fade-mask`,
- * which is defined later in styles.css than `scroll-fade-y`'s — so a caller
- * appending `scroll-fade-y` still gets the bottom-only fade. Overriding was
- * never on the table; the seam builds the part instead, on the same headless
- * `MessageScroller.Viewport` the vendored file wraps.
+ * Neither suits this library, and neither can be undone from the outside: a
+ * native bar lives *inside* the element the fade masks, so it dims along with
+ * the content (the very reason `ScrollArea` exists in this library — its bars
+ * are siblings of the scrolling element), and a class baked into the vendored
+ * viewport cannot be taken back off it. The seam builds the part instead, on
+ * the same headless `MessageScroller.Viewport` the vendored file wraps, and
+ * fades both edges with `ScrollArea`'s `fade`.
  *
  * It is a `ScrollArea` with the headless transcript viewport fused onto its
  * viewport through `viewportRender` — one element, which it must be: the
  * scroller measures, anchors and preserves position against the element it
- * scrolls, and `scroll(self y)` (what drives the fade) only reads the scroll
- * container itself. Both sides merge rather than replace: Base UI's ref joins
+ * scrolls, and the fade listens for scrolls on that same element. Both sides merge rather than replace: Base UI's ref joins
  * the scroller's through `useRenderElement`, and each side's handlers both run
  * — the scroller's own first, then the caller's (`Y(v){ L(); onScroll?.(v) }`
  * upstream). Going through `ScrollArea` rather than hand-assembling the Base UI
@@ -210,6 +220,7 @@ const MessageScroller = MessageScrollerStyled as (props: MessageScrollerProps) =
 export function MessageScrollerViewport({
   children,
   className,
+  fade = MASK_ONLY,
   scrollbars = 'hover',
   ...props
 }: MessageScrollerViewportProps): ReactElement {
@@ -218,8 +229,9 @@ export function MessageScrollerViewport({
       // `flex-1 min-block-0` is what lets it take the frame's remaining height;
       // its own viewport is `block-full`, which resolves against that.
       className="flex-1 min-block-0"
+      fade={fade}
       scrollbars={scrollbars}
-      viewportClassName={cn('scroll-fade-y overscroll-contain contain-content', className)}
+      viewportClassName={cn('overscroll-contain contain-content', className)}
       // `role` restated because Base UI stamps `role="presentation"` on its
       // viewport, and render-element props win the merge — without this the
       // transcript would stop being a landmark. Before `{...props}`, so a

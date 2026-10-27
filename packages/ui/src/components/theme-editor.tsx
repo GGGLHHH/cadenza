@@ -749,13 +749,12 @@ export function ThemeEditor({
                     </Button>
                   </div>
                   <ScrollArea
+                    fade
                     // The height cap goes on the viewport, not the root: the
                     // viewport's `block-full` needs a definite parent height
                     // to resolve, and a max-height root is not one — capping
                     // the viewport itself is what actually clips.
-                    viewportClassName="
-                      scroll-fade-y max-block-[min(55svh,32rem)]
-                    "
+                    viewportClassName="max-block-[min(55svh,32rem)]"
                   >
                     <div className="flex flex-col gap-4 p-4 pbs-3">
                       <div className="flex items-center gap-3">
