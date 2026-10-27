@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactElement } from 'react'
+import { LoaderIcon } from '@gedatou/cadenza-icons'
 import { cn } from '#lib/utils'
-import { LoaderIcon } from '../icons/animate-ui/loader'
 
 /**
  * The published Spinner: animate-ui's animated `Loader` with `role="status"` —

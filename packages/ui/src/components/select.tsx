@@ -6,6 +6,7 @@ import type { ChangeEventDetails } from '#lib/change-event-details'
 import type { SelectTrigger as SelectTriggerPrimitive } from '#primitives/select'
 import { AnimateIcon } from '@animate-ui/react/icons'
 import { Select as AnimatedSelect } from '@animate-ui/react/primitives/base-ui/select'
+import { ChevronDownIcon, ChevronUpDownIcon, ChevronUpIcon, XIcon } from '@gedatou/cadenza-icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { createContext, use, useMemo, useRef } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
@@ -17,10 +18,6 @@ import {
   SelectLabel,
   SelectSeparator,
 } from '#primitives/select'
-import { ChevronDownIcon } from '../icons/animate-ui/chevron-down'
-import { ChevronUpIcon } from '../icons/animate-ui/chevron-up'
-import { ChevronUpDownIcon } from '../icons/animate-ui/chevron-up-down'
-import { XIcon } from '../icons/animate-ui/x'
 import { IndicatorCheck } from '../icons/indicator-check'
 import { Spinner } from './spinner'
 

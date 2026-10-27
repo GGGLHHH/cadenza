@@ -62,21 +62,48 @@
     "tailwindcss": ">=4"
   },
   "peerDependenciesMeta": {
-    "@tanstack/ai-anthropic": { "optional": true },
-    "@tanstack/ai-bedrock": { "optional": true },
-    "@tanstack/ai-gemini": { "optional": true },
-    "@tanstack/ai-grok": { "optional": true },
-    "@tanstack/ai-groq": { "optional": true },
-    "@tanstack/ai-llmgateway": { "optional": true },
-    "@tanstack/ai-mistral": { "optional": true },
-    "@tanstack/ai-ollama": { "optional": true },
-    "@tanstack/ai-openai": { "optional": true },
-    "@tanstack/ai-openrouter": { "optional": true },
-    "@tanstack/ai-persistence": { "optional": true },
-    "@tanstack/ai-vercel-gateway": { "optional": true },
-    "@tanstack/ai-vertex": { "optional": true }
+    "@tanstack/ai-anthropic": {
+      "optional": true
+    },
+    "@tanstack/ai-bedrock": {
+      "optional": true
+    },
+    "@tanstack/ai-gemini": {
+      "optional": true
+    },
+    "@tanstack/ai-grok": {
+      "optional": true
+    },
+    "@tanstack/ai-groq": {
+      "optional": true
+    },
+    "@tanstack/ai-llmgateway": {
+      "optional": true
+    },
+    "@tanstack/ai-mistral": {
+      "optional": true
+    },
+    "@tanstack/ai-ollama": {
+      "optional": true
+    },
+    "@tanstack/ai-openai": {
+      "optional": true
+    },
+    "@tanstack/ai-openrouter": {
+      "optional": true
+    },
+    "@tanstack/ai-persistence": {
+      "optional": true
+    },
+    "@tanstack/ai-vercel-gateway": {
+      "optional": true
+    },
+    "@tanstack/ai-vertex": {
+      "optional": true
+    }
   },
   "dependencies": {
+    "@gedatou/cadenza-icons": "workspace:*",
     "@gedatou/cadenza-utils": "workspace:*",
     "@streamdown/cjk": "catalog:ui",
     "@streamdown/code": "catalog:ui",

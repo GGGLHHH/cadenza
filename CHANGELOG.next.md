@@ -18,7 +18,7 @@
   - `InfiniteComboboxOpenChangeEventReason` 换成了 Base UI Combobox 的那一套 reason；
   - 函数形式 `contentClassName` 收到的 state 从 `PopoverPopupState` 变成了 `ComboboxPopupState`；
   - 弹层比按下操作晚一拍挂载。
-- 库里的图标全部换成了 animate-ui 的动画图标，外观会有细微差别。另外新增了 `@gedatou/cadenza-ui/icons` 子路径。
+- 库里的图标全部换成了 animate-ui 的动画图标，外观会有细微差别。图标是新的独立包 `@gedatou/cadenza-icons`（`pnpm add @gedatou/cadenza-icons`）：每个图标以 `XxxIcon` 一个名字导出（props 类型 `XxxIconProps`），默认对读屏隐藏，传 `aria-label` 则不隐藏。
 
 **类型收紧**
 

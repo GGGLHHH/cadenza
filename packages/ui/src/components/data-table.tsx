@@ -7,6 +7,7 @@ import type { ButtonProps } from './button'
 import type { LoadingOverlayProps } from './loading-overlay'
 import type { ScrollAreaScrollbars } from './scroll-area'
 import { AnimateIcon } from '@animate-ui/react/icons'
+import { ChevronDownIcon, ChevronUpDownIcon, ChevronUpIcon } from '@gedatou/cadenza-icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { createContext, use, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
@@ -20,9 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from '#primitives/table'
-import { ChevronDownIcon } from '../icons/animate-ui/chevron-down'
-import { ChevronUpIcon } from '../icons/animate-ui/chevron-up'
-import { ChevronUpDownIcon } from '../icons/animate-ui/chevron-up-down'
 import { Button } from './button'
 import { Checkbox } from './checkbox'
 import { LoadingOverlay } from './loading-overlay'

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { SearchIcon } from '@gedatou/cadenza-icons'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
@@ -14,7 +15,6 @@ import {
   ComboboxPopup,
 } from '../src/components/combobox'
 import { InputGroupAddon } from '../src/components/input-group'
-import { SearchIcon } from '../src/icons/animate-ui/search'
 
 const COMPOSERS = ['拉威尔', '德彪西', '萨蒂']
 

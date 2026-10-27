@@ -355,6 +355,9 @@ importers:
       '@gedatou/cadenza-form':
         specifier: workspace:*
         version: link:../packages/form
+      '@gedatou/cadenza-icons':
+        specifier: workspace:*
+        version: link:../packages/icons
       '@gedatou/cadenza-ui':
         specifier: workspace:*
         version: link:../packages/ui
@@ -476,6 +479,9 @@ importers:
 
   packages/ai:
     dependencies:
+      '@gedatou/cadenza-icons':
+        specifier: workspace:*
+        version: link:../icons
       '@gedatou/cadenza-utils':
         specifier: workspace:*
         version: link:../utils
@@ -587,6 +593,34 @@ importers:
         specifier: catalog:cli
         version: 6.0.3
 
+  packages/icons:
+    dependencies:
+      '@animate-ui/react':
+        specifier: catalog:ui
+        version: 2.3.0(@base-ui/react@1.9.0(@date-fns/tz@1.5.0)(@types/react@19.2.18)(date-fns@4.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@floating-ui/react@0.27.20(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@shadcn/react@0.3.1(@types/react@19.2.18)(react@19.2.8))(input-otp@1.5.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(motion@14.6.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-aria-components@1.22.1(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(shiki@4.5.0)
+      motion:
+        specifier: catalog:ui
+        version: 14.6.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+    devDependencies:
+      '@tabler/icons-react':
+        specifier: catalog:ui
+        version: 3.46.0(react@19.2.8)
+      '@types/node':
+        specifier: catalog:types
+        version: 26.2.0
+      react:
+        specifier: catalog:react
+        version: 19.2.8
+      react-dom:
+        specifier: catalog:react
+        version: 19.2.8(react@19.2.8)
+      tsdown:
+        specifier: catalog:cli
+        version: 0.22.14(publint@0.3.23)(tsx@4.23.11)(typescript@6.0.3)
+      typescript:
+        specifier: catalog:cli
+        version: 6.0.3
+
   packages/ui:
     dependencies:
       '@animate-ui/react':
@@ -598,6 +632,9 @@ importers:
       '@floating-ui/react':
         specifier: catalog:ui
         version: 0.27.20(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@gedatou/cadenza-icons':
+        specifier: workspace:*
+        version: link:../icons
       '@gedatou/cadenza-utils':
         specifier: workspace:*
         version: link:../utils

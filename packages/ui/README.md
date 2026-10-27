@@ -51,31 +51,12 @@ export function Toolbar() {
 
 ## 动画图标
 
-`@gedatou/cadenza-ui/icons` 提供 392 个带动画的图标，来自 [animate-ui](https://animate-ui.com)
-的 lucide 风格图标集，每个图标有自己的动画（铃铛摇摆、齿轮转动……），由 `AnimateIcon` 的触发方式驱动：
+组件里的图标来自 [@gedatou/cadenza-icons](../icons)：animate-ui 的 lucide 风格动画图标，以独立的包发布。
+自己的界面里要用图标，就从那个包 import：
 
 ```tsx
-import { AnimateIcon, Bell, Settings } from '@gedatou/cadenza-ui/icons'
-
-export function Header() {
-  return (
-    <>
-      {/* 悬停图标本身时播放 */}
-      <Bell animateOnHover />
-      {/* 悬停整个按钮时，里面的图标跟着动 */}
-      <AnimateIcon animateOnHover>
-        <button type="button">
-          <Settings />
-          设置
-        </button>
-      </AnimateIcon>
-    </>
-  )
-}
+import { BellIcon } from '@gedatou/cadenza-icons'
 ```
-
-这些图标派生自 animate-ui（作者 Elliot Sutton），遵循 animate-ui 的 **MIT + Commons Clause** 许可，
-许可全文与来源见 [ANIMATE-UI-LICENSE.md](./ANIMATE-UI-LICENSE.md)。
 
 ## 暗色模式
 
@@ -83,4 +64,4 @@ export function Header() {
 
 ## License
 
-[MIT](../../LICENSE.md)。`src/icons/animate-ui/` 下的动画图标除外，它们遵循 animate-ui 的许可，见 [ANIMATE-UI-LICENSE.md](./ANIMATE-UI-LICENSE.md)。
+[MIT](../../LICENSE.md)。

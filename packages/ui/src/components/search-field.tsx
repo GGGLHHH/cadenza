@@ -3,13 +3,12 @@
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import type { ChangeEventDetails, GenericEventDetails } from '#lib/change-event-details'
 import { AnimateIcon } from '@animate-ui/react/icons'
+import { SearchIcon, XIcon } from '@gedatou/cadenza-icons'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import { useDebounceFn } from 'ahooks'
 import { createContext, use, useCallback } from 'react'
 import { createChangeEventDetails, createGenericEventDetails } from '#lib/change-event-details'
 import { cn, dataAttr } from '#lib/utils'
-import { SearchIcon } from '../icons/animate-ui/search'
-import { XIcon } from '../icons/animate-ui/x'
 // The seam versions, not the primitives: their prop types carry the full Base UI
 // contract (function className on the control, ref), so ours inherit it.
 import {

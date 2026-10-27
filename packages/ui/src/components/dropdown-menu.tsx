@@ -10,6 +10,7 @@ import type {
 } from '#primitives/dropdown-menu'
 import { AnimateIcon } from '@animate-ui/react/icons'
 import { Menu as AnimatedMenu } from '@animate-ui/react/primitives/base-ui/menu'
+import { ChevronRightIcon } from '@gedatou/cadenza-icons'
 import { cn } from '#lib/utils'
 import {
   DropdownMenuLabel as DropdownMenuGroupLabelPrimitive,
@@ -18,7 +19,6 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger as DropdownMenuTriggerPrimitive,
 } from '#primitives/dropdown-menu'
-import { ChevronRightIcon } from '../icons/animate-ui/chevron-right'
 import { IndicatorCheck } from '../icons/indicator-check'
 
 /**

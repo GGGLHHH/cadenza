@@ -2,12 +2,12 @@ import type { ComponentProps, ReactElement } from 'react'
 import type { InputOTP as InputOTPPrimitive } from '#primitives/input-otp'
 import { AnimateIcon } from '@animate-ui/react/icons'
 import { OTPInput } from '@animate-ui/react/primitives/input-otp'
+import { MinusIcon } from '@gedatou/cadenza-icons'
 import { cn } from '#lib/utils'
 import {
   InputOTPGroup as InputOTPGroupPrimitive,
   InputOTPSlot as InputOTPSlotPrimitive,
 } from '#primitives/input-otp'
-import { MinusIcon } from '../icons/animate-ui/minus'
 
 /**
  * `render` is dropped from the public surface. The `input-otp` package uses that

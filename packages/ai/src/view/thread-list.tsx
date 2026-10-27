@@ -2,8 +2,8 @@
 import type { ButtonProps, ChangeEventDetails } from '@gedatou/cadenza-ui'
 import type { ComponentProps, KeyboardEvent, ReactElement, ReactNode } from 'react'
 import type { ThreadIndex, ThreadMeta } from '../runtime/threads'
+import { AnimateIcon, ArchiveIcon, PencilIcon, TrashIcon } from '@gedatou/cadenza-icons'
 import { Button, cn, createChangeEventDetails, dataAttr, Input, Item, ItemActions, ItemContent, ItemDescription, ItemTitle, ScrollArea } from '@gedatou/cadenza-ui'
-import { AnimateIcon, ArchiveIcon, PencilIcon, TrashIcon } from '@gedatou/cadenza-ui/icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { createContext, use, useCallback, useMemo, useRef, useState } from 'react'
 

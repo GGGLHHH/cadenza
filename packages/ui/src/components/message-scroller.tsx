@@ -5,6 +5,7 @@ import type { ScrollAreaScrollbars } from './scroll-area'
 import type { ScrollFadeOptions } from './scroll-fade'
 import { AnimateIcon } from '@animate-ui/react/icons'
 import { ScrollArea as ScrollAreaPrimitive } from '@base-ui/react/scroll-area'
+import { ArrowDownIcon } from '@gedatou/cadenza-icons'
 import { MessageScroller as MessageScrollerHeadless } from '@shadcn/react/message-scroller'
 import { Press } from '#lib/press'
 import { cn } from '#lib/utils'
@@ -15,7 +16,6 @@ import {
   MessageScrollerProvider,
   MessageScroller as MessageScrollerStyled,
 } from '#primitives/message-scroller'
-import { ArrowDownIcon } from '../icons/animate-ui/arrow-down'
 import { ScrollArea } from './scroll-area'
 
 /**

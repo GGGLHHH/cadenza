@@ -1,0 +1,51 @@
+{
+  "name": "@gedatou/cadenza-icons",
+  "type": "module",
+  "version": "0.8.0",
+  "description": "Animated icons for cadenza — animate-ui's lucide-style set, drawn from data",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "homepage": "https://cadenza-ui-docs.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GGGLHHH/cadenza.git",
+    "directory": "packages/icons"
+  },
+  "bugs": "https://github.com/GGGLHHH/cadenza/issues",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.mts",
+  "files": [
+    "ANIMATE-UI-LICENSE.md",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc",
+    "sync:icons": "node scripts/sync-animate-ui-icons.mjs",
+    "draw:icons": "node scripts/draw-tabler-icons.mjs",
+    "prepack": "pnpm run build"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
+  },
+  "dependencies": {
+    "@animate-ui/react": "catalog:ui",
+    "motion": "catalog:ui"
+  },
+  "devDependencies": {
+    "@tabler/icons-react": "catalog:ui",
+    "@types/node": "catalog:types",
+    "react": "catalog:react",
+    "react-dom": "catalog:react",
+    "tsdown": "catalog:cli",
+    "typescript": "catalog:cli"
+  }
+}

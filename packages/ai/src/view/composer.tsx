@@ -4,6 +4,7 @@ import type { ChatClientState } from '@tanstack/ai-client'
 import type { AudioPart } from '@tanstack/ai/client'
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import type { DraftAttachment } from '../runtime/attachments'
+import { AnimateIcon, ArrowUpIcon, MicIcon, PaperclipIcon, StopIcon, XIcon } from '@gedatou/cadenza-icons'
 import {
   Attachment,
   AttachmentAction,
@@ -22,7 +23,6 @@ import {
   InputGroupButton,
   InputGroupTextarea,
 } from '@gedatou/cadenza-ui'
-import { AnimateIcon, ArrowUpIcon, MicIcon, PaperclipIcon, StopIcon, XIcon } from '@gedatou/cadenza-ui/icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { useAudioRecorder } from '@tanstack/ai-react'
 import { createContext, use, useMemo, useRef, useState, useSyncExternalStore } from 'react'

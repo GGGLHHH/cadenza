@@ -2,8 +2,8 @@
 import type { GenericEventDetails } from '@gedatou/cadenza-ui'
 import type { QueuedMessage } from '@tanstack/ai-client'
 import type { ReactElement, ReactNode } from 'react'
+import { AnimateIcon, XIcon } from '@gedatou/cadenza-icons'
 import { Button, createGenericEventDetails, Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from '@gedatou/cadenza-ui'
-import { AnimateIcon, XIcon } from '@gedatou/cadenza-ui/icons'
 
 export interface QueueListProps {
   queue: readonly QueuedMessage[]

@@ -2,11 +2,11 @@
 
 import type { ComponentProps, CSSProperties, ReactElement } from 'react'
 import type { ChangeEventDetails } from '#lib/change-event-details'
+import { CheckIcon } from '@gedatou/cadenza-icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { createContext, use, useCallback, useEffect, useMemo, useRef } from 'react'
 import { createChangeEventDetails } from '#lib/change-event-details'
 import { cn, dataAttr } from '#lib/utils'
-import { CheckIcon } from '../icons/animate-ui/check'
 import { Spinner } from './spinner'
 
 /**

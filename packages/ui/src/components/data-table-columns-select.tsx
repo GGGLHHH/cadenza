@@ -4,12 +4,12 @@ import type { DragControls } from 'motion/react'
 import type { ReactElement, ReactNode } from 'react'
 import type { ChangeEventDetails, GenericEventDetails } from '#lib/change-event-details'
 import { AnimateIcon } from '@animate-ui/react/icons'
+import { GripVerticalIcon } from '@gedatou/cadenza-icons'
 import { useControllableState } from '@gedatou/cadenza-utils'
 import { Reorder, useDragControls } from 'motion/react'
 import { createContext, Fragment, use, useMemo, useRef, useState } from 'react'
 import { createChangeEventDetails, createGenericEventDetails } from '#lib/change-event-details'
 import { cn } from '#lib/utils'
-import { GripVerticalIcon } from '../icons/drawn'
 import {
   Select,
   SelectItem,

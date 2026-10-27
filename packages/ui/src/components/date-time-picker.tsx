@@ -9,6 +9,7 @@ import type { DatePickerCalendarProps } from './date-picker'
 import type { TimePickerColumnsProps } from './time-picker'
 import { AnimateIcon } from '@animate-ui/react/icons'
 import { Popover as PopoverPrimitive } from '@animate-ui/react/primitives/base-ui/popover'
+import { CalendarClockIcon, XIcon } from '@gedatou/cadenza-icons'
 import { resolveRenderChildren, useControllableState } from '@gedatou/cadenza-utils'
 import {
   addMinutes,
@@ -28,8 +29,6 @@ import { isOwnLabelPress, LABEL_PRESS_REASONS } from '#lib/own-label-press'
 import { popupClassName, SERIAL_FORMAT } from '#lib/popup'
 import { granularityOf, timeSerialFormat, truncateTime } from '#lib/time'
 import { cn, dataAttr } from '#lib/utils'
-import { CalendarClockIcon } from '../icons/animate-ui/calendar-clock'
-import { XIcon } from '../icons/animate-ui/x'
 import { Button } from './button'
 import { Calendar } from './calendar'
 import {

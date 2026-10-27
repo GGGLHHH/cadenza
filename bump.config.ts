@@ -24,6 +24,7 @@ export default defineConfig({
     'package.json',
     'packages/ai/package.json',
     'packages/form/package.json',
+    'packages/icons/package.json',
     'packages/ui/package.json',
     'packages/utils/package.json',
   ],

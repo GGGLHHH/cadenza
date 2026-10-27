@@ -30,20 +30,17 @@
   },
   "exports": {
     ".": "./dist/index.mjs",
-    "./icons": "./dist/icons.mjs",
     "./styles.css": "./styles.css",
     "./package.json": "./package.json"
   },
   "types": "./dist/index.d.mts",
   "files": [
-    "ANIMATE-UI-LICENSE.md",
     "CHANGELOG.md",
     "README.md",
     "dist",
     "styles.css"
   ],
   "scripts": {
-    "sync:icons": "node scripts/sync-animate-ui-icons.mjs",
     "build": "tsdown",
     "dev": "tsdown --watch",
     "typecheck": "tsc",
@@ -59,6 +56,7 @@
     "@animate-ui/react": "catalog:ui",
     "@base-ui/react": "catalog:ui",
     "@floating-ui/react": "catalog:ui",
+    "@gedatou/cadenza-icons": "workspace:*",
     "@gedatou/cadenza-utils": "workspace:*",
     "@shadcn/react": "catalog:ui",
     "@tabler/icons-react": "catalog:ui",

@@ -1,8 +1,7 @@
 import type { ComponentProps, ReactElement } from 'react'
+import { ChevronRightIcon, EllipsisIcon } from '@gedatou/cadenza-icons'
 import { cn } from '#lib/utils'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage } from '#primitives/breadcrumb'
-import { ChevronRightIcon } from '../icons/animate-ui/chevron-right'
-import { EllipsisIcon } from '../icons/animate-ui/ellipsis'
 
 /**
  * The published Breadcrumb family — shadcn's base-nova breadcrumb.

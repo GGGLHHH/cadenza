@@ -1,8 +1,8 @@
 'use client'
 import type { AudioPart, DocumentPart, ImagePart, VideoPart } from '@tanstack/ai/client'
 import type { ReactElement } from 'react'
+import { FileTextIcon } from '@gedatou/cadenza-icons'
 import { Attachment, AttachmentContent, AttachmentMedia, AttachmentTitle } from '@gedatou/cadenza-ui'
-import { FileTextIcon } from '@gedatou/cadenza-ui/icons'
 
 export interface MediaPartProps {
   part: ImagePart | AudioPart | VideoPart | DocumentPart

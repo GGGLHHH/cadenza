@@ -1,14 +1,11 @@
 import type { ButtonHTMLAttributes, ChangeEvent, ComponentProps, ReactElement } from 'react'
 import type { DropdownProps } from 'react-day-picker'
 import { AnimateIcon } from '@animate-ui/react/icons'
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon } from '@gedatou/cadenza-icons'
 import { useMemo, useRef } from 'react'
 import { defaultDateLib } from 'react-day-picker'
 import { cn } from '#lib/utils'
 import { CalendarDayButton, Calendar as CalendarPrimitive } from '#primitives/calendar'
-import { ChevronDownIcon } from '../icons/animate-ui/chevron-down'
-import { ChevronLeftIcon } from '../icons/animate-ui/chevron-left'
-import { ChevronRightIcon } from '../icons/animate-ui/chevron-right'
-import { ChevronUpIcon } from '../icons/animate-ui/chevron-up'
 import { Select, SelectItem, SelectPopup, SelectTrigger } from './select'
 
 /**

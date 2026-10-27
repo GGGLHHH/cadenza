@@ -6,6 +6,7 @@ import { Dialog as BaseDialog } from '@animate-ui/react/primitives/base-ui/dialo
 // The handle is Base UI's own object — animate-ui re-exports it unchanged —
 // and taken from there so the emitted declaration can name its type.
 import { Dialog as BaseUIDialog } from '@base-ui/react/dialog'
+import { XIcon } from '@gedatou/cadenza-icons'
 import { cn } from '#lib/utils'
 // The vendored button for the ✕: animate-ui's `Dialog.Close` is Base UI's own,
 // without its press, which the published Button would add.
@@ -17,7 +18,6 @@ import {
   DialogHeader as DialogHeaderPrimitive,
   DialogTitle as DialogTitlePrimitive,
 } from '#primitives/dialog'
-import { XIcon } from '../icons/animate-ui/x'
 import { ScrollFade } from './scroll-fade'
 
 /**

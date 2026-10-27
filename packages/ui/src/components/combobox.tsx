@@ -3,6 +3,7 @@
 import type { ComponentProps, ReactElement } from 'react'
 import { AnimateIcon } from '@animate-ui/react/icons'
 import { Combobox as ComboboxPrimitive } from '@animate-ui/react/primitives/base-ui/combobox'
+import { ChevronDownIcon, XIcon } from '@gedatou/cadenza-icons'
 import { cn, dataAttr } from '#lib/utils'
 // The vendored buttons, not the published ones, for the arrow, the clear
 // button and a chip's remove: animate-ui's Combobox renders those parts
@@ -10,8 +11,6 @@ import { cn, dataAttr } from '#lib/utils'
 // the published buttons would add one animate-ui's combobox does not have.
 import { Button as ButtonPrimitive } from '#primitives/button'
 import { InputGroupButton as InputGroupButtonPrimitive } from '#primitives/input-group'
-import { ChevronDownIcon } from '../icons/animate-ui/chevron-down'
-import { XIcon } from '../icons/animate-ui/x'
 import { IndicatorCheck } from '../icons/indicator-check'
 import { InputGroup, InputGroupAddon, InputGroupInput } from './input-group'
 

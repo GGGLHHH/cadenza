@@ -8,6 +8,7 @@ import * as SidebarPrimitive from '@animate-ui/react/primitives/sidebar'
 import { motionTokens, useShouldReduceMotion, useTempoTransition } from '@animate-ui/react/utils/motion'
 import { mergeProps } from '@base-ui/react/merge-props'
 import { useRender } from '@base-ui/react/use-render'
+import { PanelLeftIcon } from '@gedatou/cadenza-icons'
 import { cva } from 'class-variance-authority'
 import { animate, AnimatePresence, motion } from 'motion/react'
 import { createContext, use, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -32,7 +33,6 @@ import {
   SidebarMenuSubItem,
   SidebarSeparator,
 } from '#primitives/sidebar'
-import { PanelLeftIcon } from '../icons/animate-ui/panel-left'
 import { Tooltip, TooltipPopup, TooltipTrigger } from './tooltip'
 
 /**

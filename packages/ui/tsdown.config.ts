@@ -16,17 +16,4 @@ export default defineConfig([
     publint: true,
     outputOptions: clientBanner,
   },
-  {
-    // `@gedatou/cadenza-ui/icons`, built apart and unbundled: one module per
-    // icon behind a re-exporting index. A few icons compute their animation
-    // tables at module scope, which a bundler cannot prove pure — bundled into
-    // one file, those tables rode along with any single icon (27.8kB for one
-    // Bell). Unbundled, an unused icon's module is never loaded at all.
-    entry: { icons: 'src/icons/index.ts' },
-    unbundle: true,
-    clean: false,
-    // No banner: each icon module keeps the `'use client'` its source opens
-    // with, and the index only re-exports.
-    dts: true,
-  },
 ])

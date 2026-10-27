@@ -1,9 +1,8 @@
 import type { ReactElement } from 'react'
 import { AnimateIcon } from '@animate-ui/react/icons'
 import { NumberField as NumberFieldPrimitive } from '@base-ui/react/number-field'
+import { MinusIcon, PlusIcon } from '@gedatou/cadenza-icons'
 import { cn } from '#lib/utils'
-import { MinusIcon } from '../icons/animate-ui/minus'
-import { PlusIcon } from '../icons/animate-ui/plus'
 
 export interface NumberFieldProps extends NumberFieldPrimitive.Root.Props {
   /** 默认组合里内层输入框的占位文案；自己组合 children 时请写在 `NumberFieldInput` 上。 */
