@@ -1,7 +1,7 @@
 {
   "name": "@gedatou/cadenza-icons",
   "type": "module",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Animated icons for cadenza — animate-ui's lucide-style set, drawn from data",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://cadenza-ui-docs.vercel.app",
