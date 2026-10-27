@@ -1,0 +1,116 @@
+---
+title: Sidebar
+description: shadcn's 16 official sidebar blocks, rebuilt on this library — ready to copy
+---
+
+Full-page layouts, each assembled from the [Sidebar](/docs/components/sidebar)
+and the library's other components, ported from shadcn's
+[Blocks](https://ui.shadcn.com/blocks/sidebar) (MIT). View Code lists every file
+of a block: the `page.tsx` entry first, then the parts under `components/`.
+
+They differ from the originals in three ways only: part names follow this
+library's Base UI naming (`DropdownMenuPopup`, `CollapsiblePanel`, …), the
+icons are the animated set, and the Radix leftovers in the originals
+(`data-[state=open]`, `--radix-popper-anchor-width`) became Base UI's
+`data-popup-open` and `--anchor-width`.
+
+Each preview is a fixed-height frame, not an iframe: the sidebar positions
+itself against the viewport, and a transform makes the frame its containing
+block instead. So ⌘B / Ctrl+B toggles every sidebar on this page at once, and
+below a 768px window the sheet takes over based on the whole window.
+
+## Sidebar 01
+
+A simple sidebar with navigation grouped by section.
+
+<BlockPreview name="blocks/sidebar-01" />
+
+## Sidebar 02
+
+A sidebar with collapsible sections.
+
+<BlockPreview name="blocks/sidebar-02" />
+
+## Sidebar 03
+
+A sidebar with submenus.
+
+<BlockPreview name="blocks/sidebar-03" />
+
+## Sidebar 04
+
+A floating sidebar with submenus.
+
+<BlockPreview name="blocks/sidebar-04" />
+
+## Sidebar 05
+
+A sidebar with collapsible submenus.
+
+<BlockPreview name="blocks/sidebar-05" />
+
+## Sidebar 06
+
+A sidebar with submenus as dropdowns.
+
+<BlockPreview name="blocks/sidebar-06" />
+
+## Sidebar 07
+
+A sidebar that collapses to icons.
+
+<BlockPreview name="blocks/sidebar-07" />
+
+## Sidebar 08
+
+An inset sidebar with secondary navigation.
+
+<BlockPreview name="blocks/sidebar-08" />
+
+## Sidebar 09
+
+Collapsible nested sidebars.
+
+<BlockPreview name="blocks/sidebar-09" />
+
+## Sidebar 10
+
+A sidebar in a popover.
+
+<BlockPreview name="blocks/sidebar-10" />
+
+## Sidebar 11
+
+A sidebar with a collapsible file tree.
+
+<BlockPreview name="blocks/sidebar-11" />
+
+## Sidebar 12
+
+A sidebar with a calendar.
+
+<BlockPreview name="blocks/sidebar-12" />
+
+## Sidebar 13
+
+A sidebar in a dialog.
+
+<BlockPreview name="blocks/sidebar-13" />
+
+## Sidebar 14
+
+A sidebar on the right.
+
+<BlockPreview name="blocks/sidebar-14" />
+
+## Sidebar 15
+
+A left and right sidebar.
+
+<BlockPreview name="blocks/sidebar-15" />
+
+## Sidebar 16
+
+A sidebar with a sticky site header.
+
+<BlockPreview name="blocks/sidebar-16" />

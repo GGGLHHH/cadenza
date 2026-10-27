@@ -1,0 +1,113 @@
+---
+title: Sidebar
+description: shadcn 官方的 16 个 sidebar 区块，用本库组件重写，可直接复制
+---
+
+整页布局，每个都由 [Sidebar](/docs/components/sidebar) 和本库其他组件拼成，
+源自 shadcn 的 [Blocks](https://ui.shadcn.com/blocks/sidebar)（MIT）。点 View Code
+看整个区块的全部文件：入口 `page.tsx` 在前，`components/` 里的部件随后。
+
+和原版的差别只在三处：组件名跟本库的 Base UI 命名（`DropdownMenuPopup`、
+`CollapsiblePanel` 等），图标换成本库的动画图标，以及原例里残留的 Radix 写法
+（`data-[state=open]`、`--radix-popper-anchor-width`）换成了 Base UI 的
+`data-popup-open`、`--anchor-width`。
+
+每个预览是一个固定高度的框，不是 iframe：侧边栏本来按视口定位，这里用
+transform 把框变成它的包含块。所以 ⌘B / Ctrl+B 会同时开合本页所有侧边栏，
+窗口窄于 768px 时也按整个窗口切到移动端抽屉。
+
+## Sidebar 01
+
+按分区分组导航的简单侧边栏。
+
+<BlockPreview name="blocks/sidebar-01" />
+
+## Sidebar 02
+
+分区可折叠的侧边栏。
+
+<BlockPreview name="blocks/sidebar-02" />
+
+## Sidebar 03
+
+带子菜单的侧边栏。
+
+<BlockPreview name="blocks/sidebar-03" />
+
+## Sidebar 04
+
+带子菜单的浮动侧边栏。
+
+<BlockPreview name="blocks/sidebar-04" />
+
+## Sidebar 05
+
+子菜单可折叠的侧边栏。
+
+<BlockPreview name="blocks/sidebar-05" />
+
+## Sidebar 06
+
+子菜单以下拉菜单弹出的侧边栏。
+
+<BlockPreview name="blocks/sidebar-06" />
+
+## Sidebar 07
+
+可收起成图标的侧边栏。
+
+<BlockPreview name="blocks/sidebar-07" />
+
+## Sidebar 08
+
+带次级导航的 inset 侧边栏。
+
+<BlockPreview name="blocks/sidebar-08" />
+
+## Sidebar 09
+
+可折叠的嵌套侧边栏。
+
+<BlockPreview name="blocks/sidebar-09" />
+
+## Sidebar 10
+
+放在弹层里的侧边栏。
+
+<BlockPreview name="blocks/sidebar-10" />
+
+## Sidebar 11
+
+带可折叠文件树的侧边栏。
+
+<BlockPreview name="blocks/sidebar-11" />
+
+## Sidebar 12
+
+带日历的侧边栏。
+
+<BlockPreview name="blocks/sidebar-12" />
+
+## Sidebar 13
+
+放在对话框里的侧边栏。
+
+<BlockPreview name="blocks/sidebar-13" />
+
+## Sidebar 14
+
+在右侧的侧边栏。
+
+<BlockPreview name="blocks/sidebar-14" />
+
+## Sidebar 15
+
+左右各一个侧边栏。
+
+<BlockPreview name="blocks/sidebar-15" />
+
+## Sidebar 16
+
+带吸顶站点头部的侧边栏。
+
+<BlockPreview name="blocks/sidebar-16" />

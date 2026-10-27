@@ -1,6 +1,7 @@
 import type { MDXComponents } from 'mdx/types'
 import type { ComponentProps, ReactElement, ReactNode } from 'react'
 import { isValidElement } from 'react'
+import { BlockPreview } from '@/components/block-preview'
 import { ComponentPreview } from '@/components/component-preview'
 import { ComponentSource } from '@/components/component-source'
 import { CopyButton } from '@/components/copy-button'
@@ -122,6 +123,7 @@ export const mdxComponents: MDXComponents = {
       </>
     )
   },
+  BlockPreview,
   ComponentPreview,
   ComponentSource,
   ThemePreviewGrid,

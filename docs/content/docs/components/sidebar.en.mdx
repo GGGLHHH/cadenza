@@ -1,0 +1,582 @@
+---
+title: Sidebar
+description: The app sidebar — a composable set of parts that collapses to icons, turns into a drawer on mobile and toggles with ⌘B
+---
+
+<ComponentPreview name="sidebar/basic" previewClassName="p-0 block-auto" />
+
+shadcn's base-nova sidebar, running on [animate-ui](https://animate-ui.com)'s sidebar
+primitive: parts, props, `data-*` hooks and classes are shadcn's, the motion is
+animate-ui's — the active item's background follows the pointer, everything inside
+collapses and expands on one curve, the mobile drawer slides in, the collapsed
+tooltips spring out (see [Animation](#animation)).
+
+A few things still read like shadcn rather than this library, on purpose for now:
+the `isActive` / `showOnHover` / `showIcon` prop names (the house rule is bare
+adjectives), the English screen-reader text, and `useSidebar`'s unbranded error.
+
+It is an **app-level shell** that works off the viewport, not a control you drop
+into a card: the desktop panel is `position: fixed` at `h-svh`, and below a 768px
+viewport the whole `Sidebar` becomes a drawer sliding in from the side.
+
+For ready-made full-page layouts see [Blocks · Sidebar](/docs/blocks/sidebar): shadcn's 16 official sidebar blocks, rebuilt on this library.
+
+## Usage
+
+```tsx
+import { Sidebar, SidebarProvider, SidebarTrigger } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+// app/layout.tsx
+<SidebarProvider>
+  <AppSidebar />
+  <main>
+    <SidebarTrigger />
+    {children}
+  </main>
+</SidebarProvider>
+```
+
+```tsx
+// components/app-sidebar.tsx
+<Sidebar>
+  <SidebarHeader />
+  <SidebarContent>
+    <SidebarGroup />
+    <SidebarGroup />
+  </SidebarContent>
+  <SidebarFooter />
+</Sidebar>
+```
+
+## Composition
+
+```text
+SidebarProvider
+├── Sidebar
+│   ├── SidebarHeader
+│   ├── SidebarContent
+│   │   ├── SidebarGroup
+│   │   │   ├── SidebarGroupLabel
+│   │   │   ├── SidebarGroupAction
+│   │   │   ├── SidebarGroupContent
+│   │   │   └── SidebarMenu
+│   │   │       ├── SidebarMenuItem
+│   │   │       │   ├── SidebarMenuButton
+│   │   │       │   ├── SidebarMenuAction
+│   │   │       │   └── SidebarMenuBadge
+│   │   │       └── SidebarMenuItem
+│   │   │           ├── SidebarMenuButton
+│   │   │           └── SidebarMenuSub
+│   │   │               ├── SidebarMenuSubItem
+│   │   │               └── SidebarMenuSubItem
+│   │   └── SidebarGroup
+│   │       └── SidebarMenu
+│   │           ├── SidebarMenuItem
+│   │           └── SidebarMenuItem
+│   ├── SidebarFooter
+│   └── SidebarRail
+├── SidebarInset
+└── SidebarTrigger
+```
+
+## Structure
+
+- **SidebarProvider** — holds the open state and hands the context to the other parts; wrap the whole app in it.
+- **Sidebar** — the collapsible panel itself.
+- **SidebarHeader** — the fixed top area: branding, titles, workspace switchers.
+- **SidebarFooter** — the fixed bottom area: user menus, settings, actions.
+- **SidebarContent** — the scrollable region between header and footer.
+- **SidebarGroup** — one section of navigation, with an optional label, action and content.
+- **SidebarMenu** / **SidebarMenuItem** — menu structure: links, badges, actions, nested submenus.
+- **SidebarRail** — a thin strip along the panel's edge; click it to toggle.
+- **SidebarInset** — wraps the main content when using the `inset` variant.
+- **SidebarTrigger** — the button that toggles the panel.
+
+The full example from shadcn's docs, using every part above:
+
+<ComponentPreview name="sidebar/demo" previewClassName="p-0 block-auto" />
+
+## SidebarProvider
+
+`SidebarProvider` hands the context to `Sidebar` and the other parts; always wrap
+the app in one. It renders a `min-h-svh` flex container (`data-slot="sidebar-wrapper"`)
+that holds the panel and the main content side by side.
+
+### Width
+
+Width rides two CSS variables, overridden on `style`:
+
+```tsx
+<SidebarProvider
+  style={{ '--sidebar-width': '20rem', '--sidebar-width-icon': '3.5rem' } as CSSProperties}
+>
+  <Sidebar />
+</SidebarProvider>
+```
+
+`--sidebar-width` defaults to `16rem`, and `--sidebar-width-icon` (collapsed to
+icons) to `3rem`. The mobile drawer is a fixed `18rem`: it writes `--sidebar-width`
+straight into the drawer's inline style, out of the Provider's reach. The
+`--sidebar-width-mobile` variable shadcn's docs mention is not read anywhere in the code.
+
+### Keyboard shortcut
+
+`⌘B` (Mac) / `Ctrl+B` (Windows) toggles the panel. It does nothing while focus is
+in an input, a textarea, a select or an editable region, where ⌘B belongs to
+editing (bold and the like). The listener sits on `window`, one per Provider —
+with two Providers on a page, one press toggles both.
+
+### Remembering the state
+
+Every toggle writes a cookie: `sidebar_state=true|false`, `path=/`, kept for 7 days.
+**It is only written, never read**: to restore it after a reload, the app reads the
+cookie on the server and passes it to `defaultOpen`.
+
+## Sidebar
+
+The collapsible panel itself.
+
+- `side`: `left` / `right`, which edge it sits on.
+- `variant`: `sidebar` (flush, with a divider) / `floating` (rounded, with a shadow) / `inset` (set into the page, the main content reads as a card).
+- `collapsible`:
+
+| Value | Effect |
+| --- | --- |
+| `offcanvas` | slides fully off screen (default) |
+| `icon` | narrows to a single column of icons; menu buttons show their tooltip |
+| `none` | not collapsible, just a plain flex column |
+
+The default `sidebar` variant, collapsing `offcanvas`:
+
+<ComponentPreview name="sidebar/example" previewClassName="p-0 block-auto" />
+
+The `floating` variant, hovering over the page:
+
+<ComponentPreview name="sidebar/floating" previewClassName="p-0 block-auto" />
+
+`collapsible="icon"`: collapsed, only the icons remain and hovering shows the tooltip:
+
+<ComponentPreview name="sidebar/icon" previewClassName="p-0 block-auto" />
+
+With the `inset` variant, wrap the main content in `SidebarInset` so its margin
+and rounding follow:
+
+<ComponentPreview name="sidebar/inset" previewClassName="p-0 block-auto" />
+
+## useSidebar
+
+`useSidebar` reads the Provider's state — for a trigger of your own, or content
+that switches with the state:
+
+```tsx
+const { state, open, setOpen, openMobile, setOpenMobile, isMobile, toggleSidebar } = useSidebar()
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `state` | `'expanded' \| 'collapsed'` | whether the desktop panel is expanded or collapsed |
+| `open` | `boolean` | whether the desktop panel is open |
+| `setOpen` | `(open: boolean) => void` | sets the desktop panel's open state (and writes the cookie) |
+| `openMobile` | `boolean` | whether the mobile drawer is open |
+| `setOpenMobile` | `(open: boolean) => void` | sets the mobile drawer's open state |
+| `isMobile` | `boolean` | whether the viewport is narrower than 768px |
+| `toggleSidebar` | `() => void` | toggles — the desktop panel or the mobile drawer, whichever is current |
+
+Desktop and mobile are **two separate states**: opening the drawer on mobile does
+not touch the desktop `open`. Calling it outside `SidebarProvider` throws. The
+return type is exported as `SidebarContextValue`.
+
+## SidebarHeader
+
+`SidebarHeader` is the top of the panel that does not scroll with the content:
+
+<ComponentPreview name="sidebar/header" previewClassName="p-0 block-auto" />
+
+## SidebarFooter
+
+`SidebarFooter` is the bottom of the panel that does not scroll with the content:
+
+<ComponentPreview name="sidebar/footer" previewClassName="p-0 block-auto" />
+
+## SidebarContent
+
+`SidebarContent` wraps the panel's body; the `SidebarGroup`s go here. It fills the
+space between header and footer and scrolls when the content runs long:
+
+```tsx
+<Sidebar>
+  <SidebarContent>
+    <SidebarGroup />
+    <SidebarGroup />
+  </SidebarContent>
+</Sidebar>
+```
+
+## SidebarGroup
+
+`SidebarGroup` is one section of the panel: a `SidebarGroupLabel`, a
+`SidebarGroupContent` and an optional `SidebarGroupAction`:
+
+<ComponentPreview name="sidebar/group" previewClassName="p-0 block-auto" />
+
+To make a group collapsible, wrap it in a `Collapsible` and make the label its trigger:
+
+<ComponentPreview name="sidebar/group-collapsible" previewClassName="p-0 block-auto" />
+
+`SidebarGroupAction` is the action button beside the group label:
+
+<ComponentPreview name="sidebar/group-action" previewClassName="p-0 block-auto" />
+
+## SidebarMenu
+
+`SidebarMenu` builds a menu inside a `SidebarGroup`: a `<ul>` whose items are
+`SidebarMenuItem`s (`<li>`), 4px apart (as in shadcn's new-york; base-nova packs
+them at `gap-0`, where a lit row runs into the next). Pass a `gap-*` class for
+another spacing:
+
+<ComponentPreview name="sidebar/menu" previewClassName="p-0 block-auto" />
+
+## SidebarMenuButton
+
+`SidebarMenuButton` is the button in a menu item. It renders a `<button>`; `render`
+swaps it for a link (`<a>`, Next.js's `Link`). `isActive` marks the current item:
+
+```tsx
+<SidebarMenuButton isActive render={<a href="#" />}>
+  Home
+</SidebarMenuButton>
+```
+
+With a `tooltip`, hovering the button shows it to the right while the panel is
+collapsed to icons; expanded, or on mobile, it stays hidden.
+
+## SidebarMenuAction
+
+`SidebarMenuAction` is the small button at a menu item's right, positioned over the
+button. With `showOnHover` it stays hidden until the item is hovered or focused
+(on desktop only; on mobile it always shows):
+
+<ComponentPreview name="sidebar/menu-action" previewClassName="p-0 block-auto" />
+
+## SidebarMenuSub
+
+`SidebarMenuSub` is a submenu under a menu item, with a line on its left; it hides
+when the panel collapses to icons:
+
+<ComponentPreview name="sidebar/menu-sub" previewClassName="p-0 block-auto" />
+
+With `Collapsible`, every item expands and collapses:
+
+<ComponentPreview name="sidebar/menu-collapsible" previewClassName="p-0 block-auto" />
+
+## SidebarMenuBadge
+
+`SidebarMenuBadge` is the count at a menu item's right; it hides when the panel
+collapses to icons:
+
+<ComponentPreview name="sidebar/menu-badge" previewClassName="p-0 block-auto" />
+
+## SidebarMenuSkeleton
+
+`SidebarMenuSkeleton` is a placeholder row while the menu loads. Below, the data arrives after 3 seconds and the skeleton shows until then (shadcn's RSC example, turned into a client `Suspense` + `use()` here):
+
+<ComponentPreview name="sidebar/rsc" previewClassName="p-0 block-auto" />
+
+The text bar's width is random between 50% and 90%, settled with `Math.random()`
+on first render — under server rendering, server and client pick different widths
+and React reports a hydration mismatch. Render skeletons on the client only, or set
+the width yourself.
+
+## SidebarTrigger
+
+`SidebarTrigger` is the button that toggles the panel (a ghost, `icon-sm` `Button`);
+it runs your `onClick` first, then toggles. Its panel icon follows the state: while
+closed, the icon's line slides left and the panel narrows. For a trigger of your own, use
+`useSidebar`'s `toggleSidebar`:
+
+```tsx
+function CustomTrigger() {
+  const { toggleSidebar } = useSidebar()
+  return <button onClick={toggleSidebar} type="button">Toggle sidebar</button>
+}
+```
+
+## SidebarRail
+
+`SidebarRail` is a thin button along the panel's edge: click it to toggle; hovering
+shows a line and a resize cursor:
+
+```tsx
+<Sidebar>
+  <SidebarHeader />
+  <SidebarContent>
+    <SidebarGroup />
+  </SidebarContent>
+  <SidebarFooter />
+  <SidebarRail />
+</Sidebar>
+```
+
+It is out of the Tab order (`tabIndex={-1}`) — keyboard users go through
+`SidebarTrigger` or `⌘B`.
+
+## Animation
+
+Collapsing and expanding come from animate-ui's
+`@animate-ui/react/primitives/sidebar`; the highlight is the seam's own, on
+animate-ui's spring and color fade. Nothing to write for either:
+
+- **One surface**: all the menu and sub-menu buttons in a panel share **one**
+  background, and it is the active item's. At rest it sits on the `isActive`
+  button; the pointer on another button springs it across; the pointer gone, it
+  glides back to the active one. Keyboard focus (`Tab`) moves it too (focus from a
+  mouse click does not). So hover and active never show as two surfaces of one
+  color. With no active button, it fades out where it is once the pointer leaves.
+  - Moving to the next button crosses the 4px gap: a leave only counts after
+    100ms, so entering the next button meanwhile glides straight there instead of
+    turning back to the active one first.
+  - The surface is drawn in the menu item beside the button
+    (`data-slot="sidebar-menu-highlight"`), over the button's measured box, so it
+    reshapes with the button as the panel collapses to icons; the buttons' own
+    hover and active backgrounds are transparent. A `variant="outline"` button
+    paints its own `bg-background`, so it stays out and keeps its styles.
+  - Pass `animateOnHover={false}` to `SidebarProvider` to turn it off: the buttons
+    get their own hover and active backgrounds back.
+- **Collapsing and expanding**: 280ms on `cubic-bezier(0.77, 0, 0.175, 1)`. The panel
+  and the room it makes in the page share the curve, so their edges meet at every
+  frame — no sliver, no overlap. Toggled again on the way, it turns back from where it is.
+- **Collapsing to icons**: the buttons' text fades out into a 2px blur before the
+  buttons narrow, so it never flickers through `Mo…`; the parts the collapse hides
+  (sub-menus, badges, actions, whole groups) fold on the same curve and the items
+  below move with it instead of jumping. Expanding runs it backwards. Wrap text in
+  an element (`<span>`): bare text cannot fade on its own.
+- **Submenus**: unfolding in a `Collapsible`, the sub-items come in one after another
+  (33ms apart, sliding 8px in from the right and clearing their blur).
+- **Mobile drawer**: animate-ui's Dialog slides it in from its side (400ms) and
+  sends it off quicker.
+- **Collapsed tooltips**: this library's [Tooltip](/docs/components/tooltip),
+  springing out of the button.
+- **Content beside it**: the Provider sets `--animate-ui-sidebar-duration` and
+  `--animate-ui-sidebar-easing` on its element; give neighbouring content
+  `duration-(--animate-ui-sidebar-duration) ease-(--animate-ui-sidebar-easing)` to
+  move in step with the panel.
+- Nothing plays on mount: a sidebar that starts collapsed shows collapsed at once.
+  Under the system's reduced-motion setting, collapsing and expanding are instant
+  and the highlight jumps to the next button.
+
+## Controlled
+
+Control it with `open` and `onOpenChange`:
+
+<ComponentPreview name="sidebar/controlled" previewClassName="p-0 block-auto" />
+
+Control covers the desktop panel only; the mobile drawer's open state always stays
+inside the Provider — read and set it from outside through `useSidebar`.
+`onOpenChange` takes a single argument (the new open state), without the
+`eventDetails` this library's other components pass.
+
+## Theming
+
+The sidebar has its own set of color variables, already in `styles.css` (light and dark):
+
+```css
+:root {
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+```
+
+The matching Tailwind colors are `bg-sidebar`, `text-sidebar-foreground`,
+`bg-sidebar-accent`… [ThemeEditor](/docs/components/theme-editor) does not edit
+these variables yet.
+
+## State and className
+
+A pure DOM family with no Base UI state functions: `className` is a string
+everywhere. The state sits on the panel's outermost element (`data-slot="sidebar"`,
+carrying Tailwind's `group` and `peer`); descendants read it with `group-data-*`,
+the neighbouring `SidebarInset` with `peer-data-*`:
+
+| Attribute | Where | Effect |
+| --- | --- | --- |
+| `data-state="expanded" \| "collapsed"` | panel | expanded / collapsed |
+| `data-collapsible="offcanvas" \| "icon"` | panel | how it collapsed; an empty string while expanded |
+| `data-variant` | panel | `sidebar` / `floating` / `inset` |
+| `data-side` | panel, `sidebar-container` | `left` / `right` |
+| `data-mobile="true"` | mobile drawer | the mobile form is showing |
+| `data-active` | `SidebarMenuButton`, `SidebarMenuSubButton` | `isActive` is true |
+| `data-size` | `SidebarMenuButton`, `SidebarMenuSubButton` | the size |
+
+Hide a whole group when collapsed to icons:
+
+```tsx
+<Sidebar collapsible="icon">
+  <SidebarContent>
+    <SidebarGroup className="group-data-[collapsible=icon]:hidden" />
+  </SidebarContent>
+</Sidebar>
+```
+
+Keep the current item's action visible:
+
+```tsx
+<SidebarMenuItem>
+  <SidebarMenuButton />
+  <SidebarMenuAction className="peer-data-active/menu-button:opacity-100" />
+</SidebarMenuItem>
+```
+
+`SidebarMenuItem` carries `group/menu-item` and `SidebarMenuButton` carries
+`peer/menu-button`; styles that link parts inside a menu item go through those two
+names. Every part also has a `data-slot="sidebar-*"` (`sidebar-wrapper`, `sidebar`,
+`sidebar-container`, `sidebar-inner`, `sidebar-menu-button`…) and a matching
+`data-sidebar="*"`, for targeting from outside. The gliding surface is
+`data-slot="sidebar-menu-highlight"`: restyle it there (say
+`**:data-[slot=sidebar-menu-highlight]:bg-primary/10` on `Sidebar`), not with
+`data-active:bg-*` on a button — that gives the active item a surface of its own again.
+
+## Keyboard interactions
+
+| Key | Behaviour |
+| --- | --- |
+| `⌘B` / `Ctrl+B` | toggles (the panel on desktop, the drawer on mobile); does nothing while focus is in a text field |
+| `Tab` | moves through the trigger, menu buttons and actions; `SidebarRail` is out of the Tab order |
+| `Enter` / `Space` | activates a button; `SidebarMenuSubButton` is a link by default and answers `Enter` only |
+| `Esc` | closes the mobile drawer while it is open |
+
+## Props
+
+Order: **required → uncontrolled defaults → controlled values → callbacks → behavior switches → appearance → className**.
+
+### SidebarProvider
+
+Holds the open state. Renders a `<div>` (`data-slot="sidebar-wrapper"`).
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `defaultOpen` | `boolean` | `true` | uncontrolled initial open state |
+| `open` | `boolean` | — | controlled open state (desktop panel only) |
+| `onOpenChange` | `(open: boolean) => void` | — | open state changed |
+| `animateOnHover` | `boolean` | `true` | the active item's background follows the pointer and keyboard focus; `false` gives the buttons their own hover and active backgrounds back |
+| `style` | `CSSProperties` | — | overrides `--sidebar-width` / `--sidebar-width-icon` |
+| `className` | `string` | — | lands on the outer `<div>` |
+| rest | `<div>` attributes + `ref` | — | passed through |
+
+### Sidebar
+
+The panel itself.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `side` | `'left' \| 'right'` | `'left'` | which edge |
+| `collapsible` | `'offcanvas' \| 'icon' \| 'none'` | `'offcanvas'` | how it collapses |
+| `variant` | `'sidebar' \| 'floating' \| 'inset'` | `'sidebar'` | appearance |
+| `dir` | `string` | — | passed to the mobile drawer only |
+| `className` | `string` | — | lands differently per form: on `sidebar-container` on desktop, on the root `<div>` with `collapsible="none"`, dropped on mobile |
+| rest | `<div>` attributes + `ref` | — | same landing as `className`; dropped on mobile |
+
+```tsx
+<Sidebar collapsible="icon" side="right" variant="floating">…</Sidebar>
+```
+
+### SidebarTrigger
+
+The toggle button. It is shadcn's `Button` (defaults `variant="ghost"`, `size="icon-sm"`), not the one this library publishes; the icon is animate-ui's animated `PanelLeft`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onClick` | `MouseEventHandler` | — | runs first, then the toggle |
+| `children` | — | — | **ignored**: the content is always the panel icon + screen-reader text `Toggle Sidebar`; for other content build a trigger with `useSidebar` |
+| rest | `Button` props | — | passed through |
+
+### SidebarRail
+
+The toggle strip at the panel's edge. Renders a `<button>` with `aria-label` and
+`title` both `Toggle Sidebar`, and `tabIndex={-1}`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onClick` | `MouseEventHandler` | toggles the panel | **replaces the toggle** when passed — not chained |
+| `className` | `string` | — | lands on the `<button>` |
+| rest | `<button>` attributes + `ref` | — | passed through |
+
+### SidebarMenuButton
+
+A menu item's button. Renders a `<button>`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `isActive` | `boolean` | `false` | the current item; writes `data-active` |
+| `tooltip` | `string \| TooltipPopupProps` | — | shown while collapsed to icons; the object form can change `side` and more |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | swaps the host element, e.g. `render={<a href="/" />}` |
+| `variant` | `'default' \| 'outline'` | `'default'` | appearance |
+| `size` | `'default' \| 'sm' \| 'lg'` | `'default'` | height 32 / 28 / 48px |
+| `className` | `string` | — | lands on the button |
+| rest | `<button>` attributes + `ref` | — | passed through |
+
+### SidebarMenuSubButton
+
+A submenu item. Renders an `<a>`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `isActive` | `boolean` | `false` | the current item; writes `data-active` |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | swaps the host element, e.g. Next.js's `Link` |
+| `size` | `'sm' \| 'md'` | `'md'` | text size |
+| `className` | `string` | — | lands on the `<a>` |
+| rest | `<a>` attributes + `ref` | — | passed through |
+
+### SidebarMenuAction
+
+The action button at a menu item's right. Renders a `<button>`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `showOnHover` | `boolean` | `false` | hidden on desktop until the item is hovered / focused, or the action is expanded |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | swaps the host element, e.g. `DropdownMenuTrigger` |
+| `className` | `string` | — | lands on the button |
+| rest | `<button>` attributes + `ref` | — | passed through |
+
+### SidebarGroupLabel / SidebarGroupAction
+
+A group's title (a `<div>` by default) and its top-right action (a `<button>` by
+default), both hidden when collapsed to icons. Both take `render` to swap the host
+element (e.g. `render={<CollapsibleTrigger />}`); the rest passes through as
+element attributes + `ref`.
+
+### SidebarMenuSkeleton
+
+A loading placeholder row. Renders a `<div>`.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `showIcon` | `boolean` | `false` | adds an icon placeholder in front |
+| `className` | `string` | — | lands on the `<div>` |
+| rest | `<div>` attributes + `ref` | — | passed through |
+
+### SidebarInput / SidebarSeparator
+
+The panel's input and divider: shadcn's `Input` (an `<input>`) and `Separator`
+with their size and color adjusted; their props are the same.
+
+### Structural parts
+
+These parts take element attributes only — `className` is a string that lands on
+the element they render, and they have no props of their own:
+
+| Part | Renders |
+| --- | --- |
+| `SidebarHeader` / `SidebarFooter` / `SidebarContent` / `SidebarGroup` / `SidebarGroupContent` / `SidebarMenuBadge` | `<div>` |
+| `SidebarMenu` / `SidebarMenuSub` | `<ul>` |
+| `SidebarMenuItem` / `SidebarMenuSubItem` | `<li>` |
+| `SidebarInset` | `<main>` |
+
+Every part exports a matching `XxxProps` type (`SidebarProps` / `SidebarMenuButtonProps` / …, 23 in all), plus `SidebarContextValue` for what `useSidebar` returns.

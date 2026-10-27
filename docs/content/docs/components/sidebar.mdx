@@ -1,0 +1,533 @@
+---
+title: Sidebar
+description: 应用侧边栏 —— 可组合的整套部件：折叠成图标、移动端抽屉、⌘B 开合
+---
+
+<ComponentPreview name="sidebar/basic" previewClassName="p-0 block-auto" />
+
+shadcn 的 base-nova sidebar，跑在 [animate-ui](https://animate-ui.com) 的 sidebar primitive 上：
+部件、props、`data-*` 钩子和类名照 shadcn，动效来自 animate-ui —— 激活项的底色跟着指针滑动，
+收起展开时里面的一切走同一条曲线，移动端抽屉滑入，折叠后的 tooltip 弹出（见[动画](#动画)）。
+
+几处还是 shadcn 的口径，这次有意保留：`isActive` / `showOnHover` / `showIcon` 这几个 prop 名
+（家法要裸形容词）、英文读屏文案、`useSidebar` 不带品牌前缀的报错。
+
+它是**应用级外壳**，按视口工作，不是放进卡片里的控件：桌面端面板 `position: fixed`、高度
+`h-svh`；视口窄于 768px 时 `Sidebar` 整个换成一个从侧边滑出的抽屉。
+
+整页布局的现成写法见[区块 · Sidebar](/docs/blocks/sidebar)：shadcn 官方的 16 个 sidebar 区块，用本库组件重写。
+
+## 使用
+
+```tsx
+import { Sidebar, SidebarProvider, SidebarTrigger } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+// app/layout.tsx
+<SidebarProvider>
+  <AppSidebar />
+  <main>
+    <SidebarTrigger />
+    {children}
+  </main>
+</SidebarProvider>
+```
+
+```tsx
+// components/app-sidebar.tsx
+<Sidebar>
+  <SidebarHeader />
+  <SidebarContent>
+    <SidebarGroup />
+    <SidebarGroup />
+  </SidebarContent>
+  <SidebarFooter />
+</Sidebar>
+```
+
+## 组成
+
+```text
+SidebarProvider
+├── Sidebar
+│   ├── SidebarHeader
+│   ├── SidebarContent
+│   │   ├── SidebarGroup
+│   │   │   ├── SidebarGroupLabel
+│   │   │   ├── SidebarGroupAction
+│   │   │   ├── SidebarGroupContent
+│   │   │   └── SidebarMenu
+│   │   │       ├── SidebarMenuItem
+│   │   │       │   ├── SidebarMenuButton
+│   │   │       │   ├── SidebarMenuAction
+│   │   │       │   └── SidebarMenuBadge
+│   │   │       └── SidebarMenuItem
+│   │   │           ├── SidebarMenuButton
+│   │   │           └── SidebarMenuSub
+│   │   │               ├── SidebarMenuSubItem
+│   │   │               └── SidebarMenuSubItem
+│   │   └── SidebarGroup
+│   │       └── SidebarMenu
+│   │           ├── SidebarMenuItem
+│   │           └── SidebarMenuItem
+│   ├── SidebarFooter
+│   └── SidebarRail
+├── SidebarInset
+└── SidebarTrigger
+```
+
+## 结构
+
+- **SidebarProvider** —— 持有开合状态，把 context 交给其余部件；整个应用包一层。
+- **Sidebar** —— 可折叠的面板本体。
+- **SidebarHeader** —— 顶部固定区：品牌、标题、工作区切换。
+- **SidebarFooter** —— 底部固定区：用户菜单、设置、操作。
+- **SidebarContent** —— 头尾之间可滚动的区域。
+- **SidebarGroup** —— 一组导航，可带标题、操作按钮和内容区。
+- **SidebarMenu** / **SidebarMenuItem** —— 菜单结构：链接、徽标、操作、嵌套子菜单。
+- **SidebarRail** —— 贴着面板边缘的细条，点它开合。
+- **SidebarInset** —— 用 `inset` 变体时包住主内容。
+- **SidebarTrigger** —— 开合面板的按钮。
+
+shadcn 文档里的完整示例，上面这些部件都用上了：
+
+<ComponentPreview name="sidebar/demo" previewClassName="p-0 block-auto" />
+
+## SidebarProvider
+
+`SidebarProvider` 把 context 交给 `Sidebar` 和其余部件，应用里始终要包一层。它渲染一个
+`min-h-svh` 的 flex 容器（`data-slot="sidebar-wrapper"`），面板和主内容并排放在里面。
+
+### 宽度
+
+宽度走两个 CSS 变量，在 `style` 上覆盖：
+
+```tsx
+<SidebarProvider
+  style={{ '--sidebar-width': '20rem', '--sidebar-width-icon': '3.5rem' } as CSSProperties}
+>
+  <Sidebar />
+</SidebarProvider>
+```
+
+默认 `--sidebar-width` 是 `16rem`，折叠成图标时 `--sidebar-width-icon` 是 `3rem`。
+移动端的抽屉宽度固定 `18rem`：它把 `--sidebar-width` 直接写在抽屉元素的 inline style 上，
+Provider 传下来的值够不着。shadcn 文档提到的 `--sidebar-width-mobile` 变量，代码里并没有读。
+
+### 键盘快捷键
+
+`⌘B`（Mac）/ `Ctrl+B`（Windows）开合面板。焦点在输入框、文本域、下拉框或可编辑区域里时不响应，
+那里的 ⌘B 留给加粗之类的编辑操作。监听挂在 `window` 上，每个 Provider 一个 —— 同一页有两个
+Provider 时，按一次两个一起开合。
+
+### 记住开合状态
+
+每次开合都会写一个 cookie：`sidebar_state=true|false`，`path=/`，保留 7 天。
+**只写不读**：刷新后要恢复，由应用在服务端读这个 cookie，传给 `defaultOpen`。
+
+## Sidebar
+
+折叠面板本体。
+
+- `side`：`left` / `right`，贴哪一边。
+- `variant`：`sidebar`（贴边，带分隔线）/ `floating`（悬浮，圆角加阴影）/ `inset`（嵌进页面，主内容像一张卡片）。
+- `collapsible`：
+
+| 值 | 效果 |
+| --- | --- |
+| `offcanvas` | 整个滑出屏幕（默认） |
+| `icon` | 收窄成只剩图标的一列，菜单按钮在这时显示 tooltip |
+| `none` | 不可折叠，就是一个普通的 flex 列 |
+
+默认的 `sidebar` 变体，`offcanvas` 折叠：
+
+<ComponentPreview name="sidebar/example" previewClassName="p-0 block-auto" />
+
+`floating` 变体，悬浮在页面上：
+
+<ComponentPreview name="sidebar/floating" previewClassName="p-0 block-auto" />
+
+`collapsible="icon"`，折叠后只剩图标，悬停显示 tooltip：
+
+<ComponentPreview name="sidebar/icon" previewClassName="p-0 block-auto" />
+
+用 `inset` 变体时，主内容要包进 `SidebarInset`，它的外边距和圆角才会跟上：
+
+<ComponentPreview name="sidebar/inset" previewClassName="p-0 block-auto" />
+
+## useSidebar
+
+`useSidebar` 读取 Provider 的状态，自己写触发器或按状态切换内容时用：
+
+```tsx
+const { state, open, setOpen, openMobile, setOpenMobile, isMobile, toggleSidebar } = useSidebar()
+```
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `state` | `'expanded' \| 'collapsed'` | 桌面面板当前是展开还是折叠 |
+| `open` | `boolean` | 桌面面板是否展开 |
+| `setOpen` | `(open: boolean) => void` | 设桌面面板的开合（同时写 cookie） |
+| `openMobile` | `boolean` | 移动端抽屉是否打开 |
+| `setOpenMobile` | `(open: boolean) => void` | 设移动端抽屉的开合 |
+| `isMobile` | `boolean` | 视口是否窄于 768px |
+| `toggleSidebar` | `() => void` | 开合，桌面和移动端各管各的那一个 |
+
+桌面和移动端是**两份独立的状态**：在移动端打开抽屉，不会改动桌面端的 `open`。
+在 `SidebarProvider` 外调用会抛错。返回值的类型导出为 `SidebarContextValue`。
+
+## SidebarHeader
+
+`SidebarHeader` 是面板顶部不随内容滚动的区域：
+
+<ComponentPreview name="sidebar/header" previewClassName="p-0 block-auto" />
+
+
+## SidebarFooter
+
+`SidebarFooter` 是面板底部不随内容滚动的区域：
+
+<ComponentPreview name="sidebar/footer" previewClassName="p-0 block-auto" />
+
+## SidebarContent
+
+`SidebarContent` 包住面板的主体，`SidebarGroup` 放在这里。它在头尾之间撑满，内容多了自己滚动：
+
+```tsx
+<Sidebar>
+  <SidebarContent>
+    <SidebarGroup />
+    <SidebarGroup />
+  </SidebarContent>
+</Sidebar>
+```
+
+## SidebarGroup
+
+`SidebarGroup` 是面板里的一节，由 `SidebarGroupLabel`、`SidebarGroupContent` 和可选的
+`SidebarGroupAction` 组成：
+
+<ComponentPreview name="sidebar/group" previewClassName="p-0 block-auto" />
+
+要让一组能折叠，包进 `Collapsible`，标题当触发器：
+
+<ComponentPreview name="sidebar/group-collapsible" previewClassName="p-0 block-auto" />
+
+`SidebarGroupAction` 是组标题右侧的操作按钮：
+
+<ComponentPreview name="sidebar/group-action" previewClassName="p-0 block-auto" />
+
+## SidebarMenu
+
+`SidebarMenu` 在 `SidebarGroup` 里搭菜单，是一个 `<ul>`，每项是 `SidebarMenuItem`（`<li>`），项与项之间隔 4px
+（和 shadcn 的 new-york 一致；base-nova 原本是 `gap-0`，亮着的一行会贴住下一行）。要别的间距，直接传 `gap-*` 覆盖：
+
+<ComponentPreview name="sidebar/menu" previewClassName="p-0 block-auto" />
+
+## SidebarMenuButton
+
+`SidebarMenuButton` 是菜单项里的按钮。默认渲染 `<button>`，用 `render` 换成链接（`<a>`、
+Next.js 的 `Link`）。`isActive` 标记当前项：
+
+```tsx
+<SidebarMenuButton isActive render={<a href="#" />}>
+  首页
+</SidebarMenuButton>
+```
+
+传了 `tooltip`，面板折叠成图标时，悬停按钮会在右侧显示提示；展开时或在移动端，提示不出现。
+
+## SidebarMenuAction
+
+`SidebarMenuAction` 是菜单项右侧的小按钮，绝对定位在按钮上。加 `showOnHover`，它平时隐藏，
+悬停或聚焦到该项时才出现（只在桌面端这样，移动端一直显示）：
+
+<ComponentPreview name="sidebar/menu-action" previewClassName="p-0 block-auto" />
+
+## SidebarMenuSub
+
+`SidebarMenuSub` 是菜单项下的子菜单，带一条左边线；面板折叠成图标时隐藏：
+
+<ComponentPreview name="sidebar/menu-sub" previewClassName="p-0 block-auto" />
+
+配合 `Collapsible`，每一项都能展开收起：
+
+<ComponentPreview name="sidebar/menu-collapsible" previewClassName="p-0 block-auto" />
+
+## SidebarMenuBadge
+
+`SidebarMenuBadge` 是菜单项右侧的计数徽标，面板折叠成图标时隐藏：
+
+<ComponentPreview name="sidebar/menu-badge" previewClassName="p-0 block-auto" />
+
+## SidebarMenuSkeleton
+
+`SidebarMenuSkeleton` 是菜单加载中的占位行。下例数据 3 秒后到达，之前先显示骨架（源自 shadcn 的 RSC 示例，这里改成客户端的 `Suspense` + `use()`）：
+
+<ComponentPreview name="sidebar/rsc" previewClassName="p-0 block-auto" />
+
+文字条的宽度在 50%–90% 之间随机，首渲染时用 `Math.random()` 定下 —— 服务端渲染时，
+服务端和客户端算出的宽度不同，React 会报 hydration 不匹配。只在客户端渲染骨架屏，或者自己给宽度。
+
+## SidebarTrigger
+
+`SidebarTrigger` 是开合面板的按钮（ghost、`icon-sm` 的 `Button`），先跑你传的 `onClick`，
+再开合。它的面板图标跟着状态走：关着时图标里的竖线左移，面板变窄。要自己做触发器，用 `useSidebar` 的 `toggleSidebar`：
+
+```tsx
+function CustomTrigger() {
+  const { toggleSidebar } = useSidebar()
+  return <button onClick={toggleSidebar} type="button">开合侧边栏</button>
+}
+```
+
+## SidebarRail
+
+`SidebarRail` 是贴在面板边缘的一条细窄按钮，点它开合，鼠标移上去显示一条边线和缩放光标：
+
+```tsx
+<Sidebar>
+  <SidebarHeader />
+  <SidebarContent>
+    <SidebarGroup />
+  </SidebarContent>
+  <SidebarFooter />
+  <SidebarRail />
+</Sidebar>
+```
+
+它不在 Tab 序里（`tabIndex={-1}`）—— 键盘用户走 `SidebarTrigger` 或 `⌘B`。
+
+## 动画
+
+收起展开的动效来自 animate-ui 的 `@animate-ui/react/primitives/sidebar`，高亮由封装层自己实现，
+用的是 animate-ui 的弹簧和渐变参数。都不用写任何东西：
+
+- **一块底色**：一个面板里所有菜单按钮和子菜单按钮共用**一块**底色，它就是激活项的背景。
+  静止时停在 `isActive` 的按钮上；指针移到别的按钮上，它弹簧滑过去；指针离开，它滑回激活项。
+  键盘 `Tab` 聚焦到按钮时它也跟过去（鼠标点击引起的聚焦不算）。所以悬停态和激活态不会同时
+  出现两块同色底色。没有激活项时，指针离开后它原地淡出。
+  - 从一个按钮移到相邻按钮会跨过 4px 间距：离开后等 100ms 才算真的离开，期间进入下一个按钮就
+    直接滑过去，不会先折回激活项。
+  - 底色画在菜单项里、按钮旁边（`data-slot="sidebar-menu-highlight"`），量着按钮的盒子，按钮
+    收起成图标时它跟着变形；按钮自己的 hover / 激活底色因此是透明的。`variant="outline"` 的按钮
+    有自己的 `bg-background`，不参与，保留原来的样式。
+  - `SidebarProvider` 上传 `animateOnHover={false}` 关掉，按钮回到各自的 hover 与激活底色。
+- **收起与展开**：280ms，曲线 `cubic-bezier(0.77, 0, 0.175, 1)`。面板和它在页面上让出的空位
+  走同一条曲线，两者的边缘每一帧都对齐，不留缝也不重叠。中途再按一次，从当前位置折返。
+- **折叠成图标时**：按钮文字先带 2px 模糊淡出，按钮再变窄，所以不会闪出 `Mo…` 这种截断；
+  被折叠藏起来的部件（子菜单、徽标、操作按钮、整组）沿同一曲线收拢，下面的项跟着平移，不跳。
+  展开时反过来。文字要包在元素里（`<span>`），裸文本没法单独淡出。
+- **子菜单展开**：配合 `Collapsible`，子项依次错落进入（每项间隔 33ms，从右侧 8px 滑入并去掉模糊）。
+- **移动端抽屉**：animate-ui 的 Dialog 从所在一侧滑入（400ms），关闭时更快地滑出。
+- **折叠后的 tooltip**：本库的 [Tooltip](/docs/components/tooltip)，从按钮处弹簧放大。
+- **主内容跟随**：Provider 在自己的元素上设了 `--animate-ui-sidebar-duration` 和
+  `--animate-ui-sidebar-easing`，旁边的内容写 `duration-(--animate-ui-sidebar-duration)
+  ease-(--animate-ui-sidebar-easing)` 就能和面板同步。
+- 首次挂载不播动画：一开始就是折叠状态时直接显示折叠后的样子。系统开了「减弱动态效果」时，
+  收起展开瞬间完成，高亮直接跳到下一个按钮。
+
+## 受控
+
+用 `open` 和 `onOpenChange` 受控：
+
+<ComponentPreview name="sidebar/controlled" previewClassName="p-0 block-auto" />
+
+受控只管桌面面板；移动端抽屉的开合始终是 Provider 内部状态，从外面读写走 `useSidebar`。
+`onOpenChange` 只收一个参数（新的开合值），没有本库其他组件的 `eventDetails`。
+
+## 主题
+
+侧边栏有自己的一组颜色变量，`styles.css` 已经带上（亮色 / 暗色两套）：
+
+```css
+:root {
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+```
+
+对应的 Tailwind 色名是 `bg-sidebar`、`text-sidebar-foreground`、`bg-sidebar-accent`…
+[ThemeEditor](/docs/components/theme-editor) 目前不编辑这组变量。
+
+## 状态与 className
+
+纯 DOM 家族，没有 Base UI 的 state 函数：`className` 处处是字符串。状态挂在面板最外层
+（`data-slot="sidebar"`，带 Tailwind 的 `group` 和 `peer`），子孙用 `group-data-*`、相邻的
+`SidebarInset` 用 `peer-data-*` 读：
+
+| 属性 | 在哪 | 效果 |
+| --- | --- | --- |
+| `data-state="expanded" \| "collapsed"` | 面板 | 展开 / 折叠 |
+| `data-collapsible="offcanvas" \| "icon"` | 面板 | 折叠时是哪种方式；展开时为空串 |
+| `data-variant` | 面板 | `sidebar` / `floating` / `inset` |
+| `data-side` | 面板、`sidebar-container` | `left` / `right` |
+| `data-mobile="true"` | 移动端抽屉 | 当前是移动端形态 |
+| `data-active` | `SidebarMenuButton`、`SidebarMenuSubButton` | `isActive` 为真 |
+| `data-size` | `SidebarMenuButton`、`SidebarMenuSubButton` | 尺寸 |
+
+折叠成图标时藏掉一整组：
+
+```tsx
+<Sidebar collapsible="icon">
+  <SidebarContent>
+    <SidebarGroup className="group-data-[collapsible=icon]:hidden" />
+  </SidebarContent>
+</Sidebar>
+```
+
+当前项的操作按钮常亮：
+
+```tsx
+<SidebarMenuItem>
+  <SidebarMenuButton />
+  <SidebarMenuAction className="peer-data-active/menu-button:opacity-100" />
+</SidebarMenuItem>
+```
+
+`SidebarMenuItem` 带 `group/menu-item`，`SidebarMenuButton` 带 `peer/menu-button`，菜单项
+内部的联动样式走这两个名字。每个部件另有 `data-slot="sidebar-*"`（`sidebar-wrapper`、
+`sidebar`、`sidebar-container`、`sidebar-inner`、`sidebar-menu-button`…）和同义的
+`data-sidebar="*"`，从外部定位用。滑动的那块底色是 `data-slot="sidebar-menu-highlight"`：要改它的颜色或圆角，
+对它写样式（比如 `**:data-[slot=sidebar-menu-highlight]:bg-primary/10` 挂在 `Sidebar` 上），别在按钮上写 `data-active:bg-*`
+—— 那会让激活项重新有自己的一块底色。
+
+## 键盘交互
+
+| 按键 | 行为 |
+| --- | --- |
+| `⌘B` / `Ctrl+B` | 开合（桌面端开合面板，移动端开合抽屉）；焦点在文本输入类元素里时不响应 |
+| `Tab` | 依次经过触发器、菜单按钮、操作按钮；`SidebarRail` 不在 Tab 序里 |
+| `Enter` / `Space` | 在按钮上触发；`SidebarMenuSubButton` 默认是链接，只响应 `Enter` |
+| `Esc` | 移动端抽屉打开时关闭它 |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → className**。
+
+### SidebarProvider
+
+持有开合状态。渲染一个 `<div>`（`data-slot="sidebar-wrapper"`）。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `defaultOpen` | `boolean` | `true` | 非受控初始开合 |
+| `open` | `boolean` | — | 受控开合（只管桌面面板） |
+| `onOpenChange` | `(open: boolean) => void` | — | 开合变化 |
+| `animateOnHover` | `boolean` | `true` | 激活项的底色跟着指针和键盘焦点滑动；`false` 回到按钮各自的 hover 与激活底色 |
+| `style` | `CSSProperties` | — | 覆盖 `--sidebar-width` / `--sidebar-width-icon` |
+| `className` | `string` | — | 落在外层 `<div>` 上 |
+| 其余 | `<div>` 原生属性 + `ref` | — | 透传 |
+
+### Sidebar
+
+面板本体。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `side` | `'left' \| 'right'` | `'left'` | 贴哪一边 |
+| `collapsible` | `'offcanvas' \| 'icon' \| 'none'` | `'offcanvas'` | 折叠方式 |
+| `variant` | `'sidebar' \| 'floating' \| 'inset'` | `'sidebar'` | 外观 |
+| `dir` | `string` | — | 只传给移动端抽屉 |
+| `className` | `string` | — | 落点随形态变：桌面端在 `sidebar-container` 上，`collapsible="none"` 时在根 `<div>` 上，移动端被丢弃 |
+| 其余 | `<div>` 原生属性 + `ref` | — | 同 `className` 的落点；移动端被丢弃 |
+
+```tsx
+<Sidebar collapsible="icon" side="right" variant="floating">…</Sidebar>
+```
+
+### SidebarTrigger
+
+开合按钮。是 shadcn 的 `Button`（默认 `variant="ghost"`、`size="icon-sm"`），不是本库发布的那个；图标是 animate-ui 的动画 `PanelLeft`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `onClick` | `MouseEventHandler` | — | 先跑你的，再开合 |
+| `children` | — | — | **被忽略**：内容固定是面板图标 + 读屏文案 `Toggle Sidebar`，要换内容就用 `useSidebar` 自己做触发器 |
+| 其余 | `Button` 的 props | — | 透传 |
+
+### SidebarRail
+
+面板边缘的开合细条。渲染一个 `<button>`，`aria-label` 和 `title` 都是 `Toggle Sidebar`，`tabIndex={-1}`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `onClick` | `MouseEventHandler` | 开合面板 | **传了会顶掉开合**，不是串联 |
+| `className` | `string` | — | 落在 `<button>` 上 |
+| 其余 | `<button>` 原生属性 + `ref` | — | 透传 |
+
+### SidebarMenuButton
+
+菜单项按钮。默认渲染 `<button>`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `isActive` | `boolean` | `false` | 当前项，写 `data-active` |
+| `tooltip` | `string \| TooltipPopupProps` | — | 折叠成图标时显示的提示；对象形态可改 `side` 等 |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 换宿主元素，如 `render={<a href="/" />}` |
+| `variant` | `'default' \| 'outline'` | `'default'` | 外观 |
+| `size` | `'default' \| 'sm' \| 'lg'` | `'default'` | 高度 32 / 28 / 48px |
+| `className` | `string` | — | 落在按钮上 |
+| 其余 | `<button>` 原生属性 + `ref` | — | 透传 |
+
+### SidebarMenuSubButton
+
+子菜单项。默认渲染 `<a>`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `isActive` | `boolean` | `false` | 当前项，写 `data-active` |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 换宿主元素，如 Next.js 的 `Link` |
+| `size` | `'sm' \| 'md'` | `'md'` | 字号 |
+| `className` | `string` | — | 落在 `<a>` 上 |
+| 其余 | `<a>` 原生属性 + `ref` | — | 透传 |
+
+### SidebarMenuAction
+
+菜单项右侧的操作按钮。默认渲染 `<button>`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `showOnHover` | `boolean` | `false` | 桌面端平时隐藏，悬停 / 聚焦该项或展开时出现 |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 换宿主元素，如 `DropdownMenuTrigger` |
+| `className` | `string` | — | 落在按钮上 |
+| 其余 | `<button>` 原生属性 + `ref` | — | 透传 |
+
+### SidebarGroupLabel / SidebarGroupAction
+
+一组的标题（默认 `<div>`）和右上角的操作按钮（默认 `<button>`），折叠成图标时隐藏。
+两者都收 `render`，换宿主元素（如 `render={<CollapsibleTrigger />}`）；其余透传原生属性 + `ref`。
+
+### SidebarMenuSkeleton
+
+加载占位行。渲染一个 `<div>`。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `showIcon` | `boolean` | `false` | 前面多一个图标占位 |
+| `className` | `string` | — | 落在 `<div>` 上 |
+| 其余 | `<div>` 原生属性 + `ref` | — | 透传 |
+
+### SidebarInput / SidebarSeparator
+
+面板里的输入框和分隔线：分别是 shadcn 的 `Input`（`<input>`）和 `Separator`，只调了尺寸和颜色，props 同它们。
+
+### 结构部件
+
+下面这些部件只收原生属性，`className` 是字符串、落在它渲染的元素上，没有自己的 props：
+
+| 部件 | 渲染 |
+| --- | --- |
+| `SidebarHeader` / `SidebarFooter` / `SidebarContent` / `SidebarGroup` / `SidebarGroupContent` / `SidebarMenuBadge` | `<div>` |
+| `SidebarMenu` / `SidebarMenuSub` | `<ul>` |
+| `SidebarMenuItem` / `SidebarMenuSubItem` | `<li>` |
+| `SidebarInset` | `<main>` |
+
+每个部件都导出同名的 `XxxProps` 类型（`SidebarProps` / `SidebarMenuButtonProps` / …，共 23 个），另有 `useSidebar` 返回值的 `SidebarContextValue`。
