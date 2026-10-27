@@ -39,13 +39,18 @@ export function isReplay(event: Event): boolean {
  */
 export function replayPress(element: Element): void {
   const init: PointerEventInit = { button: 0, isPrimary: true, pointerId: -1, pointerType: 'mouse' }
-  const down = new PointerEvent('pointerdown', init)
+  // The element's own window, held from the press: the release lands after
+  // MIN_PRESS, when a test environment may already have dropped the globals.
+  const view = element.ownerDocument.defaultView
+  if (!view)
+    return
+  const down = new view.PointerEvent('pointerdown', init)
   replays.add(down)
   element.dispatchEvent(down)
   setTimeout(() => {
-    const up = new PointerEvent('pointerup', init)
+    const up = new view.PointerEvent('pointerup', init)
     replays.add(up)
-    window.dispatchEvent(up)
+    view.dispatchEvent(up)
   }, MIN_PRESS)
 }
 
