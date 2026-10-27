@@ -2,6 +2,7 @@
 
 import type { ReactElement } from 'react'
 import { Collapsible as CollapsiblePrimitive } from '@animate-ui/react/primitives/base-ui/collapsible'
+import { cn } from '#lib/utils'
 
 export type CollapsibleProps = CollapsiblePrimitive.Root.Props
 /** The state a function `className` / `style` / `render` receives on the root. */
@@ -53,11 +54,23 @@ export function CollapsibleTrigger(props: CollapsibleTriggerProps): ReactElement
   return <CollapsiblePrimitive.Trigger data-slot="collapsible-trigger" {...props} />
 }
 
+const SETTLED_UNCLIPPED = `
+  [&[data-open]:not([style*='--animate-ui-panel-content:'])]:mask-none!
+  [&[data-open]:not([style*='--animate-ui-panel-content:'])]:overflow-visible!
+`
+
 /**
  * The panel. animate-ui animates its height between `0` and `auto` with Motion
- * and clips the overflow while it moves, so the seam adds no classes of its
- * own. Timing goes through its `transition` / `exitTransition` props, not
- * `className`.
+ * and clips the overflow while it moves. Timing goes through its `transition` /
+ * `exitTransition` props, not `className`.
+ *
+ * Once open and still, the seam lifts the clip. animate-ui leaves its
+ * `overflow: hidden` and edge mask inline for good, and a mask is a stacking
+ * context: a sidebar's gliding highlight in a sub-menu would be cut at the
+ * panel's edge as it glides in from the button above (and focus rings inside
+ * clipped). The mark is the measured height animate-ui writes when a move
+ * starts and drops when an opening settles; closing drops `data-open` first,
+ * so the clip is back before the panel shrinks.
  *
  * Padding belongs on an element **inside** the panel, not on the panel itself:
  * the panel's height is what animates, so its own padding gets squeezed on the
@@ -67,6 +80,12 @@ export function CollapsibleTrigger(props: CollapsibleTriggerProps): ReactElement
  * `hiddenUntilFound` goes further — `hidden="until-found"`, which lets the
  * browser's own find-in-page reach text inside a closed panel and open it.
  */
-export function CollapsiblePanel(props: CollapsiblePanelProps): ReactElement {
-  return <CollapsiblePrimitive.Panel data-slot="collapsible-panel" {...props} />
+export function CollapsiblePanel({ className, ...props }: CollapsiblePanelProps): ReactElement {
+  return (
+    <CollapsiblePrimitive.Panel
+      className={cn(SETTLED_UNCLIPPED, className)}
+      data-slot="collapsible-panel"
+      {...props}
+    />
+  )
 }
