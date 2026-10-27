@@ -73,25 +73,11 @@ viewport / thumb / corner 由封装层按 `orientation` 与 `scrollbars` 自动�
 
 <ComponentPreview name="scroll-area/scroll-fade" />
 
-渐隐来自 animate-ui 的 scroll fade：边缘挂 mask，靠近边缘的条目同时微缩、
-模糊，滚到头时那一侧平滑收起，内容变高变矮时也会过渡过去。轴向跟
-`orientation` 走。mask 挂在视口上，兄弟滚动条不会被压暗。
+效果来自 animate-ui 的 scroll fade：边缘挂 mask，靠近边缘的条目微缩、模糊。mask 挂在视口上，
+兄弟滚动条不会被压暗。`fade` 传对象可以调 `size` / `shrink` / `blur` / `transition`。
 
-`fade` 传对象可以调样子：`size` 是渐隐深度（px，默认 40），`shrink` 是条目的
-缩小比例（默认 0.03），`blur` 是模糊半径（px，默认 4），`transition` 是边缘
-收放的过渡。系统开了「减少动态效果」时只留 mask，条目不缩放。
-
-不是 ScrollArea 的滚动元素用 `ScrollFade`，参数相同，`render` 可以换成别的元素：
-
-```tsx
-import { ScrollFade } from '@gedatou/cadenza-ui'
-
-<ScrollFade className="max-block-64">…</ScrollFade>
-```
-
-`styles.css` 里的 `scroll-fade-*` 工具类仍然保留。它们是纯 CSS 的，不缩放、
-不模糊；`scroll-fade-inset` 能避开固定表头和固定列，
-[DataTable](/docs/components/data-table) 用的就是它。
+参数、条目的识别规则（什么时候只该留 mask）、不是 ScrollArea 的滚动元素怎么用，
+都在 [ScrollFade](/docs/components/scroll-fade) 页。
 
 ## 状态与 className
 

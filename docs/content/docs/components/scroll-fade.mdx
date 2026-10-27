@@ -1,0 +1,133 @@
+---
+title: ScrollFade
+description: 朝还能继续滚的一侧渐隐 —— 边缘挂 mask，靠近边缘的条目微缩、模糊，滚到头时那一侧平滑收起
+---
+
+<ComponentPreview name="scroll-fade/basic" />
+
+一个会滚动的元素，内容朝还能继续滚的那一侧渐隐。效果来自 [animate-ui](https://animate-ui.com)
+的 scroll fade，分两层：
+
+- **mask**：哪一侧还有内容，哪一侧的边缘就渐隐；滚到头时那一侧平滑收起，内容变高变矮时也会过渡过去。
+- **条目**：靠近渐隐边缘的条目会微微缩小、模糊，离边缘越近越明显。
+
+同样的效果有两种用法：普通滚动元素用 `ScrollFade` 组件；[ScrollArea](/docs/components/scroll-area)
+用它的 `fade` 参数，见[在 ScrollArea 上](#在-scrollarea-上)。
+
+## 使用
+
+```tsx
+import { ScrollFade } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<ScrollFade className="max-block-64">
+  <ul>…</ul>
+</ScrollFade>
+```
+
+`ScrollFade` 自己就是滚动元素：它按 `orientation` 写好 `overflow`，你只需要给它一个高度上限。
+
+## 在 ScrollArea 上
+
+ScrollArea 写 `fade` 就有同样的效果，参数也相同（`fade={{ size: 24 }}`）：
+
+<ComponentPreview name="scroll-area/scroll-fade" />
+
+mask 挂在 ScrollArea 的视口上，滚动条是视口的兄弟元素，所以滚动条不会跟着变暗。
+`ScrollFade` 的滚动条长在滚动元素内部，会被 mask 一起压暗，所以上面的 demo
+都用 `no-scrollbar` 把它藏了起来。想要一条清晰的滚动条，就用 ScrollArea。
+
+## 方向
+
+`orientation` 决定哪个方向滚动、哪个方向渐隐：`vertical`（默认）、`horizontal` 或 `both`。
+
+<ComponentPreview name="scroll-fade/horizontal" />
+
+## 调整效果
+
+`size` 是渐隐的深度（px，默认 40），`shrink` 是条目的缩小比例（默认 0.03），
+`blur` 是模糊半径（px，默认 4）。`blur={0} shrink={0}` 就只留 mask：
+
+<ComponentPreview name="scroll-fade/options" />
+
+`transition` 是 mask 收放的 Motion 过渡，默认跟 animate-ui 的节奏走。
+
+## 条目怎么识别
+
+缩小和模糊作用在「条目」上，而条目是按 DOM 结构找出来的：
+
+1. 从滚动元素开始，沿着「只有一个子元素」的链往下走，走到第一个有多个子元素的节点，把它的子元素当作条目。
+2. 只有 `ul`、`ol`、`[role="list"]`、`[role="group"]`（或者子元素里有这几种的）会继续往里找。
+
+所以有两种情况效果会不对：
+
+- **`role="listbox"`、`role="log"` 不在名单里。** 这种列表旁边只要多出一个兄弟元素（加载哨兵、状态行、「加载更早」），整个列表就会被当成一个条目，一起缩小、一起模糊。
+- **模糊按条目的中心点计算。** 比视口还高的条目（比如 AI 的长回复）中心点一越过边缘，整条都会模糊，正在读的那几行也一样。
+
+遇到这两种情况就只留 mask（`blur={0} shrink={0}`），不要为了迎合识别规则去加假的 role。
+库里的组件是这样取舍的：
+
+| 组件 | 渐隐 | 原因 |
+| --- | --- | --- |
+| [InfiniteSelect](/docs/components/infinite-select) / [Cascader](/docs/components/cascader) | 只留 mask | listbox 认不出条目；缩小或模糊会让条目自成一层，滑动的高亮会盖住前面行的文字 |
+| [MessageScroller](/docs/components/message-scroller) | 默认只留 mask | 消息可能比视口还高。`fade` 传 `true` 打开完整效果 |
+| [Dialog](/docs/components/dialog) 的 `DialogBody` | 完整效果 | 本身就是一个 `ScrollFade` |
+| [DataTable](/docs/components/data-table) | CSS 工具类 | 要避开固定表头和固定列，见下文 |
+
+条目自己带了 `filter` 时不会再被模糊，以免把它原有的效果冲掉。
+
+## 换元素
+
+`render` 把滚动元素换成别的元素，渐隐和 `overflow` 原样跟过去。比如让列表本身滚动：
+
+```tsx
+<ScrollFade render={<ul />} className="max-block-64">
+  <li>…</li>
+</ScrollFade>
+```
+
+## 减少动态效果
+
+系统开了「减少动态效果」时，条目不再缩小，mask 的收放也不再过渡、直接到位；
+模糊和 mask 本身保留。
+
+## 什么时候用 ScrollFade
+
+| 场景 | 用什么 |
+| --- | --- |
+| 需要一条清晰可见的滚动条 | ScrollArea 的 `fade` |
+| 滚动条可以藏起来，或者滚动元素是别的组件给的 | `ScrollFade` |
+| 只要 mask，不要缩放和模糊，还要避开固定的表头、列 | `styles.css` 里的 `scroll-fade-*` 工具类 |
+
+`scroll-fade-*` 工具类是纯 CSS 的：`scroll-fade-y` / `scroll-fade-x` 跟着滚动位置渐隐，
+`scroll-fade-inset` 能让渐隐从固定表头、固定列的边上开始，[DataTable](/docs/components/data-table) 用的就是它。
+
+## 状态与 className
+
+`className` 是普通字符串，落在滚动元素上。
+
+| 属性 | 是什么 |
+| --- | --- |
+| `data-slot="scroll-fade"` | 滚动元素；传了 `data-slot` 就以你的为准（`DialogBody` 写的是 `dialog-body`） |
+| `data-orientation` | `orientation` 的值 |
+| `--scroll-fade-top` / `--scroll-fade-bottom` / `--scroll-fade-left` / `--scroll-fade-right` | 各边缘当前的渐隐程度，0 到 1 |
+| `--scroll-fade-size` | 渐隐深度 |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `orientation` | `'vertical' \| 'horizontal' \| 'both'` | `'vertical'` | 哪个方向滚动、渐隐 |
+| `size` | `number` | `40` | 渐隐深度（px） |
+| `shrink` | `number` | `0.03` | 条目靠近边缘时的缩小比例，`0` 不缩小 |
+| `blur` | `number` | `4` | 条目靠近边缘时的模糊半径（px），`0` 不模糊 |
+| `transition` | `Transition` | — | mask 收放的 Motion 过渡 |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | 把滚动元素换成别的元素 |
+| `className` | `string` | — | 滚动元素的类名 |
+| 其余 | 元素原生属性 + `ref` | — | 透传 |
+
+3 个类型一并导出：`ScrollFadeProps` / `ScrollFadeOptions`（`size` / `shrink` / `blur` / `transition`，
+也是 ScrollArea `fade` 的对象形式）/ `ScrollFadeOrientation`。

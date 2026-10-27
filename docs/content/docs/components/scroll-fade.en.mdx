@@ -1,0 +1,134 @@
+---
+title: ScrollFade
+description: Fades toward each edge that still has more to scroll — the edge is masked, items nearing it shrink and blur, and it lets go once you reach the end
+---
+
+<ComponentPreview name="scroll-fade/basic" />
+
+A scrolling element whose content fades toward each edge that still has more to scroll. The
+effect is [animate-ui](https://animate-ui.com)'s scroll fade, in two layers:
+
+- **Mask**: an edge with more content fades; reaching the end lets that edge go smoothly, and the fade follows the content as it grows or shrinks.
+- **Items**: items nearing a fading edge shrink and blur a little, more the closer they get.
+
+There are two ways in: a plain scrolling element uses the `ScrollFade` component; a
+[ScrollArea](/en/docs/components/scroll-area) uses its `fade` prop, see [On a ScrollArea](#on-a-scrollarea).
+
+## Usage
+
+```tsx
+import { ScrollFade } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<ScrollFade className="max-block-64">
+  <ul>…</ul>
+</ScrollFade>
+```
+
+`ScrollFade` is the scrolling element itself: it sets `overflow` from `orientation`, so all it needs from you is a height cap.
+
+## On a ScrollArea
+
+A ScrollArea with `fade` gets the same effect, with the same options (`fade={{ size: 24 }}`):
+
+<ComponentPreview name="scroll-area/scroll-fade" />
+
+The mask sits on the ScrollArea's viewport and the scrollbar is the viewport's sibling, so the
+scrollbar never dims. A `ScrollFade`'s scrollbar lives inside the scrolling element and fades
+with it, which is why the demos here hide it with `no-scrollbar`. For a crisp scrollbar, use a ScrollArea.
+
+## Orientation
+
+`orientation` sets which way the element scrolls and fades: `vertical` (the default), `horizontal` or `both`.
+
+<ComponentPreview name="scroll-fade/horizontal" />
+
+## Tuning the effect
+
+`size` is the fade's depth (px, 40 by default), `shrink` how much an item scales down (0.03),
+`blur` its blur radius (px, 4). `blur={0} shrink={0}` keeps the mask only:
+
+<ComponentPreview name="scroll-fade/options" />
+
+`transition` is the Motion transition of the mask settling, paced by animate-ui by default.
+
+## How items are found
+
+Shrink and blur act on "items", which are found from the DOM:
+
+1. From the scrolling element, it walks down the chain of only children to the first node with several children, and takes those children as the items.
+2. It only looks inside `ul`, `ol`, `[role="list"]` and `[role="group"]` (or a child that holds one of them).
+
+Two cases go wrong:
+
+- **`role="listbox"` and `role="log"` are not on the list.** One sibling beside such a list (a load sentinel, a status row, a "load earlier" row) turns the whole list into a single item that shrinks and blurs as a block.
+- **Blur works from each item's centre.** Once an item taller than the viewport (a long AI reply, say) has its centre past the edge, all of it blurs, the lines being read included.
+
+In either case keep the mask only (`blur={0} shrink={0}`) rather than adding fake roles to suit
+the rule. The library's own components settle it like this:
+
+| Component | Fade | Why |
+| --- | --- | --- |
+| [InfiniteSelect](/en/docs/components/infinite-select) / [Cascader](/en/docs/components/cascader) | mask only | a listbox hides its items; a shrunk or blurred row gets a stacking context, and the gliding highlight would paint over the rows before it |
+| [MessageScroller](/en/docs/components/message-scroller) | mask only by default | messages can be taller than the viewport; pass `fade` `true` for the full effect |
+| [Dialog](/en/docs/components/dialog)'s `DialogBody` | full | it is a `ScrollFade` |
+| [DataTable](/en/docs/components/data-table) | CSS utilities | it has to stop short of sticky headers and columns, see below |
+
+An item with a `filter` of its own is not blurred, so its own effect survives.
+
+## Changing the element
+
+`render` swaps the scrolling element for another; the fade and the `overflow` come along. To let the list itself scroll:
+
+```tsx
+<ScrollFade render={<ul />} className="max-block-64">
+  <li>…</li>
+</ScrollFade>
+```
+
+## Reduced motion
+
+With reduced motion on, items no longer shrink and the mask settles at once instead of easing;
+the blur and the mask itself stay.
+
+## When to use ScrollFade
+
+| Case | Use |
+| --- | --- |
+| A visible scrollbar is wanted | ScrollArea's `fade` |
+| The scrollbar can be hidden, or the scrolling element comes from another component | `ScrollFade` |
+| A mask only, no shrink or blur, stopping short of sticky headers or columns | the `scroll-fade-*` utilities in `styles.css` |
+
+The `scroll-fade-*` utilities are plain CSS: `scroll-fade-y` / `scroll-fade-x` fade with the
+scroll position, and `scroll-fade-inset` starts the fade beside sticky headers and columns —
+[DataTable](/en/docs/components/data-table) uses it.
+
+## State and className
+
+`className` is a plain string and lands on the scrolling element.
+
+| Attribute | What it is |
+| --- | --- |
+| `data-slot="scroll-fade"` | the scrolling element; a `data-slot` you pass wins (`DialogBody` writes `dialog-body`) |
+| `data-orientation` | the value of `orientation` |
+| `--scroll-fade-top` / `--scroll-fade-bottom` / `--scroll-fade-left` / `--scroll-fade-right` | how faded each edge is right now, 0 to 1 |
+| `--scroll-fade-size` | the fade's depth |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks → behaviour switches → appearance → `className`**.
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `orientation` | `'vertical' \| 'horizontal' \| 'both'` | `'vertical'` | which way it scrolls and fades |
+| `size` | `number` | `40` | fade depth (px) |
+| `shrink` | `number` | `0.03` | how much an item nearing the edge scales down; `0` for none |
+| `blur` | `number` | `4` | blur radius of an item nearing the edge (px); `0` for none |
+| `transition` | `Transition` | — | Motion transition of the mask settling |
+| `render` | `ReactElement \| (props, state) => ReactElement` | — | swaps the scrolling element for another |
+| `className` | `string` | — | class of the scrolling element |
+| rest | native attributes + `ref` | — | passed through |
+
+3 types are exported as well: `ScrollFadeProps` / `ScrollFadeOptions` (`size` / `shrink` / `blur` /
+`transition`, also the object form of ScrollArea's `fade`) / `ScrollFadeOrientation`.

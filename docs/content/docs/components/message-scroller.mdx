@@ -553,7 +553,7 @@ headless 根。持有滚动状态与行为 props，交给各部件和几个 hook
 | `aria-label` | `string` | `'Messages'` | 记录滚动区的可访问名 |
 | `tabIndex` | `number` | Base UI 定 | 有溢出时 `0`，两个轴都装得下时 `-1` —— 滚不动的区域不占焦点位 |
 | `scrollbars` | `'hover' \| 'always' \| 'hidden'` | `'hover'` | 渲染哪些滚动条，与 [ScrollArea](/docs/components/scroll-area) 同一套词 |
-| `fade` | `boolean` \| `ScrollFadeOptions` | `{ shrink: 0, blur: 0 }` | ScrollArea 的[滚动渐隐](/docs/components/scroll-area#滚动渐隐)，默认只留 mask。缩放和模糊按整条消息的中心点计算，比视口还高的消息中心一越过上边缘，整条都会模糊，正在读的几行也不例外。消息都很短、记录区旁边也没有别的元素时，可以传 `true` 打开完整效果 |
+| `fade` | `boolean` \| `ScrollFadeOptions` | `{ shrink: 0, blur: 0 }` | ScrollArea 的[滚动渐隐](/docs/components/scroll-fade)，默认只留 mask。缩放和模糊按整条消息的中心点计算，比视口还高的消息中心一越过上边缘，整条都会模糊，正在读的几行也不例外。消息都很短、记录区旁边也没有别的元素时，可以传 `true` 打开完整效果 |
 | `className` | `string \| (state) => string` | — | 落在 Base UI 的视口槽位，所以这一个**也收函数形态**，参数是 `ScrollAreaViewportState`（`scrolling`、`hasOverflowX/Y` 与四个溢出边缘标志） |
 | 其余 | `ComponentProps<'div'>`（含 `ref`，与内部合并） | — | 透传 |
 

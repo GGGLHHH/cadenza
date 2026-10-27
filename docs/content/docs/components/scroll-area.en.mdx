@@ -85,29 +85,14 @@ scroll:
 
 <ComponentPreview name="scroll-area/scroll-fade" />
 
-The fade is animate-ui's scroll fade: each edge gets a mask, and the items
-nearing it shrink and blur a little. Reach an end and that edge settles away
-smoothly; it also eases along when the content grows or shrinks. The axes follow
-`orientation`. The mask sits on the viewport, so the sibling scrollbars never
-dim.
+The fade is animate-ui's scroll fade: each edge gets a mask, and the items nearing
+it shrink and blur a little. The mask sits on the viewport, so the sibling
+scrollbars never dim. Pass an object to `fade` to tune `size` / `shrink` / `blur` /
+`transition`.
 
-Pass an object to `fade` to tune it: `size` is the fade's depth (px, default
-40), `shrink` how much an item scales down (default 0.03), `blur` its blur
-radius (px, default 4), and `transition` how an edge settles. With reduced
-motion on, only the mask stays; items do not scale.
-
-For a scrolling element that is not a ScrollArea, use `ScrollFade`. It takes the
-same options, and `render` swaps the element:
-
-```tsx
-import { ScrollFade } from '@gedatou/cadenza-ui'
-
-<ScrollFade className="max-block-64">…</ScrollFade>
-```
-
-The `scroll-fade-*` utilities in `styles.css` are still there. They are pure CSS,
-with no shrink or blur; `scroll-fade-inset` can keep clear of a sticky header and
-pinned columns, which is what [DataTable](/docs/components/data-table) uses.
+The options, how items are found (and when to keep the mask only), and fading a
+scrolling element that is not a ScrollArea are on the
+[ScrollFade](/en/docs/components/scroll-fade) page.
 
 ## State and className
 

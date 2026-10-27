@@ -642,7 +642,7 @@ builds itself rather than promoting from the vendored file.
 | `aria-label` | `string` | `'Messages'` | Accessible name for the scrollable transcript |
 | `tabIndex` | `number` | Base UI's | `0` while either axis overflows, `-1` when both fit — a region that cannot scroll takes no focus stop |
 | `scrollbars` | `'hover' \| 'always' \| 'hidden'` | `'hover'` | Which scrollbars to render, in [ScrollArea](/en/docs/components/scroll-area)'s vocabulary |
-| `fade` | `boolean` \| `ScrollFadeOptions` | `{ shrink: 0, blur: 0 }` | ScrollArea's [scroll fade](/en/docs/components/scroll-area#scroll-fade), mask only by default. Shrink and blur work from each message's centre, so once a message taller than the viewport has its centre past the top edge, all of it blurs, the lines being read included. Pass `true` for the full effect when messages stay short and nothing sits beside the transcript |
+| `fade` | `boolean` \| `ScrollFadeOptions` | `{ shrink: 0, blur: 0 }` | ScrollArea's [scroll fade](/en/docs/components/scroll-fade), mask only by default. Shrink and blur work from each message's centre, so once a message taller than the viewport has its centre past the top edge, all of it blurs, the lines being read included. Pass `true` for the full effect when messages stay short and nothing sits beside the transcript |
 | `className` | `string \| (state) => string` | — | Lands on Base UI's viewport slot, so this one **also takes the function form**, resolved against `ScrollAreaViewportState` (`scrolling`, `hasOverflowX/Y`, the four overflow-edge flags) |
 | the rest | `ComponentProps<'div'>` (`ref` included, merged with the internal one) | — | Spread |
 
