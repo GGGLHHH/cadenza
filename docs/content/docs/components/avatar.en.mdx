@@ -1,0 +1,165 @@
+---
+title: Avatar
+description: An avatar with a fallback — initials before the image loads and after it fails; grouped, avatars rise on hover and share one gliding tooltip
+---
+
+<ComponentPreview name="avatar/basic" />
+
+A round avatar: `AvatarFallback` shows until `AvatarImage` has loaded, and stays if it fails.
+Underneath is Base UI's Avatar, in shadcn's base-nova look.
+
+`AvatarGroup` comes from [animate-ui](https://animate-ui.com): the avatar the pointer meets
+rises, and the names share one tooltip that glides from avatar to avatar instead of each
+avatar opening its own.
+
+## Usage
+
+```tsx
+import { Avatar, AvatarFallback, AvatarImage } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Avatar>
+  <AvatarImage src="/avatars/shadcn.jpg" alt="shadcn" />
+  <AvatarFallback>CN</AvatarFallback>
+</Avatar>
+```
+
+## Composition
+
+A single avatar:
+
+```text
+Avatar
+├── AvatarImage
+├── AvatarFallback
+└── AvatarBadge
+```
+
+A group of avatars, each tooltip written inside the avatar it belongs to:
+
+```text
+AvatarGroup
+├── Avatar
+│   ├── AvatarImage
+│   ├── AvatarFallback
+│   └── AvatarGroupTooltip
+├── Avatar
+│   └── …
+└── AvatarGroupCount
+```
+
+## Badge
+
+`AvatarBadge` is a status dot at the bottom right; recolour it with `className`:
+
+<ComponentPreview name="avatar/badge" />
+
+```tsx
+<Avatar>
+  <AvatarImage src="/avatars/shadcn.jpg" alt="shadcn" />
+  <AvatarFallback>CN</AvatarFallback>
+  <AvatarBadge className="bg-green-600 dark:bg-green-800" />
+</Avatar>
+```
+
+## Badge with icon
+
+The badge can hold an icon, sized to the avatar's `size`:
+
+<ComponentPreview name="avatar/badge-icon" />
+
+## Avatar group
+
+Put avatars in an `AvatarGroup`, each with an `AvatarGroupTooltip` as its name:
+
+<ComponentPreview name="avatar/group" />
+
+- **Rise**: every child is wrapped in a container that moves up when the pointer meets it (`translate`, `-30%` by default), and when it is pressed.
+- **One tooltip**: the avatars share one tooltip that glides from one to the next and resizes to each name without stretching the text. It has the look and the arrow of [Tooltip](/en/docs/components/tooltip).
+- **Stacking**: later avatars sit on top by default; `invertOverlap` puts the first one on top.
+- **Keyboard**: the tooltip shows on hover and on focus, but an `Avatar` is not focusable. Give an avatar that should be reachable from the keyboard `tabIndex={0}`.
+
+## Avatar group count
+
+`AvatarGroupCount` shows how many more there are. It rises like the avatars and can carry its own tooltip:
+
+<ComponentPreview name="avatar/group-count" />
+
+## Avatar group count with icon
+
+An icon in place of the count, the usual way in for "invite someone":
+
+<ComponentPreview name="avatar/group-count-icon" />
+
+## Sizes
+
+`size` is `sm`, `default` or `lg`; the fallback text and the badge follow it:
+
+<ComponentPreview name="avatar/size" />
+
+## Dropdown
+
+An avatar can be the trigger of a [dropdown menu](/en/docs/components/dropdown-menu). The trigger is a real button with the avatar inside it:
+
+<ComponentPreview name="avatar/dropdown" />
+
+## State and className
+
+`Avatar`, `AvatarImage` and `AvatarFallback` are Base UI parts, so their `className` also takes
+the function form; the other parts are plain elements and take a string.
+
+| `data-slot` | What it is |
+| --- | --- |
+| `avatar` | the avatar root, with `data-size` |
+| `avatar-image` | the image |
+| `avatar-fallback` | the fallback text |
+| `avatar-badge` | the badge at the bottom right |
+| `avatar-group` | the group root |
+| `tooltip-trigger` | the rising container animate-ui wraps each child in (it is also the tooltip's trigger) |
+| `avatar-group-count` | the count |
+
+## Props
+
+Ordering rule: **required → uncontrolled default → controlled value → callbacks → behaviour switches → appearance → `className`**.
+
+### Avatar
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `size` | `'sm' \| 'default' \| 'lg'` | `'default'` | written as `data-size`, which the fallback and the badge read too |
+| `className` | `string \| (state) => string` | — | root class |
+| rest | Base UI `Avatar.Root` props | — | passed through |
+
+### AvatarImage / AvatarFallback
+
+Base UI's `Avatar.Image` and `Avatar.Fallback`, props passed through: the image takes `src` /
+`alt`, and the fallback can hold off with `delay` so a fast load does not flash it.
+
+### AvatarBadge
+
+A plain `<span>`; native attributes only.
+
+### AvatarGroup
+
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | — | each child is wrapped in a rising container; arrays are flattened, empty values skipped |
+| `invertOverlap` | `boolean` | `false` | puts earlier avatars on top of later ones |
+| `translate` | `string \| number` | `'-30%'` | how far an avatar rises |
+| `transition` | `Transition` | spring | Motion transition of the rise |
+| `side` / `sideOffset` / `align` / `alignOffset` | — | `'top'` / `25` / `'center'` / `0` | where the tooltip sits |
+| `openDelay` / `closeDelay` | `number` | `0` / `0` | tooltip delays, in ms |
+| `tooltipTransition` | `Transition` | — | Motion transition of the tooltip's glide |
+| `className` | `string` | — | root class |
+
+### AvatarGroupTooltip
+
+The name written inside an avatar. It brings the arrow and Tooltip's look; `className` lands on the tooltip itself.
+
+### AvatarGroupCount
+
+A plain `<div>`; native attributes only. It sizes itself to the `size` of the avatars in the group.
+
+8 types are exported as well: `AvatarProps` / `AvatarState` / `AvatarImageProps` / `AvatarFallbackProps` /
+`AvatarBadgeProps` / `AvatarGroupProps` / `AvatarGroupTooltipProps` / `AvatarGroupCountProps`.

@@ -1,0 +1,164 @@
+---
+title: Avatar
+description: 带兜底的头像 —— 图片加载前和失败后都显示缩写，成组时悬停上浮、共用一个滑动的 tooltip
+---
+
+<ComponentPreview name="avatar/basic" />
+
+一个圆形头像：`AvatarImage` 加载完成前显示 `AvatarFallback`，加载失败时也一直显示它。
+底层是 Base UI 的 Avatar，外观是 shadcn 的 base-nova。
+
+成组的 `AvatarGroup` 来自 [animate-ui](https://animate-ui.com)：鼠标碰到哪个头像，哪个就上浮；
+名字的 tooltip 只有一个，在头像之间滑动，不会每个头像各开一个。
+
+## 使用
+
+```tsx
+import { Avatar, AvatarFallback, AvatarImage } from '@gedatou/cadenza-ui'
+```
+
+```tsx
+<Avatar>
+  <AvatarImage src="/avatars/shadcn.jpg" alt="shadcn" />
+  <AvatarFallback>CN</AvatarFallback>
+</Avatar>
+```
+
+## 组成
+
+单个头像：
+
+```text
+Avatar
+├── AvatarImage
+├── AvatarFallback
+└── AvatarBadge
+```
+
+一组头像，tooltip 写在它所属的头像里面：
+
+```text
+AvatarGroup
+├── Avatar
+│   ├── AvatarImage
+│   ├── AvatarFallback
+│   └── AvatarGroupTooltip
+├── Avatar
+│   └── …
+└── AvatarGroupCount
+```
+
+## 徽标
+
+`AvatarBadge` 是右下角的状态点，用 `className` 改颜色：
+
+<ComponentPreview name="avatar/badge" />
+
+```tsx
+<Avatar>
+  <AvatarImage src="/avatars/shadcn.jpg" alt="shadcn" />
+  <AvatarFallback>CN</AvatarFallback>
+  <AvatarBadge className="bg-green-600 dark:bg-green-800" />
+</Avatar>
+```
+
+## 带图标的徽标
+
+徽标里可以放图标，尺寸会跟着头像的 `size` 走：
+
+<ComponentPreview name="avatar/badge-icon" />
+
+## 头像组
+
+把头像放进 `AvatarGroup`，每个头像里写一个 `AvatarGroupTooltip` 当它的名字：
+
+<ComponentPreview name="avatar/group" />
+
+- **上浮**：每个子元素都被包进一个容器，指针碰到时整体上移（`translate`，默认 `-30%`），按下时也一样。
+- **一个 tooltip**：所有头像共用一个 tooltip，从上一个头像滑到下一个，换名字时尺寸跟着变，文字不会被拉伸。它带着和 [Tooltip](/docs/components/tooltip) 一样的外观和箭头。
+- **叠放顺序**：默认后面的头像压在前面的上面，`invertOverlap` 反过来。
+- **键盘**：tooltip 在悬停和聚焦时都会出现，但 `Avatar` 本身不能聚焦。需要键盘可达的头像，自己加 `tabIndex={0}`。
+
+## 计数
+
+`AvatarGroupCount` 显示其余的人数，它和头像一样会上浮，也可以带自己的 tooltip：
+
+<ComponentPreview name="avatar/group-count" />
+
+## 带图标的计数
+
+计数里放图标，常用来做「邀请」入口：
+
+<ComponentPreview name="avatar/group-count-icon" />
+
+## 尺寸
+
+`size` 有 `sm`、`default`、`lg` 三档，兜底文字和徽标跟着变：
+
+<ComponentPreview name="avatar/size" />
+
+## 下拉菜单
+
+头像可以当[下拉菜单](/docs/components/dropdown-menu)的触发器。触发器本身是一个真按钮，头像放在它里面：
+
+<ComponentPreview name="avatar/dropdown" />
+
+## 状态与 className
+
+`Avatar`、`AvatarImage`、`AvatarFallback` 是 Base UI 的部件，`className` 也接函数形式；
+其余部件是普通元素，`className` 只接字符串。
+
+| `data-slot` | 是什么 |
+| --- | --- |
+| `avatar` | 头像根元素，带 `data-size` |
+| `avatar-image` | 图片 |
+| `avatar-fallback` | 兜底文字 |
+| `avatar-badge` | 右下角徽标 |
+| `avatar-group` | 头像组根元素 |
+| `tooltip-trigger` | animate-ui 给每个子元素包的上浮容器（它同时是 tooltip 的触发器） |
+| `avatar-group-count` | 计数 |
+
+## Props
+
+顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
+
+### Avatar
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `size` | `'sm' \| 'default' \| 'lg'` | `'default'` | 写成 `data-size`，兜底文字和徽标也读它 |
+| `className` | `string \| (state) => string` | — | 根元素类名 |
+| 其余 | Base UI `Avatar.Root` 的 props | — | 透传 |
+
+### AvatarImage / AvatarFallback
+
+分别是 Base UI 的 `Avatar.Image` 和 `Avatar.Fallback`，props 原样透传：
+图片接 `src` / `alt`，兜底文字可以用 `delay` 推迟出现，避免快速加载时一闪。
+
+### AvatarBadge
+
+普通 `<span>`，只接原生属性。
+
+### AvatarGroup
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `children` | `ReactNode` | — | 每个子元素都会被包进上浮容器；数组会被拍平，空值会被跳过 |
+| `invertOverlap` | `boolean` | `false` | 让前面的头像压在后面的上面 |
+| `translate` | `string \| number` | `'-30%'` | 上浮的距离 |
+| `transition` | `Transition` | 弹簧 | 上浮的 Motion 过渡 |
+| `side` / `sideOffset` / `align` / `alignOffset` | — | `'top'` / `25` / `'center'` / `0` | tooltip 的位置 |
+| `openDelay` / `closeDelay` | `number` | `0` / `0` | tooltip 的开关延迟（毫秒） |
+| `tooltipTransition` | `Transition` | — | tooltip 滑动的 Motion 过渡 |
+| `className` | `string` | — | 根元素类名 |
+
+### AvatarGroupTooltip
+
+写在头像里面的名字。自带箭头和 Tooltip 的外观，`className` 落在 tooltip 本体上。
+
+### AvatarGroupCount
+
+普通 `<div>`，只接原生属性；尺寸跟着组里头像的 `size` 走。
+
+8 个类型一并导出：`AvatarProps` / `AvatarState` / `AvatarImageProps` / `AvatarFallbackProps` /
+`AvatarBadgeProps` / `AvatarGroupProps` / `AvatarGroupTooltipProps` / `AvatarGroupCountProps`。
