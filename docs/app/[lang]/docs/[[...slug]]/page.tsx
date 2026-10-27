@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import type { ReactElement } from 'react'
-import { AnimateIcon, ArrowLeftIcon, ArrowRightIcon } from '@gedatou/cadenza-ui/icons'
+import { AnimateIcon, ArrowLeftIcon, ArrowRightIcon } from '@gedatou/cadenza-icons'
 import { findNeighbour } from 'fumadocs-core/page-tree'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'

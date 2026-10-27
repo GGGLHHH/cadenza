@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { MusicIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   Item,
@@ -10,7 +11,6 @@ import {
   ItemSeparator,
   ItemTitle,
 } from '@gedatou/cadenza-ui'
-import { MusicIcon } from '@gedatou/cadenza-ui/icons'
 
 const PIECES = [
   { title: 'Prelude in C', description: 'Bach · BWV 846' },

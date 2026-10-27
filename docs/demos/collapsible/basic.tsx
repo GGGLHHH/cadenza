@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, ChevronDownIcon } from '@gedatou/cadenza-icons'
 import { Button, Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@gedatou/cadenza-ui'
-import { AnimateIcon, ChevronDownIcon } from '@gedatou/cadenza-ui/icons'
 
 // Minimal composition: trigger + panel. The expand/collapse height transition
 // is a default of the seam layer -- this demo writes zero animation classes.

@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { CheckIcon, MailIcon, SearchIcon } from '@gedatou/cadenza-icons'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@gedatou/cadenza-ui'
-import { CheckIcon, MailIcon, SearchIcon } from '@gedatou/cadenza-ui/icons'
 
 // Icon prefixes and suffixes: align picks the start or end of the line,
 // defaulting to inline-start

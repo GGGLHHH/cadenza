@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
+import { ChevronRightIcon, FileIcon, FolderIcon } from '@gedatou/cadenza-icons'
 import {
   Collapsible,
   CollapsiblePanel,
@@ -15,7 +16,6 @@ import {
   SidebarMenuSub,
   SidebarRail,
 } from '@gedatou/cadenza-ui'
-import { ChevronRightIcon, FileIcon, FolderIcon } from '@gedatou/cadenza-ui/icons'
 
 // This is sample data.
 const data = {

@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, LayoutGridIcon, ListIcon, TableIcon } from '@gedatou/cadenza-icons'
 import { ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
-import { AnimateIcon, LayoutGridIcon, ListIcon, TableIcon } from '@gedatou/cadenza-ui/icons'
 
 // orientation="vertical": the group stacks and the arrow keys switch to
 // ↑ / ↓ at the same time -- focus any item and press up/down to verify.

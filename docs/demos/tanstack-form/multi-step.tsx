@@ -10,6 +10,7 @@ import {
   useForm,
   useFormSubmitting,
 } from '@gedatou/cadenza-form'
+import { MailIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   Checkbox,
@@ -51,7 +52,6 @@ import {
   Textarea,
   useInfiniteComboboxState,
 } from '@gedatou/cadenza-ui'
-import { MailIcon } from '@gedatou/cadenza-ui/icons'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { z } from 'zod'

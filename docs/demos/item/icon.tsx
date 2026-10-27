@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { ShieldCheckIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   Item,
@@ -8,7 +9,6 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@gedatou/cadenza-ui'
-import { ShieldCheckIcon } from '@gedatou/cadenza-ui/icons'
 
 // ItemMedia variant="icon" sizes a bare svg to size-4; an svg with its own
 // size-* class is left alone.

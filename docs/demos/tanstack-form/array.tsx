@@ -6,6 +6,7 @@ import {
   formProps,
   useForm,
 } from '@gedatou/cadenza-form'
+import { AnimateIcon, XIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   Field,
@@ -19,7 +20,6 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from '@gedatou/cadenza-ui'
-import { AnimateIcon, XIcon } from '@gedatou/cadenza-ui/icons'
 import { toast } from 'sonner'
 import { z } from 'zod'
 

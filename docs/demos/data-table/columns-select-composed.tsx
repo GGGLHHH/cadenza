@@ -1,6 +1,7 @@
 import type { DataTableColumn } from '@gedatou/cadenza-ui'
 import type { ReactElement } from 'react'
 import type { Person } from '../lib/people'
+import { ColumnsIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   DataTable,
@@ -13,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@gedatou/cadenza-ui'
-import { ColumnsIcon } from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 import { PEOPLE } from '../lib/people'
 import { personColumns } from './columns'

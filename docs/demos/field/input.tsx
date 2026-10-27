@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { SearchIcon } from '@gedatou/cadenza-icons'
 import {
   Field,
   FieldDescription,
@@ -9,7 +10,6 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from '@gedatou/cadenza-ui'
-import { SearchIcon } from '@gedatou/cadenza-ui/icons'
 
 // The most ordinary channel: the id lands on the real <input>, FieldLabel
 // htmlFor points at it. When something must share the input's border, switch

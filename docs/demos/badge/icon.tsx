@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { ArrowRightIcon, CheckIcon } from '@gedatou/cadenza-icons'
 import { Badge } from '@gedatou/cadenza-ui'
-import { ArrowRightIcon, CheckIcon } from '@gedatou/cadenza-ui/icons'
 
 // data-icon="inline-start" / "inline-end" pulls the padding in on the icon's
 // side so the pill stays visually balanced; svgs are forced to size-3

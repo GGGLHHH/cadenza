@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { SearchIcon } from '@gedatou/cadenza-icons'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@gedatou/cadenza-ui'
-import { SearchIcon } from '@gedatou/cadenza-ui/icons'
 
 // InputGroup at a glance: icon, input, and button share a single border, and
 // the focus ring is drawn around the whole group -- on focus it is the outer

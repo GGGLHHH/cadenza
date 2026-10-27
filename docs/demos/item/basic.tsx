@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { MessageSquareIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   Item,
@@ -8,7 +9,6 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@gedatou/cadenza-ui'
-import { MessageSquareIcon } from '@gedatou/cadenza-ui/icons'
 
 // The canonical row: icon media, title + description, and an action on the
 // trailing edge — one Item, all four parts in place.

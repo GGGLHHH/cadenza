@@ -1,5 +1,18 @@
 import type { ReactElement } from 'react'
 import {
+  CalendarIcon,
+  ChevronRightIcon,
+  ChevronUpDownIcon,
+  CircleUserRoundIcon,
+  EllipsisIcon,
+  FolderIcon,
+  LayoutDashboardIcon,
+  MessageSquareIcon,
+  PlusIcon,
+  SettingsIcon,
+  SparklesIcon,
+} from '@gedatou/cadenza-icons'
+import {
   Collapsible,
   CollapsiblePanel,
   CollapsibleTrigger,
@@ -24,19 +37,6 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from '@gedatou/cadenza-ui'
-import {
-  CalendarIcon,
-  ChevronRightIcon,
-  ChevronUpDownIcon,
-  CircleUserRoundIcon,
-  EllipsisIcon,
-  FolderIcon,
-  LayoutDashboardIcon,
-  MessageSquareIcon,
-  PlusIcon,
-  SettingsIcon,
-  SparklesIcon,
-} from '@gedatou/cadenza-ui/icons'
 import { SidebarFrame } from '../lib/sidebar-frame'
 
 const PROJECTS = ['Design system', 'Marketing site', 'Mobile app']

@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { SearchIcon } from '@gedatou/cadenza-icons'
 import {
   InputGroup,
   InputGroupAddon,
@@ -6,7 +7,6 @@ import {
   SearchFieldClear,
   SearchFieldInput,
 } from '@gedatou/cadenza-ui'
-import { SearchIcon } from '@gedatou/cadenza-ui/icons'
 
 // Composition: passing children takes over the internal structure
 // entirely. Here a shortcut hint sits at the tail and yields its spot

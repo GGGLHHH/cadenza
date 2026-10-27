@@ -1,8 +1,8 @@
 import type { Modality, Provider } from '@gedatou/cadenza-ai'
 import type { ComponentType, ReactElement } from 'react'
 import { defaultCatalog, modelRef, parseModelRef, supportedThinkingLevels } from '@gedatou/cadenza-ai'
+import { BrainIcon, FileTextIcon, ImageIcon, MicIcon, TypeIcon, VideoIcon } from '@gedatou/cadenza-icons'
 import { Badge } from '@gedatou/cadenza-ui'
-import { BrainIcon, FileTextIcon, ImageIcon, MicIcon, TypeIcon, VideoIcon } from '@gedatou/cadenza-ui/icons'
 import { ResettableDemo } from '../lib/resettable'
 
 // Proves the catalog is plain data: every provider and model of

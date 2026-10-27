@@ -1,5 +1,10 @@
 import type { ReactElement, ReactNode } from 'react'
 import {
+  ChevronRightIcon,
+  EllipsisIcon,
+  PlusIcon,
+} from '@gedatou/cadenza-icons'
+import {
   Collapsible,
   CollapsiblePanel,
   CollapsibleTrigger,
@@ -14,11 +19,6 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from '@gedatou/cadenza-ui'
-import {
-  ChevronRightIcon,
-  EllipsisIcon,
-  PlusIcon,
-} from '@gedatou/cadenza-ui/icons'
 
 export function NavWorkspaces({
   workspaces,

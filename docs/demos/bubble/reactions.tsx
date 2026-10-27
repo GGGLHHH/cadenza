@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, ReplyIcon, SmileIcon } from '@gedatou/cadenza-icons'
 import { Bubble, BubbleContent, BubbleReactions, Button } from '@gedatou/cadenza-ui'
-import { AnimateIcon, ReplyIcon, SmileIcon } from '@gedatou/cadenza-ui/icons'
 
 // Reactions overlap the bubble's edge by design, so rows need vertical room
 // between them — hence the larger gap. side picks the edge, align the corner.

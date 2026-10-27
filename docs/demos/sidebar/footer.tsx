@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { ChevronUpIcon } from '@gedatou/cadenza-icons'
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -15,7 +16,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@gedatou/cadenza-ui'
-import { ChevronUpIcon } from '@gedatou/cadenza-ui/icons'
 import { SidebarFrame } from '../lib/sidebar-frame'
 
 // shadcn's sidebar-footer example: an account menu pinned to the footer — a

@@ -6,6 +6,7 @@ import {
   formProps,
   useForm,
 } from '@gedatou/cadenza-form'
+import { ArrowRightIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   DateRangePicker,
@@ -20,7 +21,6 @@ import {
   FieldLabel,
   InputGroup,
 } from '@gedatou/cadenza-ui'
-import { ArrowRightIcon } from '@gedatou/cadenza-ui/icons'
 import { toast } from 'sonner'
 import { z } from 'zod'
 

@@ -1,5 +1,16 @@
 import type { ReactElement } from 'react'
 import {
+  BookOpenIcon,
+  BotIcon,
+  ChartColumnIcon,
+  ChevronRightIcon,
+  ChevronUpDownIcon,
+  FrameIcon,
+  MapPinIcon,
+  SlidersHorizontalIcon,
+  TerminalIcon,
+} from '@gedatou/cadenza-icons'
+import {
   Avatar,
   AvatarFallback,
   AvatarImage,
@@ -36,17 +47,6 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from '@gedatou/cadenza-ui'
-import {
-  BookOpenIcon,
-  BotIcon,
-  ChartColumnIcon,
-  ChevronRightIcon,
-  ChevronUpDownIcon,
-  FrameIcon,
-  MapPinIcon,
-  SlidersHorizontalIcon,
-  TerminalIcon,
-} from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 import { SidebarFrame } from '../lib/sidebar-frame'
 

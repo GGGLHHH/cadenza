@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { InboxIcon } from '@gedatou/cadenza-icons'
 import { Button, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@gedatou/cadenza-ui'
-import { InboxIcon } from '@gedatou/cadenza-ui/icons'
 
 // The full composition: an icon tile, title, description and one action that
 // leads the user out of the empty state

@@ -1,5 +1,6 @@
 import type { AttachmentState } from '@gedatou/cadenza-ui'
 import type { ReactElement } from 'react'
+import { FileTextIcon, PlusIcon, TriangleAlertIcon } from '@gedatou/cadenza-icons'
 import {
   Attachment,
   AttachmentContent,
@@ -8,7 +9,6 @@ import {
   AttachmentTitle,
   Spinner,
 } from '@gedatou/cadenza-ui'
-import { FileTextIcon, PlusIcon, TriangleAlertIcon } from '@gedatou/cadenza-ui/icons'
 
 const STATES: { state: AttachmentState, note: string }[] = [
   { state: 'idle', note: 'Drop a file' },

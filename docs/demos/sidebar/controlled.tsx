@@ -1,5 +1,14 @@
 import type { ReactElement } from 'react'
 import {
+  ChartColumnIcon,
+  FrameIcon,
+  MapPinIcon,
+  MessageCircleQuestionIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
+  SendIcon,
+} from '@gedatou/cadenza-icons'
+import {
   Button,
   Sidebar,
   SidebarContent,
@@ -12,15 +21,6 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@gedatou/cadenza-ui'
-import {
-  ChartColumnIcon,
-  FrameIcon,
-  MapPinIcon,
-  MessageCircleQuestionIcon,
-  PanelLeftCloseIcon,
-  PanelLeftOpenIcon,
-  SendIcon,
-} from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 import { SidebarFrame } from '../lib/sidebar-frame'
 

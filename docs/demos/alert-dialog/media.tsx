@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { TriangleAlertIcon } from '@gedatou/cadenza-icons'
 import {
   AlertDialog,
   AlertDialogClose,
@@ -11,7 +12,6 @@ import {
   AlertDialogTrigger,
   Button,
 } from '@gedatou/cadenza-ui'
-import { TriangleAlertIcon } from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 
 // AlertDialogMedia is the icon cell above the title (to its left on wide

@@ -2,7 +2,7 @@
 
 import type { ReactElement } from 'react'
 import { ThemeToggler } from '@animate-ui/react/primitives/effects/theme-toggler'
-import { AnimateIcon, MoonIcon, SunIcon } from '@gedatou/cadenza-ui/icons'
+import { AnimateIcon, MoonIcon, SunIcon } from '@gedatou/cadenza-icons'
 import { useTheme } from 'next-themes'
 import { useParams } from 'next/navigation'
 import { useSyncExternalStore } from 'react'

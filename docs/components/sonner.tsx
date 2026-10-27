@@ -2,7 +2,7 @@
 
 import type { ReactElement } from 'react'
 import type { ToasterProps } from 'sonner'
-import { CircleCheckIcon, CircleXIcon, InfoIcon, LoaderCircleIcon, TriangleAlertIcon } from '@gedatou/cadenza-ui/icons'
+import { CircleCheckIcon, CircleXIcon, InfoIcon, LoaderCircleIcon, TriangleAlertIcon } from '@gedatou/cadenza-icons'
 import { useTheme } from 'next-themes'
 import { Toaster as Sonner } from 'sonner'
 

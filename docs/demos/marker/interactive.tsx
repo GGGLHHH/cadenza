@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { ExternalLinkIcon } from '@gedatou/cadenza-icons'
 import { Marker, MarkerContent, MarkerIcon } from '@gedatou/cadenza-ui'
-import { ExternalLinkIcon } from '@gedatou/cadenza-ui/icons'
 
 // render turns the whole row into a link or a button. The variants already
 // style links, so an actionable note needs the right element, not new styles.

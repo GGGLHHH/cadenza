@@ -1,5 +1,17 @@
 import type { ReactElement } from 'react'
 import {
+  ChartLineIcon,
+  ChevronRightIcon,
+  FileIcon,
+  HouseIcon,
+  MessageCircleQuestionIcon,
+  SendIcon,
+  ShoppingBagIcon,
+  ShoppingCartIcon,
+  SlidersHorizontalIcon,
+  UserIcon,
+} from '@gedatou/cadenza-icons'
+import {
   Collapsible,
   CollapsiblePanel,
   CollapsibleTrigger,
@@ -20,18 +32,6 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from '@gedatou/cadenza-ui'
-import {
-  ChartLineIcon,
-  ChevronRightIcon,
-  FileIcon,
-  HouseIcon,
-  MessageCircleQuestionIcon,
-  SendIcon,
-  ShoppingBagIcon,
-  ShoppingCartIcon,
-  SlidersHorizontalIcon,
-  UserIcon,
-} from '@gedatou/cadenza-ui/icons'
 import { SidebarFrame } from '../lib/sidebar-frame'
 
 // shadcn's sidebar-inset-example: `variant="inset"` — the page content sits

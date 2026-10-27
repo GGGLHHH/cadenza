@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { ChevronDownIcon } from '@gedatou/cadenza-icons'
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -13,7 +14,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@gedatou/cadenza-ui'
-import { ChevronDownIcon } from '@gedatou/cadenza-ui/icons'
 import { SidebarFrame } from '../lib/sidebar-frame'
 
 // shadcn's sidebar-header example: a workspace switcher in the header — a

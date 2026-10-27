@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
+import { GalleryVerticalEndIcon } from '@gedatou/cadenza-icons'
 import {
   Sidebar,
   SidebarContent,
@@ -12,7 +13,6 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from '@gedatou/cadenza-ui'
-import { GalleryVerticalEndIcon } from '@gedatou/cadenza-ui/icons'
 
 // This is sample data.
 const data = {

@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, CopyIcon, RefreshCwIcon, ThumbsDownIcon, ThumbsUpIcon } from '@gedatou/cadenza-icons'
 import {
   Bubble,
   BubbleContent,
@@ -7,7 +8,6 @@ import {
   MessageContent,
   MessageFooter,
 } from '@gedatou/cadenza-ui'
-import { AnimateIcon, CopyIcon, RefreshCwIcon, ThumbsDownIcon, ThumbsUpIcon } from '@gedatou/cadenza-ui/icons'
 
 // Message-level actions live in the footer: copy, retry, feedback. They are
 // icon-only, so every one needs an aria-label — the icon is decorative and

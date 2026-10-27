@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { SearchIcon } from '@gedatou/cadenza-icons'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@gedatou/cadenza-ui'
-import { SearchIcon } from '@gedatou/cadenza-ui/icons'
 
 // Shortcut hint: put a <kbd> in the addon; InputGroup aligns it and strips
 // the extra margins for you

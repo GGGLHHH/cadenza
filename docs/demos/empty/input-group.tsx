@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { SearchIcon } from '@gedatou/cadenza-icons'
 import {
   Empty,
   EmptyContent,
@@ -11,7 +12,6 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from '@gedatou/cadenza-ui'
-import { SearchIcon } from '@gedatou/cadenza-ui/icons'
 
 // EmptyContent takes any control, not just buttons: an InputGroup turns the
 // empty state into the place where the next search starts

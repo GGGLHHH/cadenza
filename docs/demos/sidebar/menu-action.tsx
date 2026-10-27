@@ -1,5 +1,13 @@
 import type { ReactElement } from 'react'
 import {
+  ChartColumnIcon,
+  EllipsisIcon,
+  FrameIcon,
+  MapPinIcon,
+  MessageCircleQuestionIcon,
+  SendIcon,
+} from '@gedatou/cadenza-icons'
+import {
   DropdownMenu,
   DropdownMenuItem,
   DropdownMenuPopup,
@@ -15,14 +23,6 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@gedatou/cadenza-ui'
-import {
-  ChartColumnIcon,
-  EllipsisIcon,
-  FrameIcon,
-  MapPinIcon,
-  MessageCircleQuestionIcon,
-  SendIcon,
-} from '@gedatou/cadenza-ui/icons'
 import { SidebarFrame } from '../lib/sidebar-frame'
 
 const projects = [

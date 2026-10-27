@@ -1,18 +1,5 @@
 import type { ReactElement } from 'react'
 import {
-  Button,
-  Popover,
-  PopoverPopup,
-  PopoverTrigger,
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from '@gedatou/cadenza-ui'
-import {
   ArrowDownIcon,
   ArrowUpIcon,
   BellIcon,
@@ -28,7 +15,20 @@ import {
   Trash2Icon,
   TrashIcon,
   Undo2Icon,
-} from '@gedatou/cadenza-ui/icons'
+} from '@gedatou/cadenza-icons'
+import {
+  Button,
+  Popover,
+  PopoverPopup,
+  PopoverTrigger,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@gedatou/cadenza-ui'
 
 const data = [
   [

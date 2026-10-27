@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, EllipsisIcon, FileMusicIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   DropdownMenu,
@@ -12,7 +13,6 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@gedatou/cadenza-ui'
-import { AnimateIcon, EllipsisIcon, FileMusicIcon } from '@gedatou/cadenza-ui/icons'
 
 // ItemActions hosts a DropdownMenu: the trigger renders through a ghost icon
 // Button so the row keeps a single overflow affordance.

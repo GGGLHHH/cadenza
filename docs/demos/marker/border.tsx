@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { CheckIcon, GitBranchIcon } from '@gedatou/cadenza-icons'
 import { Marker, MarkerContent, MarkerIcon } from '@gedatou/cadenza-ui'
-import { CheckIcon, GitBranchIcon } from '@gedatou/cadenza-ui/icons'
 
 // border keeps the row left-aligned like default — unlike separator, which
 // centres it — and adds an underline to fence off whatever comes next. Use it

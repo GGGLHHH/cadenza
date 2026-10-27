@@ -1,5 +1,13 @@
 import type { ComponentProps, ReactElement } from 'react'
 import {
+  ArchiveIcon,
+  FileIcon,
+  InboxIcon,
+  SendIcon,
+  TerminalIcon,
+  Trash2Icon,
+} from '@gedatou/cadenza-icons'
+import {
   Label,
   Sidebar,
   SidebarContent,
@@ -14,14 +22,6 @@ import {
   Switch,
   useSidebar,
 } from '@gedatou/cadenza-ui'
-import {
-  ArchiveIcon,
-  FileIcon,
-  InboxIcon,
-  SendIcon,
-  TerminalIcon,
-  Trash2Icon,
-} from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 import { NavUser } from './nav-user'
 

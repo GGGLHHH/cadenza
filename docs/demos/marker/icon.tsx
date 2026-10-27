@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { CalendarDaysIcon, UserPlusIcon } from '@gedatou/cadenza-icons'
 import { Marker, MarkerContent, MarkerIcon } from '@gedatou/cadenza-ui'
-import { CalendarDaysIcon, UserPlusIcon } from '@gedatou/cadenza-ui/icons'
 
 // MarkerIcon is aria-hidden by default — the icon repeats what the text says,
 // so announcing it twice would only slow a screen reader down.

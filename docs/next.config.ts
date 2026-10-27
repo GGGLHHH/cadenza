@@ -43,14 +43,14 @@ const sourceAlias = {
   '@gedatou/cadenza-ai/providers/openai-compatible': '../packages/ai/src/providers/openai-compatible.ts',
   '@gedatou/cadenza-ai/providers/byteplus': '../packages/ai/src/providers/byteplus.ts',
   '@gedatou/cadenza-form': '../packages/form/src/index.ts',
-  '@gedatou/cadenza-ui/icons': '../packages/ui/src/icons/index.ts',
+  '@gedatou/cadenza-icons': '../packages/icons/src/index.ts',
   '@gedatou/cadenza-ui': '../packages/ui/src/index.ts',
   '@gedatou/cadenza-utils': '../packages/utils/src/index.ts',
 }
 
 const config: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@gedatou/cadenza-ai', '@gedatou/cadenza-form', '@gedatou/cadenza-ui', '@gedatou/cadenza-utils'],
+  transpilePackages: ['@gedatou/cadenza-ai', '@gedatou/cadenza-form', '@gedatou/cadenza-icons', '@gedatou/cadenza-ui', '@gedatou/cadenza-utils'],
   turbopack: {
     resolveAlias: dev ? sourceAlias : {},
   },

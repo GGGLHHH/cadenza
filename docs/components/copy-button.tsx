@@ -2,7 +2,7 @@
 
 import type { ReactElement } from 'react'
 import { CopyButton as AnimatedCopyButton, CopyButtonIcon } from '@animate-ui/react/primitives/buttons/copy'
-import { AnimateIcon, CheckIcon, CopyIcon } from '@gedatou/cadenza-ui/icons'
+import { AnimateIcon, CheckIcon, CopyIcon } from '@gedatou/cadenza-icons'
 import { useParams } from 'next/navigation'
 import { getDictionary } from '@/lib/dictionary'
 import { cn } from '@/lib/utils'

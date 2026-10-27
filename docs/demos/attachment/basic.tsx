@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, FileTextIcon, XIcon } from '@gedatou/cadenza-icons'
 import {
   Attachment,
   AttachmentAction,
@@ -8,7 +9,6 @@ import {
   AttachmentMedia,
   AttachmentTitle,
 } from '@gedatou/cadenza-ui'
-import { AnimateIcon, FileTextIcon, XIcon } from '@gedatou/cadenza-ui/icons'
 
 // A file card: media, metadata, actions. Nothing here uploads anything — the
 // component renders whatever state you hand it.

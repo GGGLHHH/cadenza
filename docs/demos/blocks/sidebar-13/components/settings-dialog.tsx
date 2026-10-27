@@ -1,5 +1,19 @@
 import type { ReactElement } from 'react'
 import {
+  BellIcon,
+  CheckIcon,
+  GlobeIcon,
+  HouseIcon,
+  KeyIcon,
+  LinkIcon,
+  LockIcon,
+  MenuIcon,
+  MessageCircleIcon,
+  PaintbrushIcon,
+  SettingsIcon,
+  VideoIcon,
+} from '@gedatou/cadenza-icons'
+import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
@@ -21,20 +35,6 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@gedatou/cadenza-ui'
-import {
-  BellIcon,
-  CheckIcon,
-  GlobeIcon,
-  HouseIcon,
-  KeyIcon,
-  LinkIcon,
-  LockIcon,
-  MenuIcon,
-  MessageCircleIcon,
-  PaintbrushIcon,
-  SettingsIcon,
-  VideoIcon,
-} from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 
 const data = {

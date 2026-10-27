@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { AlignCenterIcon, AlignLeftIcon, AlignRightIcon, AnimateIcon } from '@gedatou/cadenza-icons'
 import { ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
-import { AlignCenterIcon, AlignLeftIcon, AlignRightIcon, AnimateIcon } from '@gedatou/cadenza-ui/icons'
 
 // Default multiple={false}: only one item is pressed at a time. value is
 // still an array; pressing the active item again releases it, leaving the

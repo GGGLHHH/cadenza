@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
+import { PlusIcon } from '@gedatou/cadenza-icons'
 import {
   Sidebar,
   SidebarContent,
@@ -9,7 +10,6 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from '@gedatou/cadenza-ui'
-import { PlusIcon } from '@gedatou/cadenza-ui/icons'
 import { Calendars } from './calendars'
 import { DatePicker } from './date-picker'
 import { NavUser } from './nav-user'

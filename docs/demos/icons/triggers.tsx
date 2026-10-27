@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
-import { Bell, Download, Heart, LoaderCircle } from '@gedatou/cadenza-ui/icons'
+import { BellIcon, DownloadIcon, HeartIcon, LoaderCircleIcon } from '@gedatou/cadenza-icons'
 
 function Cell({ children, label }: { children: ReactNode, label: string }): ReactElement {
   return (
@@ -19,10 +19,10 @@ export default function TriggersDemo(): ReactElement {
       sm:grid-cols-4
     "
     >
-      <Cell label="animateOnHover"><Bell animateOnHover /></Cell>
-      <Cell label="animateOnTap"><Heart animateOnTap /></Cell>
-      <Cell label="animateOnView"><Download animateOnView /></Cell>
-      <Cell label="animate loop"><LoaderCircle animate loop /></Cell>
+      <Cell label="animateOnHover"><BellIcon animateOnHover /></Cell>
+      <Cell label="animateOnTap"><HeartIcon animateOnTap /></Cell>
+      <Cell label="animateOnView"><DownloadIcon animateOnView /></Cell>
+      <Cell label="animate loop"><LoaderCircleIcon animate loop /></Cell>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { PlusIcon } from '@gedatou/cadenza-icons'
 import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage } from '@gedatou/cadenza-ui'
-import { PlusIcon } from '@gedatou/cadenza-ui/icons'
 
 // One picture; the rest fall back to initials
 const PEOPLE = [

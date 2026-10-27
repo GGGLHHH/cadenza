@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, PaperclipIcon, SendIcon } from '@gedatou/cadenza-icons'
 import {
   InputGroup,
   InputGroupAddon,
@@ -6,7 +7,6 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from '@gedatou/cadenza-ui'
-import { AnimateIcon, PaperclipIcon, SendIcon } from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 
 // block-end: the addon spans the full row and sits below; InputGroup

@@ -1,5 +1,10 @@
 import type { ReactElement } from 'react'
 import {
+  CheckIcon,
+  ChevronUpDownIcon,
+  GalleryVerticalEndIcon,
+} from '@gedatou/cadenza-icons'
+import {
   DropdownMenu,
   DropdownMenuItem,
   DropdownMenuPopup,
@@ -8,11 +13,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@gedatou/cadenza-ui'
-import {
-  CheckIcon,
-  ChevronUpDownIcon,
-  GalleryVerticalEndIcon,
-} from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 
 export function VersionSwitcher({

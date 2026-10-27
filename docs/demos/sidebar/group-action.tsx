@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { ChartColumnIcon, FrameIcon, MapPinIcon, PlusIcon } from '@gedatou/cadenza-icons'
 import {
   Sidebar,
   SidebarContent,
@@ -11,7 +12,6 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@gedatou/cadenza-ui'
-import { ChartColumnIcon, FrameIcon, MapPinIcon, PlusIcon } from '@gedatou/cadenza-ui/icons'
 import { SidebarFrame } from '../lib/sidebar-frame'
 
 // shadcn's sidebar-group-action example: a SidebarGroupAction button beside

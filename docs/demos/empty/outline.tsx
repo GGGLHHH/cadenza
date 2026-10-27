@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { FolderOpenIcon } from '@gedatou/cadenza-icons'
 import { Button, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@gedatou/cadenza-ui'
-import { FolderOpenIcon } from '@gedatou/cadenza-ui/icons'
 
 // The root already carries border-dashed and rounded-xl; a single `border`
 // utility turns it into an outlined drop zone

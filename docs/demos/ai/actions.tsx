@@ -1,7 +1,7 @@
 import type { UIMessage } from '@gedatou/cadenza-ai'
 import type { ReactElement } from 'react'
 import { editAndResend, messageText, TranscriptAction, useChat, useStoredState } from '@gedatou/cadenza-ai'
-import { CopyIcon, PencilIcon, RefreshCwIcon, ThumbsDownIcon, ThumbsUpIcon, TrashIcon, Volume2Icon } from '@gedatou/cadenza-ui/icons'
+import { CopyIcon, PencilIcon, RefreshCwIcon, ThumbsDownIcon, ThumbsUpIcon, TrashIcon, Volume2Icon } from '@gedatou/cadenza-icons'
 import { useState, useSyncExternalStore } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'

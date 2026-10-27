@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { PlusIcon } from '@gedatou/cadenza-icons'
 import { Avatar, AvatarBadge, AvatarFallback, AvatarImage } from '@gedatou/cadenza-ui'
-import { PlusIcon } from '@gedatou/cadenza-ui/icons'
 
 // An icon inside the badge; the badge sizes it to the avatar
 export default function BadgeIconDemo(): ReactElement {

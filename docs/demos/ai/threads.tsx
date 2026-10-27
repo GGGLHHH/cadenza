@@ -19,6 +19,7 @@ import {
   useThreadIndex,
   useThreadListItem,
 } from '@gedatou/cadenza-ai'
+import { AnimateIcon, MenuIcon, TrashIcon } from '@gedatou/cadenza-icons'
 import {
   AlertDialog,
   AlertDialogClose,
@@ -38,7 +39,6 @@ import {
   DialogTrigger,
   SearchField,
 } from '@gedatou/cadenza-ui'
-import { AnimateIcon, MenuIcon, TrashIcon } from '@gedatou/cadenza-ui/icons'
 import { useEffect, useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'
 import { ChatShell } from './chat-shell'

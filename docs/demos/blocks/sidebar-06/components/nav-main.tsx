@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
+import { EllipsisIcon } from '@gedatou/cadenza-icons'
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -10,7 +11,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@gedatou/cadenza-ui'
-import { EllipsisIcon } from '@gedatou/cadenza-ui/icons'
 
 export function NavMain({
   items,

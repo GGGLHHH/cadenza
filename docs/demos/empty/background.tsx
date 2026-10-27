@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { BellOffIcon } from '@gedatou/cadenza-icons'
 import { Button, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@gedatou/cadenza-ui'
-import { BellOffIcon } from '@gedatou/cadenza-ui/icons'
 
 // A background is just className on the root: bg-* and gradient utilities
 // compose with the baked layout classes

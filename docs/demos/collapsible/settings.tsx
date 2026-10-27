@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, ChevronDownIcon } from '@gedatou/cadenza-icons'
 import { Button, Collapsible, CollapsiblePanel, CollapsibleTrigger, Field, FieldLabel, Switch } from '@gedatou/cadenza-ui'
-import { AnimateIcon, ChevronDownIcon } from '@gedatou/cadenza-ui/icons'
 
 // Fold away rarely-changed advanced options: frequent items stay put, the
 // trigger is followed by one panel. Put the padding on elements inside the

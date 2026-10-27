@@ -1,12 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
-} from '@gedatou/cadenza-ui'
-import {
   AudioLinesIcon,
   BookOpenIcon,
   BotIcon,
@@ -16,7 +9,14 @@ import {
   MapPinIcon,
   SlidersHorizontalIcon,
   TerminalIcon,
-} from '@gedatou/cadenza-ui/icons'
+} from '@gedatou/cadenza-icons'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarRail,
+} from '@gedatou/cadenza-ui'
 import { NavMain } from './nav-main'
 import { NavProjects } from './nav-projects'
 import { NavUser } from './nav-user'

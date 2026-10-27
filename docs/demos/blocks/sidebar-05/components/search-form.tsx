@@ -1,11 +1,11 @@
 import type { ComponentProps, ReactElement } from 'react'
+import { SearchIcon } from '@gedatou/cadenza-icons'
 import {
   Label,
   SidebarGroup,
   SidebarGroupContent,
   SidebarInput,
 } from '@gedatou/cadenza-ui'
-import { SearchIcon } from '@gedatou/cadenza-ui/icons'
 import { useId } from 'react'
 
 export function SearchForm({ ...props }: ComponentProps<'form'>): ReactElement {

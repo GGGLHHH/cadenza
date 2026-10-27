@@ -34,8 +34,8 @@ import {
   useTranscription,
   useUsageTracker,
 } from '@gedatou/cadenza-ai'
+import { AnimateIcon, ChartBarIcon, KeyIcon } from '@gedatou/cadenza-icons'
 import { Button, cn, Dialog, DialogBody, DialogHeader, DialogPopup, DialogTitle, DialogTrigger, Tabs, TabsList, TabsPanel, TabsTab, ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
-import { AnimateIcon, ChartBarIcon, KeyIcon } from '@gedatou/cadenza-ui/icons'
 import { completeOpenRouterPkceIntoByok, startOpenRouterPkceLogin } from '@tanstack/ai-openrouter/pkce'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ResettableDemo } from '../lib/resettable'

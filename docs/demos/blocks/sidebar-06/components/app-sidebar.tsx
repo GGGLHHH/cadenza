@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
+import { GalleryVerticalEndIcon } from '@gedatou/cadenza-icons'
 import {
   Sidebar,
   SidebarContent,
@@ -9,7 +10,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@gedatou/cadenza-ui'
-import { GalleryVerticalEndIcon } from '@gedatou/cadenza-ui/icons'
 import { NavMain } from './nav-main'
 import { SidebarOptInForm } from './sidebar-opt-in-form'
 

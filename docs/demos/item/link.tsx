@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, ChevronRightIcon, HouseIcon } from '@gedatou/cadenza-icons'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@gedatou/cadenza-ui'
-import { AnimateIcon, ChevronRightIcon, HouseIcon } from '@gedatou/cadenza-ui/icons'
 
 // render={<a />} makes the whole row an anchor; hover and focus-visible
 // styling follow because the classes land on the rendered element.

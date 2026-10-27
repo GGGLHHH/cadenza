@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, DownloadIcon, FileTextIcon, XIcon } from '@gedatou/cadenza-icons'
 import {
   Attachment,
   AttachmentAction,
@@ -9,7 +10,6 @@ import {
   AttachmentTitle,
   AttachmentTrigger,
 } from '@gedatou/cadenza-ui'
-import { AnimateIcon, DownloadIcon, FileTextIcon, XIcon } from '@gedatou/cadenza-ui/icons'
 
 // The trigger covers the whole card at z-10 and the actions sit above it at
 // z-20 — which is how "open the file" and "remove the file" coexist without

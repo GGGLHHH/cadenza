@@ -5,8 +5,8 @@ description: Animated icons — animate-ui's 392 lucide-style icons, each with a
 
 <ComponentPreview name="icons/basic" />
 
-392 animated icons from [animate-ui](https://animate-ui.com)'s lucide-style set,
-exported from the main package's `@gedatou/cadenza-ui/icons` subpath. Each icon
+392 animated icons from [animate-ui](https://animate-ui.com)'s lucide-style set, plus
+22 shapes it lacks, published as a package of their own, `@gedatou/cadenza-icons`. Each icon
 has its own motion — the bell swings, the cog turns, the heart beats, the arrow
 flies off — designed for the shape rather than one fade laid over all of them.
 
@@ -18,15 +18,16 @@ hover the whole button and the icon inside plays.
 ## Usage
 
 ```tsx
-import { Bell } from '@gedatou/cadenza-ui/icons'
+import { BellIcon } from '@gedatou/cadenza-icons'
 ```
 
 ```tsx
-<Bell animateOnHover />
+<BellIcon animateOnHover />
 ```
 
-The subpath is built apart, one module per icon: a single icon comes to about
-1kB bundled, and the icons you do not use never reach the bundle.
+One module per icon, and the package declares `sideEffects: false`: a single icon
+comes to about 1.5kB bundled (about 0.4kB gzipped), plus one renderer of about
+2.4kB that every icon shares; the icons you do not use never reach the bundle.
 
 ## Triggers
 
@@ -75,17 +76,35 @@ All 392, searchable; hover any tile to see its animation:
 
 <ComponentPreview name="icons/gallery" align="stretch" />
 
-Each icon is exported under two names, `Xxx` and `XxxIcon` (`Bell` and
-`BellIcon` are the same component); use the suffixed one when the plain name
-clashes with a local.
+Each icon has one name, `XxxIcon` (`BellIcon`, `SettingsIcon`, …), and its props
+type is `XxxIconProps`. The suffix keeps them clear of locals and of globals like
+`Infinity`.
 
 ## Source and license
 
 The icons are animate-ui's (by Elliot Sutton), synced from its shadcn registry
-with `pnpm --filter @gedatou/cadenza-ui sync:icons`; each file's source and hash
-is recorded in `packages/ui/src/icons/animate-ui/manifest.json`. They are under
+with `pnpm --filter @gedatou/cadenza-icons sync:icons`. The sync turns each icon into
+this library's data form — its shapes and its animation values, drawn by the
+library's own renderer — and records each icon's source and the hash of what was
+pulled in `packages/icons/src/animate-ui/manifest.json`. The 22 shapes
+animate-ui lacks come from [Tabler](https://tabler.io/icons) (MIT), turned into
+the same data by `pnpm --filter @gedatou/cadenza-icons draw:icons`, with animate-ui's
+generic stroke draw as their animation. They are under
 animate-ui's **MIT + Commons Clause** license rather than the MIT the rest of
 this library uses — full text in the package's `ANIMATE-UI-LICENSE.md`.
+
+## Accessibility
+
+Icons are hidden from assistive tech by default (`aria-hidden`): beside text they
+say nothing the text does not, and in an icon-only button it is the button that
+needs a name, not the icon — give the button an `aria-label`.
+
+When the icon itself should be read out, give it an `aria-label` (or
+`aria-labelledby`, or a `role`) and it is no longer hidden:
+
+```tsx
+<BellIcon aria-label="New notifications" role="img" />
+```
 
 ## When to use Icons
 
@@ -117,7 +136,7 @@ Order: **required → uncontrolled defaults → controlled values → callbacks 
 
 ### Icon
 
-Every icon (`Bell`, `Settings`, …) takes the same props:
+Every icon (`BellIcon`, `SettingsIcon`, …) takes the same props:
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -136,6 +155,7 @@ Every icon (`Bell`, `Settings`, …) takes the same props:
 | `persistOnAnimateEnd` | `boolean` | `false` | stay on the last frame instead of returning to the start |
 | `initialOnAnimateEnd` | `boolean` | `false` | jump back to the start as soon as a run ends |
 | `size` | `number` | `28` | width and height (px) |
+| `aria-label` / `aria-labelledby` | `string` | — | a named icon is no longer hidden from assistive tech, see [Accessibility](#accessibility) |
 | `className` | `string` | — | lands on the `<svg>` |
 | rest | Motion `motion.svg` props (SVG attributes + ref), except `animate` | — | passed through |
 
@@ -152,9 +172,9 @@ trigger prop. Takes every trigger and playback prop in the table above except
 
 ```tsx
 <AnimateIcon animateOnHover asChild>
-  <button type="button"><Bell size={16} /> Notifications</button>
+  <button type="button"><BellIcon size={16} /> Notifications</button>
 </AnimateIcon>
 ```
 
-Three shared types are exported: AnimateIconProps / IconProps / IconWrapperProps;
-each icon also has its own XxxProps (and the matching XxxIconProps).
+Two shared types are exported: AnimateIconProps / IconProps; each icon also has
+its own XxxIconProps, whose `animation` takes that icon's own animation names.

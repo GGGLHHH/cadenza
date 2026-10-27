@@ -1,5 +1,13 @@
 import type { ReactElement } from 'react'
 import {
+  BadgeCheckIcon,
+  BellIcon,
+  ChevronUpDownIcon,
+  CreditCardIcon,
+  LogOutIcon,
+  SparklesIcon,
+} from '@gedatou/cadenza-icons'
+import {
   Avatar,
   AvatarFallback,
   AvatarImage,
@@ -15,14 +23,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@gedatou/cadenza-ui'
-import {
-  BadgeCheckIcon,
-  BellIcon,
-  ChevronUpDownIcon,
-  CreditCardIcon,
-  LogOutIcon,
-  SparklesIcon,
-} from '@gedatou/cadenza-ui/icons'
 
 export function NavUser({
   user,

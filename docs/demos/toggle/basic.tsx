@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, BoldIcon, ItalicIcon } from '@gedatou/cadenza-icons'
 import { Toggle } from '@gedatou/cadenza-ui'
-import { AnimateIcon, BoldIcon, ItalicIcon } from '@gedatou/cadenza-ui/icons'
 
 // A real <button aria-pressed>: the root element is the button itself and
 // the name comes straight from children, so there is no FieldLabel htmlFor

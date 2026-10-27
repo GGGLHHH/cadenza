@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
+import { AnimateIcon, RefreshCwIcon } from '@gedatou/cadenza-icons'
 import { Button } from '@gedatou/cadenza-ui'
-import { AnimateIcon, RefreshCwIcon } from '@gedatou/cadenza-ui/icons'
 import { Fragment, useState } from 'react'
 
 // Demo-only scaffolding. Every stateful demo accumulates state you cannot undo

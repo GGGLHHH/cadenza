@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, PlusIcon } from '@gedatou/cadenza-icons'
 import { Button } from '@gedatou/cadenza-ui'
-import { AnimateIcon, PlusIcon } from '@gedatou/cadenza-ui/icons'
 
 // Four height steps plus matching square icon steps; icon-only buttons
 // must always get an aria-label

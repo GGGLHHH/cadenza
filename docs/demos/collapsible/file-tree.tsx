@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon } from '@gedatou/cadenza-icons'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@gedatou/cadenza-ui'
-import { AnimateIcon, ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon } from '@gedatou/cadenza-ui/icons'
 
 interface Node {
   name: string

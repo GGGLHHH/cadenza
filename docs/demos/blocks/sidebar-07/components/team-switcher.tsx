@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
+import { ChevronUpDownIcon, PlusIcon } from '@gedatou/cadenza-icons'
 import {
   DropdownMenu,
   DropdownMenuGroup,
@@ -13,7 +14,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@gedatou/cadenza-ui'
-import { ChevronUpDownIcon, PlusIcon } from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 
 export function TeamSwitcher({

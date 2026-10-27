@@ -1,5 +1,29 @@
 import type { ComponentProps, ElementType, ReactElement } from 'react'
 import {
+  AudioLinesIcon,
+  BadgeCheckIcon,
+  BellIcon,
+  BookOpenIcon,
+  BotIcon,
+  ChartColumnIcon,
+  ChevronRightIcon,
+  ChevronUpDownIcon,
+  CreditCardIcon,
+  EllipsisIcon,
+  FolderIcon,
+  ForwardIcon,
+  FrameIcon,
+  GalleryVerticalEndIcon,
+  KeyIcon,
+  LogOutIcon,
+  MapPinIcon,
+  PlusIcon,
+  SlidersHorizontalIcon,
+  SparklesIcon,
+  TerminalIcon,
+  Trash2Icon,
+} from '@gedatou/cadenza-icons'
+import {
   Avatar,
   AvatarFallback,
   AvatarImage,
@@ -33,30 +57,6 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@gedatou/cadenza-ui'
-import {
-  AudioLinesIcon,
-  BadgeCheckIcon,
-  BellIcon,
-  BookOpenIcon,
-  BotIcon,
-  ChartColumnIcon,
-  ChevronRightIcon,
-  ChevronUpDownIcon,
-  CreditCardIcon,
-  EllipsisIcon,
-  FolderIcon,
-  ForwardIcon,
-  FrameIcon,
-  GalleryVerticalEndIcon,
-  KeyIcon,
-  LogOutIcon,
-  MapPinIcon,
-  PlusIcon,
-  SlidersHorizontalIcon,
-  SparklesIcon,
-  TerminalIcon,
-  Trash2Icon,
-} from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 import { SidebarFrame } from '../lib/sidebar-frame'
 

@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { BellIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   Item,
@@ -8,7 +9,6 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@gedatou/cadenza-ui'
-import { BellIcon } from '@gedatou/cadenza-ui/icons'
 
 // Three densities: default, sm and xs. xs also drops the content gap and
 // shrinks the description text.

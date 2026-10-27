@@ -1,5 +1,11 @@
 import type { ReactElement, ReactNode } from 'react'
 import {
+  ArrowRightIcon,
+  EllipsisIcon,
+  FolderIcon,
+  Trash2Icon,
+} from '@gedatou/cadenza-icons'
+import {
   DropdownMenu,
   DropdownMenuItem,
   DropdownMenuPopup,
@@ -13,12 +19,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@gedatou/cadenza-ui'
-import {
-  ArrowRightIcon,
-  EllipsisIcon,
-  FolderIcon,
-  Trash2Icon,
-} from '@gedatou/cadenza-ui/icons'
 
 export function NavProjects({
   projects,

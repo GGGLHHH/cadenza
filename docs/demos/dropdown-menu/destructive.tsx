@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, TrashIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   DropdownMenu,
@@ -7,7 +8,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@gedatou/cadenza-ui'
-import { AnimateIcon, TrashIcon } from '@gedatou/cadenza-ui/icons'
 
 // variant="destructive" is for irreversible actions: text, icon, and the
 // focused background all shift to the warning colour for the whole row.

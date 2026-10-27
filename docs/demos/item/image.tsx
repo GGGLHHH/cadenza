@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, EllipsisIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   Item,
@@ -8,7 +9,6 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@gedatou/cadenza-ui'
-import { AnimateIcon, EllipsisIcon } from '@gedatou/cadenza-ui/icons'
 
 // An inline SVG stands in for a real cover so the demo needs no network.
 const COVER = `data:image/svg+xml,${encodeURIComponent(

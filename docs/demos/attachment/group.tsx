@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { FileTextIcon, ImageIcon, MusicIcon, TableIcon } from '@gedatou/cadenza-icons'
 import {
   Attachment,
   AttachmentContent,
@@ -7,7 +8,6 @@ import {
   AttachmentMedia,
   AttachmentTitle,
 } from '@gedatou/cadenza-ui'
-import { FileTextIcon, ImageIcon, MusicIcon, TableIcon } from '@gedatou/cadenza-ui/icons'
 
 const FILES = [
   { icon: <FileTextIcon animateOnHover />, name: 'programme-draft.pdf', size: '240 KB' },

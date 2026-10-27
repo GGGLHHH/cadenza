@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { CheckIcon, ChevronRightIcon } from '@gedatou/cadenza-icons'
 import {
   Collapsible,
   CollapsiblePanel,
@@ -11,7 +12,6 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from '@gedatou/cadenza-ui'
-import { CheckIcon, ChevronRightIcon } from '@gedatou/cadenza-ui/icons'
 import { Fragment } from 'react'
 
 export function Calendars({

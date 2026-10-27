@@ -2,6 +2,7 @@
 
 import type { SortedResult } from 'fumadocs-core/search'
 import type { ReactElement } from 'react'
+import { AlignLeftIcon, AnimateIcon, FileIcon, HashIcon, SearchIcon } from '@gedatou/cadenza-icons'
 import {
   Dialog,
   DialogPopup,
@@ -13,7 +14,6 @@ import {
   InfiniteSelectInputGroup,
   InfiniteSelectList,
 } from '@gedatou/cadenza-ui'
-import { AlignLeftIcon, AnimateIcon, FileIcon, HashIcon, SearchIcon } from '@gedatou/cadenza-ui/icons'
 import { useDocsSearch } from 'fumadocs-core/search/client'
 import { fetchClient } from 'fumadocs-core/search/client/fetch'
 import { useParams, useRouter } from 'next/navigation'

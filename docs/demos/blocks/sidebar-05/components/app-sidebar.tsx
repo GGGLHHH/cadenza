@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
+import { GalleryVerticalEndIcon, MinusIcon, PlusIcon } from '@gedatou/cadenza-icons'
 import {
   Collapsible,
   CollapsiblePanel,
@@ -15,7 +16,6 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from '@gedatou/cadenza-ui'
-import { GalleryVerticalEndIcon, MinusIcon, PlusIcon } from '@gedatou/cadenza-ui/icons'
 import { SearchForm } from './search-form'
 
 // This is sample data.

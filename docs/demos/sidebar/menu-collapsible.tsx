@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { ChevronRightIcon } from '@gedatou/cadenza-icons'
 import {
   Collapsible,
   CollapsiblePanel,
@@ -15,7 +16,6 @@ import {
   SidebarMenuSubItem,
   SidebarProvider,
 } from '@gedatou/cadenza-ui'
-import { ChevronRightIcon } from '@gedatou/cadenza-ui/icons'
 import { SidebarFrame } from '../lib/sidebar-frame'
 
 const items = [

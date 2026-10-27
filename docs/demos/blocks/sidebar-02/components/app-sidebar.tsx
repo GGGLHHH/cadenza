@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
+import { ChevronRightIcon } from '@gedatou/cadenza-icons'
 import {
   Collapsible,
   CollapsiblePanel,
@@ -14,7 +15,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@gedatou/cadenza-ui'
-import { ChevronRightIcon } from '@gedatou/cadenza-ui/icons'
 import { SearchForm } from './search-form'
 import { VersionSwitcher } from './version-switcher'
 

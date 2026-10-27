@@ -15,6 +15,7 @@
     "@animate-ui/react": "catalog:ui",
     "@gedatou/cadenza-ai": "workspace:*",
     "@gedatou/cadenza-form": "workspace:*",
+    "@gedatou/cadenza-icons": "workspace:*",
     "@gedatou/cadenza-ui": "workspace:*",
     "@gedatou/cadenza-utils": "workspace:*",
     "@tanstack/ai-anthropic": "catalog:ui",

@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, CopyIcon, PencilIcon, ShareIcon, StarIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   DropdownMenu,
@@ -7,7 +8,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@gedatou/cadenza-ui'
-import { AnimateIcon, CopyIcon, PencilIcon, ShareIcon, StarIcon } from '@gedatou/cadenza-ui/icons'
 
 // Icons go straight into the item — item styles already size and space a
 // leading svg.

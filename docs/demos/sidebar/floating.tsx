@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { EllipsisIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   Card,
@@ -30,7 +31,6 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from '@gedatou/cadenza-ui'
-import { EllipsisIcon } from '@gedatou/cadenza-ui/icons'
 import { SidebarFrame } from '../lib/sidebar-frame'
 
 // shadcn's sidebar-floating-example: `variant="floating"` — the panel sits

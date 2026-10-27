@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { PanelLeftIcon } from '@gedatou/cadenza-icons'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -10,7 +11,6 @@ import {
   Separator,
   useSidebar,
 } from '@gedatou/cadenza-ui'
-import { PanelLeftIcon } from '@gedatou/cadenza-ui/icons'
 import { SearchForm } from './search-form'
 
 export function SiteHeader(): ReactElement {

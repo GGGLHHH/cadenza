@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { MessageCircleQuestionIcon, SendIcon } from '@gedatou/cadenza-icons'
 import {
   Sidebar,
   SidebarContent,
@@ -10,7 +11,6 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@gedatou/cadenza-ui'
-import { MessageCircleQuestionIcon, SendIcon } from '@gedatou/cadenza-ui/icons'
 import { SidebarFrame } from '../lib/sidebar-frame'
 
 // shadcn's sidebar-group example: a labelled SidebarGroup holding a menu.

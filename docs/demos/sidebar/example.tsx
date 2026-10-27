@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { CheckIcon, ChevronUpDownIcon, SearchIcon } from '@gedatou/cadenza-icons'
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -25,7 +26,6 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from '@gedatou/cadenza-ui'
-import { CheckIcon, ChevronUpDownIcon, SearchIcon } from '@gedatou/cadenza-ui/icons'
 import { useId, useState } from 'react'
 import { SidebarFrame } from '../lib/sidebar-frame'
 

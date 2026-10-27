@@ -1,5 +1,6 @@
 import type { AttachmentSize } from '@gedatou/cadenza-ui'
 import type { ReactElement } from 'react'
+import { FileTextIcon } from '@gedatou/cadenza-icons'
 import {
   Attachment,
   AttachmentContent,
@@ -7,7 +8,6 @@ import {
   AttachmentMedia,
   AttachmentTitle,
 } from '@gedatou/cadenza-ui'
-import { FileTextIcon } from '@gedatou/cadenza-ui/icons'
 
 const SIZES: AttachmentSize[] = ['default', 'sm', 'xs']
 

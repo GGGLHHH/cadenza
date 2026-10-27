@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, BoldIcon, ItalicIcon, UnderlineIcon } from '@gedatou/cadenza-icons'
 import { ToggleGroup, ToggleGroupItem } from '@gedatou/cadenza-ui'
-import { AnimateIcon, BoldIcon, ItalicIcon, UnderlineIcon } from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 
 // multiple: several items can be pressed at once. value has exactly the

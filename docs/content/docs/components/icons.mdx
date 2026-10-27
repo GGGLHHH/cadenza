@@ -5,8 +5,8 @@ description: 带动画的图标 —— animate-ui 的 392 个 lucide 风格图�
 
 <ComponentPreview name="icons/basic" />
 
-392 个带动画的图标，来自 [animate-ui](https://animate-ui.com) 的 lucide 风格图标集，从主包的
-`@gedatou/cadenza-ui/icons` 子路径导出。每个图标都有自己的动作：铃铛摇摆、齿轮转动、心跳、箭头飞出……
+392 个带动画的图标，来自 [animate-ui](https://animate-ui.com) 的 lucide 风格图标集，再加 22 个它没有的图形，
+以单独的包 `@gedatou/cadenza-icons` 发布。每个图标都有自己的动作：铃铛摇摆、齿轮转动、心跳、箭头飞出……
 不是统一套一个淡入，而是按图形本身设计的动画。
 
 图标是 Motion 写的 SVG，什么时候播放由 animate-ui 的 `AnimateIcon` 决定：悬停、按下、进入视口，
@@ -15,14 +15,14 @@ description: 带动画的图标 —— animate-ui 的 392 个 lucide 风格图�
 ## 使用
 
 ```tsx
-import { Bell } from '@gedatou/cadenza-ui/icons'
+import { BellIcon } from '@gedatou/cadenza-icons'
 ```
 
 ```tsx
-<Bell animateOnHover />
+<BellIcon animateOnHover />
 ```
 
-子路径单独构建、每个图标一个模块：只用一个图标，打包后约 1kB，用不到的图标不会进包。
+每个图标一个模块，包声明了 `sideEffects: false`：只用一个图标，打包后约 1.5kB（gzip 约 0.4kB），外加所有图标共用的一份约 2.4kB 的渲染器；用不到的图标不会进包。
 
 ## 触发方式
 
@@ -66,15 +66,29 @@ import { Bell } from '@gedatou/cadenza-ui/icons'
 
 <ComponentPreview name="icons/gallery" align="stretch" />
 
-每个图标同时以 `Xxx` 和 `XxxIcon` 两个名字导出（`Bell` 与 `BellIcon` 是同一个组件），
-和本地变量重名时用带 `Icon` 后缀的那个。
+每个图标只有一个名字：`XxxIcon`（`BellIcon`、`SettingsIcon`……），props 类型是 `XxxIconProps`。
+带后缀是为了不和本地变量、`Infinity` 这类全局对象重名。
 
 ## 来源与许可
 
 这些图标来自 animate-ui（作者 Elliot Sutton），用
-`pnpm --filter @gedatou/cadenza-ui sync:icons` 从它的 shadcn 注册表同步；每个文件的来源和哈希记录在
-`packages/ui/src/icons/animate-ui/manifest.json`。它们遵循 animate-ui 的 **MIT + Commons Clause**
+`pnpm --filter @gedatou/cadenza-icons sync:icons` 从它的 shadcn 注册表同步。同步时每个图标会被转换成本库的数据形式：
+它的图形和动画参数，交给本库自己的渲染器绘制；每个图标的来源和原文哈希记录在
+`packages/icons/src/animate-ui/manifest.json`。animate-ui 没有的 22 个图形取自
+[Tabler](https://tabler.io/icons)（MIT），由 `pnpm --filter @gedatou/cadenza-icons draw:icons` 生成同样的数据，
+动画是 animate-ui 通用的描边绘制。它们遵循 animate-ui 的 **MIT + Commons Clause**
 许可，而不是本库其余部分的 MIT，全文见包内的 `ANIMATE-UI-LICENSE.md`。
+
+## 无障碍
+
+图标默认对读屏软件隐藏（`aria-hidden`）：放在文字旁边时，它没有文字以外的信息；放在只有图标的按钮里时，
+该命名的是按钮，不是图标 —— 给按钮写 `aria-label`。
+
+图标本身需要被读出来时，给它 `aria-label`（或 `aria-labelledby`、`role`），它就不再隐藏：
+
+```tsx
+<BellIcon aria-label="有新通知" role="img" />
+```
 
 ## 什么时候用 Icons
 
@@ -100,7 +114,7 @@ import { Bell } from '@gedatou/cadenza-ui/icons'
 
 ### 图标
 
-每个图标（`Bell`、`Settings`……）都收同一组 props：
+每个图标（`BellIcon`、`SettingsIcon`……）都收同一组 props：
 
 | Prop | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
@@ -119,6 +133,7 @@ import { Bell } from '@gedatou/cadenza-ui/icons'
 | `persistOnAnimateEnd` | `boolean` | `false` | 播完停在最后一帧，不回到初始状态 |
 | `initialOnAnimateEnd` | `boolean` | `false` | 播完立刻跳回初始状态 |
 | `size` | `number` | `28` | 宽高（px） |
+| `aria-label` / `aria-labelledby` | `string` | — | 给了名字就不再对读屏隐藏，见[无障碍](#无障碍) |
 | `className` | `string` | — | 落在 `<svg>` 上 |
 | 其余 | Motion `motion.svg` 的 props（SVG 属性 + ref），`animate` 除外 | — | 透传 |
 
@@ -133,8 +148,8 @@ import { Bell } from '@gedatou/cadenza-ui/icons'
 
 ```tsx
 <AnimateIcon animateOnHover asChild>
-  <button type="button"><Bell size={16} /> 通知</button>
+  <button type="button"><BellIcon size={16} /> 通知</button>
 </AnimateIcon>
 ```
 
-3 个通用类型一并导出：AnimateIconProps / IconProps / IconWrapperProps；每个图标另有自己的 XxxProps（及同义的 XxxIconProps）。
+2 个通用类型一并导出：AnimateIconProps / IconProps；每个图标另有自己的 XxxIconProps，`animation` 只接受该图标自己的动画名。

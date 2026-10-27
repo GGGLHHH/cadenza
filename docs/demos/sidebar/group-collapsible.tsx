@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { ChevronDownIcon, MessageCircleQuestionIcon, SendIcon } from '@gedatou/cadenza-icons'
 import {
   Collapsible,
   CollapsiblePanel,
@@ -13,7 +14,6 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@gedatou/cadenza-ui'
-import { ChevronDownIcon, MessageCircleQuestionIcon, SendIcon } from '@gedatou/cadenza-ui/icons'
 import { SidebarFrame } from '../lib/sidebar-frame'
 
 // shadcn's sidebar-group-collapsible example: the group label is the

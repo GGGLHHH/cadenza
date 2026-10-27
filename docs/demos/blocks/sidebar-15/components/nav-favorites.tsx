@@ -1,5 +1,12 @@
 import type { ReactElement } from 'react'
 import {
+  EllipsisIcon,
+  LinkIcon,
+  SquareArrowOutUpRightIcon,
+  StarIcon,
+  Trash2Icon,
+} from '@gedatou/cadenza-icons'
+import {
   DropdownMenu,
   DropdownMenuItem,
   DropdownMenuPopup,
@@ -13,13 +20,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@gedatou/cadenza-ui'
-import {
-  EllipsisIcon,
-  LinkIcon,
-  SquareArrowOutUpRightIcon,
-  StarIcon,
-  Trash2Icon,
-} from '@gedatou/cadenza-ui/icons'
 
 export function NavFavorites({
   favorites,

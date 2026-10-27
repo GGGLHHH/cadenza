@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, LogOutIcon, MailIcon, MessageSquareIcon, SettingsIcon, UserIcon, UserPlusIcon } from '@gedatou/cadenza-icons'
 import {
   Button,
   DropdownMenu,
@@ -13,7 +14,6 @@ import {
   DropdownMenuSubmenuTrigger,
   DropdownMenuTrigger,
 } from '@gedatou/cadenza-ui'
-import { AnimateIcon, LogOutIcon, MailIcon, MessageSquareIcon, SettingsIcon, UserIcon, UserPlusIcon } from '@gedatou/cadenza-ui/icons'
 
 // Everything at once: groups + icons + shortcuts + a submenu in one menu.
 export default function ComplexDemo(): ReactElement {

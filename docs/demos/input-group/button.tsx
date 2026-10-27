@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
+import { AnimateIcon, ArrowRightIcon, CopyIcon } from '@gedatou/cadenza-icons'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@gedatou/cadenza-ui'
-import { AnimateIcon, ArrowRightIcon, CopyIcon } from '@gedatou/cadenza-ui/icons'
 import { useState } from 'react'
 
 // Trailing buttons: InputGroupButton wraps Base UI's Button underneath.

@@ -1,12 +1,12 @@
 import type { ComponentType, ReactElement } from 'react'
+import * as icons from '@gedatou/cadenza-icons'
 import { SearchField } from '@gedatou/cadenza-ui'
-import * as icons from '@gedatou/cadenza-ui/icons'
 import { useDeferredValue, useState } from 'react'
 
-// Every icon the subpath exports, under its own name (each is also exported as
-// `<Name>Icon`; the trigger and base are not icons).
+// Every icon the subpath exports, under the name you import it by; the trigger
+// is not an icon.
 const ALL = (Object.entries(icons) as [string, ComponentType<{ size?: number }>][])
-  .filter(([name]) => !name.endsWith('Icon') && name !== 'IconWrapper')
+  .filter(([name]) => name.endsWith('Icon') && name !== 'AnimateIcon')
 
 // The whole set, searchable; each tile is the hover target, so pointing
 // anywhere on it plays that icon's animation.
