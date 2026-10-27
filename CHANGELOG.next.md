@@ -29,3 +29,4 @@
 - 新增 `@animate-ui/react`。它的许可证带 Commons Clause：可以作为依赖使用，但不能把它本身拿去销售。
 - `motion` 从 ^13 升到 ^14（animate-ui 的要求）。如果你的项目还在用 motion 13，就会同时装上两份 motion，你自己的 `MotionConfig`（比如 `reducedMotion`）管不到本库的组件，建议一起升到 14。
 - `@base-ui/react` 从 ^1.7 升到 ^1.9。
+- 新增 `@floating-ui/react`：新发布的 `AvatarGroup` 用到的 animate-ui tooltip 依赖它。
