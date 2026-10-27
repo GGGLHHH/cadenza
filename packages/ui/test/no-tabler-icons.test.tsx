@@ -2,6 +2,10 @@ import type { ReactElement } from 'react'
 import { render } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import {
+  Breadcrumb,
+  BreadcrumbEllipsis,
+  BreadcrumbList,
+  BreadcrumbSeparator,
   Calendar,
   Checkbox,
   DataPagination,
@@ -23,6 +27,8 @@ import {
   SelectPopup,
   SelectTrigger,
   SelectValue,
+  SidebarProvider,
+  SidebarTrigger,
   Spinner,
 } from '../src'
 
@@ -48,8 +54,17 @@ const select = (
     <SelectPopup><SelectItem value="a">A</SelectItem></SelectPopup>
   </Select>
 )
+const breadcrumb = (
+  <Breadcrumb key="b">
+    <BreadcrumbList>
+      <BreadcrumbEllipsis />
+      <BreadcrumbSeparator />
+    </BreadcrumbList>
+  </Breadcrumb>
+)
 
 const cases: [string, ReactElement][] = [
+  ['Breadcrumb', breadcrumb],
   ['Calendar', <Calendar key="c" mode="single" month={new Date(2026, 7, 1)} />],
   ['Calendar dropdown', <Calendar captionLayout="dropdown" key="cd" mode="single" month={new Date(2026, 7, 1)} />],
   ['Checkbox', <Checkbox aria-label="同意" defaultChecked key="cb" />],
@@ -61,6 +76,7 @@ const cases: [string, ReactElement][] = [
   ['NumberField', <NumberField aria-label="数量" defaultValue={1} key="n" />],
   ['SearchField', <SearchField aria-label="搜索" defaultValue="x" key="s" />],
   ['Select', select],
+  ['SidebarTrigger', <SidebarProvider key="sb"><SidebarTrigger /></SidebarProvider>],
   ['Spinner', <Spinner key="sp" />],
 ]
 
