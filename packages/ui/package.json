@@ -58,6 +58,7 @@
   "dependencies": {
     "@animate-ui/react": "catalog:ui",
     "@base-ui/react": "catalog:ui",
+    "@floating-ui/react": "catalog:ui",
     "@gedatou/cadenza-utils": "workspace:*",
     "@shadcn/react": "catalog:ui",
     "@tabler/icons-react": "catalog:ui",

@@ -12,6 +12,7 @@
     "index:components": "tsx scripts/index-components.ts"
   },
   "dependencies": {
+    "@animate-ui/react": "catalog:ui",
     "@gedatou/cadenza-ai": "workspace:*",
     "@gedatou/cadenza-form": "workspace:*",
     "@gedatou/cadenza-ui": "workspace:*",

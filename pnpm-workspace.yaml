@@ -51,7 +51,7 @@ catalogs:
     next: ^16.3.0
     ogl: ^1.0.11
     rehype-pretty-code: ^0.14.5
-    shiki: ^4.4.2
+    shiki: ^4.5.0
     zod: ^4.4.3
   react:
     react: ^19.2.8
@@ -70,6 +70,7 @@ catalogs:
   ui:
     '@animate-ui/react': ^2.3.0
     '@base-ui/react': ^1.9.0
+    '@floating-ui/react': ^0.27.20
     '@shadcn/react': ^0.3.1
     '@streamdown/cjk': ^1.0.3
     '@streamdown/code': ^1.1.1
