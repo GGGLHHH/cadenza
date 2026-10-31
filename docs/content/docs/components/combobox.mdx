@@ -174,7 +174,7 @@ context，才知道该遍历哪一组；没有它 `ComboboxCollection` 会去遍
 消失**，不会留下一个空标题。
 
 `ComboboxGroupLabel` 是**组的标题**，不是控件的标签 —— 控件的标签在
-[Field](/docs/components/field) 那边。这也是移植时改名的原因，见[名字这一节](#这份是封装层自己的移植)。
+[Field](/docs/components/field) 那边。这也是移植时改名的原因，见[与 shadcn 的差异](#与-shadcn-的差异)。
 
 ## 自定义条目
 
@@ -288,7 +288,7 @@ children 在 DOM 上排在箭头/清除那个 addon 之后，但那个 addon 是
 （带 `order-last`），所以**画出来**仍在最右；addon 默认的 `align="inline-start"` 带
 `order-first`，图标落在行首。
 
-## 这份是封装层自己的移植
+## 与 shadcn 的差异
 
 不是转出。vendored 的 `src/primitives/combobox.tsx` 是 typecheck **exclude 名单里
 的两个文件之一**（另一个是 accordion）：它的 `ComboboxInput` 声明了 Base UI 的函数
@@ -342,7 +342,7 @@ Base UI 写的那些 `data-*`（`data-popup-open` / `data-disabled` / `data-list
 （`data-[popup-open]:border-ring`）；`has-*` 选择器（比如 `has-data-[popup-open]:border-ring`）
 一样能用，认里面 input 独有的状态时用它。
 上游 vendored 的那版仍是错的 —— 它声明了 Base UI 的函数 `className` 却路由到纯 DOM 的
-`InputGroup`；封装层是靠改路由、不是靠窄类型把两边对上的，见[上一节](#这份是封装层自己的移植)。
+`InputGroup`；封装层是靠改路由、不是靠窄类型把两边对上的，见[与 shadcn 的差异](#与-shadcn-的差异)。
 
 **其余部件都通到 Base UI 的 slot**，所以函数形态成立：`(state) => string | undefined`，
 state 的字段就是[Props](#props) 里各部件那张 `data-*` 表。这些 state 的类型名住在上游

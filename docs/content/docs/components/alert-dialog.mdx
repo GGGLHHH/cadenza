@@ -299,6 +299,16 @@ catch (error) {
 
 关闭后焦点自动回到触发器。
 
+## 导出的类型
+
+`AlertDialogProps<Payload>` / `AlertDialogPopupProps` / `AlertDialogPopupState` /
+`AlertDialogTriggerProps<Payload>` / `AlertDialogCloseProps` /
+`AlertDialogHeaderProps` / `AlertDialogMediaProps` / `AlertDialogFooterProps` /
+`AlertDialogTitleProps` / `AlertDialogDescriptionProps` / `AlertDialogSize`，
+外加 `AlertDialogChangeEventDetails`（`onOpenChange` 的第二个参数）、
+`AlertDialogActions`（`actionsRef` 暴露的 `close` / `unmount`）与
+`AlertDialogHandle<Payload>`。
+
 ## Props
 
 顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
@@ -343,13 +353,3 @@ catch (error) {
 
 三个普通 `<div>`，只接原生属性。`AlertDialogTitle` 渲染 `<h2>`、
 `AlertDialogDescription` 渲染 `<p>`，两者都接 Base UI 的 `render`。
-
-## 导出的类型
-
-`AlertDialogProps<Payload>` / `AlertDialogPopupProps` / `AlertDialogPopupState` /
-`AlertDialogTriggerProps<Payload>` / `AlertDialogCloseProps` /
-`AlertDialogHeaderProps` / `AlertDialogMediaProps` / `AlertDialogFooterProps` /
-`AlertDialogTitleProps` / `AlertDialogDescriptionProps` / `AlertDialogSize`，
-外加 `AlertDialogChangeEventDetails`（`onOpenChange` 的第二个参数）、
-`AlertDialogActions`（`actionsRef` 暴露的 `close` / `unmount`）与
-`AlertDialogHandle<Payload>`。

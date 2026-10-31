@@ -351,6 +351,16 @@ DOM 上的 `data-*`，Tailwind 直接当变体写（`data-starting-style:opacity
 
 关闭后焦点自动回到触发器，见[焦点](#焦点)。
 
+## 导出的类型
+
+`DialogProps<Payload>` / `DialogPopupProps` / `DialogPopupState` /
+`DialogTriggerProps<Payload>` / `DialogCloseProps` / `DialogHeaderProps` /
+`DialogBodyProps` / `DialogFooterProps` / `DialogTitleProps` /
+`DialogDescriptionProps`，
+外加 `DialogChangeEventDetails`（`onOpenChange` 的第二个参数）、
+`DialogActions`（`actionsRef` 暴露的 `close` / `unmount`）与
+`DialogHandle<Payload>`。
+
 ## Props
 
 顺序规则：**必填 → 非受控默认值 → 受控值 → 回调 → 行为开关 → 外观 → `className`**。
@@ -414,13 +424,3 @@ DOM 上的 `data-*`，Tailwind 直接当变体写（`data-starting-style:opacity
 ```tsx
 <DialogClose render={<Button variant="outline" />}>取消</DialogClose>
 ```
-
-## 导出的类型
-
-`DialogProps<Payload>` / `DialogPopupProps` / `DialogPopupState` /
-`DialogTriggerProps<Payload>` / `DialogCloseProps` / `DialogHeaderProps` /
-`DialogBodyProps` / `DialogFooterProps` / `DialogTitleProps` /
-`DialogDescriptionProps`，
-外加 `DialogChangeEventDetails`（`onOpenChange` 的第二个参数）、
-`DialogActions`（`actionsRef` 暴露的 `close` / `unmount`）与
-`DialogHandle<Payload>`。

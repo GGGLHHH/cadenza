@@ -206,7 +206,7 @@ disappears entirely** — no empty heading left behind.
 `ComboboxGroupLabel` is **the group's heading**, not the control's label —
 the control's label lives over in [Field](/en/docs/components/field). That is
 also why the port renamed it, see
-[the naming section](#this-is-the-seams-own-port).
+[Differences from shadcn](#differences-from-shadcn).
 
 ## Custom items
 
@@ -338,7 +338,7 @@ In the DOM the children come after the arrow/clear addon, but that addon is
 rightmost; the addon default `align="inline-start"` carries `order-first`,
 landing the icon at the start of the row.
 
-## This is the seam's own port
+## Differences from shadcn
 
 Not a re-export. The vendored `src/primitives/combobox.tsx` is **one of the
 two files on the typecheck exclude list** (the other is accordion): its
@@ -404,7 +404,7 @@ colouring the whole row by state can be written straight on the row
 for state only the inner input carries. The upstream vendored version is
 still wrong — it declares Base UI's function `className` yet routes it to the
 pure-DOM `InputGroup`; the seam settled it by fixing the routing, not by
-narrowing the type, see [the previous section](#this-is-the-seams-own-port).
+narrowing the type, see [Differences from shadcn](#differences-from-shadcn).
 
 **Every other part connects through to a Base UI slot**, so the function form
 holds: `(state) => string | undefined`, with the state's fields being each

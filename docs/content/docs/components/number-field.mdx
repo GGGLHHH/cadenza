@@ -69,17 +69,6 @@ NumberField
 有 `name` 才渲染隐藏 input，值随表单原生提交。与 TanStack Form 的绑定见
 [表单指南](/docs/forms/tanstack-form#numberfield)。
 
-## 键盘交互
-
-焦点在输入框上时：
-
-| 按键 | 效果 |
-| --- | --- |
-| `↑` / `↓` | ± `step`（默认 1） |
-| `Shift + ↑/↓` | ± `largeStep`（默认 10） |
-| `Alt + ↑/↓` | ± `smallStep`（默认 0.1） |
-| `Home` / `End` | 跳到 `min` / `max` |
-
 ## 状态与 className
 
 各部件外化 Base UI Field 生态的状态词表（空串存在型）：
@@ -99,6 +88,17 @@ NumberField
 | `number-field-decrement` / `number-field-increment` | 步进钮 |
 
 `className` 处处到达 Base UI 槽位，函数形态 `(state) => string` 可用。
+
+## 键盘交互
+
+焦点在输入框上时：
+
+| 按键 | 效果 |
+| --- | --- |
+| `↑` / `↓` | ± `step`（默认 1） |
+| `Shift + ↑/↓` | ± `largeStep`（默认 10） |
+| `Alt + ↑/↓` | ± `smallStep`（默认 0.1） |
+| `Home` / `End` | 跳到 `min` / `max` |
 
 ## Props
 

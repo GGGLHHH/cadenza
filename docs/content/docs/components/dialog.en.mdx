@@ -394,6 +394,16 @@ For targeting from outside, use `data-slot`:
 After closing, focus returns to the trigger automatically — see
 [Focus](#focus).
 
+## Exported types
+
+`DialogProps<Payload>` / `DialogPopupProps` / `DialogPopupState` /
+`DialogTriggerProps<Payload>` / `DialogCloseProps` / `DialogHeaderProps` /
+`DialogBodyProps` / `DialogFooterProps` / `DialogTitleProps` /
+`DialogDescriptionProps`,
+plus `DialogChangeEventDetails` (the second argument of `onOpenChange`),
+`DialogActions` (the `close` / `unmount` exposed by `actionsRef`) and
+`DialogHandle<Payload>`.
+
 ## Props
 
 Ordering rule: **required → uncontrolled default → controlled value → callbacks →
@@ -463,13 +473,3 @@ to the caller. Write the one line yourself, and the wording is yours:
 ```tsx
 <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
 ```
-
-## Exported types
-
-`DialogProps<Payload>` / `DialogPopupProps` / `DialogPopupState` /
-`DialogTriggerProps<Payload>` / `DialogCloseProps` / `DialogHeaderProps` /
-`DialogBodyProps` / `DialogFooterProps` / `DialogTitleProps` /
-`DialogDescriptionProps`,
-plus `DialogChangeEventDetails` (the second argument of `onOpenChange`),
-`DialogActions` (the `close` / `unmount` exposed by `actionsRef`) and
-`DialogHandle<Payload>`.

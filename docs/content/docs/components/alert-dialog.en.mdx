@@ -323,6 +323,16 @@ delete it when changing the popup's classes.
 
 After closing, focus returns to the trigger automatically.
 
+## Exported types
+
+`AlertDialogProps<Payload>` / `AlertDialogPopupProps` / `AlertDialogPopupState` /
+`AlertDialogTriggerProps<Payload>` / `AlertDialogCloseProps` /
+`AlertDialogHeaderProps` / `AlertDialogMediaProps` / `AlertDialogFooterProps` /
+`AlertDialogTitleProps` / `AlertDialogDescriptionProps` / `AlertDialogSize`,
+plus `AlertDialogChangeEventDetails` (the second argument of `onOpenChange`),
+`AlertDialogActions` (the `close` / `unmount` exposed by `actionsRef`) and
+`AlertDialogHandle<Payload>`.
+
 ## Props
 
 Ordering rule: **required → uncontrolled default → controlled value → callbacks →
@@ -370,13 +380,3 @@ additionally has `handle` and `payload`.
 Three plain `<div>`s, taking native props only. `AlertDialogTitle` renders an
 `<h2>`, `AlertDialogDescription` renders a `<p>`, and both take Base UI's
 `render`.
-
-## Exported types
-
-`AlertDialogProps<Payload>` / `AlertDialogPopupProps` / `AlertDialogPopupState` /
-`AlertDialogTriggerProps<Payload>` / `AlertDialogCloseProps` /
-`AlertDialogHeaderProps` / `AlertDialogMediaProps` / `AlertDialogFooterProps` /
-`AlertDialogTitleProps` / `AlertDialogDescriptionProps` / `AlertDialogSize`,
-plus `AlertDialogChangeEventDetails` (the second argument of `onOpenChange`),
-`AlertDialogActions` (the `close` / `unmount` exposed by `actionsRef`) and
-`AlertDialogHandle<Payload>`.
