@@ -39,18 +39,21 @@ export function isReplay(event: Event): boolean {
  */
 export function replayPress(element: Element): void {
   const init: PointerEventInit = { button: 0, isPrimary: true, pointerId: -1, pointerType: 'mouse' }
-  // The element's own window, held from the press: the release lands after
-  // MIN_PRESS, when a test environment may already have dropped the globals.
   const view = element.ownerDocument.defaultView
   if (!view)
     return
-  const down = new view.PointerEvent('pointerdown', init)
+  // Held from the press, not looked up at release: that lands MIN_PRESS later,
+  // when a test environment may already have deleted the window's globals —
+  // in vitest the element's window is the global object itself.
+  const Pointer = view.PointerEvent
+  const release = view.dispatchEvent.bind(view)
+  const down = new Pointer('pointerdown', init)
   replays.add(down)
   element.dispatchEvent(down)
   setTimeout(() => {
-    const up = new view.PointerEvent('pointerup', init)
+    const up = new Pointer('pointerup', init)
     replays.add(up)
-    view.dispatchEvent(up)
+    release(up)
   }, MIN_PRESS)
 }
 

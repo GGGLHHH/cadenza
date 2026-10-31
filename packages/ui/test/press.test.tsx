@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { Button, RadioGroup, RadioGroupItem, Switch, Toggle } from '../src'
+import { isReplay, MIN_PRESS, replayPress } from '../src/lib/press'
 
 // A replayed press is a non-bubbling pointerdown on the pressed element, then
 // a pointerup on `window` `MIN_PRESS` later — Motion's own press gesture, so
@@ -92,4 +93,24 @@ it('leaves a read-only switch still', async () => {
   await press(screen.getByRole('switch', { name: 'locked' }), 0)
   await sleep(150)
   expect(replays).toEqual([])
+})
+
+it('releases a replay after the environment has dropped its globals', async () => {
+  // A test file can end inside the MIN_PRESS window; vitest then deletes the
+  // jsdom globals before the release timer fires. Mimic that teardown.
+  vi.restoreAllMocks() // the recording spies read the global PointerEvent
+  render(<Button>late</Button>)
+  const released: boolean[] = []
+  window.addEventListener('pointerup', event => released.push(isReplay(event)))
+  replayPress(screen.getByRole('button', { name: 'late' }))
+  const { PointerEvent: saved } = globalThis
+  // @ts-expect-error -- deleting a lib global, as the teardown does
+  delete globalThis.PointerEvent
+  try {
+    await sleep(MIN_PRESS + 50)
+  }
+  finally {
+    globalThis.PointerEvent = saved
+  }
+  expect(released).toEqual([true])
 })
