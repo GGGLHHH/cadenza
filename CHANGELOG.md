@@ -2,6 +2,21 @@
 
 All packages of this repository share one version. Each section is written at release time from the commits since the previous tag, by `pnpm release` (see bump.config.ts).
 
+## v0.9.1
+
+[compare changes](https://github.com/GGGLHHH/cadenza/compare/v0.9.0...v0.9.1)
+
+### 🩹 Fixes
+
+- **ui:** Replay the press release through the element's own window ([5722180](https://github.com/GGGLHHH/cadenza/commit/5722180))
+- **ui:** Hold the replay's constructor and dispatch from the press ([e471427](https://github.com/GGGLHHH/cadenza/commit/e471427))
+- **ui:** Keep sidebar labels above a highlight gliding through a sub-menu ([3ae3fe6](https://github.com/GGGLHHH/cadenza/commit/3ae3fe6))
+
+### 📖 Documentation
+
+- **changelog:** Note the ai peer range moving to ui ^0.9.0 ([cfe0786](https://github.com/GGGLHHH/cadenza/commit/cfe0786))
+- Put the section order back on the page skeleton ([2ab02dc](https://github.com/GGGLHHH/cadenza/commit/2ab02dc))
+
 ## v0.9.0
 
 [compare changes](https://github.com/GGGLHHH/cadenza/compare/v0.8.0...v0.9.0)
