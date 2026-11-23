@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it } from 'vitest'
-import { Sidebar, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, TooltipProvider } from '../src'
+import { Sidebar, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarTrigger, TooltipProvider } from '../src'
 
 // The published entry wires the provider, panel and trigger together (jsdom is
 // 1024px wide, so the desktop panel renders, not the mobile sheet).
@@ -67,4 +67,28 @@ it('shows an expanded tooltip only when the object form unhides it', async () =>
   await user.hover(screen.getByRole('button', { name: '首页' }))
   await new Promise(resolve => setTimeout(resolve, 50))
   expect(screen.queryByText('首页提示')).toBeNull()
+})
+
+// A sub-item's surface keeps `-z-1` reaching the panel only while no element
+// between it and the panel is a stacking context: a `translate` on the
+// sub-menu made the whole list paint over the labels above it, so a surface
+// gliding in or out covered them. jsdom has no Tailwind, so read the classes.
+it('nudges the sub-menu without making it a stacking context', () => {
+  render(
+    <SidebarProvider>
+      <Sidebar collapsible="none">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton>报表</SidebarMenuButton>
+            <SidebarMenuSub>
+              <SidebarMenuSubItem><SidebarMenuSubButton isActive>地区</SidebarMenuSubButton></SidebarMenuSubItem>
+            </SidebarMenuSub>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </Sidebar>
+    </SidebarProvider>,
+  )
+  const sub = document.querySelector('[data-slot=sidebar-menu-sub]')!
+  expect([...sub.classList]).toEqual(expect.arrayContaining(['relative', 'inset-s-px', 'translate-none']))
+  expect([...sub.classList].filter(name => /^-?translate-(?!none$)/.test(name))).toEqual([])
 })

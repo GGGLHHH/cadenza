@@ -29,8 +29,8 @@ import {
   SidebarMenuItem,
   SidebarMenu as SidebarMenuPrimitive,
   SidebarMenuSkeleton,
-  SidebarMenuSub,
   SidebarMenuSubItem,
+  SidebarMenuSub as SidebarMenuSubPrimitive,
   SidebarSeparator,
 } from '#primitives/sidebar'
 import { Tooltip, TooltipPopup, TooltipTrigger } from './tooltip'
@@ -686,6 +686,26 @@ export function SidebarMenu({ className, ...props }: SidebarMenuProps): ReactEle
   return <SidebarMenuPrimitive className={cn('gap-1', className)} {...props} />
 }
 
+export type SidebarMenuSubProps = ComponentProps<typeof SidebarMenuSubPrimitive>
+
+/**
+ * A sub-menu: the vendored `<ul>`, its 1px nudge (which lines its border up
+ * under the parent's icon) moved from `translate` to an inset. Any `translate`
+ * makes the list a stacking context: a sub-item's highlight surface then sits
+ * under the list's labels only, and the list as a whole paints over every
+ * label before it — a surface gliding into or out of the sub-menu covers the
+ * labels it crosses. A `relative` list nudged by its inset moves the same 1px
+ * and keeps the surface's `-z-1` reaching the panel.
+ */
+export function SidebarMenuSub({ className, ...props }: SidebarMenuSubProps): ReactElement {
+  return (
+    <SidebarMenuSubPrimitive
+      className={cn(`relative inset-s-px translate-none`, className)}
+      {...props}
+    />
+  )
+}
+
 export type SidebarContentProps = ComponentProps<typeof SidebarContent>
 export type SidebarFooterProps = ComponentProps<typeof SidebarFooter>
 export type SidebarGroupProps = ComponentProps<typeof SidebarGroup>
@@ -699,7 +719,6 @@ export type SidebarMenuActionProps = ComponentProps<typeof SidebarMenuAction>
 export type SidebarMenuBadgeProps = ComponentProps<typeof SidebarMenuBadge>
 export type SidebarMenuItemProps = ComponentProps<typeof SidebarMenuItem>
 export type SidebarMenuSkeletonProps = ComponentProps<typeof SidebarMenuSkeleton>
-export type SidebarMenuSubProps = ComponentProps<typeof SidebarMenuSub>
 export type SidebarMenuSubItemProps = ComponentProps<typeof SidebarMenuSubItem>
 export type SidebarSeparatorProps = ComponentProps<typeof SidebarSeparator>
 
@@ -717,7 +736,6 @@ export {
   SidebarMenuBadge,
   SidebarMenuItem,
   SidebarMenuSkeleton,
-  SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarSeparator,
 }
