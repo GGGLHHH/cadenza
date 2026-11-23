@@ -2,6 +2,14 @@
 
 All packages of this repository share one version. Each section is written at release time from the commits since the previous tag, by `pnpm release` (see bump.config.ts).
 
+## v0.9.2
+
+[compare changes](https://github.com/GGGLHHH/cadenza/compare/v0.9.1...v0.9.2)
+
+### 🩹 Fixes
+
+- **ui:** Keep a submenu's highlight glide from flashing a scrollbar ([3f6147b](https://github.com/GGGLHHH/cadenza/commit/3f6147b))
+
 ## v0.9.1
 
 [compare changes](https://github.com/GGGLHHH/cadenza/compare/v0.9.0...v0.9.1)
