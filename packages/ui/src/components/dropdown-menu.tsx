@@ -91,6 +91,7 @@ function DropdownMenuPopupPart({
   side = 'bottom',
   sideOffset = 4,
   className,
+  children,
   ...props
 }: MenuPopupPartProps): ReactElement {
   return (
@@ -112,7 +113,21 @@ function DropdownMenuPopupPart({
             data-closed:overflow-hidden
           `, className)}
           {...props}
-        />
+        >
+          {/* A submenu shares its parent's highlight: going into it, the parent's
+              surface glides out toward the submenu's row, past this popup's
+              edge. Clipped only by the popup itself, that surface still counts
+              toward what the popup can scroll — a scrollbar flashes for the
+              glide. Clipped here instead (overflow: clip, which makes no scroll
+              container), it never reaches the popup's scrollable area. The
+              margin is the popup's p-1, so it is cut where the popup cut it. */}
+          <div
+            className="overflow-clip [overflow-clip-margin:--spacing(1)]"
+            data-slot="dropdown-menu-clip"
+          >
+            {children}
+          </div>
+        </AnimatedMenu.Popup>
       </AnimatedMenu.Positioner>
     </AnimatedMenu.Portal>
   )

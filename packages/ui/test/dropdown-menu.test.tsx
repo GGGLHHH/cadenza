@@ -127,3 +127,25 @@ it('keeps the vendored data-slot spelling under the Base UI part names', async (
   expect(document.querySelector('[data-slot="dropdown-menu-label"]')).not.toBeNull()
   expect(document.querySelector('[data-slot="dropdown-menu-shortcut"]')?.textContent).toBe('⌘C')
 })
+
+// A submenu shares its parent's highlight, which glides out of the parent popup
+// toward the submenu's row. The rows sit inside an overflow: clip box so that
+// glide is cut before it can widen what the popup scrolls (jsdom has no layout:
+// read the structure and the classes).
+it('wraps the rows in a clip box inside the scrolling popup', async () => {
+  const user = userEvent.setup()
+  render(
+    <DropdownMenu>
+      <DropdownMenuTrigger>更多</DropdownMenuTrigger>
+      <DropdownMenuPopup>
+        <DropdownMenuItem>复制</DropdownMenuItem>
+      </DropdownMenuPopup>
+    </DropdownMenu>,
+  )
+
+  await user.click(screen.getByRole('button', { name: '更多' }))
+  const item = await screen.findByRole('menuitem', { name: '复制' })
+  const clip = item.closest('[data-slot=dropdown-menu-clip]')
+  expect(clip?.parentElement?.getAttribute('data-slot')).toBe('dropdown-menu-content')
+  expect(clip?.classList.contains('overflow-clip')).toBe(true)
+})
