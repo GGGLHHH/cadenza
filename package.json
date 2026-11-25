@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.9.2",
   "private": true,
-  "packageManager": "pnpm@11.15.1",
+  "packageManager": "pnpm@12.10.1",
   "description": "shadcn-flavoured component library built on Base UI",
   "license": "MIT",
   "scripts": {
